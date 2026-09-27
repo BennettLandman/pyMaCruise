@@ -1,0 +1,34 @@
+<h1>Software Licensing with JIST</h1>
+ 
+As we move forward we software release, it is imperative that we are careful to respect the licenses of all toolkits and software packages that we might use during development.
+ 
+<h2>Motivation</h2>
+We have chosen to pursue a philosophy of Open Source ( http://en.wikipedia.org/wiki/Open_source_software) development 
+and generally believe in the “Lesser GNU Public License” mission for both open and closed source projects. While the source code for the closed source projects (i.e., TOADS) has not been released, we view these projects as “LGPL” where the source has yet to be released. We will not restrict use or redistribution of any components that are released (e.g., binaries, API’s, or partial source code). 
+ 
+<h2>Software Release</h2> 
+Any code and/or binaries that are posted to NITRC is implicitly released from the very second that one performs a commits. Any software that is posted to any public web-space is considered released. Regardless of whether anyone actually downloads the software, these channels constitute distribution/publication. The original authors of any code (and/or their immediate supervisors) should approve of any software release prior to distribution/publication. 
+ 
+<h2>Use and Redistribution of Third Party Code</h2> 
+As a member of the open source development community, we hope to both benefit from and contribute to the public good. When we choose to use existing software libraries, we must be very careful to respect the rights of their original developers (just as we wish to have our rights respected).
+ 
+<h3>NITRC : Open Source</h3>
+For the open source repositories, only resources with licenses that are compatible with redistribution under LGPL are permitted. To include a new library: 
+<ol>
+<li>       Edit the JIST-License.html document in the “license” folder. 
+<li>       Add the library name, description, link to license file. 
+<li>       Link to home page to the appropriate table.
+<li>		Save the library’s license file to the license folder with a name that indicates to which package it belongs.  
+<li>       Include the library:
+<ul> 
+<li>       For libraries which will be used “as is”, add the jar to the build path and place a single compressed file with the source in the lib-src directory. 
+<li>       For libraries which will be edited, add the source to the build path. 
+ </ul> 
+<li>       Add any new files to the CVS and commit the changes. 
+ </ol>
+ 
+<h3>IMPORTANT NOTES:</h3> 
+<ul>
+<li>         GPL (GNU Public License) tools are not compatible with LGPL distribution or distribution with closed source programs. 
+<li>         Libraries that state “for academic use”, “for non-commercial use”, “for research use”, “not for military use”, “not for export”, etc. ARE NOT compatible with our intended LGPL license because they place restrictions on how the derived programs are used. These libraries should not be used for programs which are intended to be released. 
+ </ul>

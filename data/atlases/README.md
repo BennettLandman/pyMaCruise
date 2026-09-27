@@ -12,4 +12,4 @@ All assets are committed as regular Git files. `SHA256SUMS` lists SHA-256 hashes
 
 The MNI 305 reference image and mask are required for full MNI-space output, but were not present in the supplied source trees; they are not fabricated or substituted here. The associated output remains an explicit asset gap.
 
-The owner's instruction authorizes bundling these supplied assets in this private project. This does not establish permission for a public release; source/data terms should be resolved before changing repository visibility or redistributing a release.
+The project owner directs that required supplied assets remain bundled in this repository. Their provenance is recorded for the later tech-transfer review; this does not affect implementation progress.

@@ -1,0 +1,32 @@
+Click-Wrap Agreement for the Transfer of Software
+
+PROVIDER:
+
+Center for Information Technology (CIT), National Institutes of Health (NIH), an agency of the United States Public Health Service (PHS) within the Department of Health and Human Services (DHHS)
+
+PROVIDER SOFTWARE DEVELOPER:
+
+Matthew McAuliffe, PhD., Chief, Biomedical Imaging Research Services Section
+
+SOFTWARE:
+
+Medical Image Processing, Analysis and Visualization ("MIPAV") installation package, the start-file, supporting files, documentation and example images are hereinafter collectively referred to as "SOFTWARE"
+
+RECIPIENT:
+
+An individual that downloads and uses MIPAV.
+
+Read the terms of Agreement carefully. RECIPIENT must agree to these terms to receive the SOFTWARE.
+
+The SOFTWARE is the property of the PROVIDER and is made available as a service to the research community. Title to the SOFTWARE shall remain with the PROVIDER. Nothing herein shall be deemed to constitute, by implication or otherwise, a grant to the RECIPIENT of any license or other rights under any patent, patent application, or other intellectual property right or interest.
+RECIPIENT SHALL NOT USE THE SOFTWARE FOR TREATING OR DIAGNOSING HUMAN SUBJECTS.
+RECIPIENT agrees not to license, or sell SOFTWARE.
+RECIPIENT agrees not to distribute the SOFTWARE to others not under RECIPIENT'S direct supervision without the PROVIDER's written consent. The RECIPIENT agrees to refer any request for the SOFTWARE to the PROVIDER.
+RECIPIENT agrees to use SOFTWARE only at RECIPIENT INSTITUTION. RECIPIENT agrees not to copy SOFTWARE, in whole or in part, except as required for use by RECIPIENT at RECIPIENT location.
+The RECIPIENT agrees to acknowledge the source of the SOFTWARE in any publications reporting use of it.
+The SOFTWARE is still under development and is supplied AS IS, without any accompanying services or improvements from PROVIDER. THE PROVIDER MAKES NO REPRESENTATIONS AND EXTENDS NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED. THERE ARE NO EXPRESS OR IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR THAT THE USE OF THE SOFTWARE WILL NOT INFRINGE ANY PATENT, TRADEMARK, OR OTHER PROPRIETARY RIGHTS OF THIRD PARTIES.
+Unless prohibited by law, RECIPIENT assumes all liability for claims for damages against it by third parties that may arise from the use of the SOFTWARE. All risk as to quality and performance of the SOFTWARE is with RECIPEINT. PROVIDER shall not be liable to RECIPIENT for damages arising out of the use or inability to use the SOFTWARE, including but not limited to loss of data or data being rendered inaccurate or losses sustained by RECIPIENT or third parties. However, to the extent permitted by law, the PROVIDER shall be liable to the RECIPIENT when the damage is caused by the gross negligence or willful misconduct of the PROVIDER.
+The RECIPIENT agrees to use the SOFTWARE in compliance with all applicable statutes and regulations.
+RECIPIENT agrees not to claim, infer, or imply endorsement by the U.S. Government of data or results obtained through RECIPIENT'S use of the SOFTWARE, or any resulting product(s) or service(s).
+RECIPIENT agrees not to reverse engineer, decompile, or disassemble the SOFTWARE, and also not to modify or extend the SOFTWARE without written permission from PROVIDER. RECIPIENT agrees to contact Matt McAuliffe at Matthew.McAuliffe@nih.gov if interested in modifying or extending the SOFTWARE.
+RECIPIENT agrees that the Agreement will be construed in accordance with Federal law as applied by the Federal courts in the District of Columbia.
