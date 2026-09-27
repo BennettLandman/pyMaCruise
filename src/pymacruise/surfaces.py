@@ -165,6 +165,25 @@ def surface_vertex_normals(mesh: SurfaceMesh) -> np.ndarray:
     return normals / lengths[:, None]
 
 
+def transform_surface_ras(mesh: SurfaceMesh, transform: np.ndarray) -> SurfaceMesh:
+    """Apply a full-space RAS millimetre affine to surface points.
+
+    ``transform`` maps source RAS+ millimetres to target RAS+ millimetres.
+    Triangle winding is reversed if the affine contains a reflection. Scalar
+    point-data fields (including thickness) are preserved without resampling.
+    """
+    matrix = np.asarray(transform, dtype=np.float64)
+    if matrix.shape != (4, 4) or not np.isfinite(matrix).all():
+        raise ValueError("Surface transform must be a finite 4x4 affine")
+    if not np.allclose(matrix[3], [0, 0, 0, 1], rtol=0, atol=1e-10):
+        raise ValueError("Surface transform must be affine in homogeneous coordinates")
+    if abs(np.linalg.det(matrix[:3, :3])) < 1e-12:
+        raise ValueError("Surface transform has a singular spatial component")
+    vertices = mesh.vertices @ matrix[:3, :3].T + matrix[:3, 3]
+    faces = mesh.faces[:, ::-1] if np.linalg.det(matrix[:3, :3]) < 0 else mesh.faces
+    return SurfaceMesh(vertices, faces.copy(), point_data=mesh.point_data)
+
+
 def write_legacy_vtk(mesh: SurfaceMesh, path: str | Path) -> Path:
     """Write a scientific mesh as an ASCII legacy VTK POLYDATA file."""
     destination = Path(path)

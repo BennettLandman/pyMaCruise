@@ -25,7 +25,9 @@ Closest points are computed against triangles rather than only mesh vertices.
 A `scipy.spatial.cKDTree` over triangle centroids narrows candidates; the
 global triangle-radius bound proves excluded triangles cannot be closer.
 Thickness arrays are stored as VTK point-data fields and survive the local
-ASCII VTK round-trip.
+ASCII VTK round-trip. `transform_surface_ras` applies a source-to-target
+full-space affine in RAS millimetres, preserves scalar point fields, and
+reverses triangle winding for reflected transforms.
 
 ## Synthetic measurements
 
@@ -44,7 +46,9 @@ The mesh sampling limits per-vertex distance accuracy; the volumetric
 level-set subtraction remains exact for these parallel signed-distance
 fields. Unit tests also verify non-RAS warning/reorientation, grid mismatch
 rejection, unit outward normals, stable nearest-point correspondence indices,
-and thickness-field VTK serialization. No actual imaging data are used.
+and thickness-field VTK serialization. A known full-space translation
+preserves physical distances and normals, while reflection updates winding.
+No actual imaging data are used.
 
 ## Scope and numerical interpretation
 

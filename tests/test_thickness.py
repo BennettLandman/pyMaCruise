@@ -11,6 +11,7 @@ from pymacruise.surfaces import (
     extract_levelset_surface,
     read_legacy_vtk,
     surface_vertex_normals,
+    transform_surface_ras,
     write_legacy_vtk,
 )
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
@@ -101,6 +102,29 @@ def test_surface_normals_are_unit_outward_ras_vectors() -> None:
 
     np.testing.assert_allclose(np.linalg.norm(normals, axis=1), 1.0, atol=1e-12)
     assert np.mean(np.einsum("ij,ij->i", normals, mesh.vertices - center)) > 0
+
+
+def test_full_space_surface_transform_uses_ras_mm_and_preserves_orientation() -> None:
+    mesh = _load_surface("inner")
+    transform = np.eye(4)
+    transform[:3, 3] = [12.0, -4.0, 2.5]
+    moved = transform_surface_ras(mesh, transform)
+    np.testing.assert_allclose(moved.vertices, mesh.vertices + [12.0, -4.0, 2.5])
+    np.testing.assert_array_equal(moved.faces, mesh.faces)
+    np.testing.assert_allclose(
+        surface_vertex_normals(moved), surface_vertex_normals(mesh), atol=1e-12
+    )
+
+    reflection = np.diag([-1.0, 1.0, 1.0, 1.0])
+    reflected = transform_surface_ras(mesh, reflection)
+    np.testing.assert_array_equal(reflected.faces, mesh.faces[:, ::-1])
+    assert np.mean(
+        np.einsum(
+            "ij,ij->i",
+            surface_vertex_normals(reflected),
+            reflected.vertices - np.mean(reflected.vertices, axis=0),
+        )
+    ) > 0
 
 
 def test_vtk_round_trip_preserves_thickness_point_data(tmp_path: Path) -> None:

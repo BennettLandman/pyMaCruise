@@ -39,6 +39,7 @@ from pymacruise.surfaces import (
     extract_levelset_surface,
     read_legacy_vtk,
     surface_vertex_normals,
+    transform_surface_ras,
     write_legacy_vtk,
 )
 from pymacruise.thickness import (
@@ -77,6 +78,7 @@ __all__ = [
     "read_legacy_vtk",
     "write_legacy_vtk",
     "surface_vertex_normals",
+    "transform_surface_ras",
     "closest_point_thickness",
     "levelset_subtraction_thickness",
     "cortical_separation",
