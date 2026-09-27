@@ -1,7 +1,7 @@
 # Image and Coordinate Conventions
 
 **Status:** P06 started; source review recorded, synthetic landmark validation pending.
-**Scope:** Establish the spatial rules PyMaCRUISE will use when loading, transforming, cropping, combining, and writing NIfTI volumes. This is a working contract until the synthetic checks in P06 pass.
+**Scope:** Establish the spatial rules PyMaCRUISE will use when loading, transforming, cropping, combining, and writing NIfTI volumes. All persisted image files use compressed NIfTI (`.nii.gz`); this is a working contract until the synthetic checks in P06 pass.
 
 ## Source behavior observed
 

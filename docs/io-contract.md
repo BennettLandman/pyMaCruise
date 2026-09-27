@@ -16,7 +16,7 @@ The two profiles must be explicit configuration choices. Do not infer plus mode 
 
 ### T1 and FLAIR
 
-- Inputs are 3D, single-volume NIfTI images (`.nii` or `.nii.gz`) with finite, scalar voxel data and a valid spatial affine.
+- Persisted workflow inputs, intermediates, and outputs use 3D, single-volume compressed NIfTI (`.nii.gz`) images with finite, scalar voxel data and a valid spatial affine. If an external image is supplied in another format, normalize it to `.nii.gz` before storing or reusing it in the workflow.
 - T1 is required for both profiles. FLAIR is required only for the plus profile and must be registered to the T1 reference grid by the explicit rigid-registration stage.
 - Preserve the stored voxel order and header on read. Keep physical geometry explicit. Input grids are validated independently; operations that combine arrays require matching grids or a documented, explicit resampling step.
 - The baseline T1 acquisition default is `T1_MPRAGE`; acquisition metadata is not inferred from the filename. The supported initial preprocessing defaults are N4 and BET threshold 0.1.

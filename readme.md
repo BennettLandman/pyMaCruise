@@ -38,6 +38,8 @@ Pin compatible package versions after establishing the implementation environmen
 
 PyMaCRUISE has no FreeSurfer dependency or runtime requirement: users will not need FreeSurfer installed, licensed, configured, or provide FreeSurfer data or outputs. Mentions in the source notes describe historical MaCRUISE behavior only.
 
+All image data stored by PyMaCRUISE—including bundled image assets, synthetic fixtures, cached intermediates, and outputs—must use compressed NIfTI (`.nii.gz`). Convert incoming images to `.nii.gz` before storing them in the project or using them as persisted workflow inputs. Non-image metadata/configuration files keep their appropriate formats. The currently bundled legacy atlas payloads still include MIPAV `.raw`/XML and Analyze `.img`/`.hdr` files; their conversion and descriptor updates are tracked in P05c.
+
 ## Plan and progress
 
 See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
@@ -54,7 +56,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P03: selected the full MaSeg-informed T1 + MaSeg + FLAIR plus workflow using `run_maCRUISEplus_v1`; documented its settings and the distinct deferred Origin/no-MaSeg variants in `docs/plus-baseline.md`.
 - Completed roadmap step P04: traced the selected V3 pipeline and outputs to Python libraries, VandyCRUISE algorithm families, and the MaCRUISE-specific adapters in `toads-cruise/src` in `docs/source-map.md`.
 - Completed roadmap step P05: cataloged the source trees, CVS/SVN version evidence, atlas payloads, available notices, absent MNI references, external-tool availability, and dependency gaps in `docs/assets-and-dependencies.md`.
-- Completed roadmap step P05a: copied all supplied atlas trees required by the selected base/plus wrapper paths into `data/atlases/`, excluded CVS working-copy metadata, stored every payload as a regular Git file, and recorded 76 SHA-256 entries. The MNI reference/mask remain unavailable in the supplied trees.
+- Completed roadmap step P05a: copied all supplied atlas trees required by the selected base/plus wrapper paths into `data/atlases/`, excluded CVS working-copy metadata, stored every payload as a regular Git file, and recorded 76 SHA-256 entries. The MNI reference/mask remain unavailable in the supplied trees. The atlas image payloads still use legacy formats; their `.nii.gz` conversion is tracked in P05c.
 - Completed roadmap step P05b: preserved all 70 files from the supplied MIPAV/JIST license directories under `licenses/upstream/` and documented source attributions, module-comment practice, owner direction, and the later TTO licensing handoff in `license_info.md`.
 - Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
 - Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific outputs, excluded presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
