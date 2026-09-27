@@ -52,17 +52,27 @@ eighteen-connected exterior component checks used by the selected
 The current focused tests check hand-calculated quadratic derivatives and
 curvature numerators, flat-front pressure behavior, signed pressure upwinding,
 signed advection upwinding, simple-point acceptance/rejection, and invalid
-field rejection. The TGDM-specific suite has 8 tests. This validates isolated
-source rules; it does **not** validate iterative TGDM results or numerical
-equivalence to Java.
+field rejection. The TGDM-specific suite has 11 tests. It also checks zero-
+force planar evolution, signed-pressure planar-front movement, bound handling,
+and per-pass iteration counts. The full synthetic suite passes 102 tests.
+This is early iterative coverage; it does **not** establish Java numerical
+equivalence.
+
+`tgdm_evolve` now supplies the low-level source-style solver for an already
+signed scalar level set. It applies the profile's narrow-band width, exact
+wrapper-derived update schedule, bound clamps, local sign/topology checks,
+landmine-triggered pass restarts, and signed-distance reinitialization. The
+existing ACE fast-marching helper is reused; the supplied TOADS tree includes
+`DistanceFieldyh.java`, explicitly described by its author as identical to
+the `DistanceField` dependency used by TGDM. Source-output comparisons are
+still required before asserting a match.
 
 ## Remaining source review and implementation
 
-The Python kernel is only a building block. P29 still needs initialization and
-signed-distance reinitialization, profile iteration schedules and time-step
-switches, narrow-band construction/update ordering, landmine restarts,
-bound/skeleton restrictions, tissue-force preparation for each surface, and
-complete inner/central/outer array APIs.
+The Python solver is still only a low-level building block. P29 still needs
+the membership-to-initial-surface path and smoothing, tissue-force preparation
+for each surface, brain-mask/skeleton adapter behavior, and complete
+inner/central/outer array APIs with RAS NIfTI wrappers.
 After those are implemented, synthetic sphere/ellipsoid and nested-tissue
 fixtures must check ordering, topology, stability, iteration accounting, and
 all P08 metrics. Trusted Java reference outputs are still required for a

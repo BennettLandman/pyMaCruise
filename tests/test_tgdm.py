@@ -3,7 +3,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymacruise.tgdm import tgdm_force, tgdm_geometry, tgdm_simple_point_618
+from pymacruise.tgdm import (
+    TGDMProfileSettings,
+    tgdm_evolve,
+    tgdm_force,
+    tgdm_geometry,
+    tgdm_simple_point_618,
+)
 
 
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:
@@ -123,3 +129,66 @@ def test_tgdm_geodesic_simple_point_rejects_separate_interior_face_components() 
 def test_tgdm_geodesic_simple_point_rejects_missing_or_multiple_components() -> None:
     assert not tgdm_simple_point_618(np.zeros((3, 3, 3), dtype=bool))
     assert not tgdm_simple_point_618(np.ones((3, 3, 3), dtype=bool))
+
+
+def test_tgdm_evolution_reinitializes_without_changing_a_planar_zero_force_front() -> None:
+    i, _, _ = np.indices((9, 8, 7), dtype=np.float32)
+    level_set = i - 4
+    settings = TGDMProfileSettings(4.8, 3.6, 6.0, 20.0, 1, 2, 0.1, 0.045)
+
+    result = tgdm_evolve(
+        level_set,
+        profile="inner",
+        curvature_force=0,
+        pressure_force=0,
+        outer_iterations=1,
+        settings=settings,
+    )
+
+    np.testing.assert_allclose(result.level_set, level_set, atol=1e-6)
+    assert result.completed_steps == 2
+    assert result.completed_outer_passes == 1
+    assert result.landmine_restarts == 0
+
+
+def test_tgdm_evolution_applies_inner_and_outer_surface_bounds() -> None:
+    i, _, _ = np.indices((9, 7, 7), dtype=np.float32)
+    level_set = i - 4
+    inner_bound = level_set - 1
+    outer_bound = level_set + 1
+    settings = TGDMProfileSettings(4.8, 3.6, 6.0, 20.0, 0, 0, 0.1, 0.045)
+
+    result = tgdm_evolve(
+        level_set,
+        profile="inner",
+        curvature_force=0,
+        pressure_force=0,
+        inner_bound=inner_bound,
+        outer_bound=outer_bound,
+        outer_iterations=1,
+        settings=settings,
+    )
+
+    # The inner bound is tighter on the negative side; the outer bound is
+    # tighter on the positive side. Zero force leaves this nested interval.
+    assert np.all(result.level_set <= outer_bound + 1e-6)
+    assert np.all(result.level_set >= inner_bound - 1e-6)
+
+
+def test_tgdm_evolution_moves_planar_front_with_signed_pressure() -> None:
+    i, _, _ = np.indices((9, 8, 7), dtype=np.float32)
+    level_set = i - 4
+    settings = TGDMProfileSettings(4.8, 3.6, 6.0, 20.0, 0, 1, 0.1, 0.1)
+
+    result = tgdm_evolve(
+        level_set,
+        profile="inner",
+        curvature_force=0,
+        pressure_force=1,
+        outer_iterations=1,
+        settings=settings,
+    )
+
+    assert result.level_set[4, 3, 3] == pytest.approx(-0.1, abs=1e-5)
+    assert result.level_set[5, 3, 3] == pytest.approx(0.9, abs=1e-5)
+    assert result.completed_steps == 1
