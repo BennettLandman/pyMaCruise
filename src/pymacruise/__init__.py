@@ -30,9 +30,12 @@ from pymacruise.volume_ops import VolumeGeometryError, calculate_volume
 from pymacruise.workflow import WorkflowConfig, create_initial_manifest, write_run_manifest
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.spatial_transfer import transfer_to_reference_space
+from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
 
 __all__ = [
     "ImageGeometryError",
+    "ACEArrayResult",
+    "ACEImageResult",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -42,6 +45,8 @@ __all__ = [
     "N4Config",
     "N4DependencyError",
     "calculate_volume",
+    "ace_enhance",
+    "ace_enhance_arrays",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",
