@@ -13,7 +13,7 @@ The detailed, step-by-step porting roadmap and acceptance table are in [plan.md]
 - **Registration/bias-field toolkit:** ANTsPy (`antspyx`) where it can reproduce the reference operation.
 - **Final runtime goal:** Python workflow and Python-accessible algorithm implementations, without MATLAB or a MIPAV/JIST JVM runtime in the completed pipeline. Native library backends such as ITK/ANTs are acceptable.
 
-Start with the base T1 + MaSeg workflow. Add MaCRUISEplus after the base path and its validation are stable.
+Start with the base T1 + MaSeg workflow. The selected follow-on plus contract is full MaSeg-informed T1 + MaSeg + FLAIR using the `_v1` wrapper profile; details and deferred alternatives are in [docs/plus-baseline.md](docs/plus-baseline.md). Add its implementation after the base path and validation are stable.
 
 ## Porting principles
 
@@ -50,6 +50,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Added a synthetic-data readiness gate before any real MRI integration, a committed-fixture policy, stage-wise numerical equivalence criteria, and final real-data acceptance phases.
 - Completed roadmap step P02: selected `run_maCRUISE_v3` at SVN revision 9360 as the canonical base behavior and recorded the variant comparison and effective parameters in `docs/source-baseline.md`.
 - Clarified the version history: numbered runner versions are bug fixes; versions below V3 had bugs. V3 is the corrected baseline, and its observed topology/boundary behavior is part of that contract rather than an optional algorithm generation.
+- Completed roadmap step P03: selected the full MaSeg-informed T1 + MaSeg + FLAIR plus workflow using `run_maCRUISEplus_v1`; documented its settings and the distinct deferred Origin/no-MaSeg variants in `docs/plus-baseline.md`.
 - Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
 ## Validation plan
