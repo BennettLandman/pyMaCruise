@@ -12,7 +12,6 @@ dependencies = ["numpy", "nibabel"]
 
 [project.optional-dependencies]
 ants = ["antspyx"]
-surfaces = ["vtk"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

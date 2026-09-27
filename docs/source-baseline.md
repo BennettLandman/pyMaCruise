@@ -14,7 +14,7 @@ The project owner clarified that the version numbers on `run_maCRUISE` are bug-f
 
 ### Inputs and default entry-point settings
 
-- Required base inputs: T1 image, MaSeg multi-atlas segmentation, working directory, and the source-era multi-atlas/MIPAV/FreeSurfer/FSL locations needed by the MATLAB runner.
+- Required base inputs: T1 image, MaSeg multi-atlas segmentation, working/output directory, configured atlas assets, and external scientific-processing tools selected by the Python profile. The MATLAB runner's FreeSurfer path is not a Python port requirement.
 - `run_maCRUISE_v3` defaults `SkullStripMethod` to `BET`, `T1_sequence` to `T1_MPRAGE`, `N3orN4` to `N4`, `BetThreshold` to `0.1`, and `topoCorrectVersion` to `V3`. The skull-strip, sequence, correction, and threshold values can be supplied through `optsin`; the entry point sets topology correction to V3.
 - The `run_maCRUISE_v3` top-level runner sets rigid-only registration (`rigOnly = 1`) for the FLAIR-related registration option. FLAIR is not a required input to this base entry point.
 - `pipeline/maCRUISEpipeline.m` executes raw preparation, cortical separation, TOADS preprocessing, transfer to original space, crop, multi-atlas boundary generation/cleanup, atlas/TOADS tissue combination, V3-specific boundary cleanup, and the CRUISE surface pipeline.
@@ -22,7 +22,7 @@ The project owner clarified that the version numbers on `run_maCRUISE` are bug-f
 
 ### Required products to preserve
 
-The top-level runner collects refined segmentation, raw/prepared inputs, cortical-separation products, TOADS products, uncropped level sets and VTK surfaces, FreeSurfer/FreeView-compatible ASC surfaces, inverse-cropped TGDM inputs, thickness output, and MNI-space level sets/surfaces. It also creates a FreeView batch/figure product. The Python output contract should distinguish required scientific products from optional visualization products, but must not silently omit a scientific intermediate used by a downstream calculation.
+The top-level runner collects refined segmentation, raw/prepared inputs, cortical-separation products, TOADS products, uncropped level sets and scientific surface meshes, inverse-cropped TGDM inputs, thickness output, and MNI-space level sets/surfaces. It also creates FreeSurfer/FreeView-compatible ASC surfaces and FreeView batch/figure products. PyMaCRUISE ports the scientific volumes, surfaces, transforms, and thickness needed by the workflow; it does not port ASC/FreeView presentation outputs, visualization scripts, or rendering. It must not silently omit a scientific intermediate used downstream.
 
 The V3 runner supplies `average305_t1_tal_lin.nii.gz` and `average305_t1_tal_lin_mask.nii.gz` as MNI reference assets for the MNI output path. Asset availability and licensing are handled in roadmap step P05. Replacing the source NiftyReg/Aladin registration with ANTsPy is a later equivalence task; it does not change the reference behavior selected here.
 
@@ -40,7 +40,7 @@ The supplied `_v1` and `_v3` files were compared directly. Their executable diff
 
 - `run_maCRUISEplus*.m` and the `CRUISEplus*` pipelines are a separate MaCRUISEplus contract, tracked in P03 and P38–P41; they are not silently folded into the base runner.
 - Do not expose pre-V3 numbered versions as supported behavior; the project owner reports that they contain bugs. The unversioned runner is also not the baseline, though its specific bug status has not been separately established.
-- FreeView screenshot/report generation is optional presentation behavior, not a prerequisite for core segmentation. Surface coordinate conversion/export remains part of the output contract where downstream FreeSurfer use depends on it.
+- FreeView screenshots, reports, batch scripts, rendering, FreeSurfer comparisons, and ASC presentation exports are outside this port. After acceptance, P47 is a discussion of modern Python visualization options rather than a direct visualization port.
 - Batch/cluster launchers and legacy/old pipelines are outside the first single-subject baseline unless later evidence shows a required scientific behavior is only present there.
 
 ## Evidence inspected

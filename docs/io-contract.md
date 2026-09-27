@@ -44,10 +44,11 @@ Outputs are written beneath a caller-selected output directory. The Python packa
 - Thickness volume and summary products generated from the final inner/outer pair.
 - For full legacy-output mode, MNI-space level sets/surfaces. These require the exact MNI reference and mask, which are currently absent from the supplied source trees. Until obtained and validated, expose this output as unavailable/disabled with a clear reason; do not synthesize a replacement template.
 
-### Optional presentation products
+### Excluded legacy presentation products
 
-- FreeView batch scripts, screenshots/figures, and other display conveniences are optional and must not gate completion of the scientific workflow.
-- FreeSurfer-compatible ASC surfaces remain an interoperability product when requested; their coordinate and winding contract is specified separately and must not be conflated with FreeView rendering.
+- Do not port FreeView batch scripts, screenshots/figures, MATLAB figures, rendering, or viewer behavior.
+- Do not create FreeSurfer/FreeView-specific ASC presentation exports or subject-specific FreeSurfer comparisons as part of this port.
+- Preserve scientific surface meshes, level sets, coordinate transforms, and thickness products required by the segmentation workflow. The later P47 discussion will consider modern Python visualization tools as a separate follow-on effort.
 
 ## Failure behavior and provenance
 
@@ -62,6 +63,6 @@ Outputs are written beneath a caller-selected output directory. The Python packa
 - Missing T1/MaSeg, 2D/4D volumes, non-finite intensities, malformed affine, non-integer MaSeg labels, and out-of-contract label values produce clear diagnostics.
 - MaSeg labels map to the exact expected synthetic masks, including labels near each set boundary and labels intentionally excluded.
 - Shape-equal but affine-shifted inputs are rejected or explicitly resampled; FLAIR output is on the T1 reference grid after rigid registration.
-- Output manifest accurately distinguishes required scientific outputs, optional presentation outputs, and MNI outputs unavailable due to missing MNI assets.
+- Output manifest identifies required scientific outputs and MNI outputs unavailable due to missing MNI assets; it contains no visualization-product requirement.
 
 The cases above are requirements, not claims of completed implementation or validation. They will be assigned to the deterministic fixture and test roadmap steps.

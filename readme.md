@@ -22,17 +22,16 @@ Start with the base T1 + MaSeg workflow. The selected follow-on plus contract is
 3. Use standard Python libraries for generic operations. Image arithmetic such as the old Image Calculator step is a generic N-dimensional array operation with geometry checks and metadata preservation.
 4. Use ANTsPy for ANTs operations. Replace legacy NiftyReg/Aladin MNI registration with ANTsPy only after transform direction, interpolation, and output alignment are validated against a reference case.
 5. Keep TOADS, topology correction, ACE, GVF, and CRUISE/TGDM faithful to VandyCRUISE. Generic morphology or active-contour functions are not assumed to be equivalent substitutes.
-6. Keep visualization and FreeSurfer comparison utilities optional and outside the core segmentation path.
-7. Record source version, parameters, and transformations in run metadata for reproducibility.
+6. Record source version, parameters, and transformations in run metadata for reproducibility. Visualization is outside this port; discuss modern Python tools after acceptance at P47.
 
 ## Proposed Python stack
 
-- **NiBabel:** NIfTI and surface-file I/O, image headers/affines, and FreeSurfer formats.
+- **NiBabel:** NIfTI I/O, image headers/affines, and geometry metadata.
 - **NumPy:** volume arrays and generic voxel-wise operators.
 - **SciPy ndimage:** standard filtering, connected components, interpolation, and morphology.
 - **ANTsPy (`antspyx`):** N4 bias correction and ANTs registration operations.
 - **scikit-image:** standard image processing only where its behavior matches the source step.
-- **VTK or PyVista:** VTK surface I/O, mesh operations, and optional visualization.
+- **Scientific surfaces:** select a mesh geometry/format library only if required by P30–P31; no renderer or viewer dependency is in scope.
 - **pytest:** focused unit, stage, and end-to-end fixtures when implementation validation begins.
 
 Pin compatible package versions after establishing the implementation environment.
@@ -45,7 +44,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 
 ### 2026-09-27 roadmap update
 
-- Added [plan.md](plan.md) with 47 ordered, independently validatable porting steps, validation gates, and date fields.
+- Added [plan.md](plan.md) with ordered, independently validatable porting steps, validation gates, and date fields.
 - Split base MaCRUISE and MaCRUISEplus into explicit source-mapped implementation tracks.
 - Added a synthetic-data readiness gate before any real MRI integration, a committed-fixture policy, stage-wise numerical equivalence criteria, and final real-data acceptance phases.
 - Completed roadmap step P02: selected `run_maCRUISE_v3` at SVN revision 9360 as the canonical base behavior and recorded the variant comparison and effective parameters in `docs/source-baseline.md`.
@@ -56,12 +55,13 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P05a: copied all supplied atlas trees required by the selected base/plus wrapper paths into `data/atlases/`, excluded CVS working-copy metadata, stored every payload as a regular Git file, and recorded 76 SHA-256 entries. The MNI reference/mask remain unavailable in the supplied trees.
 - Completed roadmap step P05b: preserved all 70 files from the supplied MIPAV/JIST license directories under `licenses/upstream/` and documented source attributions, module-comment practice, owner direction, and the later TTO licensing handoff in `license_info.md`.
 - Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
-- Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific vs presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
+- Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific outputs, excluded presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
+- Visualization tools, FreeView scripting/rendering, and FreeSurfer comparisons are excluded from this port. P47 reserves a post-acceptance discussion of modern Python visualization options.
 - Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
 ## Validation plan
 
-Validation is required at image, algorithm-stage, surface, and full-pipeline levels. Visual plausibility alone is insufficient.
+Validation is required at image, algorithm-stage, scientific surface, and full-pipeline levels, using synthetic fixtures and measurable equivalence criteria.
 
 ### Input and image integrity
 
@@ -99,7 +99,7 @@ Validation is required at image, algorithm-stage, surface, and full-pipeline lev
 - **Generic image arithmetic:** implement as a generic volume operator, not by porting the supplied 2D `BufferedImage` snippet. Preserve the medical-volume grid and metadata.
 - **Multi-atlas fusion:** top-level MATLAB setup references separate `masi-fusion/src` code. Base MaCRUISE accepts MaSeg as input, but fusion source may be needed if producing MaSeg is in scope.
 - **MNI reference:** source expects `average305_t1_tal_lin.nii.gz` and related atlas/configuration files. Locate and version these assets before validating MNI outputs.
-- **FreeSurfer:** not required for core segmentation; used by optional FreeView rendering and comparisons with subject-specific FreeSurfer surfaces.
+- **Visualization:** excluded from the port. P47 is a post-acceptance discussion of modern Python tools, not a FreeView/MATLAB visualization implementation step.
 - **Reference data needed:** one de-identified T1 + MaSeg case, expected outputs/intermediates, and exact configuration. Add FLAIR and plus-workflow outputs for MaCRUISEplus.
 
 ## Progress log

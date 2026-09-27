@@ -16,9 +16,9 @@ For the initial Python behavior profile, use the `_v1` wrapper defaults:
 - `LesionToadsOutput = 'dura removal inputs'` and `LesionToadsCorrect = 'false'` are set before lesion TOADS.
 - `rigOnly = 1`; the MATLAB wrapper calls `reg_aladin -rigOnly` with T1 as reference and FLAIR as floating/moving image. ANTsPy is the selected Python registration tool and must reproduce the rigid transform direction, reference grid, and interpolation behavior.
 - Plus CRUISE settings include `WMIsoLevel = 0.5`, `GVF_Lambda = 0.2`, intermediate output enabled, `UseUpdatedCSFinACE = 3`, `update_Enhance = 0`, and `refineTopoCorrectByMa = 1` as set by the shared plus pipeline.
-- `_v1` supplies the MNI reference mask `average305_t1_tal_lin_mask.nii.gz`; its runner also carries FSL and PDF-generation configuration. FreeView rendering is optional presentation output, not part of the core segmentation acceptance contract.
+- `_v1` supplies the MNI reference mask `average305_t1_tal_lin_mask.nii.gz`; its runner also carries FSL and PDF-generation configuration. FreeView/PDF figure rendering is outside the Python port scope.
 
-`run_maCRUISEplus_v1.m` then uses the surface outputs to refine the original MaSeg (`SEG_refine.nii.gz`) and collects raw/prepared data, cortical separation, lesion-TOADS intermediates, surfaces and level sets, FreeSurfer/FreeView-compatible surface exports, inverse-cropped TGDM inputs, thickness, and MNI-space outputs. The Python manifest must distinguish required scientific outputs from optional rendering artifacts while retaining intermediate files needed for reproducibility and downstream stages.
+`run_maCRUISEplus_v1.m` then uses the surface outputs to refine the original MaSeg (`SEG_refine.nii.gz`) and collects raw/prepared data, cortical separation, lesion-TOADS intermediates, scientific surfaces and level sets, inverse-cropped TGDM inputs, thickness, and MNI-space outputs. ASC exports, FreeSurfer/FreeView compatibility products, and figure rendering are not part of the Python port. Retain intermediate scientific files needed for reproducibility and downstream stages.
 
 ## Runner differences and interpretation
 
