@@ -1,0 +1,52 @@
+# MaCRUISE surface-guided segmentation refinement
+
+The selected V3 runner (`run_maCRUISE_v3.m`, SVN r9360) calls
+`run_SegmentationRefine.m`, which selects inner/outer CRUISE level sets and
+passes the source MaSeg file to `MAsegRefineBySurf.m`. The V3 wrapper sets all
+four coefficients to 0.2 mm and enables central processing. The helper
+divides each coefficient by the largest MaSeg voxel spacing, uses a 5³
+neighborhood (radius 2), and permits up to 50 sequential fill sweeps.
+
+`pymacruise.segmentation_refine.refine_segmentation_by_surfaces` implements
+three source rules, in order:
+
+1. Labels `>=100` with `inner < -0.2 mm / max_spacing` are filled with the
+   local mode of neighboring labels 44/45.
+2. Remaining labels `>=100` with `outer > 0.2 mm / max_spacing` are cleared
+   to 0.
+3. When central handling is enabled, labels 44/45 beyond the inner threshold,
+   plus label-0 voxels between the two thresholds, are filled from the local
+   mode of neighboring labels `>=100`.
+
+The MATLAB helper clips neither its radius-2 boxes nor their bounds, so its
+edge accesses can fail. The Python version clips boxes to the volume. MATLAB
+also assigns the row index returned by `[maxval,maxind]=max(tabulate(...))`
+instead of the corresponding label value, which can turn a tissue label into
+1 or 2. Python deliberately uses the actual modal label; ties choose the
+lowest numeric label, matching the ascending values and first-maximum rule of
+`tabulate`/`max`. Local updates remain sequential in MATLAB column-major index
+order so a fill can propagate to later candidate voxels during the same sweep.
+These two source defects are recorded as corrected behavior rather than
+preserved bugs.
+
+The API requires co-gridded 3D NIfTI inputs and integer labels. Non-RAS inputs
+warn and are reoriented to RAS; the output preserves the segmentation grid
+and integer label dtype. The result includes candidate masks, changed masks,
+per-rule counts, unresolved candidate counts, sweep counts, and the effective
+voxel thresholds so every modification can be audited.
+
+## Synthetic validation
+
+The committed 11³ `.nii.gz` fixtures in
+`tests/data/synthetic/refinement/` use an anisotropic 0.5/0.75/1.0 mm RAS grid.
+They cover inner-side WM filling, a tied 44/45 vote, outer-side clearing,
+central WM and missing-GM filling, an unresolved volume-border candidate,
+and unrelated-label preservation. Tests also cover central processing off,
+non-RAS warnings/output, grid mismatch, integer-label validation, the
+coefficient conversion on a 0.5 mm grid, and invalid options. No actual MRI
+data are used.
+
+The correction intentionally repairs the source bug rather than matching its
+corrupted label numbers. Synthetic measurements and changed-voxel audit maps
+are the basis for review; actual image comparison remains deferred to the
+roadmap's synthetic readiness and reference-data gates.

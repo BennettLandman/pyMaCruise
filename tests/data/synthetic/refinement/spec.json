@@ -1,0 +1,54 @@
+{
+  "purpose": "Synthetic P32 MaCRUISE surface-guided segmentation refinement",
+  "shape_voxels": [
+    11,
+    11,
+    11
+  ],
+  "spacing_mm": [
+    0.5,
+    0.75,
+    1.0
+  ],
+  "orientation": "RAS",
+  "source_coefficients_mm": 0.2,
+  "source_max_spacing_threshold_voxels": 0.2,
+  "target_voxels_ijk": {
+    "inner_fill_44": [
+      3,
+      3,
+      3
+    ],
+    "inner_tie_low_label_44": [
+      2,
+      8,
+      2
+    ],
+    "outer_clear_zero": [
+      8,
+      3,
+      3
+    ],
+    "central_wm_fill_120": [
+      5,
+      5,
+      5
+    ],
+    "central_gm_fill_120": [
+      7,
+      7,
+      7
+    ],
+    "unresolved_border_label_102": [
+      0,
+      0,
+      10
+    ],
+    "unrelated_label_7": [
+      10,
+      10,
+      10
+    ]
+  },
+  "seed": null
+}

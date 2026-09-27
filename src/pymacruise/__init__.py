@@ -48,6 +48,10 @@ from pymacruise.thickness import (
     closest_point_thickness,
     levelset_subtraction_thickness,
 )
+from pymacruise.segmentation_refine import (
+    SegmentationRefinementResult,
+    refine_segmentation_by_surfaces,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -58,6 +62,7 @@ __all__ = [
     "SurfaceMesh",
     "SurfaceThicknessResult",
     "ThicknessVolumeResult",
+    "SegmentationRefinementResult",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -81,6 +86,7 @@ __all__ = [
     "transform_surface_ras",
     "closest_point_thickness",
     "levelset_subtraction_thickness",
+    "refine_segmentation_by_surfaces",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",
