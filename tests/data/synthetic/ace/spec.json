@@ -16,8 +16,8 @@
     11.5,
     11.5
   ],
-  "white_matter": "230 for radius <= 5 mm; 0 elsewhere",
-  "gray_matter": "160 for 5 mm < radius <= 9 mm; 0 elsewhere",
-  "multi_atlas_csf": "254 for 8 mm < radius <= 9 mm; 0 elsewhere",
+  "white_matter": "230 for radius <= 4 mm; 0 elsewhere",
+  "gray_matter": "220 for 5 mm < radius <= 9 mm; 0 elsewhere",
+  "multi_atlas_csf": "254 for 5 mm < radius <= 9 mm; 0 elsewhere",
   "generation": "float32 tissue volumes; int16 multi-atlas CSF"
 }

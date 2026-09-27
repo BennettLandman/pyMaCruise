@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import nibabel as nib
 import pytest
+from scipy import ndimage
 
 from pymacruise.ace import (
     _central_gradient_mirror,
@@ -21,6 +22,7 @@ from pymacruise.ace import (
     clean_ace_components,
     narrow_band_ace,
 )
+from pymacruise.skeleton import thin_ace, thin_ace_image
 
 ACE_PHANTOM = Path(__file__).parent / "data" / "synthetic" / "ace"
 
@@ -206,6 +208,7 @@ def test_ace_array_pipeline_is_deterministic_and_clears_volume_borders() -> None
     assert np.isfinite(result.enhanced_gray_matter).all()
     assert np.all(result.enhanced_gray_matter[[0, -1], :, :] == 0)
     assert np.all(result.skeleton[:, [0, -1], :] == 0)
+    assert np.count_nonzero(result.skeleton) > 0
     np.testing.assert_array_equal(result.enhanced_gray_matter, repeated.enhanced_gray_matter)
     np.testing.assert_array_equal(result.skeleton, repeated.skeleton)
 
@@ -226,3 +229,34 @@ def test_ace_nifti_api_warns_reorients_non_ras_and_returns_ras_outputs() -> None
     assert nib.aff2axcodes(result.skeleton.affine) == ("R", "A", "S")
     np.testing.assert_allclose(result.enhanced_gray_matter.affine, np.eye(4))
     np.testing.assert_allclose(result.skeleton.affine, np.eye(4))
+
+
+def test_thin_ace_preserves_line_and_reduces_solid_while_clearing_border() -> None:
+    line = np.zeros((15, 15, 15), dtype=np.uint8)
+    line[2:13, 7, 7] = 255
+    thin_line = thin_ace(line)
+    np.testing.assert_array_equal(thin_line[2:13, 7, 7], 254)
+    assert np.count_nonzero(thin_line) == np.count_nonzero(line)
+
+    solid = np.zeros_like(line)
+    solid[2:13, 2:13, 2:13] = 255
+    thin_solid = thin_ace(solid)
+    assert 0 < np.count_nonzero(thin_solid) < np.count_nonzero(solid)
+    assert set(np.unique(thin_solid)) <= {0, 254}
+    assert np.all(thin_solid[[0, -1], :, :] == 0)
+    assert ndimage.label(
+        thin_solid > 0, structure=ndimage.generate_binary_structure(3, 2)
+    )[1] == 1
+
+
+def test_thin_ace_nifti_wrapper_normalizes_to_ras() -> None:
+    image = nib.load(ACE_PHANTOM / "multi_atlas_csf.nii.gz")
+    flipped_affine = image.affine.copy()
+    flipped_affine[0, 0] *= -1
+    flipped_affine[0, 3] = image.shape[0] - 1
+    non_ras = nib.Nifti1Image(np.asarray(image.dataobj), flipped_affine)
+
+    with pytest.warns(UserWarning, match="reorienting"):
+        result = thin_ace_image(non_ras)
+
+    assert nib.aff2axcodes(result.skeleton.affine) == ("R", "A", "S")

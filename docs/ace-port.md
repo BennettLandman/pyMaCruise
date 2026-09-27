@@ -51,13 +51,14 @@ The complete-pipeline tests consume the committed concentric phantom under
 `make_phantom.py` regenerates them and `SHA256SUMS` verifies the checked-in
 payloads.
 
-`tests/test_ace.py` has 13 deterministic synthetic checks covering the Gaussian
+`tests/test_ace.py` has 13 deterministic P26 checks covering the Gaussian
 filter, morphology, component cleanup, thresholds, diffusion invariants,
 source boundary differences, multi-atlas merge placement, subvoxel planar
 distance, narrow-band plane evolution, weighted planar travel time, complete
-array-pipeline repeatability, and RAS NIfTI output/warnings. The complete
-offline suite currently passes 83 tests. No real imaging scans have been used
-for this port.
+array-pipeline repeatability, and RAS NIfTI output/warnings. The full suite
+passed 83 tests at the initial ACE checkpoint; the subsequent P27 thinning
+checks raise the current total to 85. No real imaging scans have been used for
+this port.
 
 ## Remaining validation before P26 can pass
 
