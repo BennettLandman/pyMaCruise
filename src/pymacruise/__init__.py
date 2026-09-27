@@ -20,6 +20,12 @@ from pymacruise.boundary import (
     multi_atlas_csf_boundary,
     multi_atlas_csf_boundary_image,
 )
+from pymacruise.cropping import CropParameters, crop_from_mask, crop_image, uncrop_image
+from pymacruise.topology import (
+    TopologyCorrectionResult,
+    topology_correct,
+    topology_numbers_618,
+)
 from pymacruise.volume_ops import VolumeGeometryError, calculate_volume
 from pymacruise.workflow import WorkflowConfig, create_initial_manifest, write_run_manifest
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
@@ -47,6 +53,13 @@ __all__ = [
     "multi_atlas_csf_boundary_image",
     "n4_bias_correct",
     "transfer_to_reference_space",
+    "CropParameters",
+    "TopologyCorrectionResult",
+    "crop_from_mask",
+    "crop_image",
+    "uncrop_image",
+    "topology_correct",
+    "topology_numbers_618",
     "create_initial_manifest",
     "load_nifti_ras",
     "save_nifti_ras",

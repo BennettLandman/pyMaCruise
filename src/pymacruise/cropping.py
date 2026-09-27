@@ -1,4 +1,9 @@
-"""RAS-preserving crop and inverse-crop operations from the TOADS adapters."""
+"""RAS-preserving crop and inverse-crop operations from the TOADS adapters.
+
+The crop contract follows Yuankai Huo's supplied `CropBasedOnGM` adapter and
+the compiled JIST `CubicVolumeCropper`; the source notices and provenance
+inventory are retained in the repository's upstream-license records.
+"""
 
 from __future__ import annotations
 
