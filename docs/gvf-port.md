@@ -20,5 +20,23 @@ representation uses shape `(x, y, z, 3)` with components in index-axis order,
 and physical-coordinate component convention will be confirmed against the
 source `ImageData`/TGDM use before downstream P29 integration.
 
-Synthetic source-reference fixtures and solver checks have not yet been
-implemented. No actual imaging scans are part of this stage.
+## Implemented and synthetic evidence
+
+`src/pymacruise/gvf.py` implements the source scalar normalization, edge
+gradient, lambda weights, mirrored six-neighbor Laplacian, and three
+matrix-free sparse conjugate-gradient solves. The selected wrapper contract is
+also exposed through `generalized_gvf_image`, which warns/reorients a non-RAS
+input and returns a component-last RAS vector NIfTI image.
+
+The committed synthetic input `tests/data/synthetic/gvf/gradient_ramp.nii.gz`
+has a hand-known constant gradient; its generator, specification, and hashes
+are in the same directory. Six GVF tests pass for the source edge differences,
+analytic ramp output, Poisson residual, lambda response, constant and zero
+iteration cases, input validation, and RAS vector output. The complete suite
+now passes 91 tests.
+
+The SciPy solution targets the same discretized equation but is not yet
+numerically compared with the source multigrid output. Component-axis versus
+physical RAS vector semantics also still require confirmation against the
+source `ImageData` and downstream TGDM advection. No actual imaging scans are
+part of this stage.

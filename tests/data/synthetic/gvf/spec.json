@@ -1,0 +1,21 @@
+{
+  "description": "Linear scalar ramp with a known constant GVF gradient",
+  "file": "gradient_ramp.nii.gz",
+  "shape_voxels": [
+    16,
+    12,
+    10
+  ],
+  "voxel_size_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "orientation": "RAS",
+  "values": "voxel index 0 along axis 0; constant along axes 1 and 2",
+  "expected_normalized_gradient": [
+    0.06666666666666667,
+    0.0,
+    0.0
+  ]
+}

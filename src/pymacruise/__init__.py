@@ -32,12 +32,14 @@ from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
 from pymacruise.skeleton import ThinACEImageResult, thin_ace, thin_ace_image
+from pymacruise.gvf import GVFImageResult, generalized_gvf, generalized_gvf_image
 
 __all__ = [
     "ImageGeometryError",
     "ACEArrayResult",
     "ACEImageResult",
     "ThinACEImageResult",
+    "GVFImageResult",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -51,6 +53,8 @@ __all__ = [
     "ace_enhance_arrays",
     "thin_ace",
     "thin_ace_image",
+    "generalized_gvf",
+    "generalized_gvf_image",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",
