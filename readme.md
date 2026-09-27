@@ -60,6 +60,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P05b: preserved all 70 files from the supplied MIPAV/JIST license directories under `licenses/upstream/` and documented source attributions, module-comment practice, owner direction, and the later TTO licensing handoff in `license_info.md`.
 - Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
 - Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific outputs, excluded presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
+- Started roadmap step P08: recorded the project-owner's segmentation and surface-position tolerances in `docs/validation-tolerances.md`; metric definitions and synthetic validation remain pending.
 - Visualization tools, FreeView scripting/rendering, and FreeSurfer comparisons are excluded from this port. P47 reserves a post-acceptance discussion of modern Python visualization options.
 - Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
@@ -79,6 +80,7 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Compare each ported stage with selected MATLAB/JIST reference output on the same input and parameters.
 - Use exact equality for deterministic label/mask transforms where appropriate; document numerical tolerances for floating-point operations.
 - Report Dice/Jaccard overlap, voxel-wise differences, volume/label counts, and spatial alignment for segmentation outputs.
+- Apply the project thresholds in [docs/validation-tolerances.md](docs/validation-tolerances.md): per-region Dice ≥0.97, symmetric surface Hausdorff ≤1 mm, and mean absolute surface distance ≤0.01 mm, all surface distances in RAS+ millimetres.
 - Compare registration transforms and resampled outputs, including transform direction, interpolation, and reference grid.
 - Record parameters, software versions, and transform files for each comparison.
 
