@@ -1,0 +1,2 @@
+data/atlases/**/*.raw filter=lfs diff=lfs merge=lfs -text
+data/atlases/**/*.img filter=lfs diff=lfs merge=lfs -text
