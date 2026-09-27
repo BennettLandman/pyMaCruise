@@ -18,7 +18,7 @@ Start with the base T1 + MaSeg workflow. The selected follow-on plus contract is
 ## Porting principles
 
 1. Treat the MATLAB files as the workflow and parameter reference; treat VandyCRUISE as the selected algorithm source.
-2. Preserve image geometry, voxel types, labels, coordinate transforms, and useful intermediate/output products. Do not reduce volumes to 2D display images or silently resample mismatched inputs.
+2. Preserve image geometry, voxel types, labels, coordinate transforms, and useful intermediate/output products. Report all outputs in RAS; reorient non-RAS inputs to RAS with a visible warning and recorded transform. Do not reduce volumes to 2D display images or silently resample mismatched inputs.
 3. Use standard Python libraries for generic operations. Image arithmetic such as the old Image Calculator step is a generic N-dimensional array operation with geometry checks and metadata preservation.
 4. Use ANTsPy for ANTs operations. Replace legacy NiftyReg/Aladin MNI registration with ANTsPy only after transform direction, interpolation, and output alignment are validated against a reference case.
 5. Keep TOADS, topology correction, ACE, GVF, and CRUISE/TGDM faithful to VandyCRUISE. Generic morphology or active-contour functions are not assumed to be equivalent substitutes.
@@ -69,7 +69,7 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 
 ### Input and image integrity
 
-- Confirm NIfTI shape, affine, voxel spacing, orientation, units, header fields, and data type are read and written consistently.
+- Confirm NIfTI shape, affine, voxel spacing, RAS orientation, units, header fields, and data type are read and written consistently; non-RAS inputs must warn and normalize correctly.
 - Reject or explicitly resolve mismatched image/mask geometry; never silently crop to smaller array dimensions.
 - Check that binary masks remain binary and label maps retain their label set unless a stage explicitly changes it.
 - Verify image arithmetic uses intended mask/value scaling and does not unintentionally clamp or quantize intensities.
@@ -85,7 +85,7 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 ### Topology, surfaces, and thickness
 
 - Check connected components, holes/Euler characteristic, and required foreground/background connectivity after topology-sensitive stages.
-- Compare surface vertex/face counts, connected components, normals/orientation, coordinate bounds, and physical-space alignment.
+- Compare surface vertex/face counts, connected components, normals/orientation, RAS+ coordinate bounds, and physical-space alignment.
 - Compare inner/central/outer surface ordering and check that surfaces do not cross where the method requires nesting.
 - Compare pointwise and regional thickness distributions, summary statistics, and invalid/outlier counts.
 

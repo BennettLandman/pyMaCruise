@@ -9,6 +9,8 @@ Legend for Python disposition:
 - **Recreate contract** means simple MATLAB orchestration, label rules, file movement, or a MIPAV adapter behavior should be expressed in Python without requiring MATLAB/JIST.
 - **Optional** means a non-visual scientific/interoperability output that does not gate the segmentation result. Visualization and viewers are excluded.
 
+All PyMaCRUISE volume outputs use RAS voxel orientation, and surface/point coordinates are reported in RAS+ millimetres. Every non-RAS spatial input is reoriented before use with a visible warning; its source frame and conversion are recorded in run metadata. This is a Python output contract even where the historical MATLAB/JIST stage retained another orientation.
+
 ## Active workflow traceability
 
 | Order | MATLAB entry point / active function | Contract and effective behavior | Python destination | Source status / open detail |

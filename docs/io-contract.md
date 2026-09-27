@@ -33,7 +33,7 @@ The two profiles must be explicit configuration choices. Do not infer plus mode 
 
 ## Output contract
 
-Outputs are written beneath a caller-selected output directory. The Python package should provide a deterministic manifest with profile, input paths and hashes, software/dependency versions, configuration, asset paths, and output paths.
+Outputs are written beneath a caller-selected output directory. Every volume and surface output is reported in RAS (RAS-oriented NIfTI voxel axes; RAS+ physical coordinates in millimetres for surface geometry). Non-RAS input images/surfaces are reoriented before use with a visible warning, and the source frame/orientation plus conversion are recorded. The Python package should provide a deterministic manifest with profile, input paths and hashes, software/dependency versions, configuration, asset paths, coordinate frames/transforms, and output paths.
 
 ### Required scientific products
 
@@ -57,6 +57,7 @@ Outputs are written beneath a caller-selected output directory. The Python packa
 - Never treat an existing stale output as valid solely because its filename exists. Use input/configuration/asset signatures in the run manifest before resuming stages.
 - Do not write partial output as if the full profile succeeded. Record stage state and distinguish optional omitted products from failed required stages.
 - Human subject input images are not copied into tests or committed. Synthetic fixtures are generated and checked in during the planned fixture steps.
+- Every emitted volume is RAS-oriented; every mesh and coordinate report is in RAS+ millimetres. A conversion warning is emitted whenever an input is found in another orientation/frame.
 
 ## Pending synthetic acceptance cases
 
@@ -64,6 +65,7 @@ Outputs are written beneath a caller-selected output directory. The Python packa
 - Missing T1/MaSeg, 2D/4D volumes, non-finite intensities, malformed affine, non-integer MaSeg labels, and out-of-contract label values produce clear diagnostics.
 - MaSeg labels map to the exact expected synthetic masks, including labels near each set boundary and labels intentionally excluded.
 - Shape-equal but affine-shifted inputs are rejected or explicitly resampled; FLAIR output is on the T1 reference grid after rigid registration.
+- Permuted/flipped-axis and LPS image/surface inputs are normalized to RAS with visible warnings and recorded transforms; generated volume and mesh outputs pass RAS orientation/frame checks.
 - Output manifest identifies required scientific outputs and MNI outputs unavailable due to missing MNI assets; it contains no visualization-product requirement.
 
 The cases above are requirements, not claims of completed implementation or validation. They will be assigned to the deterministic fixture and test roadmap steps.
