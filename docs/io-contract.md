@@ -48,6 +48,7 @@ Outputs are written beneath a caller-selected output directory. The Python packa
 
 - Do not port FreeView batch scripts, screenshots/figures, MATLAB figures, rendering, or viewer behavior.
 - Do not create FreeSurfer/FreeView-specific ASC presentation exports or subject-specific FreeSurfer comparisons as part of this port.
+- Installing or using PyMaCRUISE must not require a FreeSurfer installation, license, environment configuration, dataset, or generated output.
 - Preserve scientific surface meshes, level sets, coordinate transforms, and thickness products required by the segmentation workflow. The later P47 discussion will consider modern Python visualization tools as a separate follow-on effort.
 
 ## Failure behavior and provenance

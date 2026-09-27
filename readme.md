@@ -36,6 +36,8 @@ Start with the base T1 + MaSeg workflow. The selected follow-on plus contract is
 
 Pin compatible package versions after establishing the implementation environment.
 
+PyMaCRUISE has no FreeSurfer dependency or runtime requirement: users will not need FreeSurfer installed, licensed, configured, or provide FreeSurfer data or outputs. Mentions in the source notes describe historical MaCRUISE behavior only.
+
 ## Plan and progress
 
 See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
