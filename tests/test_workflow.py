@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import PackageNotFoundError, version
 
 import nibabel as nib
 import numpy as np
@@ -45,7 +46,11 @@ def test_noop_workflow_manifest_captures_inputs_config_and_stage_state(tmp_path)
     assert saved["stages"] == {"input_validation": "passed", "pipeline": "not_started"}
     assert saved["inputs"]["t1"]["output_axis_codes"] == ["R", "A", "S"]
     assert len(saved["inputs"]["t1"]["sha256"]) == 64
-    assert saved["dependencies"]["antspyx"] == "not-installed"
+    try:
+        antspyx_version = version("antspyx")
+    except PackageNotFoundError:
+        antspyx_version = "not-installed"
+    assert saved["dependencies"]["antspyx"] == antspyx_version
     assert len(saved["run_signature"]) == 64
 
 

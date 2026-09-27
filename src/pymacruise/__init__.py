@@ -22,6 +22,7 @@ from pymacruise.boundary import (
 )
 from pymacruise.volume_ops import VolumeGeometryError, calculate_volume
 from pymacruise.workflow import WorkflowConfig, create_initial_manifest, write_run_manifest
+from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 
 __all__ = [
     "ImageGeometryError",
@@ -31,6 +32,8 @@ __all__ = [
     "WorkflowInputError",
     "WorkflowProfile",
     "WorkflowConfig",
+    "N4Config",
+    "N4DependencyError",
     "calculate_volume",
     "cortical_separation",
     "clean_csf_boundary",
@@ -41,6 +44,7 @@ __all__ = [
     "merge_csf_boundary_images",
     "multi_atlas_csf_boundary",
     "multi_atlas_csf_boundary_image",
+    "n4_bias_correct",
     "create_initial_manifest",
     "load_nifti_ras",
     "save_nifti_ras",
