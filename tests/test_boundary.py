@@ -7,6 +7,8 @@ import pytest
 from pymacruise.boundary import (
     clean_csf_boundary,
     clean_csf_boundary_image,
+    combine_multi_atlas_toads,
+    combine_multi_atlas_toads_images,
     merge_csf_boundary,
     merge_csf_boundary_images,
     multi_atlas_csf_boundary,
@@ -105,3 +107,50 @@ def test_cleanup_nifti_retains_ras_affine() -> None:
     cleaned = clean_csf_boundary_image(boundary, wm, mode="toads_wm")
     assert nib.aff2axcodes(cleaned.affine) == ("R", "A", "S")
     assert np.asanyarray(cleaned.dataobj)[1, 1, 1] == 0
+
+
+def test_atlas_toads_combination_exercises_priority_fill_fallback_and_mask() -> None:
+    shape = (5, 5, 5)
+    gm_ma = np.zeros(shape, dtype=np.uint8)
+    wm_ma = np.zeros(shape, dtype=np.uint8)
+    brain = np.ones(shape, dtype=np.uint8)
+    gm_toads = np.full(shape, 0.5, dtype=np.float32)
+    wm_toads = np.full(shape, 0.6, dtype=np.float32)
+    mask_toads = np.full(shape, 7, dtype=np.int16)
+
+    wm_ma[1:4, 1:4, 1:4] = 255
+    gm_ma[2, 2, 3] = 255
+    gm_toads[2, 2, 3] = 0.2
+    brain[0, 0, 0] = 0
+
+    gm, wm, mask = combine_multi_atlas_toads(
+        gm_ma, wm_ma, brain, gm_toads, wm_toads, mask_toads
+    )
+    assert (gm[2, 2, 2], wm[2, 2, 2], mask[2, 2, 2]) == (0, 255, 255)
+    assert (gm[2, 2, 3], wm[2, 2, 3], mask[2, 2, 3]) == (255, 0, 0)
+    assert (gm[1, 1, 1], wm[1, 1, 1], mask[1, 1, 1]) == pytest.approx((0.5, 0.6, 7))
+    assert (gm[0, 0, 0], wm[0, 0, 0], mask[0, 0, 0]) == (0, 0, 0)
+
+
+def test_atlas_toads_image_outputs_keep_toads_grid_and_reject_grid_mismatch() -> None:
+    affine = np.diag([1.2, 1.3, 1.4, 1.0])
+    shape = (5, 5, 5)
+    images = [
+        nib.Nifti1Image(np.zeros(shape, dtype=np.float32), affine),
+        nib.Nifti1Image(np.zeros(shape, dtype=np.float32), affine),
+        nib.Nifti1Image(np.ones(shape, dtype=np.uint8), affine),
+        nib.Nifti1Image(np.zeros(shape, dtype=np.float32), affine),
+        nib.Nifti1Image(np.zeros(shape, dtype=np.float32), affine),
+        nib.Nifti1Image(np.ones(shape, dtype=np.uint8), affine),
+    ]
+    outputs = combine_multi_atlas_toads_images(*images)
+    assert [image.get_data_dtype() for image in outputs] == [
+        np.dtype(np.float32), np.dtype(np.float32), np.dtype(np.int32)
+    ]
+    assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in outputs)
+
+    shifted = affine.copy()
+    shifted[0, 3] = 2.0
+    images[-1] = nib.Nifti1Image(np.ones(shape, dtype=np.uint8), shifted)
+    with pytest.raises(ValueError, match="same physical grid"):
+        combine_multi_atlas_toads_images(*images)

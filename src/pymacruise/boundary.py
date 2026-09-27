@@ -217,3 +217,119 @@ def clean_csf_boundary_image(
     output.set_qform(boundary_ras.affine if qcode else None, code=int(qcode))
     output.set_sform(boundary_ras.affine, code=int(scode) if scode else 1)
     return output
+
+
+def combine_multi_atlas_toads(
+    gm_ma: np.ndarray,
+    wm_ma: np.ndarray,
+    brain_mask_ma: np.ndarray,
+    gm_toads: np.ndarray,
+    wm_toads: np.ndarray,
+    mask_toads: np.ndarray,
+    *,
+    gm_confident_level: float = 0.001,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Combine atlas and TOADS tissue maps using the selected V3 Java rules.
+
+    Preserves the source priority: confident eroded atlas WM first, confident
+    TOADS/atlas GM second, then TOADS values; voxels outside the atlas brain
+    mask are zeroed. ``MASImorph.Minimize3DFilter`` uses integer inputs, a
+    center-plus-six-neighbor minimum, and leaves the output volume border at
+    zero. The MATLAB-only alternative is not the selected V3 default.
+    """
+    arrays = [
+        np.asarray(value)
+        for value in (gm_ma, wm_ma, brain_mask_ma, gm_toads, wm_toads, mask_toads)
+    ]
+    shapes = {value.shape for value in arrays}
+    if len(shapes) != 1 or arrays[0].ndim != 3:
+        raise ValueError("All atlas and TOADS inputs must be aligned 3D arrays of the same shape")
+    if any(not np.issubdtype(value.dtype, np.number) or not np.isfinite(value).all() for value in arrays):
+        raise ValueError("All atlas and TOADS inputs must contain finite numeric values")
+    if not np.isfinite(gm_confident_level) or gm_confident_level < 0:
+        raise ValueError("GM confidence level must be finite and non-negative")
+
+    gm_atlas, wm_atlas, brain_mask, gm_toads_data, wm_toads_data, mask_toads_data = arrays
+    # ImageDataInt conversion in the source precedes integer erosion and mask
+    # reads. NumPy's truncation toward zero matches Java's numeric cast here.
+    wm_int = np.trunc(wm_atlas).astype(np.int32)
+    brain_int = np.trunc(brain_mask).astype(np.int32)
+    gm_atlas_int = np.trunc(gm_atlas).astype(np.int32)
+    wm_toads_int = np.trunc(wm_toads_data).astype(np.int32)
+    mask_toads_int = np.trunc(mask_toads_data).astype(np.int32)
+
+    eroded_wm = np.zeros(wm_int.shape, dtype=np.int32)
+    if all(length >= 3 for length in wm_int.shape):
+        six_neighbor = ndimage.generate_binary_structure(3, 1)
+        min_neighbors = ndimage.minimum_filter(
+            wm_int, footprint=six_neighbor, mode="constant", cval=0
+        )
+        interior = tuple(slice(1, -1) for _ in range(3))
+        eroded_wm[interior] = min_neighbors[interior]
+
+    inside = brain_int > 0
+    confident_wm = eroded_wm > 0
+    confident_gm = (
+        (gm_toads_data > 0)
+        & (gm_toads_data < (255 * gm_confident_level))
+        & (gm_atlas_int > 0)
+    )
+
+    gm_out = np.where(inside, gm_toads_data, 0).astype(np.float32)
+    wm_out = np.where(inside, wm_toads_data, 0).astype(np.float32)
+    mask_out = np.where(inside, mask_toads_int, 0).astype(np.int32)
+
+    gm_out[inside & confident_wm] = 0
+    wm_out[inside & confident_wm] = 255
+    mask_out[inside & confident_wm] = 255
+
+    gm_only = inside & ~confident_wm & confident_gm
+    gm_out[gm_only] = 255
+    wm_out[gm_only] = 0
+    mask_out[gm_only] = 0
+    return gm_out, wm_out, mask_out
+
+
+def combine_multi_atlas_toads_images(
+    gm_ma: nib.spatialimages.SpatialImage,
+    wm_ma: nib.spatialimages.SpatialImage,
+    brain_mask_ma: nib.spatialimages.SpatialImage,
+    gm_toads: nib.spatialimages.SpatialImage,
+    wm_toads: nib.spatialimages.SpatialImage,
+    mask_toads: nib.spatialimages.SpatialImage,
+    *,
+    gm_confident_level: float = 0.001,
+) -> tuple[nib.spatialimages.SpatialImage, nib.spatialimages.SpatialImage, nib.spatialimages.SpatialImage]:
+    """Run V3 atlas/TOADS combination with aligned RAS NIfTI inputs/outputs."""
+    inputs = [
+        normalize_image_to_ras(image, source_name=name)
+        for image, name in zip(
+            (gm_ma, wm_ma, brain_mask_ma, gm_toads, wm_toads, mask_toads),
+            ("atlas GM", "atlas WM", "atlas brain mask", "TOADS GM", "TOADS WM", "TOADS mask"),
+            strict=True,
+        )
+    ]
+    reference = inputs[0]
+    if any(
+        image.shape != reference.shape
+        or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-4)
+        for image in inputs[1:]
+    ):
+        raise ValueError("All atlas and TOADS images must share the same physical grid")
+    arrays = [np.asanyarray(image.dataobj) for image in inputs]
+    outputs = combine_multi_atlas_toads(*arrays, gm_confident_level=gm_confident_level)
+    result_images = []
+    for output_data, template, dtype in zip(
+        outputs, (inputs[3], inputs[4], inputs[5]), (np.float32, np.float32, np.int32), strict=True
+    ):
+        output_data = output_data.astype(dtype, copy=False)
+        header = template.header.copy()
+        header.set_data_dtype(dtype)
+        header.set_slope_inter(None, None)
+        image = nib.Nifti1Image(output_data, template.affine, header=header)
+        _, qcode = template.get_qform(coded=True)
+        _, scode = template.get_sform(coded=True)
+        image.set_qform(template.affine if qcode else None, code=int(qcode))
+        image.set_sform(template.affine, code=int(scode) if scode else 1)
+        result_images.append(image)
+    return tuple(result_images)  # type: ignore[return-value]
