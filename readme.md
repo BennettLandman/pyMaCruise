@@ -61,8 +61,9 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
 - Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific outputs, excluded presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
 - Started roadmap step P08: recorded the project-owner's segmentation and surface-position tolerances in `docs/validation-tolerances.md`; metric definitions and synthetic validation remain pending.
+- Completed roadmap steps P09–P10: added a seeded phantom generator and committed a compact, checksummed corpus of compressed NIfTI image fixtures plus a RAS surface mesh under `tests/data/synthetic/`.
 - Visualization tools, FreeView scripting/rendering, and FreeSurfer comparisons are excluded from this port. P47 reserves a post-acceptance discussion of modern Python visualization options.
-- Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
+- The package scaffold and generic volume operator remain in progress. The current synthetic/generic-operator suite passes 9 tests; full pipeline and algorithm equivalence remain pending.
 
 ## Validation plan
 
