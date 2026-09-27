@@ -41,7 +41,7 @@ Pin compatible package versions after establishing the implementation environmen
 
 See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
 
-Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The package scaffold and geometry-aware generic volume operator exist. Synthetic fixtures, algorithm ports, and their validation have not yet been completed.
+Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The full MaSeg-informed plus contract is documented in [docs/plus-baseline.md](docs/plus-baseline.md), and active base-stage source mappings are in [docs/source-map.md](docs/source-map.md). The package scaffold and generic volume operator exist; synthetic fixtures, algorithm ports, and their validation have not yet been completed.
 
 ### 2026-09-27 roadmap update
 
@@ -51,6 +51,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P02: selected `run_maCRUISE_v3` at SVN revision 9360 as the canonical base behavior and recorded the variant comparison and effective parameters in `docs/source-baseline.md`.
 - Clarified the version history: numbered runner versions are bug fixes; versions below V3 had bugs. V3 is the corrected baseline, and its observed topology/boundary behavior is part of that contract rather than an optional algorithm generation.
 - Completed roadmap step P03: selected the full MaSeg-informed T1 + MaSeg + FLAIR plus workflow using `run_maCRUISEplus_v1`; documented its settings and the distinct deferred Origin/no-MaSeg variants in `docs/plus-baseline.md`.
+- Completed roadmap step P04: traced the selected V3 pipeline and outputs to Python libraries, VandyCRUISE algorithm families, or explicit source gaps in `docs/source-map.md`. Custom JIST adapter sources needed to reproduce several mandatory stages are not present in the supplied source trees and are listed for P05 follow-up.
 - Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
 ## Validation plan
