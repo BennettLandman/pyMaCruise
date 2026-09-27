@@ -41,7 +41,7 @@ Pin compatible package versions after establishing the implementation environmen
 
 See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
 
-Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The full MaSeg-informed plus contract is documented in [docs/plus-baseline.md](docs/plus-baseline.md), active base-stage mappings are in [docs/source-map.md](docs/source-map.md), and source/assets/runtime requirements are in [docs/assets-and-dependencies.md](docs/assets-and-dependencies.md). The package scaffold and generic volume operator exist; synthetic fixtures, algorithm ports, and their validation have not yet been completed.
+Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The full MaSeg-informed plus contract is documented in [docs/plus-baseline.md](docs/plus-baseline.md), active base-stage mappings are in [docs/source-map.md](docs/source-map.md), source/assets/runtime requirements are in [docs/assets-and-dependencies.md](docs/assets-and-dependencies.md), and working image/coordinate conventions are in [docs/image-coordinate-conventions.md](docs/image-coordinate-conventions.md). The package scaffold and generic volume operator exist; synthetic fixtures, algorithm ports, and their validation have not yet been completed.
 
 ### 2026-09-27 roadmap update
 
@@ -53,6 +53,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P03: selected the full MaSeg-informed T1 + MaSeg + FLAIR plus workflow using `run_maCRUISEplus_v1`; documented its settings and the distinct deferred Origin/no-MaSeg variants in `docs/plus-baseline.md`.
 - Completed roadmap step P04: traced the selected V3 pipeline and outputs to Python libraries, VandyCRUISE algorithm families, and the MaCRUISE-specific adapters in `toads-cruise/src` in `docs/source-map.md`.
 - Completed roadmap step P05: cataloged the two source trees, CVS/SVN version evidence, atlas payloads, available notices, absent MNI references, external-tool availability, and dependency gaps in `docs/assets-and-dependencies.md`. No source assets were copied into PyMaCRUISE.
+- Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
 - Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
 ## Validation plan
