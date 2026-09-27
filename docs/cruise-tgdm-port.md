@@ -35,11 +35,39 @@ curvature 3.0, inner forces 1/1/0, outer curvature 0.25, and connectivity
   this roadmap stage covers level-set volumes; mesh extraction/output remains
   P30 and must report RAS+ millimetres.
 
-## Remaining source review
+## Implemented TGDM kernel checkpoint
 
-Read and map `GenericTGDM` initial smoothing, inner/central/outer iteration
-loops, narrow-band order, PDE time step, curvature/pressure/advection terms,
-simple-point topology checks, speed-field normalization, brain-mask behavior,
-and source fast-marching reinitialization. Add hand-calculated derivative and
-force tests before full analytic sphere/ellipsoid evolution tests. No actual
-imaging scan is part of this stage.
+`src/pymacruise/tgdm.py` now provides a vectorized translation of the source
+`GenericTGDM.updatePoint` local geometry and the `getEffectiveForce` methods
+for the inner, central, and outer profiles. `tgdm_geometry` computes mirrored
+boundary first differences, centered gradients, second/cross derivatives, and
+the source mean/Gaussian curvature numerators. `tgdm_force` reproduces the
+profile-specific normalization/transformation, pressure-weighted upwind
+selection, outer-profile curvature cap/special case, and GVF advection term.
+
+The current focused tests check hand-calculated quadratic derivatives and
+curvature numerators, flat-front pressure behavior, signed pressure upwinding,
+signed advection upwinding, and invalid field rejection. The full synthetic
+suite passes 96 tests. This validates the isolated formulas against the
+source expressions; it does **not** validate iterative TGDM results or
+numerical equivalence to Java.
+
+## Remaining source review and implementation
+
+The Python kernel is only a building block. P29 still needs initialization and
+signed-distance reinitialization, profile iteration schedules and time-step
+switches, narrow-band construction/update ordering, landmine restarts,
+bound/skeleton restrictions, simple-point topology checks, tissue-force
+preparation for each surface, and complete inner/central/outer array APIs.
+After those are implemented, synthetic sphere/ellipsoid and nested-tissue
+fixtures must check ordering, topology, stability, iteration accounting, and
+all P08 metrics. Trusted Java reference outputs are still required for a
+numerical equivalence claim.
+
+The source has a connectivity inconsistency: `GenericTGDM` maps both
+`CONNECT_6_18` and `CONNECT_18_6` to a six-connected foreground rule, while
+`initNarrowBand` assigns the signs differently for those enum values. The
+standalone wrapper requests `(18,6)`. Preserve this as an explicit source
+question until the selected corrected V3 path/reference output settles the
+intended behavior; do not silently substitute the independently used
+topology-correction connectivity mapping.
