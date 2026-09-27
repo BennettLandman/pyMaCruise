@@ -71,7 +71,7 @@ pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --out
 - Completed P08: the user confirmed minimum per-region Dice ≥0.97, symmetric surface Hausdorff ≤1 mm, and symmetric mean nearest-surface distance ≤0.01 mm; output-class comparison methods and synthetic metric evidence are recorded in `docs/validation-tolerances.md`.
 - Completed roadmap steps P09–P10: added a seeded phantom generator and committed a compact, checksummed corpus of compressed NIfTI image fixtures plus a RAS surface mesh under `tests/data/synthetic/`.
 - Visualization tools, FreeView scripting/rendering, and FreeSurfer comparisons are excluded from this port. P47 reserves a post-acceptance discussion of modern Python visualization options.
-- Completed P11: added exact voxel, Dice/Jaccard, voxel error, point-cloud/triangle-surface, transform, and mesh-topology metrics plus deterministic JSON reports. The current offline synthetic suite passes 55 tests.
+- Completed P11: added exact voxel, Dice/Jaccard, voxel error, point-cloud/triangle-surface, transform, and mesh-topology metrics plus deterministic JSON reports. The current offline synthetic suite passes 59 tests.
 - Started P05c: normalized 35 user-provided atlas NIfTIs to RAS, moved them to their source atlas folders, updated descriptors, removed legacy image payloads from the working tree, and regenerated checksums. Exact voxel data checks pass for all assets; original world-coordinate certainty remains unresolved for Analyze examples and source files with incomplete MIPAV metadata.
 - Started P12: bounded core/optional dependencies in `pyproject.toml`; editable installation succeeded in the project virtual environment without installing ANTsPy. A fresh-environment installation check remains.
 - Completed P12–P14: bounded core/optional dependencies, added the `pymacruise` CLI entry point, implemented geometry-aware NIfTI I/O, validated typed workflow profiles, and added run manifests with dependency versions, hashes, and configuration-sensitive signatures.
@@ -80,6 +80,7 @@ pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --out
 - Completed P22: ported the source's default 3-D six-neighbor erosion boundary, overlooked-label removal, low-label contact suppression, and selected CSF merge modes 1 and 3; exact synthetic arrays and RAS image geometry pass.
 - Completed P23: ported both exact V3 boundary-cleanup thresholds (`>0.01` and `>25.5`), with equality/above-threshold tests and aligned RAS image handling.
 - Completed P24: ported the selected V3 Java atlas/TOADS tissue combination, including integer six-neighbor WM erosion, confidence rules, branch priority, output labels/dtypes, and brain-mask behavior.
+- Completed P21: ported TOADS-to-reference transfer with nearest-neighbor interpolation, using physical affine mapping to the reference grid and RAS outputs; synthetic translations, rotations, labels, and continuous values pass.
 - Started P18: source-reviewed canonical TOADS preprocessing: N4, FSL BET (`-f 0.1 -B`) followed by SPECTRE, two TOADS passes with dura removal between, and exact stage outputs. BET/SPECTRE execution remains outstanding; FSL BET is unavailable in the current environment.
 - Completed P19: implemented the selected N4 stage using ANTsPy with settings equivalent to the legacy ANTs command defaults; synthetic bias-field, grid, repeatability, and input-contract checks pass. ANTsPy 0.6.3 runs with restored SciPy 1.18.1 here, but its published SciPy `<1.16` constraint conflicts with SciPy wheels that fail to load on this host; clean optional-extra installation remains an environment packaging issue.
 - Current focus is the remaining TOADS preprocessing contract. No TOADS/CRUISE algorithm stage has yet been ported or numerically validated.
@@ -89,7 +90,7 @@ pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --out
 - Completed P07 and P11–P17 with profile/input contracts, a synthetic comparison harness, package/CLI scaffolding, RAS NIfTI I/O, configuration/manifests, the generic operator, raw input preparation, and exact MaSeg cortical-separation masks.
 - Updated `data/atlases/`: all 35 supplied NIfTI conversions are in the correct atlas folders, use RAS axes, match the original voxel values exactly after axis reorientation, and have updated compressed-NIfTI descriptors and checksums. P05c remains Started while unresolved legacy physical-origin metadata is reviewed.
 - The user confirmed the segmentation and surface-position metric interpretations; P08 is complete.
-- The synthetic suite passes 55 tests; the editable install and `pymacruise --version` / `--help` succeed without ANTsPy installed. The N4 test runs with the optional ANTsPy package installed.
+- The synthetic suite passes 59 tests; the editable install and `pymacruise --version` / `--help` succeed. The N4 test runs with the optional ANTsPy package installed.
 
 ## Validation plan
 

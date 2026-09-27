@@ -23,6 +23,7 @@ from pymacruise.boundary import (
 from pymacruise.volume_ops import VolumeGeometryError, calculate_volume
 from pymacruise.workflow import WorkflowConfig, create_initial_manifest, write_run_manifest
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
+from pymacruise.spatial_transfer import transfer_to_reference_space
 
 __all__ = [
     "ImageGeometryError",
@@ -45,6 +46,7 @@ __all__ = [
     "multi_atlas_csf_boundary",
     "multi_atlas_csf_boundary_image",
     "n4_bias_correct",
+    "transfer_to_reference_space",
     "create_initial_manifest",
     "load_nifti_ras",
     "save_nifti_ras",
