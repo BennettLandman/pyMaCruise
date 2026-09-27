@@ -109,8 +109,10 @@ distance cap at its field default of 20; the port preserves that behavior.
 ## Remaining source review and implementation
 
 P29 still needs systematic synthetic nested-surface ordering/stability/
-tolerance fixtures, full runtime and memory characterization, and Java
-reference comparisons. The selected adapter reads optional brain-mask and
+tolerance fixtures, larger-volume runtime and memory characterization, and Java
+reference comparisons. Small default-schedule benchmarks on 25³–49³ phantoms
+are recorded in [docs/tgdm-synthetic-benchmark.md](tgdm-synthetic-benchmark.md).
+The selected adapter reads optional brain-mask and
 ACE-skeleton inputs; these fields have been wired into bounds/topology
 behavior, but need direct analytic tests.
 Trusted Java reference outputs are required for a numerical equivalence claim.

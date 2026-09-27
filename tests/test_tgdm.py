@@ -260,7 +260,14 @@ def test_tgdm_nested_array_adapter_routes_tissues_and_supports_zero_iteration_sm
     assert result.initial_level_set[5, 5, 5] < 0
     assert result.tissue_sign.dtype == np.uint8
     assert result.tissue_sign[5, 5, 5] == 254
-    for stage in (result.initial_inner, result.inner, result.central, result.outer):
+    for stage in (
+        result.smoothed_initial,
+        result.initial_inner,
+        result.inner,
+        result.central,
+        result.central_shrink,
+        result.outer,
+    ):
         np.testing.assert_array_equal(stage.level_set, result.initial_level_set)
         assert stage.completed_steps == 0
 
@@ -372,4 +379,5 @@ def test_tgdm_nested_synthetic_phantom_runs_every_evolution_stage() -> None:
         assert np.isfinite(np.asarray(image.dataobj)).all()
     assert result.execution.initial_inner.completed_steps == 10
     assert result.execution.central.completed_steps == 10
+    assert result.execution.central_shrink.completed_steps == 10
     assert result.execution.outer.completed_steps == 30

@@ -85,10 +85,12 @@ class NestedTGDMResult:
     """Array outputs from the nested CRUISE level-set stages."""
 
     initial_level_set: np.ndarray
+    smoothed_initial: TGDMEvolutionResult
     tissue_sign: np.ndarray
     initial_inner: TGDMEvolutionResult
-    inner: TGDMEvolutionResult
     central: TGDMEvolutionResult
+    central_shrink: TGDMEvolutionResult
+    inner: TGDMEvolutionResult
     outer: TGDMEvolutionResult
 
 
@@ -479,7 +481,16 @@ def tgdm_nested_arrays(
         advection=None,
         outer_iterations=parameters.central_iterations,
     )
-    return NestedTGDMResult(initial, sign, initial_inner, inner, central, outer)
+    return NestedTGDMResult(
+        initial,
+        smoothed,
+        sign,
+        initial_inner,
+        central,
+        central_shrink,
+        inner,
+        outer,
+    )
 
 
 def tgdm_nested_images(
