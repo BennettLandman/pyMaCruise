@@ -33,6 +33,13 @@ from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
 from pymacruise.skeleton import ThinACEImageResult, thin_ace, thin_ace_image
 from pymacruise.gvf import GVFImageResult, generalized_gvf, generalized_gvf_image
+from pymacruise.surfaces import (
+    SurfaceMesh,
+    convert_surface_to_ras,
+    extract_levelset_surface,
+    read_legacy_vtk,
+    write_legacy_vtk,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -40,6 +47,7 @@ __all__ = [
     "ACEImageResult",
     "ThinACEImageResult",
     "GVFImageResult",
+    "SurfaceMesh",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -55,6 +63,10 @@ __all__ = [
     "thin_ace_image",
     "generalized_gvf",
     "generalized_gvf_image",
+    "extract_levelset_surface",
+    "convert_surface_to_ras",
+    "read_legacy_vtk",
+    "write_legacy_vtk",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",

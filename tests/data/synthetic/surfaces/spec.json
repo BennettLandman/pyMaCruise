@@ -1,0 +1,33 @@
+{
+  "purpose": "P30 synthetic level-set surface extraction validation",
+  "shape_voxels": [
+    31,
+    31,
+    31
+  ],
+  "spacing_mm": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "orientation": "RAS",
+  "center_voxel": [
+    15.0,
+    15.0,
+    15.0
+  ],
+  "signed_field": "min(radii) * (sqrt(sum(((world-center)/radii)^2)) - 1)",
+  "radii_mm": {
+    "sphere": [
+      5.5,
+      5.5,
+      5.5
+    ],
+    "ellipsoid": [
+      5.5,
+      4.5,
+      6.0
+    ]
+  },
+  "seed": null
+}
