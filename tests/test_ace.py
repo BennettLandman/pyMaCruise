@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import nibabel as nib
 import pytest
@@ -19,6 +21,8 @@ from pymacruise.ace import (
     clean_ace_components,
     narrow_band_ace,
 )
+
+ACE_PHANTOM = Path(__file__).parent / "data" / "synthetic" / "ace"
 
 
 def test_deriche_gaussian_is_finite_repeatable_and_linear() -> None:
@@ -184,13 +188,16 @@ def test_ace_speed_weighted_fmm_scales_plane_distance_and_has_characteristics() 
 
 
 def test_ace_array_pipeline_is_deterministic_and_clears_volume_borders() -> None:
-    grid = np.indices((16, 16, 16), dtype=np.float32)
-    radius = np.sqrt(sum((axis - 7.5) ** 2 for axis in grid))
-    white = np.where(radius < 4.0, 230.0, 0.0).astype(np.float32)
-    gray = np.where((radius >= 4.0) & (radius < 7.0), 160.0, 0.0).astype(np.float32)
+    gray = np.asarray(nib.load(ACE_PHANTOM / "gray_matter.nii.gz").dataobj)
+    white = np.asarray(nib.load(ACE_PHANTOM / "white_matter.nii.gz").dataobj)
+    atlas = np.asarray(nib.load(ACE_PHANTOM / "multi_atlas_csf.nii.gz").dataobj)
 
-    result = ace_enhance_arrays(gray, white, diffusion_iterations=2)
-    repeated = ace_enhance_arrays(gray, white, diffusion_iterations=2)
+    result = ace_enhance_arrays(
+        gray, white, multi_atlas_csf=atlas, diffusion_iterations=2
+    )
+    repeated = ace_enhance_arrays(
+        gray, white, multi_atlas_csf=atlas, diffusion_iterations=2
+    )
 
     assert result.enhanced_gray_matter.shape == gray.shape
     assert result.enhanced_gray_matter.dtype == np.float32
@@ -204,11 +211,9 @@ def test_ace_array_pipeline_is_deterministic_and_clears_volume_borders() -> None
 
 
 def test_ace_nifti_api_warns_reorients_non_ras_and_returns_ras_outputs() -> None:
-    shape = (12, 12, 12)
-    grid = np.indices(shape, dtype=np.float32)
-    radius = np.sqrt(sum((axis - 5.5) ** 2 for axis in grid))
-    white = np.where(radius < 3, 230.0, 0.0).astype(np.float32)
-    gray = np.where((radius >= 3) & (radius < 5), 160.0, 0.0).astype(np.float32)
+    gray = np.asarray(nib.load(ACE_PHANTOM / "gray_matter.nii.gz").dataobj)
+    white = np.asarray(nib.load(ACE_PHANTOM / "white_matter.nii.gz").dataobj)
+    shape = gray.shape
     affine = np.diag([-1.0, 1.0, 1.0, 1.0])
     affine[0, 3] = shape[0] - 1
     gray_image = nib.Nifti1Image(gray, affine)

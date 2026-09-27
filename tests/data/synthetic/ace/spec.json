@@ -1,0 +1,23 @@
+{
+  "description": "Concentric, analytically defined ACE tissue phantom",
+  "shape_voxels": [
+    24,
+    24,
+    24
+  ],
+  "voxel_size_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "orientation": "RAS",
+  "center_voxel": [
+    11.5,
+    11.5,
+    11.5
+  ],
+  "white_matter": "230 for radius <= 5 mm; 0 elsewhere",
+  "gray_matter": "160 for 5 mm < radius <= 9 mm; 0 elsewhere",
+  "multi_atlas_csf": "254 for 8 mm < radius <= 9 mm; 0 elsewhere",
+  "generation": "float32 tissue volumes; int16 multi-atlas CSF"
+}

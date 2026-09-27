@@ -46,6 +46,11 @@ VandyCRUISE ACE classes. Their notices and attribution inventory remain under
 
 ## Synthetic evidence
 
+The complete-pipeline tests consume the committed concentric phantom under
+`tests/data/synthetic/ace/`. Its three images are RAS `.nii.gz` files;
+`make_phantom.py` regenerates them and `SHA256SUMS` verifies the checked-in
+payloads.
+
 `tests/test_ace.py` has 13 deterministic synthetic checks covering the Gaussian
 filter, morphology, component cleanup, thresholds, diffusion invariants,
 source boundary differences, multi-atlas merge placement, subvoxel planar
