@@ -44,21 +44,25 @@ boundary first differences, centered gradients, second/cross derivatives, and
 the source mean/Gaussian curvature numerators. `tgdm_force` reproduces the
 profile-specific normalization/transformation, pressure-weighted upwind
 selection, outer-profile curvature cap/special case, and GVF advection term.
+`tgdm_simple_point_618` reproduces the Java `SimplePointTest18`
+geodesic-neighborhood encoding and the source six-connected interior plus
+eighteen-connected exterior component checks used by the selected
+`CONNECT_18_6` wrapper setting (including the constructor's mapping quirk).
 
 The current focused tests check hand-calculated quadratic derivatives and
 curvature numerators, flat-front pressure behavior, signed pressure upwinding,
-signed advection upwinding, and invalid field rejection. The full synthetic
-suite passes 96 tests. This validates the isolated formulas against the
-source expressions; it does **not** validate iterative TGDM results or
-numerical equivalence to Java.
+signed advection upwinding, simple-point acceptance/rejection, and invalid
+field rejection. The TGDM-specific suite has 8 tests. This validates isolated
+source rules; it does **not** validate iterative TGDM results or numerical
+equivalence to Java.
 
 ## Remaining source review and implementation
 
 The Python kernel is only a building block. P29 still needs initialization and
 signed-distance reinitialization, profile iteration schedules and time-step
 switches, narrow-band construction/update ordering, landmine restarts,
-bound/skeleton restrictions, simple-point topology checks, tissue-force
-preparation for each surface, and complete inner/central/outer array APIs.
+bound/skeleton restrictions, tissue-force preparation for each surface, and
+complete inner/central/outer array APIs.
 After those are implemented, synthetic sphere/ellipsoid and nested-tissue
 fixtures must check ordering, topology, stability, iteration accounting, and
 all P08 metrics. Trusted Java reference outputs are still required for a

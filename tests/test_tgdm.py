@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymacruise.tgdm import tgdm_force, tgdm_geometry
+from pymacruise.tgdm import tgdm_force, tgdm_geometry, tgdm_simple_point_618
 
 
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:
@@ -103,3 +103,23 @@ def test_tgdm_rejects_invalid_geometry_and_force_fields() -> None:
             pressure_force=1,
             region_force=np.ones((3, 3, 3)),
         )
+
+
+def test_tgdm_geodesic_simple_point_accepts_one_interior_face_component() -> None:
+    neighborhood = np.zeros((3, 3, 3), dtype=bool)
+    neighborhood[0, 1, 1] = True
+
+    assert tgdm_simple_point_618(neighborhood)
+
+
+def test_tgdm_geodesic_simple_point_rejects_separate_interior_face_components() -> None:
+    neighborhood = np.zeros((3, 3, 3), dtype=bool)
+    neighborhood[0, 1, 1] = True
+    neighborhood[2, 1, 1] = True
+
+    assert not tgdm_simple_point_618(neighborhood)
+
+
+def test_tgdm_geodesic_simple_point_rejects_missing_or_multiple_components() -> None:
+    assert not tgdm_simple_point_618(np.zeros((3, 3, 3), dtype=bool))
+    assert not tgdm_simple_point_618(np.ones((3, 3, 3), dtype=bool))

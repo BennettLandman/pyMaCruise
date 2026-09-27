@@ -6,8 +6,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
+from scipy import ndimage
 
 TGDMProfile = Literal["inner", "central", "outer"]
+_FACE = ndimage.generate_binary_structure(3, 1)
+_EDGE = ndimage.generate_binary_structure(3, 2)
 
 
 @dataclass(frozen=True)
@@ -158,6 +161,91 @@ def tgdm_force(
     advection_gradient = np.where(scaled_advection > 0, backward, forward)
     advection_term = np.sum(scaled_advection * advection_gradient, axis=-1)
     return np.asarray(curvature_term + region_term + advection_term, dtype=np.float32)
+
+
+def tgdm_simple_point_618(neighborhood: np.ndarray) -> bool:
+    """Apply GenericTGDM's geodesic 18-neighborhood simple-point check.
+
+    ``neighborhood`` is a 3x3x3 boolean array: True is the source status +1
+    (the interior for the selected `(18,6)` wrapper setting). This reproduces
+    the source `SimplePointTest18` geodesic coding followed by its
+    `SixConnected` + `EighteenConnected` component checks. The apparent
+    constructor/connectivity naming mismatch is documented in the TGDM source
+    map and intentionally represented here as source behavior.
+    """
+    status = np.asarray(neighborhood, dtype=bool)
+    if status.shape != (3, 3, 3):
+        raise ValueError("TGDM simple-point neighborhood must be 3x3x3")
+    cube = np.zeros((3, 3, 3), dtype=np.int8)
+    cube[1, 1, 1] = 0
+
+    # Face neighbors (the six axial positions) are copied directly.
+    for point in _offsets(1):
+        cube[tuple(v + 1 for v in point)] = 1 if status[tuple(v + 1 for v in point)] else -1
+
+    # Edge neighbors are admitted to the geodesic neighborhood only if they
+    # are interior or touch an already admitted interior face neighbor.
+    for axis in range(3):
+        other = [value for value in range(3) if value != axis]
+        for first in (-1, 1):
+            for second in (-1, 1):
+                point = [0, 0, 0]
+                point[other[0]], point[other[1]] = first, second
+                index = tuple(v + 1 for v in point)
+                if not status[index]:
+                    cube[index] = -1
+                elif any(
+                    cube[tuple(v + 1 for v in face)] == 1
+                    for face in _adjacent_faces(point)
+                ):
+                    cube[index] = 1
+
+    # Corner voxels are admitted only when interior and touching one of their
+    # three edge neighbors, matching the source's ordered geodesic fill.
+    for x in (-1, 1):
+        for y in (-1, 1):
+            for z in (-1, 1):
+                point = (x, y, z)
+                index = tuple(v + 1 for v in point)
+                if not status[index]:
+                    cube[index] = -1
+                elif any(
+                    cube[tuple(v + 1 for v in edge)] == 1
+                    for edge in ((x, y, 0), (x, 0, z), (0, y, z))
+                ):
+                    cube[index] = 1
+
+    interior = cube == 1
+    exterior = cube == -1
+    interior[1, 1, 1] = False
+    exterior[1, 1, 1] = False
+    return (
+        _component_count(interior, _FACE) == 1
+        and _component_count(exterior, _EDGE) == 1
+    )
+
+
+def _offsets(manhattan_distance: int) -> tuple[tuple[int, int, int], ...]:
+    return tuple(
+        (x, y, z)
+        for x in (-1, 0, 1)
+        for y in (-1, 0, 1)
+        for z in (-1, 0, 1)
+        if abs(x) + abs(y) + abs(z) == manhattan_distance
+    )
+
+
+def _adjacent_faces(point: tuple[int, int, int] | list[int]) -> tuple[tuple[int, int, int], ...]:
+    return tuple(
+        tuple(0 if axis == changed else point[axis] for axis in range(3))
+        for changed in range(3)
+        if point[changed] != 0
+        and sum(value != 0 for value in point) == 2
+    )
+
+
+def _component_count(mask: np.ndarray, structure: np.ndarray) -> int:
+    return int(ndimage.label(mask, structure=structure)[1])
 
 
 def _shift(values: np.ndarray, axis: int, offset: int) -> np.ndarray:
