@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import nibabel as nib
 import pytest
+from scipy import ndimage
+from skimage.measure import marching_cubes
 
 from pymacruise.tgdm import (
     TGDMProfileSettings,
@@ -22,6 +24,7 @@ from pymacruise.tgdm import (
     tgdm_nested_images,
     _ras_vector_components,
 )
+from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:
@@ -260,6 +263,9 @@ def test_tgdm_nested_array_adapter_routes_tissues_and_supports_zero_iteration_sm
     assert result.initial_level_set[5, 5, 5] < 0
     assert result.tissue_sign.dtype == np.uint8
     assert result.tissue_sign[5, 5, 5] == 254
+    from pymacruise.ace import _signed_distance_fmm
+
+    zero_step_seed = _signed_distance_fmm(result.initial_level_set, max_distance=8.0)
     for stage in (
         result.smoothed_initial,
         result.initial_inner,
@@ -268,7 +274,7 @@ def test_tgdm_nested_array_adapter_routes_tissues_and_supports_zero_iteration_sm
         result.central_shrink,
         result.outer,
     ):
-        np.testing.assert_array_equal(stage.level_set, result.initial_level_set)
+        np.testing.assert_array_equal(stage.level_set, zero_step_seed)
         assert stage.completed_steps == 0
 
 
@@ -381,3 +387,93 @@ def test_tgdm_nested_synthetic_phantom_runs_every_evolution_stage() -> None:
     assert result.execution.central.completed_steps == 10
     assert result.execution.central_shrink.completed_steps == 10
     assert result.execution.outer.completed_steps == 30
+    masks = [
+        result.execution.inner.level_set <= 0,
+        result.execution.central.level_set <= 0,
+        result.execution.outer.level_set <= 0,
+    ]
+    assert all(mask.any() for mask in masks)
+    assert np.all(masks[0] <= masks[1])
+    assert np.all(masks[1] <= masks[2])
+    for mask in masks:
+        assert ndimage.label(mask, structure=ndimage.generate_binary_structure(3, 1))[1] == 1
+
+
+def test_tgdm_default_nested_stages_match_java_synthetic_reference() -> None:
+    data_root = Path(__file__).parent / "data" / "synthetic" / "tgdm"
+    reference_root = data_root / "java_reference"
+    images = {
+        path.stem.removesuffix(".nii"): nib.load(str(path))
+        for path in data_root.glob("*.nii.gz")
+        if path.parent == data_root
+    }
+    python = tgdm_nested_images(
+        images["initial_membership"],
+        images["white_matter"],
+        images["gray_matter"],
+        images["ace_gray_matter"],
+        ace_skeleton=images["ace_skeleton"],
+        gvf=nib.Nifti1Image(
+            np.zeros((*images["initial_membership"].shape, 3), dtype=np.float32),
+            images["initial_membership"].affine,
+        ),
+    )
+    level_sets = {
+        "signed_seed": python.execution.initial_level_set,
+        "smoothed_initial": python.execution.smoothed_initial.level_set,
+        "initial_inner": python.execution.initial_inner.level_set,
+        "central": python.execution.central.level_set,
+        "central_shrink": python.execution.central_shrink.level_set,
+        "inner": python.execution.inner.level_set,
+        "outer": python.execution.outer.level_set,
+    }
+    np.testing.assert_array_equal(
+        python.execution.tissue_sign,
+        np.asarray(nib.load(str(reference_root / "tissue_sign.nii.gz")).dataobj),
+    )
+    assert python.execution.smoothed_initial.completed_steps == 180
+    assert python.execution.initial_inner.completed_steps == 100
+    assert python.execution.central.completed_steps == 190
+    assert python.execution.central_shrink.completed_steps == 10
+    assert python.execution.inner.completed_steps == 100
+    assert python.execution.outer.completed_steps == 210
+    evolution_stages = (
+        python.execution.smoothed_initial,
+        python.execution.initial_inner,
+        python.execution.central,
+        python.execution.central_shrink,
+        python.execution.inner,
+        python.execution.outer,
+    )
+    assert all(stage.landmine_restarts == 0 for stage in evolution_stages)
+    for image in (
+        python.initial_level_set,
+        python.tissue_sign,
+        python.initial_inner,
+        python.inner,
+        python.central,
+        python.outer,
+    ):
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+        np.testing.assert_allclose(image.affine, np.eye(4), atol=0)
+
+    for name, level_set in level_sets.items():
+        reference_image = nib.load(str(reference_root / f"{name}.nii.gz"))
+        assert nib.aff2axcodes(reference_image.affine) == ("R", "A", "S")
+        np.testing.assert_allclose(reference_image.affine, np.eye(4), atol=0)
+        reference = np.asarray(reference_image.dataobj, dtype=np.float32)
+        candidate = np.asarray(level_set, dtype=np.float32)
+        assert np.isfinite(candidate).all()
+        assert candidate.shape == reference.shape == (25, 25, 25)
+        assert dice_coefficient(candidate <= 0, reference <= 0) >= 0.97
+
+        candidate_vertices, candidate_faces, _, _ = marching_cubes(candidate, level=0.0)
+        reference_vertices, reference_faces, _, _ = marching_cubes(reference, level=0.0)
+        distances = mesh_surface_distance_metrics(
+            candidate_vertices,
+            candidate_faces,
+            reference_vertices,
+            reference_faces,
+        )
+        assert distances["mean_absolute_distance_mm"] <= 0.01
+        assert distances["hausdorff_mm"] <= 1.0

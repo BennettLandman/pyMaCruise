@@ -397,9 +397,15 @@ def tgdm_nested_arrays(
     initial = tgdm_initial_membership_level_set(
         membership, iso_level=parameters.initial_iso_level, max_distance=8.0
     )
+    # MaGenericTGDM.solveSmoothSurface runs DistanceField once more before
+    # entering its profile loop, even though this wrapper seed is already a
+    # signed-distance image.
+    from pymacruise.ace import _signed_distance_fmm
+
+    smoothing_input = _signed_distance_fmm(initial, max_distance=8.0)
     smoothing_settings = TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 30, 30, 0.1, 0.01)
     smoothed = tgdm_evolve(
-        initial,
+        smoothing_input,
         profile="central",
         curvature_force=-parameters.initial_curvature,
         pressure_force=0.0,

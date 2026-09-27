@@ -16,7 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ants = ["antspyx>=0.6,<0.7"]
-dev = ["pytest>=8,<9"]
+dev = ["pytest>=8,<9", "scikit-image>=0.22,<1"]
 
 [project.scripts]
 pymacruise = "pymacruise.cli:main"

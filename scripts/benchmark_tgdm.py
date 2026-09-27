@@ -71,6 +71,15 @@ def main() -> None:
             "inner_final": result.inner.completed_steps,
             "outer": result.outer.completed_steps,
         },
+        "nonpositive_voxel_counts": {
+            "inner": int(np.count_nonzero(result.inner.level_set <= 0)),
+            "central": int(np.count_nonzero(result.central.level_set <= 0)),
+            "outer": int(np.count_nonzero(result.outer.level_set <= 0)),
+        },
+        "nested_mask_containment": {
+            "inner_inside_central": _containment(result.inner.level_set, result.central.level_set),
+            "central_inside_outer": _containment(result.central.level_set, result.outer.level_set),
+        },
         "output_finite": all(
             np.isfinite(volume).all()
             for volume in (
@@ -85,6 +94,13 @@ def main() -> None:
         ),
     }
     print(json.dumps(report, indent=2))
+
+
+def _containment(inner: np.ndarray, outer: np.ndarray) -> float:
+    inner_mask = np.asarray(inner) <= 0
+    outer_mask = np.asarray(outer) <= 0
+    count = int(inner_mask.sum())
+    return float(np.count_nonzero(inner_mask & outer_mask) / count) if count else 1.0
 
 
 def _load(name: str) -> np.ndarray:
