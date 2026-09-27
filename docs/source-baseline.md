@@ -10,7 +10,7 @@
 
 Use `run_maCRUISE_v3.m` as the top-level behavior and output contract, together with `pipeline/maCRUISEpipeline.m` and the functions it calls, at SVN revision 9360. Use the same checkout revision for all MATLAB reference files. The chosen VandyCRUISE algorithm source is the `VandyCRUISE` directory recorded in the project README; Python library replacements and ANTsPy integrations must reproduce this selected workflow rather than silently changing its behavior.
 
-The reason for selecting V3 is explicit in the source: its entry point sets `opts.topoCorrectVersion = 'V3'`, whose additional boundary cleanup branch runs after multi-atlas/TOADS tissue combination. The entry point also exposes the V2-era BET default and configurable T1 sequence, N3/N4 correction, and BET threshold. This is the newest identified base entry point in the supplied MATLAB tree and has the V3 topology behavior that the earlier entry points do not select by default.
+The project owner clarified that the version numbers on `run_maCRUISE` are bug-fix versions, and that numbered versions below V3 contain bugs. Therefore V3 is the required corrected reference, not an optional newer algorithm generation. The source also shows that its entry point sets `opts.topoCorrectVersion = 'V3'`, which activates an additional boundary-cleanup branch after multi-atlas/TOADS tissue combination. Preserve that observed behavior as part of the V3 reference contract; do not interpret the filename numbering as an algorithm-versioning or compatibility-option scheme. The entry point also exposes configurable T1 sequence, N3/N4 correction, and BET threshold, with BET as the default.
 
 ### Inputs and default entry-point settings
 
@@ -28,18 +28,18 @@ The V3 runner supplies `average305_t1_tal_lin.nii.gz` and `average305_t1_tal_lin
 
 ## Differences among supplied base entry points
 
-| Entry point | Topology selection | Default TOADS skull stripping | Other notable behavior | Decision |
+| Entry point | Effective topology behavior | Default TOADS skull stripping | Other notable behavior | Decision |
 |---|---|---|---|---|
-| `run_maCRUISE.m` | Does not set a version; `maCRUISEpipeline.m` therefore defaults to V1. | Does not set `SkullStripMethod`; `run_Toads_pipeline.m` defaults to SPECTRE. | Minimal wrapper defaults; N4 and BET threshold are supplied by downstream defaults. | Not canonical; retain as a legacy behavior reference if needed. |
-| `run_maCRUISE_v1.m` | Does not set a version; pipeline default is V1. | BET. | Adds configurable skull strip, T1 sequence, N3/N4 choice, and BET threshold. The file identifies itself with a V2 update comment. | Not canonical; use for tracing behavior before the explicit V3 topology update. |
-| `run_maCRUISE_v3.m` | Explicitly V3; triggers V3 boundary-cleanup branch. | BET. | Same configurable options as `_v1`; adds the V3 topology setting and V3-specific MNI mask assignment. | **Canonical base reference.** |
+| `run_maCRUISE.m` | Does not set a version; `maCRUISEpipeline.m` therefore defaults to V1. | Does not set `SkullStripMethod`; `run_Toads_pipeline.m` defaults to SPECTRE. | Minimal wrapper defaults; N4 and BET threshold are supplied by downstream defaults. | Older unversioned entry point; not the port baseline. |
+| `run_maCRUISE_v1.m` | Does not set a version; pipeline default is V1. | BET. | Adds configurable skull strip, T1 sequence, N3/N4 choice, and BET threshold. Its comment describes a V2-era update. | Known-buggy pre-V3 version per project owner; do not target as a supported behavior. |
+| `run_maCRUISE_v3.m` | Explicitly selects V3 and triggers its boundary-cleanup branch. | BET. | Includes configurable options and a V3-specific MNI mask assignment. | **Canonical corrected base reference.** |
 
-The supplied `_v1` and `_v3` files were compared directly. Their executable differences are the function name and V3-specific comment/`topoCorrectVersion` assignment; later in `_v3`, the MNI reference mask is also assigned. The plain entry point is structurally older and does not set the same option set. The exact files in the revision-9360 working copy—not recollection from the comments—remain the source of truth.
+The supplied `_v1` and `_v3` files were compared directly. Their executable differences include the function name and the V3-specific `topoCorrectVersion` assignment; later in `_v3`, the MNI reference mask is also assigned. The plain entry point is structurally older and does not set the same option set. These source differences explain the behavior the Python port must reproduce; they do not change the project decision that the version numbers are bug-fix versions and that V3 is the corrected baseline. The exact files in the revision-9360 working copy—not recollection from comments—remain the implementation reference.
 
 ## Explicitly deferred or separate behaviors
 
 - `run_maCRUISEplus*.m` and the `CRUISEplus*` pipelines are a separate MaCRUISEplus contract, tracked in P03 and P38–P41; they are not silently folded into the base runner.
-- V1 topology and SPECTRE skull stripping are not baseline behavior. They may become explicit compatibility options after the V3 path is established.
+- Do not expose pre-V3 numbered versions as supported behavior; the project owner reports that they contain bugs. The unversioned runner is also not the baseline, though its specific bug status has not been separately established.
 - FreeView screenshot/report generation is optional presentation behavior, not a prerequisite for core segmentation. Surface coordinate conversion/export remains part of the output contract where downstream FreeSurfer use depends on it.
 - Batch/cluster launchers and legacy/old pipelines are outside the first single-subject baseline unless later evidence shows a required scientific behavior is only present there.
 
@@ -50,4 +50,4 @@ The supplied `_v1` and `_v3` files were compared directly. Their executable diff
 - `pipeline/maCRUISEpipeline.m` and its V3 conditional boundary-cleanup branch.
 - `pipeline/run_Toads_pipeline.m` defaults and `pipeline/run_maCruiseSurf_pipeline.m` V3 dispatch.
 
-This decision validates only the selection of a source behavior contract. It does not validate a Python implementation or numerical equivalence; those remain open roadmap items.
+This decision validates only the selection of a source behavior contract. The project-owner clarification that numbered releases are bug fixes and pre-V3 versions are buggy is part of the decision record. It does not validate a Python implementation or numerical equivalence; those remain open roadmap items.
