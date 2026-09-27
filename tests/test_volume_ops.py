@@ -59,3 +59,33 @@ def test_nifti_file_operator_enforces_compressed_ras_output(tmp_path) -> None:
     assert np.all(np.asanyarray(result.dataobj) == 3)
     with pytest.raises(ValueError, match=".nii.gz"):
         calculate_nifti_files(str(input_a), str(input_b), str(tmp_path / "out.nii"), "ADD")
+
+
+@pytest.mark.parametrize(
+    ("operation", "expected"),
+    [
+        ("ADD", [8.0, 8.0, 12.0]),
+        ("SUBTRACT", [2.0, 4.0, -6.0]),
+        ("MULTIPLY", [15.0, 12.0, 27.0]),
+        ("DIVIDE", [5.0 / 3.0, 3.0, 1.0 / 3.0]),
+        ("MIN", [3.0, 2.0, 3.0]),
+        ("MAX", [5.0, 6.0, 9.0]),
+    ],
+)
+def test_volume_operator_supported_arithmetic_is_unclipped(
+    operation: str, expected: list[float]
+) -> None:
+    first = nib.Nifti1Image(np.array([5, 6, 3], dtype=np.int16), np.eye(4))
+    second = nib.Nifti1Image(np.array([3, 2, 9], dtype=np.int16), np.eye(4))
+    result = calculate_volume(first, second, operation)
+    assert result.get_data_dtype() == np.dtype(np.float32)
+    np.testing.assert_allclose(np.asanyarray(result.dataobj), expected)
+
+
+def test_divide_by_zero_uses_ieee_float_results() -> None:
+    first = nib.Nifti1Image(np.array([1, 0], dtype=np.int16), np.eye(4))
+    second = nib.Nifti1Image(np.array([0, 0], dtype=np.int16), np.eye(4))
+    result = calculate_volume(first, second, "DIVIDE")
+    values = np.asanyarray(result.dataobj)
+    assert np.isinf(values[0])
+    assert np.isnan(values[1])

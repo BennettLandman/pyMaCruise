@@ -1,16 +1,16 @@
 Skull stripping atlas list
 pairs of original / stripped images: 3
-image OAS1_0001_MR1_original.img
+image OAS1_0001_MR1_original.nii.gz
 mask OAS1_0001_MR1_ew_mask.xml
 L1 87 81 69
 L2 87 111 72
 L3 87 88 106
-image OAS1_0002_MR1_original.img
+image OAS1_0002_MR1_original.nii.gz
 mask OAS1_0002_MR1_ew_mask.xml
 L1 87 85 73
 L2 87 113 73
 L3 87 87 102
-image OAS1_0003_MR1_original.img
+image OAS1_0003_MR1_original.nii.gz
 mask OAS1_0003_MR1_ew_mask.xml
 L1 88 85 72
 L2 88 113 73

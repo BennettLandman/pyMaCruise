@@ -1,0 +1,3127 @@
+{
+  "description": "User-supplied NIfTI conversions normalized to RAS.",
+  "method": "NiBabel axis permutation/flip only; no interpolation.",
+  "images": [
+    {
+      "staged_filename": "OAS1_0001_MR1_ew_mask.nii.gz",
+      "source_payload": "spectre/OAS1_0001_MR1_ew_mask.raw",
+      "source_payload_sha256": "9f43c1dc773783555cceda433f35e5b3aa3eb7286450c09baa7522ae4765740c",
+      "mipav_xml": "spectre/OAS1_0001_MR1_ew_mask.xml",
+      "mipav_xml_sha256": "bad45b25788d4fc48b7655227ba9cec6b43b4a6ebb144b96f5b32650c4ce43a5",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0001_MR1_ew_mask.nii.gz",
+      "nifti_output_sha256": "27786ac5f6cc317fb3e59070dab1b2b752c923a9d8fa8b40cd1a502945f965a7",
+      "input_shape": [
+        88,
+        104,
+        88
+      ],
+      "output_shape": [
+        88,
+        104,
+        88
+      ],
+      "input_dtype": "int16",
+      "output_dtype": "int16",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -2.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -2.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          2.0,
+          0.0,
+          0.0,
+          -174.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0,
+          -206.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0001_MR1_original.nii.gz",
+      "source_payload": "spectre/OAS1_0001_MR1_original.img",
+      "source_payload_sha256": "621279777f3712f67896889be37dd225c86aaab57887d8ca2c9ffcdafa78972a",
+      "mipav_xml": null,
+      "mipav_xml_sha256": null,
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0001_MR1_original.nii.gz",
+      "nifti_output_sha256": "a00cfcaef0eea7a3900f17b76d83300e0ed5549e6ebb588d5debfe9ca45f7e1d",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "Analyze voxel values exact after RAS reorientation=True; Analyze format has no reliable physical origin",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0001_MR1_rot_original.nii.gz",
+      "source_payload": "spectre/OAS1_0001_MR1_rot_original.raw",
+      "source_payload_sha256": "f7c6321b286538dd37a9ef0cba2cb670fd6710cda508d59233b84e6cb7c2d185",
+      "mipav_xml": "spectre/OAS1_0001_MR1_rot_original.xml",
+      "mipav_xml_sha256": "c54fd6b3b197aa761ba66aa98abadc10c12d4a2398f96bd6d067c58bbc2552be",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0001_MR1_rot_original.nii.gz",
+      "nifti_output_sha256": "e44da54ccf85e974464f89bf0eba4c1153088ef3d393498d25f42eb51f2dddd9",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Big, data match endian=Big",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0002_MR1_ew_mask.nii.gz",
+      "source_payload": "spectre/OAS1_0002_MR1_ew_mask.raw",
+      "source_payload_sha256": "eb073628561e4f22465bf876c4ebe87c6b3887e47c1319af6cb7a1874b37afb9",
+      "mipav_xml": "spectre/OAS1_0002_MR1_ew_mask.xml",
+      "mipav_xml_sha256": "0932c0e1dd73e2e8e4cb24bdafec22349f1c91d2952e7475b9803a8553ffcaca",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0002_MR1_ew_mask.nii.gz",
+      "nifti_output_sha256": "0794a51975e5ad79c6ac16c1bc1a279cde49e88aa65f6f440e9e1344c5dfa0b8",
+      "input_shape": [
+        88,
+        104,
+        88
+      ],
+      "output_shape": [
+        88,
+        104,
+        88
+      ],
+      "input_dtype": "int16",
+      "output_dtype": "int16",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -2.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -2.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          2.0,
+          0.0,
+          0.0,
+          -174.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0,
+          -206.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0002_MR1_original.nii.gz",
+      "source_payload": "spectre/OAS1_0002_MR1_original.img",
+      "source_payload_sha256": "285ff0c56f8528a1307f66d080a16344451dff2d2aabdcec8c7a5c6ad1609a6c",
+      "mipav_xml": null,
+      "mipav_xml_sha256": null,
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0002_MR1_original.nii.gz",
+      "nifti_output_sha256": "dd3934a36cf48eb6a59e26ba7d5ab0d084e8b13a59e3abf0e909b314708986ba",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "Analyze voxel values exact after RAS reorientation=True; Analyze format has no reliable physical origin",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0002_MR1_rot_original.nii.gz",
+      "source_payload": "spectre/OAS1_0002_MR1_rot_original.raw",
+      "source_payload_sha256": "e132acfca52a740d875db046309d88c40e5098d0897e1df2c78303215dd3eef3",
+      "mipav_xml": "spectre/OAS1_0002_MR1_rot_original.xml",
+      "mipav_xml_sha256": "c4822e5e7c8bbdb3e4e64367a689aa1cb1f999c3e54e5de9c41d8d201048f296",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0002_MR1_rot_original.nii.gz",
+      "nifti_output_sha256": "8cd945075d96beda6764c95ba83dccbd65d742db6c8791c58eff651874f04a55",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Big, data match endian=Big",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0003_MR1_ew_mask.nii.gz",
+      "source_payload": "spectre/OAS1_0003_MR1_ew_mask.raw",
+      "source_payload_sha256": "4822a86e0aec815bc811a6ed8cbc7bc2af564e4ea5a30018ec17214395ba7b33",
+      "mipav_xml": "spectre/OAS1_0003_MR1_ew_mask.xml",
+      "mipav_xml_sha256": "0932c0e1dd73e2e8e4cb24bdafec22349f1c91d2952e7475b9803a8553ffcaca",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0003_MR1_ew_mask.nii.gz",
+      "nifti_output_sha256": "d07e9fec8ee0e17543a233140141883c479c34c65dd5c5d601554fe57bc1a0f3",
+      "input_shape": [
+        88,
+        104,
+        88
+      ],
+      "output_shape": [
+        88,
+        104,
+        88
+      ],
+      "input_dtype": "int16",
+      "output_dtype": "int16",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -2.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -2.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          2.0,
+          0.0,
+          0.0,
+          -174.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0,
+          -206.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0003_MR1_original.nii.gz",
+      "source_payload": "spectre/OAS1_0003_MR1_original.img",
+      "source_payload_sha256": "0fb5c9abbfb8814a30ad548b789a4059ea3c1bb49453fb2a5c412283e3dfd00f",
+      "mipav_xml": null,
+      "mipav_xml_sha256": null,
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0003_MR1_original.nii.gz",
+      "nifti_output_sha256": "bfd4a49ad5e713decb0935ae1afbed16019aa6b4ece288c3914fc553319affa2",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "Analyze voxel values exact after RAS reorientation=True; Analyze format has no reliable physical origin",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "OAS1_0003_MR1_rot_original.nii.gz",
+      "source_payload": "spectre/OAS1_0003_MR1_rot_original.raw",
+      "source_payload_sha256": "a8e279e0985010ee8e12103f8393ed653a09d9c0f4c6eb7dbcc4d6bd7a14da63",
+      "mipav_xml": "spectre/OAS1_0003_MR1_rot_original.xml",
+      "mipav_xml_sha256": "9cb132c178182dc40badf4fbf30a2ade7c9dc44de1c155f91e84595e2934393b",
+      "nifti_input_sha256": null,
+      "nifti_output": "spectre/OAS1_0003_MR1_rot_original.nii.gz",
+      "nifti_output_sha256": "4bb812946409df911124ee8272a51e06d6ff27e243c82a8648f96b1eba33f0f3",
+      "input_shape": [
+        176,
+        208,
+        176
+      ],
+      "output_shape": [
+        176,
+        208,
+        176
+      ],
+      "input_dtype": ">i2",
+      "output_dtype": ">i2",
+      "input_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -175.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -207.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Big, data match endian=Big",
+      "input_hash_captured_before_normalization": false
+    },
+    {
+      "staged_filename": "atlas_Background.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Background.raw",
+      "source_payload_sha256": "cc1cb50faa24e5c59e861925d05a59964f00f1c3efe9dc9707e363eb6fa39d37",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Background.xml",
+      "mipav_xml_sha256": "e17fe96bcca6fb82e8e071f8cbeb438108d21566b0dea9988bbeff0b58d16a7c",
+      "nifti_input_sha256": "d3f564e0daed5d13d3c12e263c7da17ed2face940a67173685d440b14e895841",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Background.nii.gz",
+      "nifti_output_sha256": "57398b122411f27082259f8f1a41a99d2be28b5b41e84324b7c2880a57be79c2",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Background_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Background_cruise.raw",
+      "source_payload_sha256": "fa952b3ff1cc71988e0ecbbaa73bf5ea6ef76286b60ca7ddb26e526638a69545",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Background_cruise.xml",
+      "mipav_xml_sha256": "bdc2b599b7f00851108888bd2ed8c92cc442d936836602d3a2539cd2c88be1bc",
+      "nifti_input_sha256": "dd9ce8ba9a0b46944573a2e849b6c923bae5db1cd01cb3ed7d5bb177053389fb",
+      "nifti_output": "cruise-atlas-10obj/atlas_Background_cruise.nii.gz",
+      "nifti_output_sha256": "0a715d8723fd069cd9d6d386f7177c8db44a2b648a91479e4b4631bbb8801d7e",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Brainstem.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Brainstem.raw",
+      "source_payload_sha256": "bcd41ba52ff11deb20a31cc3670628ea0dc6ecf043a9ec61a273cec3efaa2ecc",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Brainstem.xml",
+      "mipav_xml_sha256": "653f3bfbae027386caf7832d17f3cce8adcee2f7585869bb4c13346624b240ac",
+      "nifti_input_sha256": "29f80c8a91e00267dd52aed86395444c5597e26c514ae787ddc0b7c2535a2572",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Brainstem.nii.gz",
+      "nifti_output_sha256": "0c45b2d6b0621d9d8d62c249fc3cf1e2af8b52a199c1c3a3af479e355b18c110",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Brainstem_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Brainstem_cruise.raw",
+      "source_payload_sha256": "03d735054d37cf9b7de02b02e952a4dec132f744de40ec708771673e09de8d0a",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Brainstem_cruise.xml",
+      "mipav_xml_sha256": "c4e4d7654fd1e00ddf5d9c7690c353f428c0d231e1442aecbb34d59f3976c20d",
+      "nifti_input_sha256": "651c7330bc828f2d56fe0979864c73e933fe63045ad2cc949e49c99011cbfc27",
+      "nifti_output": "cruise-atlas-10obj/atlas_Brainstem_cruise.nii.gz",
+      "nifti_output_sha256": "a23a41c2637d6ad8a8f292eaecb964075f9492bbad536691c549892d3f3f31d5",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Caudate.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Caudate.raw",
+      "source_payload_sha256": "be60dc1c6fd7182da437a66c43d4e8e629e29a66171851096e95f4fedfa5a402",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Caudate.xml",
+      "mipav_xml_sha256": "27201a9404b3b0b25ff49fd0f717884d1a8637c99cb52f96cbc7f41f77447c3a",
+      "nifti_input_sha256": "a6804f9a94379184d24c3100efd91823897a54f6f642849a4203c44068071f71",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Caudate.nii.gz",
+      "nifti_output_sha256": "31f7015ac48813ba47c046ddd37c90f7cf98271c0bc05201fd5ed52fa8deb8f9",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -0.9375,
+          0.0,
+          0.0,
+          40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -120.12325668334961
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Caudate_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Caudate_cruise.raw",
+      "source_payload_sha256": "884e01e97557dd8cdbfad75488b29648ee50edfaf31bd6cdc76db03f18e16042",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Caudate_cruise.xml",
+      "mipav_xml_sha256": "f92a159d92f6d028537f3f74a6c8b9befca7eeace4138a6d3b157806a9468be6",
+      "nifti_input_sha256": "5dcec200f048954f1d7a31057ba9dead6f6a80afd0f127cd61c77dd3520c5460",
+      "nifti_output": "cruise-atlas-10obj/atlas_Caudate_cruise.nii.gz",
+      "nifti_output_sha256": "4c635a7445ea2eb4434faf3d776c6a6953282091955c9c45d58c0e7b12ad7ea4",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_CerebellarGM_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_CerebellarGM_cruise.raw",
+      "source_payload_sha256": "b445b80e9e4e26041c9b85b1fd3de28669ac3c249e9f73c98ac18426a6e0b401",
+      "mipav_xml": "cruise-atlas-10obj/atlas_CerebellarGM_cruise.xml",
+      "mipav_xml_sha256": "1168862ba319ac6c7450c82ffa91fb0e80a4d77c3ccab4254c825c0585c020cb",
+      "nifti_input_sha256": "e68574d7de86bc689aa07fd2ffaae32deb24880dec653d78a1c4435cb6da7865",
+      "nifti_output": "cruise-atlas-10obj/atlas_CerebellarGM_cruise.nii.gz",
+      "nifti_output_sha256": "11ab21ec22af4e5212f08d0d62d150d8329402de9ef87b1d65d7607ff6e1d5c9",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_CerebellarWM_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_CerebellarWM_cruise.raw",
+      "source_payload_sha256": "6f093fa4047655de81d798e947b86522140ba875b11f71daadd6e7b7b9b8aeee",
+      "mipav_xml": "cruise-atlas-10obj/atlas_CerebellarWM_cruise.xml",
+      "mipav_xml_sha256": "c2693c8993c5b2f77578f7598fdd75e5f8348ea4cd65ccff7cc18f7aafa6ec50",
+      "nifti_input_sha256": "68f5983f65d499383ed38b7cebc8b4d1974f366d139ed8cfd56eafdffcc5d77c",
+      "nifti_output": "cruise-atlas-10obj/atlas_CerebellarWM_cruise.nii.gz",
+      "nifti_output_sha256": "8be697ecc518bbd14e92ef8d542756e3bc046f4c2abf1db7833a3e888cf819d1",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Cerebellum-GM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Cerebellum-GM.raw",
+      "source_payload_sha256": "f4e6c7c753c03991317adb88cdaa990288ebcd3a176d97cbb47bda94896d8047",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Cerebellum-GM.xml",
+      "mipav_xml_sha256": "1988b4478311be1403ced736d513646aa5e62b18de4168aeb245dfae7a133273",
+      "nifti_input_sha256": "808841afd7e573468d20cddf31682151e587c36eb2a37a06d68f919793b7ee47",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Cerebellum-GM.nii.gz",
+      "nifti_output_sha256": "a8450381daf9ab27c794be777a9ea474c2ffadf0c456bd5aed5ce1dbce56a621",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Cerebellum-WM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Cerebellum-WM.raw",
+      "source_payload_sha256": "d377d1f7af80068f904ebcdcfa3052384823ea36faa57b4cc8b5847843172f1b",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Cerebellum-WM.xml",
+      "mipav_xml_sha256": "4b8e572d3b361292568503f783db572423501f53720f15e3bf4aa1ab904dd2c0",
+      "nifti_input_sha256": "eea1d481122acb56681ca42d7b86be8dd468b5599f54320980aeb429f85d418f",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Cerebellum-WM.nii.gz",
+      "nifti_output_sha256": "ea242c570b97479c606a5a265d99f497a585f5b5e6c24f42a448ef60bbfeadd8",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_CerebralGM_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_CerebralGM_cruise.raw",
+      "source_payload_sha256": "7b8a236974193e35b8df63d2de29194666b3f360a8f78423630e5f98eb1d0ec8",
+      "mipav_xml": "cruise-atlas-10obj/atlas_CerebralGM_cruise.xml",
+      "mipav_xml_sha256": "4a5ee567ae8179fcf9ad565a5889b93339aa349e6365c3ee78c0d4d6ef71dac9",
+      "nifti_input_sha256": "ac3a982c4654687f1d1a6a3323f43e1b62492d0083a292b9dd0c1a70fc22fb40",
+      "nifti_output": "cruise-atlas-10obj/atlas_CerebralGM_cruise.nii.gz",
+      "nifti_output_sha256": "053a047be75e08df7199d72ab36a9cd3c8cfb90e2178c0cea9b86048b697755b",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_CerebralWM_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_CerebralWM_cruise.raw",
+      "source_payload_sha256": "7b47bfb02d30fe68f7fab6db91d9e2cd95ce3106bec9baf1b208e73053597d45",
+      "mipav_xml": "cruise-atlas-10obj/atlas_CerebralWM_cruise.xml",
+      "mipav_xml_sha256": "30c6bc128cf3807679868a56561b75a66ba53fd05481ba6fddfdb89e21aff6c9",
+      "nifti_input_sha256": "cc2e12acbb7189006f071e4fd6572350aa6506428d4a0b6d674a5ac71678b076",
+      "nifti_output": "cruise-atlas-10obj/atlas_CerebralWM_cruise.nii.gz",
+      "nifti_output_sha256": "2daa92b287ac48a2330df565829cefd2896766262d03ff01f22de71f16862ef6",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Cerebrum-GM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Cerebrum-GM.raw",
+      "source_payload_sha256": "36c6a58ebb00a5b22877287108649212f38604040f2ee824e1c3384037265de0",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Cerebrum-GM.xml",
+      "mipav_xml_sha256": "68f05ea2cb0a95745c34cf838f34a44a5baa4f11a0a166abd8f0d6e02cb80275",
+      "nifti_input_sha256": "f41738cfac5c1a9326549bf534845b15cfebe630c8d332e2f932e5ce8c9e995a",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Cerebrum-GM.nii.gz",
+      "nifti_output_sha256": "c6b3e9fdcaf29931ede18121afd9488b5c06c9e83f8f05061625af5a01140682",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Cerebrum-WM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Cerebrum-WM.raw",
+      "source_payload_sha256": "ccb0a941b3bd611485240cc37a8057e55c9c59337aad77acb05eb06f7283df72",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Cerebrum-WM.xml",
+      "mipav_xml_sha256": "1b426e56ada6d927f1a8eae5240f6c3349445e9a6907760e12ba424c675f8eca",
+      "nifti_input_sha256": "8aba01a4f0fe6af77b63af5bc06104490914c21a2422797b3a32befb6769fbb6",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Cerebrum-WM.nii.gz",
+      "nifti_output_sha256": "acfb90670183e281ab704b586bc97cfbacac6b59f000d4e5cac0fe3f6d5842d1",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Inferior-WM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Inferior-WM.raw",
+      "source_payload_sha256": "8b41f5e1809cebb887f1426191e2d4529db5a14c737150d42bf8316930a00a7b",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Inferior-WM.xml",
+      "mipav_xml_sha256": "83d6969b45535e12912535cc5677983e09738d58c828bb9564cf55b784fb2526",
+      "nifti_input_sha256": "1d3e4cb6ef4a0e99166b9fd2aa8fd57180500e1094182399669480061d83eb29",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Inferior-WM.nii.gz",
+      "nifti_output_sha256": "f11c48769dc088dfb607eb323e4547c4130b2fd7d00bf3f27e16606a26bafa0b",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_InterVentricular-WM.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_InterVentricular-WM.raw",
+      "source_payload_sha256": "ccd2fbafadc70dbf92712762de6a6ac5df644724495b363996fea4ba495b1f18",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_InterVentricular-WM.xml",
+      "mipav_xml_sha256": "aede08dfbe650d1528c91ec1600df34d437d8f236d160a243659fc086ca413e2",
+      "nifti_input_sha256": "82284dfbd3ca641d631fda2f7556f6c531c5b7321c646a4a598bbc030749f7f3",
+      "nifti_output": "lesionToads-atlas-2012/atlas_InterVentricular-WM.nii.gz",
+      "nifti_output_sha256": "ee6171d0dae368dbd19c6a9c8585e5dbd62846d05f5bdf15efe3b1a484ef6565",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -171.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -215.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Putamen.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Putamen.raw",
+      "source_payload_sha256": "238abb088375c23b41792f022564b6bdce086a856bf502ffb0036be18ca82ca4",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Putamen.xml",
+      "mipav_xml_sha256": "596b00388873ae4485c4923ae3f83273e564c68c8a27a7d1dd753d8ea685389a",
+      "nifti_input_sha256": "88368beee7cb015699050c5b7d33f0a210e1c541e9d8b39a91440c2e833491a8",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Putamen.nii.gz",
+      "nifti_output_sha256": "f7bd8f170ccdd3d00a61bec2a8b26fb9c729773a2fde5f4aedf6f1d53e534049",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Putamen_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Putamen_cruise.raw",
+      "source_payload_sha256": "113b83ff9fbb5b10e8e9035229c6388b4a5647f56f39f32b8d2f3efa49f97167",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Putamen_cruise.xml",
+      "mipav_xml_sha256": "3a5876e06a3126edcba6c2bda95b2d052f686f9c335abc1581afb8c3d76e896d",
+      "nifti_input_sha256": "e60946a50dbf742e4443f0883e9048c038293501d0f4d8b28feb02bec872dfbb",
+      "nifti_output": "cruise-atlas-10obj/atlas_Putamen_cruise.nii.gz",
+      "nifti_output_sha256": "e3160e905aa985dd69e07f5658dd863dcef82caf6577fbc407412010b06901a4",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Sulcal-CSF.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Sulcal-CSF.raw",
+      "source_payload_sha256": "66d7f4ca36e7a016f93d594e0e16ab606d14ac5aa9e041ddbc2263d892d5572c",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Sulcal-CSF.xml",
+      "mipav_xml_sha256": "7bf387485ee0a02bc7ba749756f18da1bd9659e16fa20b26c3690cfc0ef3a968",
+      "nifti_input_sha256": "77c8005464c2f57a1c07a2b72c1851edca1b026724e715bf38216f125c979da3",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Sulcal-CSF.nii.gz",
+      "nifti_output_sha256": "438ed7736eb3b04d5b05b3bdea7ac30383d616824feb3d44d04059625a07d385",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_SulcalCSF_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_SulcalCSF_cruise.raw",
+      "source_payload_sha256": "20b55ea7f965fa459897a9ef416b258f71c0f141ce7080aa47f8e901b42aff93",
+      "mipav_xml": "cruise-atlas-10obj/atlas_SulcalCSF_cruise.xml",
+      "mipav_xml_sha256": "57a0f3fecf4b8cad6b70808b444560424798eb06948c1d7a6da2520d027d9850",
+      "nifti_input_sha256": "0b1703c8b5218da0f4c449649ec19d08c8ab8299cf361d89c0de1d1926823713",
+      "nifti_output": "cruise-atlas-10obj/atlas_SulcalCSF_cruise.nii.gz",
+      "nifti_output_sha256": "5e667a553343f48b6a3d45cf8c9189a0ece4a1b242d46f4657ee04ca0226060e",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Thalamus.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Thalamus.raw",
+      "source_payload_sha256": "9371c4bcaa0a05616dd3b6e8120f7f0137571227c2a1794c6a760a80723c7dc3",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Thalamus.xml",
+      "mipav_xml_sha256": "7d2d0266a718f594dfe1dbef494cd64ccc9c3b90aa850e145fedae2c3eee5e46",
+      "nifti_input_sha256": "f4227b33617f4ea5e76f93d62cb356b62f97f29ea8165f90ed4cd53310114e39",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Thalamus.nii.gz",
+      "nifti_output_sha256": "49779dbe3ea1666259f4ddb2803dfe974e509e25a92d038a8bd2b681c4873246",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Thalamus_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Thalamus_cruise.raw",
+      "source_payload_sha256": "b0e2dca21c1803e00c6bafbfb8a7fcb6be41bb3a77fe7e31fb3ca10fce668612",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Thalamus_cruise.xml",
+      "mipav_xml_sha256": "4d040722b48b8e82db683ac7fb165ca39b39a68769943c806161e1acc21c853f",
+      "nifti_input_sha256": "574020356304988c0917e170150ab4cce8ea67e5a43ff524c683f3b64906b86b",
+      "nifti_output": "cruise-atlas-10obj/atlas_Thalamus_cruise.nii.gz",
+      "nifti_output_sha256": "193442b212721d3897c550a9f154c6e033239a630f40f23b87101ab5c7315402",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Ventricles.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/atlas_Ventricles.raw",
+      "source_payload_sha256": "f0c01bba988671149bc6607b61393f36b736cf4698e1874d913fabad64f1d132",
+      "mipav_xml": "lesionToads-atlas-2012/atlas_Ventricles.xml",
+      "mipav_xml_sha256": "669d12b070a33c779bfdfc6917d3e705c8de0d17fdf89bd716e604513f434190",
+      "nifti_input_sha256": "811615ccd9fa8d4c0f4f04f3a1d9a2bfdeaf94776be04b45f3dc5d9b9ead73e5",
+      "nifti_output": "lesionToads-atlas-2012/atlas_Ventricles.nii.gz",
+      "nifti_output_sha256": "2b50e9fa89aa89bf390d6f9e150a22c9d7d22197a00ca9f6ab34ed35ab1b62e7",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          12.83492660522461
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -40.18924331665039
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -188.7275733947754
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -59.67473602294922
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "atlas_Ventricles_cruise.nii.gz",
+      "source_payload": "cruise-atlas-10obj/atlas_Ventricles_cruise.raw",
+      "source_payload_sha256": "4a220797992bca6b34452238e1a96a93bc0a547f418e504431e60090cfaf7038",
+      "mipav_xml": "cruise-atlas-10obj/atlas_Ventricles_cruise.xml",
+      "mipav_xml_sha256": "3eec3fcaccbfb6283b94faba49288bf9838fd96a99f0ab993d26bfabb711555e",
+      "nifti_input_sha256": "06b66ad8489d75f3806bd0e0e6d69fb2bcb759b0358d4aff7bc86d1c618bf440",
+      "nifti_output": "cruise-atlas-10obj/atlas_Ventricles_cruise.nii.gz",
+      "nifti_output_sha256": "871df53b57c96fb9489fb83156a8f376f6677826cb617d248f2bc0a158c57ffc",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "float32",
+      "output_dtype": "float32",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          180.30490112304688
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -197.9706268310547
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          -21.257598876953125
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -239.0625
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "brain-atlas-cruise-10obj-topology.nii.gz",
+      "source_payload": "cruise-atlas-10obj/brain-atlas-cruise-10obj-topology.raw",
+      "source_payload_sha256": "c7a9c96b5238b77891809ca57f2775a9470750377eaa70ff086ee07746db8cf4",
+      "mipav_xml": "cruise-atlas-10obj/brain-atlas-cruise-10obj-topology.xml",
+      "mipav_xml_sha256": "f04211b22c278618d6fc94e918d7473723602816a5182ca80be276601cf401ba",
+      "nifti_input_sha256": "df3e20682317b45ac182fa653fbbf037e8c852ce844342a50f926f74daab4012",
+      "nifti_output": "cruise-atlas-10obj/brain-atlas-cruise-10obj-topology.nii.gz",
+      "nifti_output_sha256": "0228ba7c6030184fd448eef564fe56ebb9a69a7b3e31ff5d0ebebef53e292985",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "int8",
+      "output_dtype": "int8",
+      "input_axis_codes": [
+        "L",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          -1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -171.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -215.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    },
+    {
+      "staged_filename": "brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz",
+      "source_payload": "lesionToads-atlas-2012/brain-atlas-cruise-12obj-lesions-topology_calc.raw",
+      "source_payload_sha256": "d3c62b07a4ccde8de220c7ead8e3bcad093f3f640aaf282ed8f888b1c60ac011",
+      "mipav_xml": "lesionToads-atlas-2012/brain-atlas-cruise-12obj-lesions-topology_calc.xml",
+      "mipav_xml_sha256": "4a809a4b8de74a41bcb9426de2b3ff9994d84d52c2eb61c3bd50d0f6dd94786a",
+      "nifti_input_sha256": "f22709220fafe9274601181b6bd4a4ba2ebd9da4e05403338a5f67f8ee7b7ca6",
+      "nifti_output": "lesionToads-atlas-2012/brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz",
+      "nifti_output_sha256": "9081e4a70954206a02d61ec817f2f9c8e9e8c6f0d36869ecb64bb812925e5199",
+      "input_shape": [
+        172,
+        216,
+        164
+      ],
+      "output_shape": [
+        172,
+        216,
+        164
+      ],
+      "input_dtype": "int8",
+      "output_dtype": "int8",
+      "input_axis_codes": [
+        "R",
+        "P",
+        "S"
+      ],
+      "output_axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "input_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          -0.9375,
+          0.0,
+          204.95326232910156
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "output_affine_ras": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "voxel_values_exact_after_axis_reorientation": true,
+      "physical_mapping_preserved_from_supplied_nifti": true,
+      "source_voxel_values_exact_after_ras_reorientation": true,
+      "source_value_validation_method": "values exact after RAS reorientation=True; XML endian=Little, data match endian=Little",
+      "input_hash_captured_before_normalization": true
+    }
+  ],
+  "known_source_metadata_caveats": [
+    "Some source MIPAV XML files declare Unknown subject-axis orientation; the converted NIfTI affine supplied for that image was used and preserved.",
+    "For OAS1 rotated raw volumes, XML says Little endian but big-endian decoding exactly matches the supplied NIfTI voxel values.",
+    "Analyze headers provide no trustworthy physical origin; their voxel values match after orientation, but source-to-world placement cannot be proven.",
+    "The original hashes of NIfTIs already in the spectre source folder were not captured before in-place RAS normalization; source payload hashes and pre-normalization affines/orientations remain recorded where available."
+  ]
+}

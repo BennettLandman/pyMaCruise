@@ -8,7 +8,9 @@ Included datasets:
 - `spectre/`: SPECTRE atlas assets used by the selected V3 skull-strip wrapper.
 - `lesionToads-atlas-2012/`: lesion-TOADS assets used by the selected MaCRUISEplus workflow.
 
-All assets are committed as regular Git files. `SHA256SUMS` lists SHA-256 hashes for each bundled file, excluding the checksum file itself. CVS working-copy metadata was omitted.
+All assets are committed as regular Git files. Image payloads are compressed NIfTI (`.nii.gz`) with RAS voxel axes. `SHA256SUMS` lists SHA-256 hashes for each bundled file, excluding the checksum file itself. CVS working-copy metadata was omitted. Non-image MIPAV XML metadata and text descriptors remain in their native formats; descriptors point to the NIfTI payloads.
+
+The user-provided NIfTI conversions were moved into their corresponding atlas folders and normalized by axis permutation/flip only. `CONVERSION_AUDIT.json` records source payload hashes, input/output geometry, exact voxel-value checks, output hashes, and metadata caveats. All 35 converted volumes match source voxel values exactly after RAS reorientation. The source Analyze examples do not establish a reliable world origin; some MIPAV XML entries report unknown orientation, and three rotated OAS1 raw files have an endian declaration that disagrees with their exact matching values. Resolve these source-coordinate details before claiming full atlas physical-space equivalence.
 
 The MNI 305 reference image and mask are required for full MNI-space output, but were not present in the supplied source trees; they are not fabricated or substituted here. The associated output remains an explicit asset gap.
 

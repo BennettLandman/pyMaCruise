@@ -1,6 +1,6 @@
 # Workflow Input and Output Contract
 
-**Status:** P07 started; source-derived contract recorded, synthetic acceptance cases pending.
+**Status:** P07 validated on synthetic inputs; downstream pipeline behavior remains to be implemented.
 **Reference:** MaCRUISE SVN revision 9360, `run_maCRUISE_v3.m` and `pipeline/maCRUISEpipeline.m`; MaCRUISEplus uses `run_maCRUISEplus_v1.m` and `pipeline/maCRUISEpluspipeline.m`.
 
 ## Supported workflow profiles
@@ -26,7 +26,7 @@ The two profiles must be explicit configuration choices. Do not infer plus mode 
 - MaSeg is a 3D, single-volume NIfTI label map. Values are compared by exact equality in the MATLAB source; the port should reject non-finite or non-integer-valued labels rather than silently round them.
 - The source does not remap the MaSeg labels. It derives binary `uint8` masks whose selected voxels are 255 and all others are 0.
 - Active cortical-separation sets in `cortical_seperation.m` are:
-  - **Atlas_GM:** `100–109`, `112–125`, `128–129`, `132–157`, and `160–207` (the listed integer labels within those ranges; source list remains authoritative).
+  - **Atlas_GM:** `100–109`, `112–125`, `128–129`, `132–157`, `160–187`, and `190–207`; labels `188` and `189` are excluded by the source's explicit list.
   - **Atlas_WM and Atlas_Mask:** `4, 23, 30, 36, 37, 44, 45, 51, 52, 55–62` (the listed integer labels; `Atlas_Mask` intentionally uses this WM set alone).
   - **Atlas_BrainTissueMask:** GM labels plus WM labels plus `31, 32, 47, 48, 49, 50, 75, 76`.
 - For base and plus segmentation, MaSeg is the spatial reference for cortical-separation products and for transferring TOADS results back to the segmentation space. Geometry differences must be resolved explicitly; same array shape alone is not sufficient evidence of alignment.
@@ -68,4 +68,4 @@ Outputs are written beneath a caller-selected output directory. Every volume and
 - Permuted/flipped-axis and LPS image/surface inputs are normalized to RAS with visible warnings and recorded transforms; generated volume and mesh outputs pass RAS orientation/frame checks.
 - Output manifest identifies required scientific outputs and MNI outputs unavailable due to missing MNI assets; it contains no visualization-product requirement.
 
-The cases above are requirements, not claims of completed implementation or validation. They will be assigned to the deterministic fixture and test roadmap steps.
+The MaSeg-to-mask label sets are implemented in `src/pymacruise/cortical_separation.py` and checked against the exact source lists, including labels at range boundaries and exclusions. The remaining cases above are requirements, not claims of completed implementation or validation. They will be assigned to the deterministic fixture and test roadmap steps.

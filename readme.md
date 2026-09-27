@@ -32,19 +32,27 @@ Start with the base T1 + MaSeg workflow. The selected follow-on plus contract is
 - **ANTsPy (`antspyx`):** N4 bias correction and ANTs registration operations.
 - **scikit-image:** standard image processing only where its behavior matches the source step.
 - **Scientific surfaces:** select a mesh geometry/format library only if required by P30–P31; no renderer or viewer dependency is in scope.
-- **pytest:** focused unit, stage, and end-to-end fixtures when implementation validation begins.
+- **pytest:** focused unit, stage, and end-to-end fixtures.
 
-Pin compatible package versions after establishing the implementation environment.
+Core dependency compatibility bounds and the optional ANTs extra are declared in `pyproject.toml`; the current validated environment versions are recorded in [docs/assets-and-dependencies.md](docs/assets-and-dependencies.md).
 
 PyMaCRUISE has no FreeSurfer dependency or runtime requirement: users will not need FreeSurfer installed, licensed, configured, or provide FreeSurfer data or outputs. Mentions in the source notes describe historical MaCRUISE behavior only.
 
-All image data stored by PyMaCRUISE—including bundled image assets, synthetic fixtures, cached intermediates, and outputs—must use compressed NIfTI (`.nii.gz`). Convert incoming images to `.nii.gz` before storing them in the project or using them as persisted workflow inputs. Non-image metadata/configuration files keep their appropriate formats. The currently bundled legacy atlas payloads still include MIPAV `.raw`/XML and Analyze `.img`/`.hdr` files; their conversion and descriptor updates are tracked in P05c.
+All image data stored by PyMaCRUISE—including bundled image assets, synthetic fixtures, cached intermediates, and outputs—uses compressed NIfTI (`.nii.gz`). Bundled atlas image payloads have been normalized to RAS; the source and conversion audit is under `data/atlases/`. Non-image metadata/configuration files keep their appropriate formats. Some historical source geometry metadata remains uncertain and is clearly flagged in the audit and P05c.
 
 ## Plan and progress
 
 See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
 
-Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The full MaSeg-informed plus contract is documented in [docs/plus-baseline.md](docs/plus-baseline.md), active base-stage mappings are in [docs/source-map.md](docs/source-map.md), source/assets/runtime requirements are in [docs/assets-and-dependencies.md](docs/assets-and-dependencies.md), working image/coordinate conventions are in [docs/image-coordinate-conventions.md](docs/image-coordinate-conventions.md), and the input/output contract is in [docs/io-contract.md](docs/io-contract.md). Supplied TOADS/CRUISE, SPECTRE, and lesion-TOADS runtime assets are bundled under `data/atlases/` as regular Git files. The license/attribution inventory and TTO handoff notes are in [license_info.md](license_info.md); preserved upstream notice files are under `licenses/upstream/`. The MNI reference/mask are absent from the supplied source trees. Synthetic fixtures, algorithm ports, and their validation have not yet been completed.
+Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as the corrected base reference. The project owner clarified that numbered runners are bug-fix versions and versions below V3 had bugs; see [docs/source-baseline.md](docs/source-baseline.md). The full MaSeg-informed plus contract is documented in [docs/plus-baseline.md](docs/plus-baseline.md), active base-stage mappings are in [docs/source-map.md](docs/source-map.md), source/assets/runtime requirements are in [docs/assets-and-dependencies.md](docs/assets-and-dependencies.md), working image/coordinate conventions are in [docs/image-coordinate-conventions.md](docs/image-coordinate-conventions.md), and the input/output contract is in [docs/io-contract.md](docs/io-contract.md). Supplied TOADS/CRUISE, SPECTRE, and lesion-TOADS runtime assets are bundled under `data/atlases/` as regular Git files; all 35 atlas NIfTIs have exact voxel-value matches and RAS voxel axes, with source geometry caveats recorded. The license/attribution inventory and TTO handoff notes are in [license_info.md](license_info.md); preserved upstream notice files are under `licenses/upstream/`. The MNI reference/mask are absent from the supplied source trees. Synthetic fixtures and generic infrastructure are in place; MaCRUISE algorithm stages and equivalence checks remain to be ported.
+
+The currently implemented CLI entry point supports the implemented stages:
+
+```text
+pymacruise prepare-raw --t1 T1.nii.gz --maseg MaSeg.nii.gz --output-dir Raw
+pymacruise cortical-separation --maseg Seg.nii.gz --output-dir CorticalSeparation
+pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --output Sum.nii.gz
+```
 
 ### 2026-09-27 roadmap update
 
@@ -56,14 +64,29 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 - Completed roadmap step P03: selected the full MaSeg-informed T1 + MaSeg + FLAIR plus workflow using `run_maCRUISEplus_v1`; documented its settings and the distinct deferred Origin/no-MaSeg variants in `docs/plus-baseline.md`.
 - Completed roadmap step P04: traced the selected V3 pipeline and outputs to Python libraries, VandyCRUISE algorithm families, and the MaCRUISE-specific adapters in `toads-cruise/src` in `docs/source-map.md`.
 - Completed roadmap step P05: cataloged the source trees, CVS/SVN version evidence, atlas payloads, available notices, absent MNI references, external-tool availability, and dependency gaps in `docs/assets-and-dependencies.md`.
-- Completed roadmap step P05a: copied all supplied atlas trees required by the selected base/plus wrapper paths into `data/atlases/`, excluded CVS working-copy metadata, stored every payload as a regular Git file, and recorded 76 SHA-256 entries. The MNI reference/mask remain unavailable in the supplied trees. The atlas image payloads still use legacy formats; their `.nii.gz` conversion is tracked in P05c.
+- Completed roadmap step P05a: copied all supplied atlas trees required by the selected base/plus wrapper paths into `data/atlases/`, excluded CVS working-copy metadata, stored every payload as a regular Git file, and recorded SHA-256 entries. The MNI reference/mask remain unavailable in the supplied trees.
 - Completed roadmap step P05b: preserved all 70 files from the supplied MIPAV/JIST license directories under `licenses/upstream/` and documented source attributions, module-comment practice, owner direction, and the later TTO licensing handoff in `license_info.md`.
 - Started roadmap step P06: recorded source-backed NIfTI array, orientation-transfer, coordinate-frame, interpolation, crop, and header rules in `docs/image-coordinate-conventions.md`. Affine/axis, landmark, crop, and transform checks remain pending; P06 is not validated.
-- Started roadmap step P07: recorded the base/plus input profiles, MaSeg label-to-mask sets, scientific outputs, excluded presentation outputs, failure behavior, and synthetic acceptance cases in `docs/io-contract.md`.
-- Started roadmap step P08: recorded the project-owner's segmentation and surface-position tolerances in `docs/validation-tolerances.md`; metric definitions and synthetic validation remain pending.
+- Completed P07: added profile-aware synthetic T1/MaSeg/FLAIR validation for dimensionality, finite intensity values, integer labels, grid agreement, and RAS warning/reorientation behavior; documented the full input/output policy.
+- Completed P08: the user confirmed minimum per-region Dice ≥0.97, symmetric surface Hausdorff ≤1 mm, and symmetric mean nearest-surface distance ≤0.01 mm; output-class comparison methods and synthetic metric evidence are recorded in `docs/validation-tolerances.md`.
 - Completed roadmap steps P09–P10: added a seeded phantom generator and committed a compact, checksummed corpus of compressed NIfTI image fixtures plus a RAS surface mesh under `tests/data/synthetic/`.
 - Visualization tools, FreeView scripting/rendering, and FreeSurfer comparisons are excluded from this port. P47 reserves a post-acceptance discussion of modern Python visualization options.
-- The package scaffold and generic volume operator remain in progress. The current synthetic/generic-operator suite passes 9 tests; full pipeline and algorithm equivalence remain pending.
+- Completed P11: added exact voxel, Dice/Jaccard, voxel error, point-cloud/triangle-surface, transform, and mesh-topology metrics plus deterministic JSON reports. The current offline synthetic suite passes 51 tests.
+- Started P05c: normalized 35 user-provided atlas NIfTIs to RAS, moved them to their source atlas folders, updated descriptors, removed legacy image payloads from the working tree, and regenerated checksums. Exact voxel data checks pass for all assets; original world-coordinate certainty remains unresolved for Analyze examples and source files with incomplete MIPAV metadata.
+- Started P12: bounded core/optional dependencies in `pyproject.toml`; editable installation succeeded in the project virtual environment without installing ANTsPy. A fresh-environment installation check remains.
+- Completed P12–P14: bounded core/optional dependencies, added the `pymacruise` CLI entry point, implemented geometry-aware NIfTI I/O, validated typed workflow profiles, and added run manifests with dependency versions, hashes, and configuration-sensitive signatures.
+- Completed P15–P17: verified generic voxel arithmetic; ported RAS-normalized `prepare_raw`; ported exact source-label MaSeg cortical separation and all four masks.
+- Started P22: source-traced the default 3-D boundary algorithm and selected CSF merge rules; its thin-skeleton product is separately gated with P27.
+- Completed P22: ported the source's default 3-D six-neighbor erosion boundary, overlooked-label removal, low-label contact suppression, and selected CSF merge modes 1 and 3; exact synthetic arrays and RAS image geometry pass.
+- Completed P23: ported both exact V3 boundary-cleanup thresholds (`>0.01` and `>25.5`), with equality/above-threshold tests and aligned RAS image handling.
+- The next ready source stage is TOADS preprocessing; no TOADS/CRUISE algorithm stage has yet been ported or numerically validated.
+
+### 2026-09-27 implementation update
+
+- Completed P07 and P11–P17 with profile/input contracts, a synthetic comparison harness, package/CLI scaffolding, RAS NIfTI I/O, configuration/manifests, the generic operator, raw input preparation, and exact MaSeg cortical-separation masks.
+- Updated `data/atlases/`: all 35 supplied NIfTI conversions are in the correct atlas folders, use RAS axes, match the original voxel values exactly after axis reorientation, and have updated compressed-NIfTI descriptors and checksums. P05c remains Started while unresolved legacy physical-origin metadata is reviewed.
+- The user confirmed the segmentation and surface-position metric interpretations; P08 is complete.
+- The synthetic suite passes 51 tests; the editable install and `pymacruise --version` / `--help` succeed without ANTsPy installed.
 
 ## Validation plan
 

@@ -7,11 +7,19 @@ name = "pymacruise"
 version = "0.1.0"
 description = "Python-native MaCRUISE cortical segmentation and surface workflow"
 readme = "readme.md"
-requires-python = ">=3.10"
-dependencies = ["numpy", "nibabel"]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "numpy>=1.23,<3",
+    "nibabel>=5.2,<6",
+    "scipy>=1.10,<2",
+]
 
 [project.optional-dependencies]
-ants = ["antspyx"]
+ants = ["antspyx>=0.5,<1"]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+pymacruise = "pymacruise.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

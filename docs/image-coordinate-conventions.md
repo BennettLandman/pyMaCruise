@@ -1,6 +1,6 @@
 # Image and Coordinate Conventions
 
-**Status:** P06 started; source review recorded, synthetic landmark validation pending.
+**Status:** P06 started; RAS volume I/O and synthetic image landmarks are validated, but surface/transform frame handling remains pending.
 **Scope:** Establish the spatial rules PyMaCRUISE will use when loading, transforming, cropping, combining, and writing NIfTI volumes. All persisted image files use compressed NIfTI (`.nii.gz`); this is a working contract until the synthetic checks in P06 pass.
 
 ## Source behavior observed
@@ -26,10 +26,10 @@
 
 ## Pending decisions and validation
 
-- Compare RAS normalization and warnings to NiBabel orientation handling and MIPAV `ReorientVolume` on axis-aligned, permuted-axis, flipped-axis, oblique, and LPS-coordinate synthetic images/surfaces.
+- RAS volume normalization/warnings and asymmetric image landmark round-trips are covered by `tests/test_image_io.py`, `tests/test_volume_ops.py`, and `tests/test_raw_preparation.py`. Compare surface/frame conversions to the companion `ReorientVolume` behavior when surface I/O is implemented.
 - Confirm exact crop bounds, edge clipping/padding, and affine update against `CubicVolumeCropper` using a small asymmetric GM mask and landmark companion image.
 - Inspect NiBabel and ANTsPy runtime behavior after the P12 environment is created; verify transform direction and physical units with a hand-calculated translation/rotation phantom.
-- Add synthetic files and automated checks under `tests/data/synthetic/` and `tests/` at the planned fixture/test steps. This document does not claim those checks have passed.
+- Synthetic fixtures and automated checks under `tests/data/synthetic/` and `tests/` validate current volume behavior. They do not yet cover crop/inverse-crop transforms or non-RAS mesh I/O.
 - Resolve conflicting coded qform/sform behavior against the legacy runtime before treating the affine-selection policy as a final compatibility guarantee.
 
 ## Source references

@@ -16,7 +16,7 @@ InterVentricular-WM	26	obj
 Frontal-WM	27	obj
  
 Topology Atlas: 
-File:	brain-atlas-cruise-12obj-lesions-topology_calc.raw
+File:	brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz
 Dimensions:	172	216	164
 Resolutions:	0.9375	0.9375	0.9375
  
@@ -25,31 +25,31 @@ Dimensions:	172	216	164
 Resolutions:	0.9375	0.9375	0.9375
 Orientations:	1	1	6	3
 Structure:	Background
-File:	atlas_Background.raw
+File:	atlas_Background.nii.gz
 Structure:	Sulcal-CSF
-File:	atlas_Sulcal-CSF.raw
+File:	atlas_Sulcal-CSF.nii.gz
 Structure:	Ventricles
-File:	atlas_Ventricles.raw
+File:	atlas_Ventricles.nii.gz
 Structure:	Cerebellum-GM
-File:	atlas_Cerebellum-GM.raw
+File:	atlas_Cerebellum-GM.nii.gz
 Structure:	Cerebrum-GM
-File:	atlas_Cerebrum-GM.raw
+File:	atlas_Cerebrum-GM.nii.gz
 Structure:	Caudate
-File:	atlas_Caudate.raw
+File:	atlas_Caudate.nii.gz
 Structure:	Thalamus
-File:	atlas_Thalamus.raw
+File:	atlas_Thalamus.nii.gz
 Structure:	Putamen
-File:	atlas_Putamen.raw
+File:	atlas_Putamen.nii.gz
 Structure:	Brainstem
-File:	atlas_Brainstem.raw
+File:	atlas_Brainstem.nii.gz
 Structure:	Cerebellum-WM
-File:	atlas_Cerebellum-WM.raw
+File:	atlas_Cerebellum-WM.nii.gz
 Structure:	OuterVentricular-WM
-File:	atlas_Cerebrum-WM.raw
+File:	atlas_Cerebrum-WM.nii.gz
 Structure:	InterVentricular-WM
-File:	atlas_InterVentricular-WM.raw
+File:	atlas_InterVentricular-WM.nii.gz
 Structure:	Frontal-WM
-File:	atlas_Inferior-WM.raw
+File:	atlas_Inferior-WM.nii.gz
   
 Intensity Atlas:	0
 T1_SPGR	0.0	0.2	0.2	0.5	0.5	0.5	0.7	0.7	0.9	0.9	0.9	0.9	0.9
