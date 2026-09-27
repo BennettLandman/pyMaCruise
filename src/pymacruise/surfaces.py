@@ -13,9 +13,10 @@ JIST source code.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import warnings
+from typing import Mapping
 
 import nibabel as nib
 import numpy as np
@@ -32,6 +33,7 @@ class SurfaceMesh:
     faces: np.ndarray
     coordinate_frame: str = "RAS"
     units: str = "mm"
+    point_data: Mapping[str, np.ndarray] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         vertices = np.asarray(self.vertices, dtype=np.float64)
@@ -48,8 +50,19 @@ class SurfaceMesh:
             raise ValueError("Surface contains a face with repeated vertex indices")
         if self.coordinate_frame != "RAS" or self.units != "mm":
             raise ValueError("SurfaceMesh coordinates must be RAS+ millimetres")
+        point_data: dict[str, np.ndarray] = {}
+        for name, values in self.point_data.items():
+            array = np.asarray(values, dtype=np.float64)
+            if not name or array.ndim not in (1, 2) or array.shape[0] != len(vertices):
+                raise ValueError(f"Point data {name!r} must have one value row per vertex")
+            if array.ndim == 2 and array.shape[1] < 1:
+                raise ValueError(f"Point data {name!r} has no components")
+            if not np.isfinite(array).all():
+                raise ValueError(f"Point data {name!r} contains NaN or infinite values")
+            point_data[name] = array
         object.__setattr__(self, "vertices", vertices)
         object.__setattr__(self, "faces", faces)
+        object.__setattr__(self, "point_data", point_data)
 
 
 def _signed_mesh_volume(vertices: np.ndarray, faces: np.ndarray) -> float:
@@ -120,7 +133,7 @@ def convert_surface_to_ras(
     """Convert an explicitly identified RAS+ or LPS surface to RAS+ mm."""
     frame = input_frame.upper().replace("+", "")
     if frame in {"RAS", "RASMM"}:
-        return SurfaceMesh(mesh.vertices.copy(), mesh.faces.copy())
+        return SurfaceMesh(mesh.vertices.copy(), mesh.faces.copy(), point_data=mesh.point_data)
     if frame not in {"LPS", "LPSMM"}:
         raise ValueError("Surface coordinate frame must be RAS or LPS")
     warnings.warn(
@@ -130,7 +143,26 @@ def convert_surface_to_ras(
     )
     vertices = mesh.vertices.copy()
     vertices[:, :2] *= -1
-    return SurfaceMesh(vertices, mesh.faces[:, ::-1].copy())
+    return SurfaceMesh(
+        vertices,
+        mesh.faces[:, ::-1].copy(),
+        point_data=mesh.point_data,
+    )
+
+
+def surface_vertex_normals(mesh: SurfaceMesh) -> np.ndarray:
+    """Compute outward area-weighted unit normals from the triangle winding."""
+    triangles = mesh.vertices[mesh.faces]
+    face_normals = np.cross(
+        triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]
+    )
+    normals = np.zeros_like(mesh.vertices)
+    for corner in range(3):
+        np.add.at(normals, mesh.faces[:, corner], face_normals)
+    lengths = np.linalg.norm(normals, axis=1)
+    if np.any(lengths <= np.finfo(float).eps):
+        raise ValueError("Surface has vertices without a defined normal")
+    return normals / lengths[:, None]
 
 
 def write_legacy_vtk(mesh: SurfaceMesh, path: str | Path) -> Path:
@@ -148,6 +180,13 @@ def write_legacy_vtk(mesh: SurfaceMesh, path: str | Path) -> Path:
         stream.write(f"POLYGONS {len(mesh.faces)} {4 * len(mesh.faces)}\n")
         polygons = np.column_stack((np.full(len(mesh.faces), 3), mesh.faces))
         np.savetxt(stream, polygons, fmt="%d %d %d %d")
+        if mesh.point_data:
+            stream.write(f"POINT_DATA {len(mesh.vertices)}\n")
+            stream.write(f"FIELD PointData {len(mesh.point_data)}\n")
+            for name, data in mesh.point_data.items():
+                values = data.reshape(len(mesh.vertices), -1)
+                stream.write(f"{name} {values.shape[1]} {len(mesh.vertices)} double\n")
+                np.savetxt(stream, values, fmt=" ".join(["%.10g"] * values.shape[1]))
     return destination
 
 
@@ -197,7 +236,52 @@ def read_legacy_vtk(
                 raise ValueError("Only triangular VTK POLYDATA faces are supported")
             faces.append([int(value) for value in polygon_tokens[cursor + 1 : cursor + 4]])
             cursor += 4
-        mesh = SurfaceMesh(vertices, np.asarray(faces, dtype=np.int64))
+        point_data: dict[str, np.ndarray] = {}
+        trailing = polygon_header + 3 + cursor
+        if "POINT_DATA" in tokens[trailing:]:
+            point_header = tokens.index("POINT_DATA", trailing)
+            n_point_data = int(tokens[point_header + 1])
+            if n_point_data != n_vertices:
+                raise ValueError("VTK POINT_DATA count does not match the vertex count")
+            data_cursor = point_header + 2
+            while data_cursor < len(tokens):
+                kind = tokens[data_cursor]
+                if kind == "FIELD":
+                    n_arrays = int(tokens[data_cursor + 2])
+                    data_cursor += 3
+                    for _ in range(n_arrays):
+                        name = tokens[data_cursor]
+                        n_components = int(tokens[data_cursor + 1])
+                        n_tuples = int(tokens[data_cursor + 2])
+                        data_cursor += 4
+                        if n_tuples != n_vertices:
+                            raise ValueError(f"VTK point-data field {name!r} has the wrong tuple count")
+                        count = n_components * n_tuples
+                        field_values = np.asarray(
+                            tokens[data_cursor : data_cursor + count], dtype=np.float64
+                        ).reshape(n_tuples, n_components)
+                        point_data[name] = (
+                            field_values[:, 0] if n_components == 1 else field_values
+                        )
+                        data_cursor += count
+                elif kind == "SCALARS":
+                    name = tokens[data_cursor + 1]
+                    n_components = int(tokens[data_cursor + 3]) if tokens[data_cursor + 3] != "LOOKUP_TABLE" else 1
+                    data_cursor += 4 if n_components > 1 else 3
+                    if tokens[data_cursor] != "LOOKUP_TABLE":
+                        raise ValueError("Malformed VTK SCALARS lookup table")
+                    data_cursor += 2
+                    count = n_vertices * n_components
+                    scalar_values = np.asarray(
+                        tokens[data_cursor : data_cursor + count], dtype=np.float64
+                    ).reshape(n_vertices, n_components)
+                    point_data[name] = (
+                        scalar_values[:, 0] if n_components == 1 else scalar_values
+                    )
+                    data_cursor += count
+                else:
+                    raise ValueError(f"Unsupported VTK point-data section {kind!r}")
+        mesh = SurfaceMesh(vertices, np.asarray(faces, dtype=np.int64), point_data=point_data)
     except (ValueError, IndexError) as exc:
         raise ValueError(f"Malformed triangular legacy VTK surface: {source}") from exc
     return convert_surface_to_ras(mesh, input_frame=frame)

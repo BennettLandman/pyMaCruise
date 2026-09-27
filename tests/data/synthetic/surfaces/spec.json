@@ -10,6 +10,11 @@
     0.5,
     0.5
   ],
+  "thickness_shape_voxels": [
+    41,
+    41,
+    41
+  ],
   "orientation": "RAS",
   "center_voxel": [
     15.0,
@@ -28,6 +33,11 @@
       4.5,
       6.0
     ]
+  },
+  "thickness_sphere_radii_mm": {
+    "inner": 5.5,
+    "central": 6.5,
+    "outer": 7.5
   },
   "seed": null
 }

@@ -38,7 +38,14 @@ from pymacruise.surfaces import (
     convert_surface_to_ras,
     extract_levelset_surface,
     read_legacy_vtk,
+    surface_vertex_normals,
     write_legacy_vtk,
+)
+from pymacruise.thickness import (
+    SurfaceThicknessResult,
+    ThicknessVolumeResult,
+    closest_point_thickness,
+    levelset_subtraction_thickness,
 )
 
 __all__ = [
@@ -48,6 +55,8 @@ __all__ = [
     "ThinACEImageResult",
     "GVFImageResult",
     "SurfaceMesh",
+    "SurfaceThicknessResult",
+    "ThicknessVolumeResult",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -67,6 +76,9 @@ __all__ = [
     "convert_surface_to_ras",
     "read_legacy_vtk",
     "write_legacy_vtk",
+    "surface_vertex_normals",
+    "closest_point_thickness",
+    "levelset_subtraction_thickness",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",
