@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 import numpy as np
+import nibabel as nib
 import pytest
 
 from pymacruise.tgdm import (
     TGDMProfileSettings,
+    TGDMBaselineParameters,
     tgdm_evolve,
     tgdm_force,
     tgdm_geometry,
+    tgdm_initial_membership_level_set,
+    tgdm_inner_pressure_field,
+    tgdm_central_pressure_field,
+    tgdm_outer_pressure_field,
     tgdm_simple_point_618,
+    tgdm_tissue_sign_field,
+    tgdm_nested_arrays,
+    tgdm_nested_images,
+    _ras_vector_components,
 )
 
 
@@ -192,3 +202,141 @@ def test_tgdm_evolution_moves_planar_front_with_signed_pressure() -> None:
     assert result.level_set[4, 3, 3] == pytest.approx(-0.1, abs=1e-5)
     assert result.level_set[5, 3, 3] == pytest.approx(0.9, abs=1e-5)
     assert result.completed_steps == 1
+
+
+def test_tgdm_initial_membership_level_set_uses_iso_minus_membership_sign() -> None:
+    i, _, _ = np.indices((11, 7, 7), dtype=np.float32)
+    membership = i * 40
+
+    level_set = tgdm_initial_membership_level_set(membership, iso_level=160)
+
+    assert level_set[3, 3, 3] > 0
+    assert level_set[4, 3, 3] == pytest.approx(0, abs=1e-6)
+    assert level_set[7, 3, 3] < 0
+    assert np.max(np.abs(level_set)) <= 8
+
+
+def test_tgdm_tissue_sign_field_matches_source_quantization_and_branches() -> None:
+    wm = np.array([[[255, 0, 0, 128]]], dtype=np.float32)
+    gm = np.array([[[0, 255, 0, 128]]], dtype=np.float32)
+
+    result = tgdm_tissue_sign_field(wm, gm, white_matter_iso=0.1, gray_matter_iso=0.4)
+
+    np.testing.assert_array_equal(result, np.array([[[254, 127, 0, 183]]], dtype=np.uint8))
+
+
+def test_tgdm_surface_pressure_maps_match_source_scaling_and_skeleton_rule() -> None:
+    wm = np.array([[[0, 25.5, 255]]], dtype=np.float32)
+    np.testing.assert_allclose(tgdm_inner_pressure_field(wm), [[[-1, 0, 9]]])
+    np.testing.assert_allclose(tgdm_central_pressure_field(np.array([[[0, 127, 254]]])), [[[-1, 0, 1]]])
+
+    central = np.array([[[-1, 2, 5, 2]]], dtype=np.float32)
+    gray = np.array([[[0, 101.6, 255, 0]]], dtype=np.float32)
+    skeleton = np.array([[[0, 0, 0, 1]]], dtype=np.uint8)
+    field = tgdm_outer_pressure_field(central, gray, skeleton, gray_matter_iso=0.4)
+    np.testing.assert_allclose(field, [[[-1, 0, 35 / 34, -1.5]]])
+
+
+def test_tgdm_nested_array_adapter_routes_tissues_and_supports_zero_iteration_smoke_case() -> None:
+    x, y, z = np.indices((11, 11, 11))
+    radius = np.sqrt((x - 5) ** 2 + (y - 5) ** 2 + (z - 5) ** 2)
+    membership = np.where(radius <= 3, 255, 0).astype(np.float32)
+    wm = np.where(radius <= 2, 255, 0).astype(np.float32)
+    gm = np.where((radius > 2) & (radius <= 4), 150, 0).astype(np.float32)
+    ace_gm = np.where((radius > 2) & (radius <= 4), 220, 0).astype(np.float32)
+    parameters = TGDMBaselineParameters(
+        initial_iterations=0,
+        inner_iterations=0,
+        central_shrink_iterations=0,
+        central_iterations=0,
+        outer_iterations=0,
+    )
+
+    result = tgdm_nested_arrays(membership, wm, gm, ace_gm, parameters=parameters)
+
+    assert result.initial_level_set.shape == membership.shape
+    assert result.initial_level_set[5, 5, 5] < 0
+    assert result.tissue_sign.dtype == np.uint8
+    assert result.tissue_sign[5, 5, 5] == 254
+    for stage in (result.initial_inner, result.inner, result.central, result.outer):
+        np.testing.assert_array_equal(stage.level_set, result.initial_level_set)
+        assert stage.completed_steps == 0
+
+
+def test_tgdm_image_adapter_reorients_warns_and_returns_ras_outputs() -> None:
+    shape = (9, 8, 7)
+    i, j, k = np.indices(shape)
+    membership = np.where((i - 4) ** 2 + (j - 4) ** 2 + (k - 3) ** 2 <= 8, 255, 0).astype(np.float32)
+    wm = np.where(membership > 0, 255, 0).astype(np.float32)
+    gm = np.where(membership > 0, 100, 0).astype(np.float32)
+    ace_gm = np.where(membership > 0, 220, 0).astype(np.float32)
+    ras = np.eye(4)
+    flipped = np.diag([-1.0, 1.0, 1.0, 1.0])
+    flipped[0, 3] = shape[0] - 1
+    params = TGDMBaselineParameters(
+        initial_iterations=0,
+        inner_iterations=0,
+        central_shrink_iterations=0,
+        central_iterations=0,
+        outer_iterations=0,
+    )
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        result = tgdm_nested_images(
+            nib.Nifti1Image(membership, ras),
+            nib.Nifti1Image(wm[::-1].copy(), flipped),
+            nib.Nifti1Image(gm, ras),
+            nib.Nifti1Image(ace_gm, ras),
+            parameters=params,
+        )
+
+    for image in (
+        result.initial_level_set,
+        result.tissue_sign,
+        result.initial_inner,
+        result.inner,
+        result.central,
+        result.outer,
+    ):
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+        assert np.allclose(image.affine, ras)
+    np.testing.assert_array_equal(result.execution.tissue_sign[4, 4, 3], 254)
+
+
+def test_tgdm_image_adapter_rejects_mismatched_ras_grids() -> None:
+    data = np.zeros((5, 5, 5), dtype=np.float32)
+    reference = nib.Nifti1Image(data, np.eye(4))
+    shifted = np.eye(4)
+    shifted[0, 3] = 1
+    params = TGDMBaselineParameters(
+        initial_iterations=0,
+        inner_iterations=0,
+        central_shrink_iterations=0,
+        central_iterations=0,
+        outer_iterations=0,
+    )
+
+    with pytest.raises(ValueError, match="match the initial-membership RAS grid"):
+        tgdm_nested_images(
+            reference,
+            nib.Nifti1Image(data, shifted),
+            reference,
+            reference,
+            parameters=params,
+        )
+
+
+def test_tgdm_vector_components_follow_non_ras_axis_reorientation() -> None:
+    shape = (5, 4, 3)
+    affine = np.diag([-1.0, 1.0, 1.0, 1.0])
+    affine[0, 3] = shape[0] - 1
+    vector = np.zeros((*shape, 3), dtype=np.float32)
+    vector[..., 0] = 1
+
+    image = nib.Nifti1Image(vector, affine)
+    ras = nib.as_closest_canonical(image)
+    converted = _ras_vector_components(affine, np.asarray(ras.dataobj))
+
+    assert nib.aff2axcodes(ras.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(converted[..., 0], -1)
+    np.testing.assert_array_equal(converted[..., 1:], 0)
