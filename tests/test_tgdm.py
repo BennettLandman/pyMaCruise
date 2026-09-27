@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import nibabel as nib
 import pytest
@@ -340,3 +342,34 @@ def test_tgdm_vector_components_follow_non_ras_axis_reorientation() -> None:
     assert nib.aff2axcodes(ras.affine) == ("R", "A", "S")
     np.testing.assert_array_equal(converted[..., 0], -1)
     np.testing.assert_array_equal(converted[..., 1:], 0)
+
+
+def test_tgdm_nested_synthetic_phantom_runs_every_evolution_stage() -> None:
+    data_root = Path(__file__).parent / "data" / "synthetic" / "tgdm"
+    images = {
+        path.stem.removesuffix(".nii"): nib.load(str(path))
+        for path in data_root.glob("*.nii.gz")
+    }
+    parameters = TGDMBaselineParameters(
+        initial_iterations=1,
+        inner_iterations=1,
+        central_shrink_iterations=1,
+        central_iterations=1,
+        outer_iterations=1,
+    )
+
+    result = tgdm_nested_images(
+        images["initial_membership"],
+        images["white_matter"],
+        images["gray_matter"],
+        images["ace_gray_matter"],
+        ace_skeleton=images["ace_skeleton"],
+        parameters=parameters,
+    )
+
+    assert result.outer.shape == (25, 25, 25)
+    for image in (result.initial_inner, result.inner, result.central, result.outer):
+        assert np.isfinite(np.asarray(image.dataobj)).all()
+    assert result.execution.initial_inner.completed_steps == 10
+    assert result.execution.central.completed_steps == 10
+    assert result.execution.outer.completed_steps == 30

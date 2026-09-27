@@ -73,11 +73,12 @@ eighteen-connected exterior component checks used by the selected
 The current focused tests check hand-calculated quadratic derivatives and
 curvature numerators, flat-front pressure behavior, signed pressure upwinding,
 signed advection upwinding, simple-point acceptance/rejection, and invalid
-field rejection. The TGDM-specific suite has 18 tests. It also checks zero-
+field rejection. The TGDM-specific suite has 19 tests. It also checks zero-
 force planar evolution, signed-pressure planar-front movement, bound handling,
 wrapper force-field quantization, nested-stage routing, RAS warning/output
-behavior, and vector-component conversion. The full synthetic suite passes
-109 tests. This is early iterative coverage; it does **not** establish Java
+behavior, vector-component conversion, and a full nested run on the committed
+25³ concentric-tissue phantom under reduced synthetic iteration settings. The
+full synthetic suite passes 110 tests. This is early iterative coverage; it does **not** establish Java
 numerical equivalence.
 
 `tgdm_evolve` now supplies the low-level source-style solver for an already
@@ -113,6 +114,8 @@ reference comparisons. The selected adapter reads optional brain-mask and
 ACE-skeleton inputs; these fields have been wired into bounds/topology
 behavior, but need direct analytic tests.
 Trusted Java reference outputs are required for a numerical equivalence claim.
+The committed TGDM phantom and deterministic generator are under
+`tests/data/synthetic/tgdm/`; `SHA256SUMS` covers all compressed NIfTI inputs.
 
 The source has a connectivity inconsistency: `GenericTGDM` and its MaCRUISE
 copy `MaGenericTGDM` map both

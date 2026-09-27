@@ -1,0 +1,58 @@
+{
+  "description": "Synthetic nested spherical tissue phantom; no subject data.",
+  "shape": [
+    25,
+    25,
+    25
+  ],
+  "affine": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "orientation": "RAS",
+  "voxel_size_mm": [
+    1,
+    1,
+    1
+  ],
+  "center_voxel": [
+    12,
+    12,
+    12
+  ],
+  "radii_voxels": {
+    "white_matter": 5,
+    "gray_matter_outer": 8
+  },
+  "membership_values": [
+    0,
+    255
+  ],
+  "intensity_values": [
+    0,
+    220,
+    255
+  ]
+}
