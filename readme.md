@@ -2,7 +2,7 @@
 
 Python-native port of the MaCRUISE cortical segmentation and surface-generation workflow. The goal is to preserve the behavior and useful outputs of the existing MATLAB/JIST/MIPAV workflow while reusing established Python imaging libraries wherever they fit. We will port MaCRUISE-specific algorithms and workflow logic that do not have a suitable reusable implementation; routine file I/O, image operations, registration, and mesh handling should use existing libraries or supported tool wrappers.
 
-This README is the project plan and progress record. Update the checklist and decisions here as implementation and validation proceed.
+The detailed, step-by-step porting roadmap and acceptance table are in [plan.md](plan.md). This README is the project entry point and concise progress/decision summary; update it alongside the roadmap as implementation and validation proceed.
 
 ## Scope and target
 
@@ -39,55 +39,16 @@ Pin compatible package versions after establishing the implementation environmen
 
 ## Plan and progress
 
-Status key: `[x]` complete, `[~]` in progress, `[ ]` not started.
+See [plan.md](plan.md) for the authoritative step-by-step porting table, per-step validation criteria, synthetic-first development gates, and start/validation dates. Status key in that table: **Done**, **Started**, **Blocked**, **Not started**.
 
-### 0. Project setup
+Current progress: the package scaffold and geometry-aware generic volume operator exist. Detailed source mapping, synthetic fixtures, algorithm ports, and their validation have not yet been completed.
 
-- [x] Create this plan and progress record.
-- [x] Establish the initial Python package structure and dependency metadata.
+### 2026-09-27 roadmap update
 
-### 1. Establish contracts and source mapping
-
-- [ ] Identify the canonical MATLAB entry point and pipeline variant for the first release.
-- [ ] Map active MATLAB steps, parameters, inputs/outputs, and Java classes to VandyCRUISE algorithms or Python/library replacements.
-- [ ] Document JIST/MIPAV wrapper behavior that must be re-created in Python.
-- [ ] Inventory required atlas/configuration assets and external dependencies; identify what is bundled.
-- [ ] Define input contracts (T1, MaSeg, geometry, labels) and versioned outputs/intermediates.
-
-### 2. Create Python package and workflow foundation
-
-- [ ] Add package metadata, supported Python version, dependency pins, and a command-line entry point.
-- [ ] Add typed configuration for inputs, output directory, parameters, and optional stages.
-- [ ] Implement geometry-aware volume I/O and validation of shape, affine, orientation, spacing, and data type.
-- [ ] Implement run manifests, structured logging, stage output directories, and clear failure reporting.
-- [x] Implement generic voxel operators with explicit geometry and dtype rules.
-
-### 3. Port the base MaCRUISE stages
-
-- [ ] Raw input preparation and orientation/metadata handling.
-- [ ] Cortical label separation and mask preparation.
-- [ ] TOADS preprocessing/segmentation and transfer back to input space; use ANTsPy for N4 where appropriate.
-- [ ] Crop/uncrop, atlas/TOADS combination, and multi-atlas boundary/CSF preparation.
-- [ ] Topology correction.
-- [ ] ACE tissue enhancement and skeleton generation.
-- [ ] Gradient Vector Flow (GVF).
-- [ ] CRUISE/TGDM evolution of inner, central, and outer surfaces/level sets.
-- [ ] Mesh extraction, transfer to full/original space, cortical thickness, and MNI outputs.
-- [ ] Preserve useful intermediates and established output naming where practical.
-
-### 4. Add the MaCRUISEplus path
-
-- [ ] FLAIR-to-T1 rigid registration with ANTsPy and reference-compatible settings.
-- [ ] Lesion TOADS and associated masking/cleanup.
-- [ ] Plus-specific boundary, ACE, topology, and CRUISE/TGDM parameter differences.
-- [ ] Validate plus outputs separately from the base workflow.
-
-### 5. Optional outputs and usability
-
-- [ ] Python surface/volume visualization and report generation to replace optional FreeView screenshots.
-- [ ] Optional comparison with FreeSurfer subject surfaces and regional thickness results.
-- [ ] Batch/cluster execution support after the single-subject workflow is stable.
-- [ ] Installation, input, command, output, and troubleshooting documentation.
+- Added [plan.md](plan.md) with 47 ordered, independently validatable porting steps, validation gates, and date fields.
+- Split base MaCRUISE and MaCRUISEplus into explicit source-mapped implementation tracks.
+- Added a synthetic-data readiness gate before any real MRI integration, a committed-fixture policy, stage-wise numerical equivalence criteria, and final real-data acceptance phases.
+- Existing package scaffold and generic volume operator are marked started, not validated; no tests have been run yet.
 
 ## Validation plan
 
