@@ -98,6 +98,27 @@ and P18f/P18h in `plan.md`). This local LUT query does not port
 `MultipleToadSegmentation.isHomeomorphicSegmentation`, which also checks old
 and new objects and neighboring label relations, pairs, and triples.
 
+### Completed substage: 18/6 multi-label homeomorphic-change gate
+
+`src/pymacruise/toads_topology.py` ports the selected
+`MultipleToadSegmentation.isHomeomorphicSegmentation` local accept/reject
+logic with `checkComposed == false`: unchanged center labels accept
+immediately; otherwise the 18/6 LUT checks the proposed object, the old
+object, each distinct neighboring-label relation, and every unordered pair
+of neighboring-label relations for both old and new labels. The input is a
+complete x/y/z-ordered 3×3×3 short-label neighborhood. Callers must provide
+an interior voxel or padding, matching the source's unchecked 26-neighbor
+access.
+
+All 130 committed synthetic cases match the copied selected Java method-body
+excerpt against the actual selected `CriticalPointLUT` source and bundled
+18/6 table. This is a local topology gate only: it does not port TOADS
+membership evolution, priority/scheduling, multi-voxel update ordering,
+`checkComposed` variants, border policy, or full segmentation behavior. See
+the fixture notes at
+`tests/data/synthetic/toads_homeomorphic_change/README.md` and the harness in
+`tests/java_reference/ToadsHomeomorphicChangeReferenceHarness.java`.
+
 ## Historical V3 wrapper contract and selected Python deviation
 
 The historical `run_maCRUISE_v3.m` default selects BET. Its `run_Bet.m` branch
