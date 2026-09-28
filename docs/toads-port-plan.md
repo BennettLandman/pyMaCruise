@@ -157,6 +157,19 @@ java -cp /tmp/pymacruise-toads-init ToadsInitializationReferenceHarness \
   > tests/data/synthetic/toads_initialization/java_reference.json
 ```
 
+### Completed substage: selected atlas intensity-prior parsing
+
+`load_toads_intensity_priors` in `src/pymacruise/toads_atlas.py` follows the
+selected `MultipleToadDeformableAtlas.modalityId` alias mapping and
+`Intensity Atlas` descriptor section. It returns float32 priors in declared
+class order and in caller-requested channel order. The selected base
+T1_MPRAGE profile's 11 values match the standalone Java descriptor harness
+exactly. Alias, order, missing-profile, unknown-modality, and malformed-row
+cases are covered by `tests/test_toads_atlas_priors.py`. The selected T1
+profile is explicit, so this slice reports a missing profile rather than
+silently applying the source class's alternate label fallback. It reads only
+descriptor text and does not load atlas image arrays.
+
 The source Java atlas reader treats atlas files as headerless byte/float
 payloads in descriptor index order. The bundled NIfTIs have been axis-flipped
 to RAS and their headers do not necessarily represent the geometry used by
