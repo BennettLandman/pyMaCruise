@@ -138,6 +138,9 @@ including the source empty-support sentinel (`min=input dimensions`,
 This is only the fixed-transform support scan; registration optimization,
 iterative bound updates, and physical atlas-world origins remain open. See
 `tests/data/synthetic/toads_shape_bounds/README.md` for the fixture boundary.
+The active exact-membership rigid objective, its update rule, and the
+ANTsPy/SciPy substitution assessment are tracked in
+[toads-atlas-registration.md](toads-atlas-registration.md).
 
 ## Historical V3 wrapper contract and selected Python deviation
 
