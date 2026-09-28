@@ -93,6 +93,18 @@ rejected explicitly; it has not been shown to occur in the selected optimizer.
 This does not yet validate transform mapping, prior-gradient composition, or
 registration coefficient accumulation.
 
+### Per-voxel exact coefficient accumulation
+
+`exact_registration_coefficient_contributions` composes each sampled prior's
+x/y/z derivative with the 3×6 rigid coordinate Jacobian, then accumulates the
+selected source's cost, norm, six-entry gradient and diagonal Hessian, plus
+norm-gradient/norm-Hessian terms. A deterministic four-class voxel case
+matches all returned float32 accumulators from the Java method-formula
+excerpt exactly. The background, an unregistered class, and a zero-prior class
+exercise source skip rules. This validates one voxel's coefficient arithmetic
+only; it does not validate full-volume loop ordering, transform-dependent
+prior sampling, source coefficient normalization, line search, or alignment.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source

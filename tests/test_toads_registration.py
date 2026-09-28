@@ -10,6 +10,7 @@ import pytest
 from pymacruise.toads_registration import (
     exact_membership_registration_energy,
     exact_registration_measure_coefficients,
+    exact_registration_coefficient_contributions,
     rigid_image_to_template_jacobian,
     synthetic_registration_objective_inputs,
     trilinear_prior_derivatives,
@@ -25,6 +26,7 @@ HARNESS_HASH = "3c2e8bc403a1e04f201cbc29f6aa468175b202c4d2013bc1aefa4429d7bf8b41
 COEFFICIENT_HARNESS_HASH = "cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b2952114c39af1a5"
 DERIVATIVE_HARNESS_HASH = "127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae91c72f85a5b0"
 RIGID_JACOBIAN_HARNESS_HASH = "e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4"
+COEFFICIENT_ACCUMULATION_HARNESS_HASH = "20ac7238c1eaac7c6a9b72a2a974cca58582c0eaf2ab8fd7dead86755d7aa2d9"
 
 
 def test_exact_membership_energy_matches_source_formula_harness() -> None:
@@ -57,6 +59,7 @@ def test_registration_reference_sources_have_recorded_hashes() -> None:
         ("ToadsRegistrationCoefficientReferenceHarness.java", COEFFICIENT_HARNESS_HASH),
         ("ToadsPriorDerivativeReferenceHarness.java", DERIVATIVE_HARNESS_HASH),
         ("ToadsRigidJacobianReferenceHarness.java", RIGID_JACOBIAN_HARNESS_HASH),
+        ("ToadsRegistrationCoefficientAccumulationHarness.java", COEFFICIENT_ACCUMULATION_HARNESS_HASH),
     ):
         harness = ROOT / "java_reference" / name
         assert hashlib.sha256(harness.read_bytes()).hexdigest() == expected
@@ -125,6 +128,23 @@ def test_rigid_coordinate_jacobian_rejects_singular_rotation_derivative() -> Non
             (1.0, 1.0, 1.0),
             (1.0, 1.0, 1.0),
         )
+
+
+def test_registration_coefficient_contributions_match_source_formula_excerpt() -> None:
+    expected = json.loads(
+        (REFERENCE.parent / "java_coefficient_accumulation_reference.json").read_text()
+    )
+    actual = exact_registration_coefficient_contributions(
+        [0.9, 0.25, 0.75, 0.6],
+        [1.0, 0.5, 0.0, 0.8],
+        [[0, 0, 0], [0.1, -0.2, 0.3], [-0.4, 0.5, 0.2], [0.15, 0.05, -0.1]],
+        [[1, 2, 3, 4, 0, 0], [0.5, -1, 0.25, 0, 5, 0], [-0.75, 0.1, 0.3, 0, 0, 6]],
+        registered_classes=[True, True, False, True],
+    )
+    assert actual.cost == np.float32(expected["cost"])
+    assert actual.norm == np.float32(expected["norm"])
+    for field in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
+        np.testing.assert_array_equal(getattr(actual, field), np.asarray(expected[field], dtype=np.float32))
 
 
 @pytest.mark.parametrize(

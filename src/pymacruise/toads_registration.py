@@ -2,8 +2,96 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+
+@dataclass(frozen=True)
+class RegistrationCoefficientSums:
+    """Float32 sums accumulated by the selected exact registration loop."""
+
+    cost: np.float32
+    norm: np.float32
+    gradient: NDArray[np.float32]
+    hessian: NDArray[np.float32]
+    norm_gradient: NDArray[np.float32]
+    norm_hessian: NDArray[np.float32]
+
+
+def exact_registration_coefficient_contributions(
+    memberships: ArrayLike,
+    shape_priors: ArrayLike,
+    prior_gradients_xyz: ArrayLike,
+    coordinate_jacobian: ArrayLike,
+    *,
+    registered_classes: ArrayLike | None = None,
+) -> RegistrationCoefficientSums:
+    """Accumulate one voxel's exact-membership registration coefficients.
+
+    This follows the selected source's registered-class loop after a prior
+    and its x/y/z derivatives have been sampled. It preserves float32 source
+    operation order for cost/norm, gradient/Hessian, and norm derivatives.
+    The caller performs final measure normalization separately.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    prior = np.asarray(shape_priors, dtype=np.float32)
+    prior_grad = np.asarray(prior_gradients_xyz, dtype=np.float32)
+    jacobian = np.asarray(coordinate_jacobian, dtype=np.float32)
+    if mem.ndim != 1 or mem.size < 2 or prior.shape != mem.shape:
+        raise ValueError("memberships and shape_priors must be matching class vectors")
+    if prior_grad.shape != (mem.size, 3):
+        raise ValueError("prior_gradients_xyz must have shape (classes, 3)")
+    if jacobian.shape != (3, 6):
+        raise ValueError("coordinate_jacobian must have shape (3, 6)")
+    if not all(np.isfinite(v).all() for v in (mem, prior, prior_grad, jacobian)):
+        raise ValueError("registration contribution inputs must be finite")
+    if registered_classes is None:
+        registered = np.ones(mem.size, dtype=bool)
+    else:
+        registered = np.asarray(registered_classes, dtype=bool)
+        if registered.shape != mem.shape:
+            raise ValueError("registered_classes must have one value per class")
+
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    norm_gradient = np.zeros(6, dtype=np.float32)
+    norm_hessian = np.zeros(6, dtype=np.float32)
+    for k in range(1, mem.size):
+        p = prior[k]
+        if not registered[k] or p <= np.float32(0.0):
+            continue
+        m = mem[k]
+        m2 = np.float32(m * m)
+        p2 = np.float32(p * p)
+        cost = np.float32(cost + np.float32(np.float32(m2 * p) * p))
+        norm = np.float32(norm + p2)
+        dp = np.empty(6, dtype=np.float32)
+        for parameter in range(6):
+            value = np.float32(prior_grad[k, 0] * jacobian[0, parameter])
+            value = np.float32(value + np.float32(prior_grad[k, 1] * jacobian[1, parameter]))
+            dp[parameter] = np.float32(value + np.float32(prior_grad[k, 2] * jacobian[2, parameter]))
+        for parameter in range(6):
+            gradient_term = np.float32(np.float32(2.0) * m)
+            gradient_term = np.float32(gradient_term * m)
+            gradient_term = np.float32(gradient_term * p)
+            gradient_term = np.float32(gradient_term * dp[parameter])
+            gradient[parameter] = np.float32(gradient[parameter] + gradient_term)
+            hessian_term = np.float32(np.float32(2.0) * m)
+            hessian_term = np.float32(hessian_term * m)
+            hessian_term = np.float32(hessian_term * dp[parameter])
+            hessian_term = np.float32(hessian_term * dp[parameter])
+            hessian[parameter] = np.float32(hessian[parameter] + hessian_term)
+            norm_gradient_term = np.float32(np.float32(np.float32(2.0) * p) * dp[parameter])
+            norm_gradient[parameter] = np.float32(norm_gradient[parameter] + norm_gradient_term)
+            norm_hessian_term = np.float32(np.float32(np.float32(2.0) * dp[parameter]) * dp[parameter])
+            norm_hessian[parameter] = np.float32(norm_hessian[parameter] + norm_hessian_term)
+    return RegistrationCoefficientSums(
+        cost, norm, gradient, hessian, norm_gradient, norm_hessian
+    )
 
 
 def exact_membership_registration_energy(

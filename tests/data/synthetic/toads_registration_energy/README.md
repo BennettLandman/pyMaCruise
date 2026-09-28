@@ -43,3 +43,8 @@ The rigid-coordinate Jacobian excerpt is
 `e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4`; its
 synthetic reference is `java_rigid_jacobian_reference.json` (SHA-256
 `db9450821c6142e7383b94b27a158224efc6531f4980a04bd89a0c0251d542a3`).
+The one-voxel coefficient excerpt is
+`tests/java_reference/ToadsRegistrationCoefficientAccumulationHarness.java`,
+SHA-256 `20ac7238c1eaac7c6a9b72a2a974cca58582c0eaf2ab8fd7dead86755d7aa2d9`;
+its output is `java_coefficient_accumulation_reference.json` (SHA-256
+`fbef8094da69fe49d512afd143810dddb18e6400901a57629da13e7b654afa60`).
