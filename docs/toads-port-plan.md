@@ -344,8 +344,22 @@ It is generated from synthetic fields only. Source SHA-256 values:
 
 The focused Dura test module passes 11 tests, including this harness comparison.
 This remains Started pending broader topology/dura phantoms, source-faithful
-reinitialization comparison during the complete evolution, and wrapper cleanup
-behavior.
+reinitialization comparison during complete evolution, and the rest of the
+wrapper's topology and pre-evolution behavior.
+
+### Started substage: Dura wrapper output-mask application
+
+`apply_dura_output_mask` uses NumPy masking for the source wrapper's final
+voxelwise output loop. This is generic array work, so the Python port uses
+NumPy rather than reimplementing the Java loop. The adapter preserves the
+source comparison order (`evolved_level_set >= mask_translation` is outside),
+zeros original/WM/GM values there, creates an 8-bit inside mask, and applies
+`level_set_translation` only after the threshold decision. The synthetic test
+includes values exactly on both sides of the threshold, a translation that
+would change the mask if applied first, and verifies inputs are not mutated.
+The focused Dura test module now passes 14 tests. This validates only this
+voxelwise output adapter; topology correction, end-to-end input construction,
+physical headers, and the entire removal wrapper remain open.
 
 ### Completed geometry slice: TOADS crop and topology resampling
 

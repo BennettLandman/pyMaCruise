@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_dura import (
+    apply_dura_output_mask,
     dura_tgdm_evolve,
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
@@ -34,6 +35,53 @@ DURA_TGDM_FIXTURE = (
     / "dura_tgdm_full_evolution"
     / "java_reference.json"
 )
+
+
+def test_dura_output_mask_matches_wrapper_threshold_order_and_copies() -> None:
+    shape = (2, 2, 2)
+    original = np.arange(8, dtype=np.float32).reshape(shape) + 10.0
+    white_matter = original + 20.0
+    gray_matter = original + 40.0
+    level_set = np.asarray([0.0, 1.9, 2.0, 2.1, -1.0, 1.0, 2.0, 3.0], dtype=np.float32).reshape(
+        shape
+    )
+    inputs = (original.copy(), white_matter.copy(), gray_matter.copy(), level_set.copy())
+
+    result = apply_dura_output_mask(
+        *inputs,
+        mask_translation=2.0,
+        level_set_translation=0.25,
+    )
+
+    expected_mask = np.asarray(level_set < 2.0, dtype=np.uint8)
+    np.testing.assert_array_equal(result.corrected_brain_mask, expected_mask)
+    np.testing.assert_array_equal(
+        result.stripped_volume, np.where(expected_mask, original, 0.0)
+    )
+    np.testing.assert_array_equal(
+        result.corrected_white_matter, np.where(expected_mask, white_matter, 0.0)
+    )
+    np.testing.assert_array_equal(
+        result.corrected_gray_matter, np.where(expected_mask, gray_matter, 0.0)
+    )
+    np.testing.assert_array_equal(result.brain_mask_level_set, level_set - np.float32(0.25))
+    for actual_input, original_input in zip(inputs, (original, white_matter, gray_matter, level_set)):
+        np.testing.assert_array_equal(actual_input, original_input)
+
+
+@pytest.mark.parametrize(
+    ("replacement", "message"),
+    [
+        (np.full((2, 2), 0.0), "3D"),
+        (np.full((2, 2, 2), np.nan), "finite"),
+    ],
+)
+def test_dura_output_mask_rejects_invalid_fields(
+    replacement: np.ndarray, message: str
+) -> None:
+    field = np.zeros((2, 2, 2), dtype=np.float32)
+    with pytest.raises(ValueError, match=message):
+        apply_dura_output_mask(field, field, field, replacement)
 
 
 def test_dura_tgdm_full_profile_matches_vandy_java_harness() -> None:

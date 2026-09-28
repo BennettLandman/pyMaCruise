@@ -10,6 +10,8 @@ the source class (which does not use image voxel spacing).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from pymacruise.ace import _signed_distance_fmm
@@ -20,6 +22,68 @@ from pymacruise.tgdm import (
     tgdm_evolve,
     tgdm_geometry,
 )
+
+
+@dataclass(frozen=True)
+class DuraOutputMaskResult:
+    """Corrected volumes and mask products from the Dura wrapper's final loop."""
+
+    stripped_volume: np.ndarray
+    corrected_white_matter: np.ndarray
+    corrected_gray_matter: np.ndarray
+    brain_mask_level_set: np.ndarray
+    corrected_brain_mask: np.ndarray
+
+
+def apply_dura_output_mask(
+    original_volume: np.ndarray,
+    white_matter: np.ndarray,
+    gray_matter: np.ndarray,
+    evolved_level_set: np.ndarray,
+    *,
+    mask_translation: float = 2.0,
+    level_set_translation: float = 0.0,
+) -> DuraOutputMaskResult:
+    """Apply the final `MedicAlgorithmRemoveDura09` voxelwise output loop.
+
+    Voxels whose evolved level set is greater than or equal to the mask
+    threshold are zeroed from all three corrected volumes. Remaining voxels
+    are marked 1 in the binary mask. The level-set output is translated after
+    this decision, matching the order in the source wrapper.
+    """
+    source_arrays = tuple(
+        np.asarray(volume)
+        for volume in (original_volume, white_matter, gray_matter, evolved_level_set)
+    )
+    original, wm, gm, level_set = source_arrays
+    if level_set.ndim != 3 or any(size < 1 for size in level_set.shape):
+        raise ValueError("Dura output fields must be non-empty 3D arrays")
+    if any(volume.shape != level_set.shape for volume in source_arrays):
+        raise ValueError("Dura output fields must have identical shapes")
+    if any(not np.issubdtype(volume.dtype, np.number) for volume in source_arrays):
+        raise ValueError("Dura output fields must be numeric")
+    if any(not np.isfinite(volume).all() for volume in source_arrays):
+        raise ValueError("Dura output fields must be finite")
+    controls = np.asarray([mask_translation, level_set_translation], dtype=np.float32)
+    if not np.isfinite(controls).all():
+        raise ValueError("Dura mask translations must be finite")
+
+    inside_mask = np.asarray(level_set < controls[0], dtype=np.uint8)
+    outside = inside_mask == 0
+    stripped = np.array(original, copy=True)
+    corrected_wm = np.array(wm, copy=True)
+    corrected_gm = np.array(gm, copy=True)
+    stripped[outside] = 0
+    corrected_wm[outside] = 0
+    corrected_gm[outside] = 0
+    translated_level_set = np.asarray(level_set, dtype=np.float32) - controls[1]
+    return DuraOutputMaskResult(
+        stripped,
+        corrected_wm,
+        corrected_gm,
+        translated_level_set,
+        inside_mask,
+    )
 
 
 def dura_signed_distance_field(
