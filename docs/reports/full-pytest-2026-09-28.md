@@ -1,11 +1,11 @@
 # Full pytest evidence for completed roadmap rows
 
-This report provides one authoritative full-repository test run for every row
-currently marked **Done** in `plan.md`. Each row below identifies its
-stage-specific evidence and cites the same complete suite run. This shared run
-is regression evidence across the repository; it does not replace the
-row-specific numerical comparisons, source audits, asset checks, and decisions
-documented in the linked evidence.
+This report records full-repository test runs for rows marked **Done** in
+`plan.md`. Each row identifies its stage-specific evidence and cites the exact
+full-suite run and tested implementation commit. Full-suite results provide
+regression evidence; they do not replace the row-specific numerical
+comparisons, source audits, asset checks, and decisions documented in the
+linked evidence.
 
 ## Recorded full-suite run
 
@@ -22,10 +22,24 @@ documented in the linked evidence.
 The tested commit is the implementation and test state used for this run.
 Only roadmap and report documentation was updated afterward to record its
 results and add P18i; implementation and test files are unchanged.
-The per-row entries refer to this single run, rather than mixing results from
-different historical suite sizes. Older full-suite counts elsewhere in
-progress notes are snapshots and are superseded by this report for the state
-identified by the tested commit above.
+The per-row entries identify this run wherever it is the cited validation
+evidence; later rows can cite a newer recorded run.
+
+## Additional full-suite run for P18j
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
+| Result | **218 passed in 63.57 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `c06d00c654c7642b708049aeeb95c221c35b1dfb` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 218 tests collected and all passed |
+
+This run adds the P18j local TOADS multi-label topology gate. Earlier row
+entries retain their original full-suite run and exact tested commit; P18j
+cites this newer run.
 
 ## Evidence by Done row
 
@@ -60,6 +74,7 @@ identified by the tested commit above.
 | P18g — Port Dura dynamic-pressure point update | `tests/test_toads_dura.py` compares an interior positive-pressure point and a mirrored-boundary negative-pressure point against the selected VandyCRUISE `DynamicPressureTGDM.updatePoint` and `DynamicPressureCortexProfile` Java harness within `5e-10`; invalid shapes and coordinates reject. This does not validate the GenericTGDM evolution loop, topology veto, scheduling, or reinitialization. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P18h — Use selected TOADS 18/6 LUT predicate | `tests/test_toads_critical_lut.py` compares key packing and lookup result for all 68 committed neighborhoods against the selected Java `CriticalPointLUT` class (four edge cases plus 64 seeded patterns). This validates one-neighborhood regularity only, not multi-label homeomorphism checks. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P18i — Port fixed-transform TOADS shape sampling | `tests/test_toads_shape_sampling.py` compares eight fixed-transform prior samples, mapped coordinates, boundary defaults, and slope/clipping against the selected Java `ParametricTransform`, `ImageFunctions`, `Numerics`, and shape postprocessing harness. Float32 outputs and mapped coordinates match exactly. This does not run atlas registration or optimized bounds. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
+| P18j — Port TOADS 18/6 multi-label homeomorphic-change gate | `tests/test_toads_topology.py` compares 130 synthetic cases against the selected Java method-body excerpt and actual `CriticalPointLUT`; fixture scope is documented under `tests/data/synthetic/toads_homeomorphic_change/`. | `218 passed`; commit `c06d00c654c7642b708049aeeb95c221c35b1dfb` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
