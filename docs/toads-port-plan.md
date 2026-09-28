@@ -461,4 +461,6 @@ ported and their reference comparison passes. The P18ae data-term slice is
 described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md),
 and P18af validates its PSF-bias input primitive in
 [a separate source-formula comparison](reports/toads-psf-ridge-bias-2026-09-28.md).
-Neither slice completes membership evolution.
+P18ag validates the six-face smoothing increment in
+[another source-formula report](reports/toads-six-face-smoothing-2026-09-28.md).
+These slices do not complete membership evolution.
