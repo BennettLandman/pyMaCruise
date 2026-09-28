@@ -67,9 +67,12 @@ does not establish full atlas geometry alignment or segmentation parity.
 The root descriptor's filenames were changed to `.nii.gz` for the Python
 repository's storage contract; the Java source reader expects raw payloads.
 The Python source-index array loader is implemented and exact against the 12
-available raw source maps. A future test-only Java comparison adapter must
-serialize these arrays in the source primitive type and byte order. Physical
-atlas geometry is still an open P18 validation item.
+available raw source maps. Thus no source raw files need to be bundled: runtime
+loading uses only repository NIfTIs and the committed conversion audit. The
+descriptor-versus-header spacing contract is documented in
+[the P18ac source audit](reports/toads-atlas-spacing-source-audit-2026-09-28.md).
+Physical atlas-to-input alignment remains unvalidated and is separate from the
+confirmed source loader rule.
 
 ### Completed substage: fixed-transform shape-prior sampling
 
