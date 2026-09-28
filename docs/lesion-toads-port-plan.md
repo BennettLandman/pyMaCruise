@@ -1,9 +1,9 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a (numeric intensity initialization) and P39b
-(atlas-prior parsing) are validated on synthetic/reference data. This document
-tracks algorithm scope and source contracts; it does not claim a full
-LesionTOADS port.
+**Status:** P39 is Started. P39a (numeric intensity initialization), P39b
+(atlas-prior parsing), and P39c (capped six-neighbor distance support) are
+validated on synthetic/reference data. This document tracks algorithm scope
+and source contracts; it does not claim a full LesionTOADS port.
 
 ## Selected workflow and source
 
@@ -59,6 +59,20 @@ inputs. The bundled `cruise-atlas-12obj-lesiontoads2012.txt` structure order
 and selected T1 MPRAGE/FLAIR values match the source descriptor; lesion priors
 are `[0.4, 1.2]` and black-hole priors `[0.1, 0.6]`. Missing selected profiles
 are rejected instead of using the source's zero/label fallback.
+
+### P39c: capped six-neighbor distance support
+
+`src/pymacruise/lesion_distance.py::lesion_toads_distance_to_mask` ports only
+the boolean-mask overload of `LesionToadSegmentation.fastDistance`. The
+committed synthetic arrays compare every output voxel against a standalone
+Java harness preserving the selected method's scan/cap behavior. This is a
+six-connected voxel-step field, not a spacing-aware or Euclidean distance.
+Objects are 0, reached background voxels have positive integer distance, and
+unreached/empty-mask voxels remain -1. The source executes its initial scan
+even with `max_distance=1`, so distance-2 voxels are assigned in that case;
+the Python helper preserves this behavior. This validates only a support
+primitive, not lesion membership or segmentation. See
+`tests/data/synthetic/lesion_toads_distance/README.md`.
 
 ## Next source-faithful increments
 

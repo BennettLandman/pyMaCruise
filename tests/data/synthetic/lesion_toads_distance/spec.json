@@ -1,0 +1,14 @@
+{
+  "description": "Deterministic synthetic inputs for the selected LesionTOADS capped six-neighbor distance helper; this does not represent a full lesion segmentation.",
+  "source_array_order": "x,y,z",
+  "distance_unit": "voxel steps (six-connected Manhattan distance)",
+  "cases": [
+    {"name": "empty_mask", "shape": [4, 3, 2], "max_distance": 5, "object_voxels": []},
+    {"name": "full_mask", "shape": [3, 2, 4], "max_distance": 5, "object_voxels": "all"},
+    {"name": "boundary_seed", "shape": [5, 4, 3], "max_distance": 4, "object_voxels": [[0, 0, 0], [0, 0, 1]]},
+    {"name": "isolated_cap_1", "shape": [7, 5, 5], "max_distance": 1, "object_voxels": [[3, 2, 2]]},
+    {"name": "isolated_cap_5", "shape": [7, 5, 5], "max_distance": 5, "object_voxels": [[3, 2, 2]]},
+    {"name": "isolated_cap_9", "shape": [11, 11, 11], "max_distance": 9, "object_voxels": [[5, 5, 5]]},
+    {"name": "diagonal_only", "shape": [3, 3, 3], "max_distance": 3, "object_voxels": [[0, 0, 0]]}
+  ]
+}
