@@ -75,12 +75,17 @@ image as `inOriginal`, plus the TOADS tissue maps. This is the defined
 brain-mask workflow and does not claim SPECTRE's affine registration or output
 equivalence.
 
-`run_Toads_jist.m` explicitly passes atlas scale `2.0`, smoothing `0.2`,
-maximum change `1e-4`, 50 iterations, rigid registration initialization, and
-`(18,6)` connectivity. Other relevant flags are `inCorrect=true`,
-`inOutput2=false`, and `inOutput3=false`. These values are fixed in the
-selected wrapper and must be checked against `MedicAlgorithmToads08` before
-they become Python defaults. `run_RemoveDura_jist.m` passes `-inCurvature
+`run_Toads_jist.m` passes `-inAtlas2 2.0`, `-inSmooting 0.2`,
+`-inMaximum 1e-4`, `-inMaximum2 50`, rigid atlas alignment, and `(18,6)`
+connectivity. In the selected `toads-cruise` constructor these map to
+`atlasCoefficient=2.0`, `atlasScale=0.2`, `smoothing=0.2`,
+`maxDistance=1e-4`, and `iterations=50`; `2.0` is not the atlas scale.
+Additional constructor values are `marchingLimit=3.0`, `volumeLimit=0.5`,
+`levels=4`, `firstIter=50`, `topIter=5`, `lastIter=0`,
+`correctInhomogeneity=true`, `Chebyshev`, polynomial degree `3`, and kernel
+size `30.0`. The wrapper also fixes `inOutput2=false` and
+`inOutput3=false`. These values were traced through `MedicAlgorithmToads08`
+into the selected companion `AlgorithmMultipleToads` constructor. `run_RemoveDura_jist.m` passes `-inCurvature
 0.5`, `-inLevel 1.0`, `-inAlignment 0.5`, `-inPressure 0.5`, `-inTarget
 0.3`, `-inMask 2.0`, `-inLevel2 0.0`, `-inMaximum 5`, `-inWM3 0.05`, and
 `-inGM2 0.02`. Keep these as source option/value pairs until each is mapped
