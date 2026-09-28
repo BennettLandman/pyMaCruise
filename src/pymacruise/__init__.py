@@ -62,7 +62,10 @@ from pymacruise.registration import (
     register_flair_to_t1,
     register_to_reference,
 )
-from pymacruise.toads_registration import exact_membership_registration_energy
+from pymacruise.toads_registration import (
+    exact_membership_registration_energy,
+    exact_registration_measure_coefficients,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -103,6 +106,7 @@ __all__ = [
     "refine_segmentation_by_surfaces",
     "register_to_reference",
     "exact_membership_registration_energy",
+    "exact_registration_measure_coefficients",
     "register_flair_to_t1",
     "apply_image_transform",
     "apply_transforms_to_points_ras",

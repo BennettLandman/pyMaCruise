@@ -52,6 +52,25 @@ classes and a selected-class/subsampled scan. The harness is a source-formula
 excerpt: it does not execute the full private source method, transform mapping,
 interpolation, derivatives, or the rigid update.
 
+### Coefficient normalization call-order finding
+
+The final exact-registration coefficient loop in the selected source first
+replaces each `hessian[i]` with `registrationMeasureHessian(hessian[i],
+nhess[i], norm, normalize)`, whose active implementation returns `hess / norm`.
+It then assigns `gradient[i] = registrationMeasureGradient(hessian[i],
+nhess[i], norm, normalize)` rather than passing the accumulated `gradient[i]`.
+The active gradient helper returns its first argument divided by `norm`, so the
+observed result is the already-scaled Hessian divided by `norm` again. The
+source-faithful option in `exact_registration_measure_coefficients` preserves
+that call order by default. An apparent intended `gradient / norm` result is
+available only with `source_faithful=False`; no evidence yet supports using
+that corrected calculation for historical output reproduction.
+
+Two fixed coefficient vectors match a separate Java method-body excerpt
+exactly after float32 conversion. This establishes the selected method's
+call-order behavior, not the coefficient accumulators, optimizer schedule, or
+alignment quality.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source

@@ -68,6 +68,51 @@ def exact_membership_registration_energy(
         return np.float32(cost / norm)
 
 
+def exact_registration_measure_coefficients(
+    gradient: ArrayLike,
+    hessian: ArrayLike,
+    norm_gradient: ArrayLike,
+    norm_hessian: ArrayLike,
+    norm: float,
+    *,
+    source_faithful: bool = True,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Apply the selected source's final rigid-registration coefficient step.
+
+    The VandyCRUISE method first assigns ``hessian[i] = hessian[i] / norm``
+    and then calls ``registrationMeasureGradient(hessian[i], nhess[i],
+    norm, normalize)``. The helper returns its first argument divided by
+    ``norm``, so this source call uses the normalized Hessian as the gradient
+    numerator and divides by ``norm`` again. ``source_faithful=True`` preserves
+    this observed behavior. Set it false to compute the apparent intended
+    ``gradient / norm`` for experiments; that corrected behavior is not the
+    historical default and has no output-equivalence claim.
+
+    The source's current helper implementations ignore ``norm_gradient``,
+    ``norm_hessian``, and the ``normalize`` scaling argument.
+    """
+    grad = np.asarray(gradient, dtype=np.float32)
+    hess = np.asarray(hessian, dtype=np.float32)
+    ngrad = np.asarray(norm_gradient, dtype=np.float32)
+    nhess = np.asarray(norm_hessian, dtype=np.float32)
+    if grad.ndim != 1 or hess.shape != grad.shape:
+        raise ValueError("gradient and hessian must be matching one-dimensional arrays")
+    if ngrad.shape != grad.shape or nhess.shape != grad.shape:
+        raise ValueError("norm gradient and Hessian must match the coefficient arrays")
+    if not all(np.isfinite(values).all() for values in (grad, hess, ngrad, nhess)):
+        raise ValueError("registration coefficients must be finite")
+    norm_value = np.float32(norm)
+    if not np.isfinite(norm_value) or norm_value < 0:
+        raise ValueError("norm must be finite and non-negative")
+    with np.errstate(divide="ignore", invalid="ignore"):
+        scaled_hessian = np.divide(hess, norm_value, dtype=np.float32)
+        if source_faithful:
+            scaled_gradient = np.divide(scaled_hessian, norm_value, dtype=np.float32)
+        else:
+            scaled_gradient = np.divide(grad, norm_value, dtype=np.float32)
+    return scaled_gradient, scaled_hessian
+
+
 def synthetic_registration_objective_inputs() -> tuple[NDArray[np.float32], NDArray[np.float32]]:
     """Return the deterministic 5×4×3×4 Java-reference objective phantom."""
     x, y, z, k = np.indices((5, 4, 3, 4), dtype=np.int32)
