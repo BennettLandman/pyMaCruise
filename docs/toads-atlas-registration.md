@@ -161,6 +161,17 @@ traced scratch peaks range from 0.0323 to 0.1580 MiB over those grids. These
 small-grid results still do not establish full atlas runtime or full-run
 performance. Details and the command are in [the P18w benchmark report](reports/toads-registration-vectorization-2026-09-28.md).
 
+P18x adds the selected `registerShapesExactPyramid` schedule and reproduces
+`ImageFunctions.subsample` block means, including float32 offset-loop order and
+discarded incomplete blocks; its 9×8×7×3 asymmetric fixture matches the Java
+formula harness exactly at factors 2 and 4. P18y extends rigid prior sampling
+to the source `ParametricTransform.imageToTemplate` scale formula and checks
+the existing scaled Jacobian against a Java formula harness at scales 1, 2, and
+4. These checks use odd full-resolution dimensions, explicit full-grid image
+and template centers, anisotropic spacing, and a nonzero rigid transform. They
+validate the coordinate and Jacobian primitives only; multi-resolution
+optimizer wiring and full Java optimizer equivalence remain open.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
@@ -188,10 +199,10 @@ The current Python loop is integrated only on small synthetic arrays. Continue
 with these source-grounded items before using bundled atlas grids or proceeding
 to full segmentation:
 
-1. Accelerate the streamed source-order path using measured vectorization or
-   compiled kernels; preserve exact float32 accumulation and compare against
-   both the dense path and Java formula references. Keep runtime and memory
-   benchmarks across increasing synthetic grids.
+1. Wire the validated pyramid schedule, block-mean inputs, scaled coordinates,
+   and Jacobians through a coarse-to-fine registration optimizer; compare each
+   level's objective and coefficients against the native-scale formulation on
+   controlled synthetic data.
 2. Build a Java harness that executes the selected full rigid-registration
    method body and compare transformed coordinates, energy, coefficients,
    accepted/rejected trials, and the final transform on known asymmetric
