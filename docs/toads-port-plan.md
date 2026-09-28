@@ -121,16 +121,21 @@ It constructs `inner = 0.5 - wmTC/255` and
 `outer = membership - unionTC/255`, runs original JIST `DistanceField` with
 caps 15 and 10, then evolves the outer field with
 `DynamicPressureTGDM(CONNECT_18_6)`. The P29 Python port covers a reusable
-`GenericTGDM`-style evolution kernel, but the selected
-`DynamicPressureTGDM.updatePoint` adds a reference-gradient alignment penalty
-and uses a specific profile schedule; that part is not implemented or
-validated yet. Although `MaGenericTGDM` and VandyCRUISE `GenericTGDM` share
-most core update behavior, they are distinct classes. `setReferenceLevelSet`
-computes the reference gradient; `solveBrainMaskSurface` clears the inner and
-outer bounds, so the gradient penalty remains active without bound clamping.
-P18 must compare at least one Java/Python single-point update before claiming
-this dura stage. Full evolution then needs the selected 4.8/3.6 narrow-band
-profile, 30 inner updates, five outer iterations, and signed-distance caps 6/5.
+`GenericTGDM`-style evolution kernel. `src/pymacruise/toads_dura.py` now
+implements the selected `DynamicPressureTGDM.updatePoint` reference-gradient
+alignment penalty and `DynamicPressureCortexProfile.getEffectiveForce` for
+one voxel. A committed 5³ fixture calls the selected Java subclass and profile
+on interior positive-pressure and mirrored-boundary negative-pressure
+examples; Python matches the updates within `5e-10`. This is point-update
+evidence only. It does not validate the GenericTGDM evolution loop, topology
+veto, narrow-band scheduling, landmine restart, or distance reinitialization.
+Although `MaGenericTGDM` and VandyCRUISE `GenericTGDM` share most core update
+behavior, they are distinct classes. `setReferenceLevelSet` computes the
+reference gradient; `solveBrainMaskSurface` clears the inner and outer bounds,
+so the gradient penalty remains active without bound clamping. Full evolution
+still needs the selected 4.8/3.6 narrow-band profile, 30 inner updates, five
+outer iterations, and signed-distance caps 6/5. See the fixture methodology
+and regeneration command in [the dynamic-update reference README](../tests/data/synthetic/dura_dynamic_update/README.md).
 
 The JIST option strings in `MedicAlgorithmToads08` and the matching output
 branches in the companion `toads-cruise/src/.../AlgorithmMultipleToads.java`
