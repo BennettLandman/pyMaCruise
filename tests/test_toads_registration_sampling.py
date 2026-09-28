@@ -612,3 +612,119 @@ def test_scaled_vectorized_registration_matches_scalar_reference_kernels() -> No
         template_center_xyz=template_center,
     )
     assert actual_energy == reference_energy
+
+
+def test_scaled_registration_energy_and_coefficients_match_java_harness() -> None:
+    fixture_dir = Path(__file__).parent / "data" / "synthetic" / "toads_scaled_registration_kernels"
+    membership_image = nib.load(fixture_dir / "memberships.nii.gz")
+    atlas_image = nib.load(fixture_dir / "atlas_shapes.nii.gz")
+    assert nib.aff2axcodes(membership_image.affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(atlas_image.affine) == ("R", "A", "S")
+    memberships = np.asanyarray(membership_image.dataobj, dtype=np.float32)
+    atlas = np.asanyarray(atlas_image.dataobj, dtype=np.float32)
+    x, y, z, k = np.indices(memberships.shape, dtype=np.int32)
+    np.testing.assert_array_equal(
+        memberships,
+        (((7 * x + 5 * y + 3 * z + 2 * k) % 17) / np.float32(16)).astype(np.float32),
+    )
+    x, y, z, k = np.indices(atlas.shape, dtype=np.int32)
+    atlas_reference = (((2 * x + 5 * y + 3 * z + 4 * k) % 11) / np.float32(10)).astype(np.float32)
+    atlas_reference[x >= 8] = 0.0
+    np.testing.assert_array_equal(
+        atlas,
+        atlas_reference,
+    )
+    harness = Path(__file__).parent / "java_reference" / "ToadsScaledRegistrationKernelsReferenceHarness.java"
+    assert hashlib.sha256(harness.read_bytes()).hexdigest() == (
+        "16347a6c4f2e1719c3d35368372a32404392e2959f020d1a01959eda2caac3f8"
+    )
+    reference = json.loads((fixture_dir / "java_reference.json").read_text())
+    levels = build_toads_registration_pyramid(memberships, atlas, levels=3)
+    assert [level.scale for level in levels] == [4, 2]
+    image_center = tuple(size / 2.0 for size in memberships.shape[:3])
+    template_center = tuple(size / 2.0 for size in atlas.shape[:3])
+    transform = (0.14, 0.07, -0.05, 0.2, -0.1, 0.3)
+    image_res = (0.8, 1.2, 1.5)
+    template_res = (0.9, 1.1, 1.3)
+    max_absolute_difference = 0.0
+    for level in levels:
+        expected = reference[f"scale_{level.scale}"]
+        dimensions = level.memberships.shape[:3]
+        low = np.zeros((3, 3), dtype=np.int64)
+        high = np.broadcast_to(np.asarray(dimensions, dtype=np.int64), low.shape).copy()
+        actual_energy = vectorized_toads_registration_energy(
+            level.memberships,
+            level.atlas_shapes,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            scale=level.scale,
+            image_center_xyz=image_center,
+            template_center_xyz=template_center,
+        )
+        actual = vectorized_toads_registration_coefficients(
+            level.memberships,
+            level.atlas_shapes,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            scale=level.scale,
+            image_center_xyz=image_center,
+            template_center_xyz=template_center,
+        )
+        scale_energy_cost_norm = np.asarray(expected["scale_energy_cost_norm"], np.float32)
+        assert scale_energy_cost_norm[0] == np.float32(level.scale)
+        for actual_value, reference_value, name in (
+            (actual_energy, scale_energy_cost_norm[1], "energy"),
+            (actual.cost, scale_energy_cost_norm[2], "cost"),
+            (actual.norm, scale_energy_cost_norm[3], "norm"),
+        ):
+            difference = float(abs(actual_value - reference_value))
+            max_absolute_difference = max(max_absolute_difference, difference)
+            np.testing.assert_allclose(
+                actual_value, reference_value, rtol=2e-7, atol=3e-8,
+                err_msg=f"scale {level.scale} {name}",
+            )
+        for name in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
+            expected_values = np.asarray(expected[name], np.float32)
+            difference = float(np.max(np.abs(getattr(actual, name) - expected_values)))
+            max_absolute_difference = max(max_absolute_difference, difference)
+            np.testing.assert_allclose(
+                getattr(actual, name), expected_values, rtol=1e-5, atol=3e-8,
+                err_msg=f"scale {level.scale} {name}",
+            )
+        positive_zero = np.asarray(expected["positive_zero_counts"], dtype=np.int64)
+        assert positive_zero[0] > 0
+        assert positive_zero[1] > 0
+        assert positive_zero.sum() == int(np.prod(dimensions)) * 2
+        scalar_positive = 0
+        scalar_zero = 0
+        for x in range(dimensions[0]):
+            for y in range(dimensions[1]):
+                for z in range(dimensions[2]):
+                    for class_index in (1, 2):
+                        sample = sample_toad_shape_prior(
+                            level.atlas_shapes[..., class_index],
+                            (x, y, z),
+                            image_dimensions_xyz=dimensions,
+                            image_resolutions_mm=image_res,
+                            template_resolutions_mm=template_res,
+                            transform=transform,
+                            class_index=class_index,
+                            bbox_low_xyz=(0, 0, 0),
+                            bbox_high_xyz=dimensions,
+                            shape_slope=1.0,
+                            scale=level.scale,
+                            image_center_xyz=image_center,
+                            template_center_xyz=template_center,
+                        )
+                        if sample.value > 0:
+                            scalar_positive += 1
+                        else:
+                            scalar_zero += 1
+        assert (scalar_positive, scalar_zero) == tuple(int(value) for value in positive_zero)
+    assert max_absolute_difference <= 1.5e-7, max_absolute_difference
