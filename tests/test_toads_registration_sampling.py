@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_registration import (
+    exact_membership_registration_coefficients,
+    exact_membership_registration_energy,
     rigid_image_to_template_jacobian,
     trilinear_prior_derivatives,
 )
@@ -11,6 +13,8 @@ from pymacruise.toads_registration_sampling import (
     register_toads_atlas_rigid,
     rigid_registration_coordinate_jacobians,
     sample_toads_registration_fields,
+    stream_toads_registration_coefficients,
+    stream_toads_registration_energy,
 )
 from pymacruise.toads_shapes import sample_toad_shape_prior
 
@@ -218,3 +222,76 @@ def test_rigid_registration_optimizer_honors_outer_stopping_gates() -> None:
     )
     assert by_lambda.stop_reason == "lambda_floor"
     assert len(by_lambda.iterations) == 1
+
+
+def test_streaming_registration_matches_dense_fields_and_coefficients_exactly() -> None:
+    atlas = _atlas()
+    dimensions = (4, 3, 3)
+    image_res = (1.4, 1.1, 1.7)
+    template_res = (0.9, 1.2, 1.5)
+    transform = (0.08, -0.04, 0.03, 0.5, -0.25, 0.2)
+    low = np.asarray(((0, 0, 0), (1, 0, 0), (0, 1, 1)), dtype=np.int64)
+    high = np.asarray((dimensions, (4, 3, 3), (3, 3, 3)), dtype=np.int64)
+    x, y, z, k = np.indices(dimensions + (3,), dtype=np.int32)
+    memberships = (((3 * x + 5 * y + 7 * z + 2 * k) % 17) / np.float32(16.0)).astype(np.float32)
+    registered = (True, True, False)
+    fields = sample_toads_registration_fields(
+        atlas,
+        input_dimensions_xyz=dimensions,
+        image_resolutions_mm=image_res,
+        template_resolutions_mm=template_res,
+        transform=transform,
+        class_bounds_low_xyz=low,
+        class_bounds_high_xyz=high,
+    )
+    jacobians = rigid_registration_coordinate_jacobians(
+        dimensions, transform, image_res, template_res
+    )
+
+    for offset, subsample in ((0, 1), (1, 2)):
+        dense_energy = exact_membership_registration_energy(
+            memberships,
+            fields.priors,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        streaming_energy = stream_toads_registration_energy(
+            memberships,
+            atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        assert streaming_energy == dense_energy
+
+        dense = exact_membership_registration_coefficients(
+            memberships,
+            fields.priors,
+            fields.prior_gradients_xyz,
+            jacobians,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        streaming = stream_toads_registration_coefficients(
+            memberships,
+            atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        for name in ("cost", "norm"):
+            assert getattr(streaming, name) == getattr(dense, name)
+        for name in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
+            np.testing.assert_array_equal(getattr(streaming, name), getattr(dense, name))

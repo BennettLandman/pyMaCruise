@@ -16,8 +16,6 @@ from numpy.typing import ArrayLike, NDArray
 from pymacruise.toads_registration import (
     RegistrationCoefficientSums,
     RegistrationLineSearchResult,
-    exact_membership_registration_coefficients,
-    exact_membership_registration_energy,
     exact_registration_measure_coefficients,
     exact_registration_gradient_descent_step,
     rigid_image_to_template_jacobian,
@@ -196,6 +194,194 @@ def rigid_registration_coordinate_jacobians(
     return result
 
 
+def stream_toads_registration_energy(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 1,
+) -> np.float32:
+    """Evaluate the exact-membership objective without storing atlas fields."""
+    mem, shapes, low, high, registered = _registration_inputs(
+        memberships, atlas_shapes, class_bounds_low_xyz, class_bounds_high_xyz, registered_classes
+    )
+    _validate_scan(mem.shape[:3], offset, subsample)
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    for x in range(offset, mem.shape[0], subsample):
+        for y in range(offset, mem.shape[1], subsample):
+            for z in range(offset, mem.shape[2], subsample):
+                for class_index in range(1, mem.shape[-1]):
+                    if not registered[class_index]:
+                        continue
+                    sample = sample_toad_shape_prior(
+                        shapes[..., class_index],
+                        (x, y, z),
+                        image_dimensions_xyz=mem.shape[:3],
+                        image_resolutions_mm=image_resolutions_mm,
+                        template_resolutions_mm=template_resolutions_mm,
+                        transform=transform,
+                        class_index=class_index,
+                        bbox_low_xyz=tuple(int(v) for v in low[class_index]),
+                        bbox_high_xyz=tuple(int(v) for v in high[class_index]),
+                        shape_slope=1.0,
+                    )
+                    p = sample.value
+                    if p > np.float32(0.0):
+                        m = mem[x, y, z, class_index]
+                        m2 = np.float32(m * m)
+                        p2 = np.float32(p * p)
+                        cost = np.float32(cost + np.float32(m2 * p2))
+                        norm = np.float32(norm + p2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.float32(cost / norm)
+
+
+def stream_toads_registration_coefficients(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 1,
+) -> RegistrationCoefficientSums:
+    """Accumulate TOADS rigid coefficients voxel-at-a-time in source order.
+
+    Only one class vector, its derivatives, and one 3×6 Jacobian are resident
+    at a time. Float32 additions occur in the original x/y/z/class order, so
+    the result can be compared exactly with both the Java-formula harness and
+    the dense P18s/P18t path.
+    """
+    mem, shapes, low, high, registered = _registration_inputs(
+        memberships, atlas_shapes, class_bounds_low_xyz, class_bounds_high_xyz, registered_classes
+    )
+    _validate_scan(mem.shape[:3], offset, subsample)
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    norm_gradient = np.zeros(6, dtype=np.float32)
+    norm_hessian = np.zeros(6, dtype=np.float32)
+    center = tuple(np.float32(size / 2.0) for size in mem.shape[:3])
+    parameters = tuple(float(v) for v in transform)
+
+    for x in range(offset, mem.shape[0], subsample):
+        for y in range(offset, mem.shape[1], subsample):
+            for z in range(offset, mem.shape[2], subsample):
+                point = (x, y, z)
+                jacobian = rigid_image_to_template_jacobian(
+                    point,
+                    parameters,
+                    center,
+                    image_resolutions_mm,
+                    template_resolutions_mm,
+                )
+                for class_index in range(1, mem.shape[-1]):
+                    if not registered[class_index]:
+                        continue
+                    sample = sample_toad_shape_prior(
+                        shapes[..., class_index],
+                        point,
+                        image_dimensions_xyz=mem.shape[:3],
+                        image_resolutions_mm=image_resolutions_mm,
+                        template_resolutions_mm=template_resolutions_mm,
+                        transform=parameters,
+                        class_index=class_index,
+                        bbox_low_xyz=tuple(int(v) for v in low[class_index]),
+                        bbox_high_xyz=tuple(int(v) for v in high[class_index]),
+                        shape_slope=1.0,
+                    )
+                    p = sample.value
+                    if p <= np.float32(0.0):
+                        continue
+                    assert sample.template_xyz is not None
+                    prior_gradient = trilinear_prior_derivatives(
+                        shapes[..., class_index], sample.template_xyz
+                    )
+                    m = mem[x, y, z, class_index]
+                    m2 = np.float32(m * m)
+                    p2 = np.float32(p * p)
+                    cost = np.float32(cost + np.float32(np.float32(m2 * p) * p))
+                    norm = np.float32(norm + p2)
+                    dp = np.empty(6, dtype=np.float32)
+                    for parameter in range(6):
+                        value = np.float32(prior_gradient[0] * jacobian[0, parameter])
+                        value = np.float32(value + np.float32(prior_gradient[1] * jacobian[1, parameter]))
+                        dp[parameter] = np.float32(value + np.float32(prior_gradient[2] * jacobian[2, parameter]))
+                    for parameter in range(6):
+                        gradient_term = np.float32(np.float32(2.0) * m)
+                        gradient_term = np.float32(gradient_term * m)
+                        gradient_term = np.float32(gradient_term * p)
+                        gradient_term = np.float32(gradient_term * dp[parameter])
+                        gradient[parameter] = np.float32(gradient[parameter] + gradient_term)
+                        hessian_term = np.float32(np.float32(2.0) * m)
+                        hessian_term = np.float32(hessian_term * m)
+                        hessian_term = np.float32(hessian_term * dp[parameter])
+                        hessian_term = np.float32(hessian_term * dp[parameter])
+                        hessian[parameter] = np.float32(hessian[parameter] + hessian_term)
+                        norm_gradient_term = np.float32(np.float32(np.float32(2.0) * p) * dp[parameter])
+                        norm_gradient[parameter] = np.float32(norm_gradient[parameter] + norm_gradient_term)
+                        norm_hessian_term = np.float32(np.float32(np.float32(2.0) * dp[parameter]) * dp[parameter])
+                        norm_hessian[parameter] = np.float32(norm_hessian[parameter] + norm_hessian_term)
+    return RegistrationCoefficientSums(
+        cost, norm, gradient, hessian, norm_gradient, norm_hessian
+    )
+
+
+def _registration_inputs(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None,
+) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.int64], NDArray[np.int64], NDArray[np.bool_]]:
+    mem = np.asarray(memberships, dtype=np.float32)
+    shapes = np.asarray(atlas_shapes, dtype=np.float32)
+    if mem.ndim != 4 or any(size < 1 for size in mem.shape[:3]) or mem.shape[-1] < 2:
+        raise ValueError("memberships must be a nonempty 4D (x, y, z, class) array")
+    if shapes.ndim != 4 or shapes.shape[-1] != mem.shape[-1] or any(size < 2 for size in shapes.shape[:3]):
+        raise ValueError("atlas_shapes must be 4D with one 3D prior per membership class")
+    if not np.isfinite(mem).all() or not np.isfinite(shapes).all():
+        raise ValueError("memberships and atlas shapes must be finite")
+    low = np.asarray(class_bounds_low_xyz)
+    high = np.asarray(class_bounds_high_xyz)
+    expected_shape = (mem.shape[-1], 3)
+    if low.shape != expected_shape or high.shape != expected_shape:
+        raise ValueError("class bounds must each have shape (class, 3)")
+    if not np.issubdtype(low.dtype, np.integer) or not np.issubdtype(high.dtype, np.integer):
+        raise ValueError("class bounds must contain integers")
+    registered = (
+        np.ones(mem.shape[-1], dtype=bool)
+        if registered_classes is None
+        else np.asarray(registered_classes, dtype=bool)
+    )
+    if registered.shape != (mem.shape[-1],):
+        raise ValueError("registered_classes must contain one flag per class")
+    return mem, shapes, low.astype(np.int64, copy=False), high.astype(np.int64, copy=False), registered
+
+
+def _validate_scan(
+    dimensions: tuple[int, int, int], offset: int, subsample: int
+) -> None:
+    if not isinstance(offset, (int, np.integer)) or offset < 0:
+        raise ValueError("offset must be a non-negative integer")
+    if not isinstance(subsample, (int, np.integer)) or subsample < 1:
+        raise ValueError("subsample must be a positive integer")
+    if offset >= min(dimensions):
+        raise ValueError("offset must be inside every spatial axis")
+
+
 def register_toads_atlas_rigid(
     memberships: ArrayLike,
     atlas_shapes: ArrayLike,
@@ -218,9 +404,9 @@ def register_toads_atlas_rigid(
     This connects source-matched coordinate mapping, prior interpolation and
     derivatives, rigid Jacobians, coefficient accumulation/normalization, and
     the existing line-search update. The source coefficient call-order
-    behavior is preserved by default. The current implementation materializes
-    dense fields at each iteration and line-search trial; use only small
-    synthetic crops until a streaming accumulator replaces this prototype.
+    behavior is preserved by default. The optimizer streams voxel samples and
+    coefficients; the separate dense field-building utility remains useful
+    only as a small-grid validation oracle.
 
     Atlas shapes and memberships use ``(x, y, z, class)`` array order. The
     class-bound upper values retain the source-exclusive interpretation.
@@ -254,22 +440,15 @@ def register_toads_atlas_rigid(
     if registered.shape != (mem.shape[-1],):
         raise ValueError("registered_classes must contain one flag per class")
 
-    def sample_fields(candidate: NDArray[np.float32]) -> ToadsRegistrationFields:
-        return sample_toads_registration_fields(
+    def energy_at(candidate: NDArray[np.float32]) -> np.float32:
+        return stream_toads_registration_energy(
+            mem,
             shapes,
-            input_dimensions_xyz=mem.shape[:3],
             image_resolutions_mm=image_resolutions_mm,
             template_resolutions_mm=template_resolutions_mm,
             transform=tuple(float(value) for value in candidate),
             class_bounds_low_xyz=class_bounds_low_xyz,
             class_bounds_high_xyz=class_bounds_high_xyz,
-        )
-
-    def energy_at(candidate: NDArray[np.float32]) -> np.float32:
-        fields = sample_fields(candidate)
-        return exact_membership_registration_energy(
-            mem,
-            fields.priors,
             registered_classes=registered,
             offset=offset,
             subsample=subsample,
@@ -283,26 +462,19 @@ def register_toads_atlas_rigid(
     stop_reason = "iteration_limit"
 
     for _iteration in range(max_iterations):
-        fields = sample_fields(transform)
-        jacobians = rigid_registration_coordinate_jacobians(
-            mem.shape[:3],
-            tuple(float(value) for value in transform),
-            image_resolutions_mm,
-            template_resolutions_mm,
-        )
-        coefficients: RegistrationCoefficientSums = exact_membership_registration_coefficients(
+        coefficients: RegistrationCoefficientSums = stream_toads_registration_coefficients(
             mem,
-            fields.priors,
-            fields.prior_gradients_xyz,
-            jacobians,
+            shapes,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            transform=tuple(float(value) for value in transform),
+            class_bounds_low_xyz=class_bounds_low_xyz,
+            class_bounds_high_xyz=class_bounds_high_xyz,
             registered_classes=registered,
             offset=offset,
             subsample=subsample,
         )
-        # Use the accumulated coefficients' source-order cost/norm, matching
-        # the energy supplied to the source line search.
-        with np.errstate(divide="ignore", invalid="ignore"):
-            current_energy = np.float32(coefficients.cost / coefficients.norm)
+        current_energy = energy_at(transform)
         if not np.isfinite(current_energy):
             raise ValueError("TOADS registration energy is not finite; no positive prior support was sampled")
         gradient, hessian = exact_registration_measure_coefficients(
