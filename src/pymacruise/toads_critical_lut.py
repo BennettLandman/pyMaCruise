@@ -54,6 +54,21 @@ def key_from_neighborhood(neighborhood: Neighborhood) -> int:
     return key
 
 
+def critical186_is_regular(
+    neighborhood: Neighborhood,
+) -> bool:
+    """Query the selected VandyCRUISE 18/6 LUT for one binary neighborhood.
+
+    This is only the source `CriticalPointLUT.get(keyFromPattern(...))`
+    predicate. Multi-label topology preservation also checks the changed
+    object and its neighboring label relations; this helper does not perform
+    that higher-level segmentation check.
+    """
+    key = key_from_neighborhood(neighborhood)
+    table = load_critical186_lut()
+    return bool(table[key] == 1)
+
+
 def load_critical186_lut(path: str | Path | None = None) -> np.ndarray:
     """Load the bundled source LUT, or a specified compressed LUT file.
 

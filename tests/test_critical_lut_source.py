@@ -3,12 +3,25 @@ from __future__ import annotations
 import gzip
 import hashlib
 from importlib.resources import files
+from pathlib import Path
 
 from pymacruise.topology import topology_numbers_618
 
 
 LUT_RESOURCE = files("pymacruise").joinpath("data", "critical186LUT.raw.gz")
+JAVA_SOURCE = (
+    Path(__file__).parent
+    / "java_reference"
+    / "upstream"
+    / "edu"
+    / "jhmi"
+    / "rad"
+    / "medic"
+    / "structures"
+    / "CriticalPointLUT.java"
+)
 LUT_SHA256 = "cbf1e339d78a0a2c673c939ee2c8a30ee3a35bfd9603d07ed2d48864bb0e88be"
+JAVA_SOURCE_SHA256 = "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f"
 LUT_SIZE = 1 << 26
 
 
@@ -27,6 +40,7 @@ def _key_pattern(key: int) -> list[list[list[bool]]]:
 
 
 def test_selected_toads_lut_asset_matches_source_and_java_key_order() -> None:
+    assert hashlib.sha256(JAVA_SOURCE.read_bytes()).hexdigest() == JAVA_SOURCE_SHA256
     compressed = LUT_RESOURCE.read_bytes()
     assert hashlib.sha256(compressed).hexdigest() == LUT_SHA256
     lut = gzip.decompress(compressed)
