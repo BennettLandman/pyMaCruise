@@ -48,3 +48,8 @@ The one-voxel coefficient excerpt is
 SHA-256 `20ac7238c1eaac7c6a9b72a2a974cca58582c0eaf2ab8fd7dead86755d7aa2d9`;
 its output is `java_coefficient_accumulation_reference.json` (SHA-256
 `fbef8094da69fe49d512afd143810dddb18e6400901a57629da13e7b654afa60`).
+The accepted/rejected line-search excerpt is
+`tests/java_reference/ToadsRegistrationLineSearchHarness.java`, SHA-256
+`bbe218ebe24b429b032ff023fb53bf0e65da64997d8567c54acd69a8503c3253`; its
+reference is `java_line_search_reference.json` (SHA-256
+`c3d54a4c37faa8030c8867ad2f28d990c355243b6def9afb9ec24c74cd53be31`).

@@ -64,8 +64,10 @@ from pymacruise.registration import (
 )
 from pymacruise.toads_registration import (
     RegistrationCoefficientSums,
+    RegistrationLineSearchResult,
     exact_registration_coefficient_contributions,
     exact_membership_registration_energy,
+    exact_registration_gradient_descent_step,
     exact_registration_measure_coefficients,
 )
 
@@ -110,7 +112,9 @@ __all__ = [
     "exact_membership_registration_energy",
     "exact_registration_measure_coefficients",
     "RegistrationCoefficientSums",
+    "RegistrationLineSearchResult",
     "exact_registration_coefficient_contributions",
+    "exact_registration_gradient_descent_step",
     "register_flair_to_t1",
     "apply_image_transform",
     "apply_transforms_to_points_ras",

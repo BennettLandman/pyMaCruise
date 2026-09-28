@@ -11,6 +11,7 @@ from pymacruise.toads_registration import (
     exact_membership_registration_energy,
     exact_registration_measure_coefficients,
     exact_registration_coefficient_contributions,
+    exact_registration_gradient_descent_step,
     rigid_image_to_template_jacobian,
     synthetic_registration_objective_inputs,
     trilinear_prior_derivatives,
@@ -27,6 +28,7 @@ COEFFICIENT_HARNESS_HASH = "cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b295
 DERIVATIVE_HARNESS_HASH = "127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae91c72f85a5b0"
 RIGID_JACOBIAN_HARNESS_HASH = "e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4"
 COEFFICIENT_ACCUMULATION_HARNESS_HASH = "20ac7238c1eaac7c6a9b72a2a974cca58582c0eaf2ab8fd7dead86755d7aa2d9"
+LINE_SEARCH_HARNESS_HASH = "bbe218ebe24b429b032ff023fb53bf0e65da64997d8567c54acd69a8503c3253"
 
 
 def test_exact_membership_energy_matches_source_formula_harness() -> None:
@@ -60,6 +62,7 @@ def test_registration_reference_sources_have_recorded_hashes() -> None:
         ("ToadsPriorDerivativeReferenceHarness.java", DERIVATIVE_HARNESS_HASH),
         ("ToadsRigidJacobianReferenceHarness.java", RIGID_JACOBIAN_HARNESS_HASH),
         ("ToadsRegistrationCoefficientAccumulationHarness.java", COEFFICIENT_ACCUMULATION_HARNESS_HASH),
+        ("ToadsRegistrationLineSearchHarness.java", LINE_SEARCH_HARNESS_HASH),
     ):
         harness = ROOT / "java_reference" / name
         assert hashlib.sha256(harness.read_bytes()).hexdigest() == expected
@@ -145,6 +148,28 @@ def test_registration_coefficient_contributions_match_source_formula_excerpt() -
     assert actual.norm == np.float32(expected["norm"])
     for field in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
         np.testing.assert_array_equal(getattr(actual, field), np.asarray(expected[field], dtype=np.float32))
+
+
+def test_registration_gradient_descent_accept_and_backtrack_match_source() -> None:
+    expected = json.loads(
+        (REFERENCE.parent / "java_line_search_reference.json").read_text()
+    )
+    accepted = exact_registration_gradient_descent_step(
+        [0.0], [1.0], [1.0], 0.0,
+        lambda trial: 1.0 if trial[0] > 0 else 0.0,
+    )
+    rejected = exact_registration_gradient_descent_step(
+        [0.0], [1.0], [1.0], 2.0,
+        lambda _trial: 1.0,
+    )
+    for name, actual in (("accepted", accepted), ("rejected", rejected)):
+        record = expected[name]
+        np.testing.assert_array_equal(actual.transform, np.asarray(record[0], dtype=np.float32))
+        assert actual.energy == np.float32(record[1])
+        assert actual.lambda_value == np.float32(record[2])
+        assert actual.relative_change == np.float32(record[3])
+        assert actual.accepted is bool(record[4])
+        assert actual.rejected_trials == int(record[5])
 
 
 @pytest.mark.parametrize(

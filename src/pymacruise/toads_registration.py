@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -18,6 +19,78 @@ class RegistrationCoefficientSums:
     hessian: NDArray[np.float32]
     norm_gradient: NDArray[np.float32]
     norm_hessian: NDArray[np.float32]
+
+
+@dataclass(frozen=True)
+class RegistrationLineSearchResult:
+    """One source-compatible TOADS registration gradient-descent step."""
+
+    transform: NDArray[np.float32]
+    energy: np.float32
+    lambda_value: np.float32
+    relative_change: np.float32
+    accepted: bool
+    rejected_trials: int
+
+
+def exact_registration_gradient_descent_step(
+    transform: ArrayLike,
+    gradient: ArrayLike,
+    hessian: ArrayLike,
+    initial_energy: float,
+    evaluate_energy: Callable[[NDArray[np.float32]], float],
+    *,
+    initial_lambda: float = 1.0,
+    lambda_factor: float = 1.5,
+    max_rejections: int = 10,
+) -> RegistrationLineSearchResult:
+    """Run one selected TOADS diagonal-gradient update with line search.
+
+    Trials use the source expression `transform + lambda / hessian * gradient`
+    in float32. The selected method maximizes energy, accepts only strict
+    improvement, scales lambda by `lambda_factor`, and stops after the source
+    rejection-count condition (`rejections > max_rejections`).
+    """
+    current = np.asarray(transform, dtype=np.float32).copy()
+    grad = np.asarray(gradient, dtype=np.float32)
+    hess = np.asarray(hessian, dtype=np.float32)
+    if current.ndim != 1 or grad.shape != current.shape or hess.shape != current.shape:
+        raise ValueError("transform, gradient, and hessian must be matching vectors")
+    if current.size == 0 or not all(np.isfinite(v).all() for v in (current, grad, hess)):
+        raise ValueError("registration vectors must be nonempty and finite")
+    energy0 = np.float32(initial_energy)
+    lam = np.float32(initial_lambda)
+    factor = np.float32(lambda_factor)
+    if not np.isfinite(energy0):
+        raise ValueError("initial_energy must be finite")
+    if not np.isfinite(lam) or lam <= 0 or not np.isfinite(factor) or factor <= 1:
+        raise ValueError("initial_lambda must be positive and lambda_factor must exceed one")
+    if not isinstance(max_rejections, (int, np.integer)) or max_rejections < 0:
+        raise ValueError("max_rejections must be a non-negative integer")
+
+    energy = energy0
+    rejected = 0
+    accepted = False
+    while True:
+        trial = np.empty_like(current)
+        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+            for index in range(current.size):
+                step = np.float32(lam / hess[index])
+                step = np.float32(step * grad[index])
+                trial[index] = np.float32(current[index] + step)
+        energy = np.float32(evaluate_energy(trial))
+        if energy > energy0:
+            current = trial
+            lam = np.float32(lam * factor)
+            accepted = True
+            break
+        lam = np.float32(lam / factor)
+        rejected += 1
+        if rejected > max_rejections:
+            break
+    with np.errstate(divide="ignore", invalid="ignore"):
+        relative_change = np.float32(np.float32(energy - energy0) / energy)
+    return RegistrationLineSearchResult(current, energy, lam, relative_change, accepted, rejected)
 
 
 def exact_registration_coefficient_contributions(

@@ -105,6 +105,17 @@ exercise source skip rules. This validates one voxel's coefficient arithmetic
 only; it does not validate full-volume loop ordering, transform-dependent
 prior sampling, source coefficient normalization, line search, or alignment.
 
+### One source registration update and backtracking step
+
+`exact_registration_gradient_descent_step` applies the source diagonal update
+and maximization rule: strict improvement accepts and grows lambda by 1.5;
+otherwise lambda shrinks by 1.5, with termination after the 11th consecutive
+rejection under the selected `itSupp=10` setting. Synthetic accepted and
+rejected energy callbacks match the Java formula excerpt for parameter state,
+energy, lambda, relative change, and reject count. This implements one
+registration update around a supplied energy callback; it does not yet run the
+TOADS energy or coefficient calculation end to end.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
