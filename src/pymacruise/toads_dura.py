@@ -35,6 +35,45 @@ class DuraOutputMaskResult:
     corrected_brain_mask: np.ndarray
 
 
+@dataclass(frozen=True)
+class DuraInitialLevelSets:
+    """Membership level sets and capped distance fields used before Dura TGDM."""
+
+    inner_level_set: np.ndarray
+    outer_level_set: np.ndarray
+    inner_signed_distance: np.ndarray
+    outer_signed_distance: np.ndarray
+
+
+def dura_initial_level_sets(
+    topologically_corrected_white_matter: np.ndarray,
+    topologically_corrected_gray_matter: np.ndarray,
+    *,
+    membership_level: float = 0.4,
+) -> DuraInitialLevelSets:
+    """Build the source wrapper's inner and outer Dura TGDM initial fields."""
+    wm = np.asarray(topologically_corrected_white_matter, dtype=np.float32)
+    gm = np.asarray(topologically_corrected_gray_matter, dtype=np.float32)
+    if wm.ndim != 3 or any(size < 1 for size in wm.shape):
+        raise ValueError("Dura membership fields must be non-empty 3D arrays")
+    if gm.shape != wm.shape:
+        raise ValueError("Dura membership fields must have identical shapes")
+    if not np.isfinite(wm).all() or not np.isfinite(gm).all():
+        raise ValueError("Dura membership fields must be finite")
+    membership = np.float32(membership_level)
+    if not np.isfinite(membership) or not 0.0 <= membership <= 1.0:
+        raise ValueError("membership_level must be finite and in [0, 1]")
+
+    inner = np.float32(0.5) - wm / np.float32(255.0)
+    outer = membership - gm / np.float32(255.0)
+    return DuraInitialLevelSets(
+        inner,
+        outer,
+        dura_signed_distance_field(inner, max_distance_voxels=15.0),
+        dura_signed_distance_field(outer, max_distance_voxels=10.0),
+    )
+
+
 def apply_dura_output_mask(
     original_volume: np.ndarray,
     white_matter: np.ndarray,

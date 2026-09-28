@@ -357,9 +357,26 @@ zeros original/WM/GM values there, creates an 8-bit inside mask, and applies
 `level_set_translation` only after the threshold decision. The synthetic test
 includes values exactly on both sides of the threshold, a translation that
 would change the mask if applied first, and verifies inputs are not mutated.
-The focused Dura test module now passes 14 tests. This validates only this
+The focused Dura test module then passed 14 tests. This validates only this
 voxelwise output adapter; topology correction, end-to-end input construction,
 physical headers, and the entire removal wrapper remain open.
+
+### Started substage: Dura initial surfaces
+
+`dura_initial_level_sets` forms the inner field as `0.5 - WM/255` and the
+outer field as `membership - GM/255`, preserving float32 operation order, then
+reuses `dura_signed_distance_field` with the source caps of 15 and 10 voxels.
+Its 9×8×7 synthetic fixture runs the exact source formulas and the original
+JIST `DistanceField.class` from the supplied JIST-Test JAR. Both membership
+level-set arrays and all 1,008 resulting signed-distance voxels match exactly.
+The source wrapper SHA-256 is
+`1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4`; the
+reference JAR `DistanceField.class` SHA-256 is recorded in the fixture. The
+generator is `scripts/generate_java_dura_initial_levelsets_reference.sh` and
+accepts the original jar through `JIST_TEST_JAR`; the jar is only a development
+oracle, not a runtime dependency. The focused Dura test module passes 15 tests.
+This validates initial arithmetic/distance construction only, not the two
+topology-correction algorithms or the complete dura workflow.
 
 ### Completed geometry slice: TOADS crop and topology resampling
 

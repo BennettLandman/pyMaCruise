@@ -8,6 +8,7 @@ import pytest
 
 from pymacruise.toads_dura import (
     apply_dura_output_mask,
+    dura_initial_level_sets,
     dura_tgdm_evolve,
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
@@ -35,6 +36,36 @@ DURA_TGDM_FIXTURE = (
     / "dura_tgdm_full_evolution"
     / "java_reference.json"
 )
+DURA_INITIAL_LEVELSETS_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "dura_initial_levelsets"
+    / "java_reference.json"
+)
+
+
+def test_dura_initial_level_sets_match_original_jist_jar() -> None:
+    reference = json.loads(DURA_INITIAL_LEVELSETS_FIXTURE.read_text())
+    shape = tuple(reference["shape_xyz"])
+    x, y, z = np.indices(shape, dtype=np.float64)
+    wm = (132.0 + 74.0 * np.sin(0.41 * x + 0.17 * y - 0.2 * z)).astype(np.float32)
+    gm = (104.0 + 86.0 * np.cos(0.19 * x - 0.33 * y + 0.27 * z)).astype(np.float32)
+
+    actual = dura_initial_level_sets(
+        wm,
+        gm,
+        membership_level=reference["membership_level"],
+    )
+
+    for field_name, actual_field in (
+        ("inner_level_set", actual.inner_level_set),
+        ("outer_level_set", actual.outer_level_set),
+        ("inner_signed_distance", actual.inner_signed_distance),
+        ("outer_signed_distance", actual.outer_signed_distance),
+    ):
+        expected = np.asarray(reference[field_name], dtype=np.float32).reshape(shape)
+        np.testing.assert_array_equal(actual_field, expected)
 
 
 def test_dura_output_mask_matches_wrapper_threshold_order_and_copies() -> None:
