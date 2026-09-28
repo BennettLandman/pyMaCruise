@@ -48,17 +48,19 @@ shrink the work to a generic intensity classifier.
 
 The selected root descriptor declares a 172×216×164 topology grid at
 0.9375 mm. Its source MIPAV XML and the bundled `.nii.gz` instead declare
-1.0 mm. The Java `MultipleToadAtlas` parser reads dimensions and resolutions
-from the text descriptor, then its loader reads exactly `Nx*Ny*Nz` bytes from
-the referenced file and does not use that image header's affine. The port
+1.0 mm. The selected companion `toads-cruise/src/.../MultipleToadDeformableAtlas.java`
+parser reads dimensions and resolutions from the text descriptor, then its
+loader reads exactly `Nx*Ny*Nz` bytes from the referenced file and does not
+use that image header's affine. The port
 therefore retains both sources in `load_toads_atlas`: descriptor spacing is
 the algorithm's declared atlas-grid spacing, NIfTI spacing is reported as an
 explicit warning, and no atlas payload or metadata is silently rescaled.
 The root descriptor's filenames were changed to `.nii.gz` for the Python
-repository's storage contract; the Java source reader expects raw payloads,
-so a future test-only Java comparison adapter must decompress and serialize
-the exact voxel arrays in the source byte order. Physical atlas geometry is
-still an open P18 validation item.
+repository's storage contract; the Java source reader expects raw payloads.
+The Python source-index array loader is implemented and exact against the 12
+available raw source maps. A future test-only Java comparison adapter must
+serialize these arrays in the source primitive type and byte order. Physical
+atlas geometry is still an open P18 validation item.
 
 ## Selected MaCRUISE wrapper contract
 
@@ -66,20 +68,40 @@ The selected `run_Toads_pipeline.m` sequence is N4 correction, skull-mask
 preparation, TOADS pass one (`dura removal inputs` output), dura removal, and
 TOADS pass two (`dura removal inputs` is the default final mode). The user
 brain mask replaces skull stripping; it must mask the N4 image supplied to
-TOADS. We still need to verify whether the dura-removal `inOriginal` input
-should be the masked N4 image or an unmasked, grid-matched N4 image, because
-the historic SPECTRE helper returns both a stripped image and a transferred
-original image.
+TOADS. With SPECTRE registration excluded, the selected substitution keeps
+the corrected N4 image on the original T1 grid: TOADS receives that image
+zeroed outside the user mask; dura removal receives the corrected unmasked N4
+image as `inOriginal`, plus the TOADS tissue maps. This is the defined
+brain-mask workflow and does not claim SPECTRE's affine registration or output
+equivalence.
 
 `run_Toads_jist.m` explicitly passes atlas scale `2.0`, smoothing `0.2`,
 maximum change `1e-4`, 50 iterations, rigid registration initialization, and
 `(18,6)` connectivity. Other relevant flags are `inCorrect=true`,
 `inOutput2=false`, and `inOutput3=false`. These values are fixed in the
 selected wrapper and must be checked against `MedicAlgorithmToads08` before
-they become Python defaults. `run_RemoveDura_jist.m` passes curvature `0.5`,
-level `1.0`, alignment `0.5`, pressure `0.5`, target `0.3`, mask `2.0`,
-secondary level `0.0`, maximum `5`, WM threshold `0.05`, and GM threshold
-`0.02`.
+they become Python defaults. `run_RemoveDura_jist.m` passes `-inCurvature
+0.5`, `-inLevel 1.0`, `-inAlignment 0.5`, `-inPressure 0.5`, `-inTarget
+0.3`, `-inMask 2.0`, `-inLevel2 0.0`, `-inMaximum 5`, `-inWM3 0.05`, and
+`-inGM2 0.02`. Keep these as source option/value pairs until each is mapped
+to the implementation's parameter fields; the JIST flag names and parameter
+labels are not always identical.
+
+The JIST option strings in `MedicAlgorithmToads08` and the matching output
+branches in the companion `toads-cruise/src/.../AlgorithmMultipleToads.java`
+were checked together; that companion copy uses the lowercase option strings
+(`dura removal inputs`, `cruise inputs`) passed by the MATLAB wrapper. It is
+the selected adapter reference. The VandyCRUISE source copy uses different
+enum strings and is not the right wrapper reference for this entry point.
+
+For TOADS `dura removal inputs`, `AlgorithmMultipleToads` returns five
+uncropped products in order: hard classification (`ubyte`), CSF membership,
+GM membership, filled-WM membership, and WM-mask membership (four float
+volumes). `MedicAlgorithmToads08` multiplies each membership by 255 before
+exposing it to the dura-removal wrapper. The MATLAB stage saves all five as
+`*_toads1{csf,gm,seg,wmfill,wmmask}.nii.gz` or the corresponding `toads2`
+names. Final meaning, encoding, and RAS affines should be verified in the Java
+harness instead of inferred from variable names.
 
 The source Java atlas reader treats atlas files as headerless byte/float
 payloads in descriptor index order. The bundled NIfTIs have been axis-flipped
