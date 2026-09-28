@@ -255,6 +255,23 @@ checks through the vectorized path. The performance figures and limits are in
 [the P18w benchmark report](toads-registration-vectorization-2026-09-28.md).
 Earlier rows retain their own full-suite evidence; P18w cites this run.
 
+## Additional full-suite run for P18x
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **259 passed in 50.60 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `d855faf8e49aab850eb4c47e71ec7fd14702651f` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 259 tests collected and all passed |
+
+This run validates the source-order pyramid block means and coarse-to-fine
+scale schedule on synthetic arrays. Exact reference values and remaining
+scaled-coordinate work are recorded in [the P18x report](toads-registration-pyramid-2026-09-28.md).
+Earlier rows retain their own full-suite evidence; P18x cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -302,6 +319,7 @@ Earlier rows retain their own full-suite evidence; P18w cites this run.
 | P18u — Integrate TOADS sampled-grid rigid registration optimizer | `tests/test_toads_registration_sampling.py` validates deterministic optimizer history, accepted trials, outer stop gates, and no-positive-prior rejection on a synthetic array fixture. Component kernels retain their separate source-reference checks. | `251 passed`; commit `bdc233277c2227049d6fe969cefbe7c929e5f983` |
 | P18v — Stream TOADS rigid registration samples and coefficients | `tests/test_toads_registration_sampling.py` asserts exact float32 equality between dense and streamed energy/coefficients on full and offset/subsample synthetic scans; reproducible time/scratch probe: `scripts/benchmark_toads_registration_streaming.py`. | `252 passed`; commit `0fe1161d6d5cf8f4af61b13346801ce9236d49dc` |
 | P18w — Vectorize source-ordered TOADS sampling and accumulation | `tests/test_toads_registration_sampling.py` compares vectorized, scalar, and dense energies/coefficients exactly across two anisotropic grids and full/subsampled scans; reproducible 6³/10³/16³ performance and scratch-memory results: `docs/reports/toads-registration-vectorization-2026-09-28.md`. | `253 passed`; commit `dad38b855a480638eb717c0d90421b5c8aa9de38` |
+| P18x — Port source TOADS pyramid block downsampling and level schedule | `tests/test_toads_registration_sampling.py` compares factor-2/4 results with the committed standalone Java harness and checks source scale schedule/dimensions for levels 1–5. | `259 passed`; commit `d855faf8e49aab850eb4c47e71ec7fd14702651f` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
