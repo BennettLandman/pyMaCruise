@@ -8,6 +8,7 @@ from pymacruise.toads_registration import (
     trilinear_prior_derivatives,
 )
 from pymacruise.toads_registration_sampling import (
+    register_toads_atlas_rigid,
     rigid_registration_coordinate_jacobians,
     sample_toads_registration_fields,
 )
@@ -132,3 +133,88 @@ def test_transform_dependent_registration_fields_reject_malformed_shapes_and_bou
         sample_toads_registration_fields(
             atlas, **{**common, "class_bounds_high_xyz": np.full((3, 2), 2)}
         )
+
+
+def test_rigid_registration_optimizer_runs_repeatably_on_seeded_synthetic_atlas() -> None:
+    atlas_shape = (5, 5, 5, 3)
+    x, y, z, class_index = np.indices(atlas_shape, dtype=np.float32)
+    atlas = (
+        0.18 + 0.035 * x + 0.025 * y + 0.02 * z + 0.03 * class_index + 0.004 * x * y
+    ).astype(np.float32)
+    dimensions = (4, 4, 4)
+    ix, iy, iz = np.indices(dimensions, dtype=np.float32)
+    memberships = np.empty(dimensions + (3,), dtype=np.float32)
+    memberships[..., 0] = 0.1
+    memberships[..., 1] = 0.25 + 0.04 * ix + 0.02 * iy
+    memberships[..., 2] = 0.2 + 0.015 * iz + 0.01 * ix
+    bounds_low = np.zeros((3, 3), dtype=np.int64)
+    bounds_high = np.full((3, 3), 4, dtype=np.int64)
+    kwargs = dict(
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.0, 0.0, 0.0, 0.05, -0.03, 0.02),
+        class_bounds_low_xyz=bounds_low,
+        class_bounds_high_xyz=bounds_high,
+        max_iterations=2,
+    )
+
+    first = register_toads_atlas_rigid(memberships, atlas, **kwargs)
+    second = register_toads_atlas_rigid(memberships, atlas, **kwargs)
+
+    assert first.stop_reason == "iteration_limit"
+    assert len(first.iterations) == 2
+    assert all(item.accepted for item in first.iterations)
+    assert all(item.rejected_trials < 11 for item in first.iterations)
+    assert np.isfinite(first.energy)
+    np.testing.assert_array_equal(first.transform, second.transform)
+    assert first.energy == second.energy
+    for left, right in zip(first.iterations, second.iterations, strict=True):
+        np.testing.assert_array_equal(left.transform, right.transform)
+        assert left.energy == right.energy
+        assert left.lambda_value == right.lambda_value
+        assert left.relative_change == right.relative_change
+
+
+def test_rigid_registration_optimizer_rejects_empty_positive_prior_support() -> None:
+    memberships = np.ones((2, 2, 2, 2), dtype=np.float32)
+    atlas = np.zeros((3, 3, 3, 2), dtype=np.float32)
+    bounds_low = np.zeros((2, 3), dtype=np.int64)
+    bounds_high = np.full((2, 3), 2, dtype=np.int64)
+    with pytest.raises(ValueError, match="no positive prior support"):
+        register_toads_atlas_rigid(
+            memberships,
+            atlas,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            initial_transform=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            class_bounds_low_xyz=bounds_low,
+            class_bounds_high_xyz=bounds_high,
+        )
+
+
+def test_rigid_registration_optimizer_honors_outer_stopping_gates() -> None:
+    atlas_shape = (4, 4, 4, 2)
+    x, y, z, _ = np.indices(atlas_shape, dtype=np.float32)
+    atlas = (0.2 + 0.03 * x + 0.02 * y + 0.01 * z).astype(np.float32)
+    memberships = np.empty((3, 3, 3, 2), dtype=np.float32)
+    mx, my, mz = np.indices((3, 3, 3), dtype=np.float32)
+    memberships[..., 0] = 0.1
+    memberships[..., 1] = 0.3 + 0.02 * mx + 0.01 * my + 0.01 * mz
+    kwargs = dict(
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.0, 0.0, 0.0, 0.02, -0.01, 0.01),
+        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
+        class_bounds_high_xyz=np.full((2, 3), 3, dtype=np.int64),
+        max_iterations=5,
+        energy_tolerance=1.0,
+    )
+    by_energy = register_toads_atlas_rigid(memberships, atlas, **kwargs)
+    assert by_energy.stop_reason == "energy_tolerance"
+    assert len(by_energy.iterations) == 1
+
+    by_lambda = register_toads_atlas_rigid(
+        memberships, atlas, **{**kwargs, "energy_tolerance": 0.0, "minimum_lambda": 2.0}
+    )
+    assert by_lambda.stop_reason == "lambda_floor"
+    assert len(by_lambda.iterations) == 1
