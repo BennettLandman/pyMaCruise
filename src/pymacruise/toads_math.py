@@ -122,3 +122,62 @@ def toads_optimized_tissue_data_term(
             total = energy[..., class_index].astype(np.float64) + powered * np.float64(weight)
             energy[..., class_index] = np.asarray(total, dtype=np.float32)
     return energy
+
+
+def toads_psf_ridge_bias(
+    image_values: ArrayLike,
+    segmentation: ArrayLike,
+    psf_ridge: float,
+    *,
+    intensity_field: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Compute source `computeExactMemberships` PSF bias on 3-D boundaries.
+
+    The source only evaluates interior voxels. A bias is produced where any
+    segmentation value in the 3×3×3 neighborhood differs from the center;
+    the center sample is weighted by ``-27/26`` and all 27 samples (including
+    the center) are added at ``1/26`` before multiplication by ``psf_ridge``.
+    Source float32 operation and accumulation order are retained. The optional
+    field multiplies each image sample before the stencil.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    if labels.shape != images.shape[:3] or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer array matching the image grid")
+    ridge = np.float32(psf_ridge)
+    if not np.isfinite(ridge):
+        raise ValueError("psf_ridge must be finite")
+    if intensity_field is None:
+        corrected = images
+    else:
+        field_values = np.asarray(intensity_field, dtype=np.float32)
+        if field_values.shape != images.shape or not np.isfinite(field_values).all():
+            raise ValueError("intensity_field must be finite and match image_values")
+        corrected = np.asarray(field_values * images, dtype=np.float32)
+
+    bias = np.zeros(images.shape, dtype=np.float32)
+    if ridge <= np.float32(0.0):
+        return bias
+    nx, ny, nz, channels = images.shape
+    center_weight = np.float32(np.float32(-27.0) / np.float32(26.0))
+    neighbor_weight = np.float32(np.float32(1.0) / np.float32(26.0))
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                center_label = labels[x, y, z]
+                patch = labels[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2]
+                if not np.any(patch != center_label):
+                    continue
+                for channel in range(channels):
+                    value = np.float32(center_weight * corrected[x, y, z, channel])
+                    for i in range(-1, 2):
+                        for j in range(-1, 2):
+                            for k in range(-1, 2):
+                                contribution = np.float32(
+                                    neighbor_weight * corrected[x + i, y + j, z + k, channel]
+                                )
+                                value = np.float32(value + contribution)
+                    bias[x, y, z, channel] = np.float32(value * ridge)
+    return bias
