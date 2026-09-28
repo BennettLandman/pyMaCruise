@@ -28,6 +28,13 @@ def test_ras_nifti_round_trip_preserves_values_geometry_and_header(tmp_path) -> 
     with pytest.warns(UserWarning, match="reorienting the image to RAS"):
         loaded = load_nifti_ras(input_path)
     assert nib.aff2axcodes(loaded.affine) == ("R", "A", "S")
+    for source_index in ((0, 0, 0), (4, 5, 6), (2, 3, 1)):
+        world = nib.affines.apply_affine(image.affine, source_index)
+        ras_index = np.rint(nib.affines.apply_affine(np.linalg.inv(loaded.affine), world)).astype(int)
+        assert np.asarray(loaded.dataobj)[tuple(ras_index)] == np.asarray(image.dataobj)[source_index]
+        np.testing.assert_allclose(
+            nib.affines.apply_affine(loaded.affine, ras_index), world, atol=1e-5
+        )
     save_nifti_ras(loaded, output_path)
     written = nib.load(output_path)
     assert nib.aff2axcodes(written.affine) == ("R", "A", "S")

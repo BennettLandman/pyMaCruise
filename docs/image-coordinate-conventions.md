@@ -1,7 +1,7 @@
 # Image and Coordinate Conventions
 
-**Status:** P06 started; RAS volume I/O and synthetic image landmarks are validated, but surface/transform frame handling remains pending.
-**Scope:** Establish the spatial rules PyMaCRUISE will use when loading, transforming, cropping, combining, and writing NIfTI volumes. All persisted image files use compressed NIfTI (`.nii.gz`); this is a working contract until the synthetic checks in P06 pass.
+**Status:** P06 synthetic convention checks complete (2026-09-27). The contract below defines PyMaCRUISE behavior; legacy-library equivalence remains a later P37 reference-comparison question.
+**Scope:** Establish the spatial rules PyMaCRUISE uses when loading, transforming, cropping, combining, and writing NIfTI volumes. All persisted image files use compressed NIfTI (`.nii.gz`).
 
 ## Source behavior observed
 
@@ -19,18 +19,19 @@
 2. **Index origin and voxel centers:** Integer indices refer to voxel centers. The homogeneous affine maps `[i, j, k, 1]` to the world coordinate of that voxel center; no half-voxel offset is added by PyMaCRUISE.
 3. **World frame and units:** Public geometry helpers and every output use RAS+ coordinates in millimetres. If a library boundary uses LPS+, convert with `diag(-1, -1, 1, 1)` and test round trips.
 4. **Input normalization and warnings:** Inspect orientation/frame metadata on every spatial input. If an image, surface, transform, or other spatial input is not in RAS, normalize/reorient it to RAS before use and display a warning naming the source orientation/frame and conversion. Preserve the transform in the run manifest. For inputs with no trustworthy coordinate-frame metadata, require an explicit frame instead of guessing.
-5. **Affine selection:** For NIfTI input, use NiBabel's selected image affine (sform when coded, otherwise qform when coded, otherwise its documented fallback). Record both raw qform/sform and codes when validating; if both are coded but materially disagree, flag the image for explicit handling rather than silently choosing one in pipeline stages.
+5. **Affine selection:** Use NiBabel's selected image affine (sform when coded, otherwise qform when coded, otherwise its documented fallback). If qform and sform are both coded but materially disagree, reject the image with `ImageGeometryError`; do not choose one silently. This is a deliberate input-safety policy and is not a claim of byte-for-byte equivalence with legacy MIPAV NIfTI loading.
 6. **Interpolation:** Use nearest-neighbor for discrete labels and masks. For continuous-valued MRI/level-set data, choose the interpolation method per source stage and document any ANTs/MIPAV boundary conversion. No universal interpolation default is assumed.
 7. **Headers:** Persist NIfTI outputs in RAS orientation. On unchanged-grid voxelwise operations, preserve the normalized reference affine and relevant metadata while setting an output datatype compatible with the resulting values. On crop, update affine translation for the crop start. On resampling, construct output geometry from an RAS reference grid. Do not copy a reference header onto data with a different shape or voxel-to-world mapping without an explicit validated rule.
 8. **Geometry checks:** Before voxelwise operations, require matching shape and affine within a declared tolerance, or perform a separately requested resampling step. Matching shape alone does not imply alignment.
 
-## Pending decisions and validation
+## Validation evidence and compatibility limits
 
-- RAS volume normalization/warnings and asymmetric image landmark round-trips are covered by `tests/test_image_io.py`, `tests/test_volume_ops.py`, and `tests/test_raw_preparation.py`. Compare surface/frame conversions to the companion `ReorientVolume` behavior when surface I/O is implemented.
-- P20 crop bounds, out-of-image background padding, affine update, non-RAS warnings, complete inverse, and the compiled JIST inverse off-by-one are covered by `tests/test_cropping.py`. P20 is validated; this does not complete the broader P06 surface/frame work.
-- Inspect NiBabel and ANTsPy runtime behavior after the P12 environment is created; verify transform direction and physical units with a hand-calculated translation/rotation phantom.
-- Synthetic fixtures and automated checks under `tests/data/synthetic/` and `tests/` validate current volume behavior, including crop/inverse-crop transforms. Non-RAS mesh I/O remains pending.
-- Resolve conflicting coded qform/sform behavior against the legacy runtime before treating the affine-selection policy as a final compatibility guarantee.
+- `tests/test_image_io.py` uses an asymmetric, permuted/flipped image with an oblique affine. It checks known voxel-center world coordinates before and after RAS normalization, data correspondence, the required warning, `.nii.gz` persistence, datatype, units, and header geometry.
+- The same tests reject materially conflicting coded qform/sform matrices and malformed/non-compressed inputs. This explicit rejection is the project policy; any deviation from historical MIPAV behavior must be assessed in P37.
+- `tests/test_surfaces.py` verifies oblique-affine vertex coordinates against an analytic sphere center/radius, warns/reorients non-RAS volumes, converts explicitly identified LPS surfaces to RAS with winding correction, and requires an explicit frame for untagged VTK input.
+- `tests/test_cropping.py`, `tests/test_registration.py`, `tests/test_volume_ops.py`, and `tests/test_raw_preparation.py` additionally exercise physical-grid preservation, crop-origin changes, LPS/RAS library boundaries, and RAS outputs.
+- Surface/point coordinates use RAS+ millimetres; integer voxel indices denote voxel centers. No half-voxel offset is introduced.
+- MIPAV oblique-axis handling, NIfTI header edge cases, and legacy transform equivalence remain candidates for stage-wise comparison in P37; P06 validates the chosen Python contract, not parity for every undocumented legacy edge case.
 
 ## Source references
 
