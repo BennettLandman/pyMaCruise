@@ -115,8 +115,10 @@ VandyCRUISE source methods; no historical plus-workflow equivalence claim is
 made until the deployed version is identified.
 
 The selected `LesionToadSegmentation` source calls MIPAV
-`AlgorithmMorphology3D` and `AlgorithmMorphology25D`. These are numerical
-operations, not just image containers or UI. Port the reachable morphology
-behavior from the supplied MIPAV source and validate its structuring-element
-and boundary semantics against the original classes; do not substitute a
-SciPy morphology operation without a source comparison.
+`AlgorithmMorphology3D` and `AlgorithmMorphology25D`. Reuse SciPy morphology
+primitives when they implement the needed operation; a Java reimplementation
+is unnecessary when the library operation matches. First compare the source
+and library behavior for the reachable calls, including dimensionality,
+structuring element, border handling, dtype, and iteration semantics. Add a
+small adapter or port only for behavior the library does not provide, and
+record any remaining differences as explicit deviations.
