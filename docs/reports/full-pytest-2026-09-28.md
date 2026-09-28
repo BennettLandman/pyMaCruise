@@ -180,6 +180,27 @@ integrate transform-dependent atlas sampling or establish large-volume
 performance. Earlier rows retain their own full-suite evidence; P18s cites
 this run.
 
+## Additional full-suite run for P18t
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **248 passed in 78.71 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `e45528ed129df5628f505f288a7281d73e4a3849` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 248 tests collected and all passed |
+
+This run validates P18t's dense transform-dependent registration-field
+composition on small synthetic grids. Existing focused reference tests
+independently compare the scalar transform/interpolator, trilinear derivative,
+and rigid coordinate Jacobian kernels against copied Java APIs or source-formula
+references. It does not execute integrated coefficient optimization; the dense
+field helper is not suitable for production-size volumes, where the next
+registration driver must stream voxel contributions. Earlier rows retain their
+own full-suite evidence; P18t cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -223,6 +244,7 @@ this run.
 | P18q — Port per-voxel TOADS registration coefficient accumulation | `tests/test_toads_registration.py` compares cost, norm, gradient, diagonal Hessian, norm-gradient, and norm-Hessian values for a synthetic voxel against a Java method-formula excerpt. | `243 passed`; commit `309f7d66c672fb9c7d841928f62127a93bc3bc4d` |
 | P18r — Port one TOADS registration gradient-descent line-search step | `tests/test_toads_registration.py` compares accepted/rejected parameter states, lambda, relative change, and retry count against the Java source-formula excerpt. | `244 passed`; commit `f44e416f4fab1d36d36583ea336385ed107dac63` |
 | P18s — Port full sampled-grid TOADS registration coefficient accumulation | `tests/test_toads_registration.py` compares full-grid and offset/subsample source-order float32 sums to a Java formula excerpt. | `245 passed`; commit `5ba9abc87852f77787748a005c4586c1c3bdd36f` |
+| P18t — Build transform-dependent atlas fields for TOADS registration | `tests/test_toads_registration_sampling.py` composes class-bound sampling and prior derivatives on synthetic grids; companion kernel tests validate transform/interpolation and Jacobian references. Dense field storage is explicitly limited to small grids. | `248 passed`; commit `e45528ed129df5628f505f288a7281d73e4a3849` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
