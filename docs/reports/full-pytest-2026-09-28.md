@@ -76,6 +76,24 @@ kernel. It does not validate rigid transform estimation, optimizer convergence,
 TOADS evolution, or pipeline equivalence. Earlier row entries retain their
 respective full-suite runs and exact tested commits; P18m cites this latest run.
 
+## Additional full-suite run for P18n
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
+| Result | **239 passed in 68.34 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `57c2f42dc767ef901802ab6898656320622c9049` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 239 tests collected and all passed |
+
+This run validates the P18n source call-order excerpt, including the
+source-faithful coefficient normalization behavior and the opt-in corrected
+calculation. It does not validate coefficient accumulation or registration
+quality. Earlier rows retain their respective full-suite evidence; P18n cites
+this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -112,6 +130,7 @@ respective full-suite runs and exact tested commits; P18m cites this latest run.
 | P18j — Port TOADS 18/6 multi-label homeomorphic-change gate | `tests/test_toads_topology.py` compares 130 synthetic cases against the selected Java method-body excerpt and actual `CriticalPointLUT`; fixture scope is documented under `tests/data/synthetic/toads_homeomorphic_change/`. | `218 passed`; commit `c06d00c654c7642b708049aeeb95c221c35b1dfb` |
 | P18k — Port transformed TOADS shape support bounds | `tests/test_toads_shape_bounds.py` compares all positive-support coordinates and bounds in five cases against the Java transform/interpolation methods plus selected atlas source scan excerpt; also verifies max-exclusive and empty-support semantics. The production call retains only bounds and support count. | `223 passed`; commit `2ec8971da2c6e012c0cafb9f0669e680f043868b` |
 | P18m — Port exact-membership rigid-registration energy kernel | `tests/test_toads_registration.py` compares two synthetic objective accumulations against the Java source-formula harness and checks source empty-norm NaN behavior and invalid inputs. This is kernel evidence only, not registration equivalence. | `237 passed`; commit `365ef755c7f0cfb5a927001b02f0d8ae68fe3bd4` |
+| P18n — Preserve TOADS registration coefficient normalization call order | `tests/test_toads_registration.py` matches the fixed source-formula harness in default source-faithful mode and separately checks that the apparent corrected gradient is opt-in. | `239 passed`; commit `57c2f42dc767ef901802ab6898656320622c9049` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |

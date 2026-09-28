@@ -27,3 +27,8 @@ The committed reference JSON SHA-256 is
 `e62d1605439f623c3b9ea09ff78b252540eacd341168b508ad8645303cd7d5d6`.
 The harness SHA-256 is
 `3c2e8bc403a1e04f201cbc29f6aa468175b202c4d2013bc1aefa4429d7bf8b41`.
+The separate coefficient call-order excerpt is
+`tests/java_reference/ToadsRegistrationCoefficientReferenceHarness.java`,
+SHA-256 `cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b2952114c39af1a5`.
+Its output fixture is `java_coefficient_reference.json`, SHA-256
+`a0288b795161d02d42e83cda857ce61355924fbb597e172d7c0b8781bafba368`.
