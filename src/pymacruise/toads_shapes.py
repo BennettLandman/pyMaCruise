@@ -145,6 +145,9 @@ def sample_toad_shape_prior(
     bbox_low_xyz: tuple[int, int, int],
     bbox_high_xyz: tuple[int, int, int],
     shape_slope: float = 2.0,
+    scale: float = 1.0,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
 ) -> ToadShapeSample:
     """Sample a source TOADS shape prior at one input-grid voxel.
 
@@ -154,6 +157,11 @@ def sample_toad_shape_prior(
     x/y/z order; callers must pass RAS-oriented image arrays. The atlas map is
     linearly interpolated with the source closest-edge rule, then its shape
     slope is restored and clipped to [0, 1].
+
+    ``scale`` reproduces the source pyramid mapping (2 means half resolution,
+    4 quarter resolution). Centers remain in full-resolution voxel units and
+    default to half the declared image and template dimensions, as in the
+    native-grid path.
 
     This ports the fixed-transform sampler, not atlas registration or
     registration-optimized shape bounds. A point outside the class-specific
@@ -183,6 +191,21 @@ def sample_toad_shape_prior(
     template_res = _triple_float(
         template_resolutions_mm, "template_resolutions_mm", positive=True
     )
+    scale_value = np.float32(scale)
+    if not np.isfinite(scale_value) or scale_value <= 0:
+        raise ValueError("scale must be positive and finite")
+    image_center = _triple_float(
+        image_center_xyz
+        if image_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in image_dims),
+        "image_center_xyz",
+    )
+    template_center = _triple_float(
+        template_center_xyz
+        if template_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in values.shape),
+        "template_center_xyz",
+    )
     transform_values = np.asarray(transform, dtype=np.float32)
     if transform_values.shape != (6,) or not np.isfinite(transform_values).all():
         raise ValueError("transform must contain six finite rigid parameters")
@@ -195,10 +218,11 @@ def sample_toad_shape_prior(
         return ToadShapeSample(default, None)
 
     matrix = _rotation_matrix(transform_values[:3])
-    image_center = tuple(np.float32(size / 2.0) for size in image_dims)
-    template_center = tuple(np.float32(size / 2.0) for size in values.shape)
     physical = tuple(
-        np.float32(np.float32(point[axis]) - image_center[axis]) * image_res[axis]
+        np.float32(
+            np.float32(np.float32(point[axis]) * scale_value - image_center[axis])
+            * image_res[axis]
+        )
         for axis in range(3)
     )
     mapped: list[np.float32] = []
@@ -213,6 +237,7 @@ def sample_toad_shape_prior(
         rotated = np.float32(rotated + transform_values[axis + 3])
         coordinate = np.float32(rotated / template_res[axis])
         coordinate = np.float32(coordinate + template_center[axis])
+        coordinate = np.float32(coordinate / scale_value)
         mapped.append(coordinate)
 
     sampled = _linear_closest(values, mapped)
