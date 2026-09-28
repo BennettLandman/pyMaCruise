@@ -481,5 +481,8 @@ the selected convergence condition.
 The latest isolated update slices now include optimized-tissue damped
 centroids, checked against the actual source `PowerTable` on committed
 synthetic data; see the [P18al reference report](reports/toads-optimized-centroids-2026-09-28.md).
+The source-compatible optimized-tissue image-variance weights and global
+standard deviations are also matched against a Java formula harness in both
+field modes; see the [P18am report](reports/toads-optimized-variance-2026-09-28.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
