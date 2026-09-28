@@ -326,11 +326,23 @@ This harness compiles the selected VandyCRUISE `GenericTGDM`,
 It does not execute the original JIST `DistanceField.class` during iterative
 evolution: that class requires JIST image binaries incompatible with the
 minimal synthetic presentation stubs. The separate four-case original-JIST
-distance-field test remains exact. This small case also does not trigger a
-topology landmine veto or exercise folded cortex, attached dura, outer masks,
-or wrapper post-evolution membership/mask cleanup. Larger folding and dura
-cases, and resolution of the reinitialization discrepancy, remain required
-before this substage or P18 can be marked Done.
+distance-field test remains exact. This small case does not trigger a
+topology landmine restart or exercise folding. A separate 25×25×25 angularly
+folded cortex fixture now triggers the source landmine restart in both
+implementations: Java and Python complete 147 updates with one restart. Final
+output metrics pass the project gates: Dice 0.997923, symmetric mean surface
+distance 0.005180 mm, and Hausdorff distance 0.328474 mm. Four voxel signs
+differ, and intermediate reinitialization fields differ by up to 0.36 voxel;
+this is reported explicitly rather than hidden in the surface tolerances. See
+`tests/data/synthetic/dura_tgdm_folded_cortex/README.md` for the fixture and
+metric details.
+
+The larger harness still uses the local `DistanceFieldyh` adapter rather than
+the original JIST `DistanceField.class` during iterative evolution. The
+separate original-JIST distance-field tests and Dura initial-surface fixture
+are exact, but they do not establish whole-evolution equivalence. Attached
+dura, outer masks, the two pre-evolution topology corrections, and
+post-evolution end-to-end wrapper behavior remain open before P18 can be Done.
 
 The reference fixture is `tests/data/synthetic/dura_tgdm_full_evolution/java_reference.json`;
 its generator and Java harness are under `scripts/` and `tests/java_reference/`.
@@ -342,10 +354,10 @@ It is generated from synthetic fields only. Source SHA-256 values:
 - `FastMarchingGradient.java`: `cf857c0c62e2c7a219e9e530c863b4e40ae594b55e90a355cd7fdf6e0709d3a3`
 - `DistanceFieldyh.java`: `a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811`
 
-The focused Dura test module passes 11 tests, including this harness comparison.
-This remains Started pending broader topology/dura phantoms, source-faithful
-reinitialization comparison during complete evolution, and the rest of the
-wrapper's topology and pre-evolution behavior.
+At the time this first harness slice was added, the focused Dura test module
+passed 11 tests. The later folded-cortex case is separately gated against the
+owner-approved Dice and mesh-distance thresholds. P18 remains Started pending
+the whole-evolution original-JIST comparison and remaining wrapper stages.
 
 ### Started substage: Dura wrapper output-mask application
 
@@ -374,7 +386,8 @@ The source wrapper SHA-256 is
 reference JAR `DistanceField.class` SHA-256 is recorded in the fixture. The
 generator is `scripts/generate_java_dura_initial_levelsets_reference.sh` and
 accepts the original jar through `JIST_TEST_JAR`; the jar is only a development
-oracle, not a runtime dependency. The focused Dura test module passes 15 tests.
+oracle, not a runtime dependency. The focused Dura test module now passes 16
+tests, including the nested and larger folded-cortex TGDM comparisons.
 This validates initial arithmetic/distance construction only, not the two
 topology-correction algorithms or the complete dura workflow.
 

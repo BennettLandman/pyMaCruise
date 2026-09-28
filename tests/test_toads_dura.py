@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from skimage.measure import marching_cubes
 
 from pymacruise.toads_dura import (
     apply_dura_output_mask,
@@ -13,6 +14,7 @@ from pymacruise.toads_dura import (
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
 )
+from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 
 FIXTURE = (
@@ -164,6 +166,58 @@ def test_dura_tgdm_full_profile_matches_vandy_java_harness() -> None:
         assert float(np.max(np.abs(actual_pass - expected))) <= 0.0041
     expected_final = np.asarray(reference["final"], dtype=np.float32).reshape(shape)
     np.testing.assert_allclose(actual.level_set, expected_final, rtol=0.0, atol=5e-7)
+
+
+def test_dura_tgdm_folded_cortex_meets_segmentation_and_surface_tolerances() -> None:
+    reference = json.loads(
+        (Path(__file__).parent / "data" / "synthetic" / "dura_tgdm_folded_cortex" / "java_reference.json").read_text()
+    )
+    assert reference["phantom"] == "folded_cortex"
+    shape = tuple(reference["dims"])
+    x, y, z = np.indices(shape, dtype=np.float64)
+    center = tuple((size - 1.0) / 2.0 for size in shape)
+    dx, dy, dz = x - center[0], y - center[1], z - center[2]
+    radius = np.sqrt(dx * dx + dy * dy + dz * dz)
+    theta = np.arctan2(dy, dx)
+    polar = np.arccos(np.divide(dz, radius, out=np.zeros_like(radius), where=radius != 0))
+    polar[radius == 0] = 0.0
+    folds = 1.15 * np.sin(7.0 * theta) * np.sin(4.0 * polar) + 0.45 * np.cos(
+        5.0 * theta + 0.7
+    ) * np.sin(3.0 * polar)
+    outer = (radius - (8.0 + folds)).astype(np.float32)
+    inner = (radius - (4.8 + 0.52 * folds)).astype(np.float32)
+    gray_matter = (
+        118.0 + 42.0 * np.sin(0.24 * x + 0.16 * y) + 35.0 * np.cos(0.19 * y - 0.21 * z)
+    ).astype(np.float32)
+
+    actual = dura_tgdm_evolve(
+        outer,
+        gray_matter,
+        inner,
+        membership_level=reference["membership_level"],
+        alpha=reference["alpha"],
+        alignment_force=reference["alignment_force"],
+        curvature_force=reference["curvature_force"],
+        pressure_force=reference["pressure_force"],
+        outer_iterations=reference["outer_iterations"],
+    )
+    expected = np.asarray(reference["final"], dtype=np.float32).reshape(shape)
+
+    assert reference["pass_steps"] == [27, 30, 30, 30, 30]
+    assert reference["mine_hit_steps"] == [1, 0, 0, 0, 0]
+    assert actual.completed_steps == sum(reference["pass_steps"])
+    assert actual.landmine_restarts == 1
+    assert dice_coefficient(actual.level_set <= 0, expected <= 0) >= 0.97
+    actual_vertices, actual_faces, _, _ = marching_cubes(actual.level_set, level=0.0)
+    expected_vertices, expected_faces, _, _ = marching_cubes(expected, level=0.0)
+    distances = mesh_surface_distance_metrics(
+        expected_vertices,
+        expected_faces,
+        actual_vertices,
+        actual_faces,
+    )
+    assert distances["mean_absolute_distance_mm"] <= 0.01
+    assert distances["hausdorff_mm"] <= 1.0
 
 
 @pytest.mark.parametrize("case_index", range(4))

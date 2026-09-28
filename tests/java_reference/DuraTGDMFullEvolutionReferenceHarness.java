@@ -10,7 +10,10 @@ import edu.jhu.ece.iacl.jist.structures.image.ImageDataFloat;
 
 /** Executes the selected VandyCRUISE Dura TGDM path on a tiny synthetic field. */
 public final class DuraTGDMFullEvolutionReferenceHarness {
-    private static final int NX = 11, NY = 10, NZ = 9;
+    private static final int NX = Integer.getInteger("dura.nx", 11);
+    private static final int NY = Integer.getInteger("dura.ny", 10);
+    private static final int NZ = Integer.getInteger("dura.nz", 9);
+    private static final boolean FOLDED = Boolean.getBoolean("dura.folded");
 
     private static final class Probe extends DynamicPressureTGDM {
         final List<float[][][]> passes = new ArrayList<>();
@@ -70,6 +73,20 @@ public final class DuraTGDMFullEvolutionReferenceHarness {
     private static float[][][] field(int which) {
         float[][][] values = new float[NX][NY][NZ];
         for (int x=0;x<NX;x++) for (int y=0;y<NY;y++) for (int z=0;z<NZ;z++) {
+            if (FOLDED) {
+                double cx=(NX-1.0)/2.0, cy=(NY-1.0)/2.0, cz=(NZ-1.0)/2.0;
+                double dx=x-cx, dy=y-cy, dz=z-cz;
+                double radius=Math.sqrt(dx*dx+dy*dy+dz*dz);
+                double theta=Math.atan2(dy,dx);
+                double polar=(radius == 0.0) ? 0.0 : Math.acos(dz/radius);
+                double folds=1.15*Math.sin(7.0*theta)*Math.sin(4.0*polar)
+                        +0.45*Math.cos(5.0*theta+0.7)*Math.sin(3.0*polar);
+                if (which == 0) values[x][y][z]=(float)(radius-(8.0+folds));
+                else if (which == 1) values[x][y][z]=(float)(radius-(4.8+0.52*folds));
+                else values[x][y][z]=(float)(118.0+42.0*Math.sin(0.24*x+0.16*y)
+                        +35.0*Math.cos(0.19*y-0.21*z));
+                continue;
+            }
             double dx=x-5.0, dy=y-4.5, dz=z-4.0;
             if (which == 0) {
                 values[x][y][z]=(float)(Math.sqrt(dx*dx+dy*dy+dz*dz)-3.2);
@@ -108,8 +125,9 @@ public final class DuraTGDMFullEvolutionReferenceHarness {
 
         StringBuilder json=new StringBuilder();
         json.append("{\"source\":\"VandyCRUISE GenericTGDM + DynamicPressureTGDM + DynamicPressureCortexProfile; local DistanceFieldyh seam\",");
+        json.append("\"phantom\":\""+(FOLDED ? "folded_cortex" : "nested_surfaces")+"\",");
         json.append("\"generic_sha256\":\"70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1\",");
-        json.append("\"dims\":[11,10,9],\"membership_level\":0.4,\"alpha\":0.5,");
+        json.append("\"dims\":["+NX+","+NY+","+NZ+"],\"membership_level\":0.4,\"alpha\":0.5,");
         json.append("\"alignment_force\":1.0,\"curvature_force\":0.5,\"pressure_force\":0.5,");
         json.append("\"outer_iterations\":5,\"pass_steps\":[");
         for(int i=0;i<tgdm.steps.size();i++){if(i>0)json.append(',');json.append(tgdm.steps.get(i));}
