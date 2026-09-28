@@ -35,19 +35,24 @@ class ACEArrayResult:
     """ACE outputs on one already-normalized 3D voxel grid.
 
     ``skeleton`` is the cleaned ACE CSF membership returned before the
-    separate MaCRUISE thinning step (roadmap P27).
+    separate MaCRUISE thinning step (roadmap P27), with the source wrapper's
+    final border clearing applied. ``thinned_skeleton`` is made from the
+    cleaned membership before that border clearing, matching the order in
+    ``MaAnatomicallyConsistentEnhance.solve``.
     """
 
     enhanced_gray_matter: np.ndarray
     skeleton: np.ndarray
+    thinned_skeleton: np.ndarray
 
 
 @dataclass(frozen=True)
 class ACEImageResult:
-    """RAS-oriented NIfTI ACE outputs on the input physical grid."""
+    """RAS ACE products on the input grid, including wrapper-ordered thinning."""
 
     enhanced_gray_matter: nib.Nifti1Image
     skeleton: nib.Nifti1Image
+    thinned_skeleton: nib.Nifti1Image
 
 
 def ace_seed_fields(
@@ -346,6 +351,12 @@ def ace_enhance_arrays(
     memberships = clean_ace_components(memberships, minimum_size_exclusive=60)
     memberships[memberships > 0] = 254
 
+    # The MaCRUISE Java wrapper calls ThinACE before it clears the border on
+    # the returned unthinned skeleton and enhanced-GM images. Preserve that
+    # ordering while keeping ThinACE implemented and validated as P27.
+    from pymacruise.skeleton import thin_ace
+
+    thinned_memberships = thin_ace(memberships)
     enhanced = gray.copy()
     enhanced[memberships > 0] = 0.0
     border = np.zeros(gray.shape, dtype=bool)
@@ -354,7 +365,7 @@ def ace_enhance_arrays(
     border[:, :, [0, -1]] = True
     enhanced[border] = 0.0
     memberships[border] = 0
-    return ACEArrayResult(enhanced, memberships)
+    return ACEArrayResult(enhanced, memberships, thinned_memberships)
 
 
 def ace_enhance(
@@ -388,6 +399,7 @@ def ace_enhance(
     return ACEImageResult(
         _make_output(arrays.enhanced_gray_matter, gray_image),
         _make_output(arrays.skeleton, gray_image),
+        _make_output(arrays.thinned_skeleton, gray_image),
     )
 
 

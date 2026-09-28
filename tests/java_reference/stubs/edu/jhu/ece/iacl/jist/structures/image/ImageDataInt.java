@@ -23,7 +23,9 @@ public class ImageDataInt extends ImageData {
 
     public int[][][] toArray3d() { return values; }
     public ImageDataInt mimic() { return new ImageDataInt(rows, cols, slices); }
+    public float getFloat(int x, int y, int z) { return values[x][y][z]; }
     public int getInt(int x, int y, int z) { return values[x][y][z]; }
+    public boolean getBoolean(int x, int y, int z) { return values[x][y][z] != 0; }
     public byte getByte(int x, int y, int z) { return (byte) values[x][y][z]; }
     public byte getUByte(int x, int y, int z) { return (byte) values[x][y][z]; }
     public double getDouble(int x, int y, int z) { return values[x][y][z]; }

@@ -14,6 +14,8 @@ public final class VoxelIndexed<T extends VoxelFloat> implements Indexable<Voxel
     public int getColumn() { return column; }
     public int getSlice() { return slice; }
     public float getFloat() { return value.getFloat(); }
+    public double getDouble() { return value.getDouble(); }
+    public int getInt() { return value.getInt(); }
     public int getChainIndex() { return chainIndex; }
     public void setChainIndex(int value) { chainIndex = value; }
     public void setIndex(int value) { index = value; }
@@ -21,5 +23,7 @@ public final class VoxelIndexed<T extends VoxelFloat> implements Indexable<Voxel
     public VoxelFloat getValue() { return value; }
     @SuppressWarnings("unchecked")
     public void setValue(Comparable value) { this.value = (T) value; }
+    @SuppressWarnings("unchecked")
+    public void set(double value) { this.value = (T) new VoxelFloat((float) value); }
     public int compareTo(VoxelFloat other) { return value.compareTo(other); }
 }

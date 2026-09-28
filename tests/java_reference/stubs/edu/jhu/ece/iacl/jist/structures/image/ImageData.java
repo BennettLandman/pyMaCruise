@@ -19,7 +19,13 @@ public class ImageData {
         return vector == null ? scalar[x][y][z] : vector[x][y][z][component];
     }
     public int getInt(int x, int y, int z) { return (int) getFloat(x, y, z); }
+    public byte getByte(int x, int y, int z) { return (byte) getInt(x, y, z); }
+    public byte getUByte(int x, int y, int z) { return (byte) getInt(x, y, z); }
+    public boolean getBoolean(int x, int y, int z) { return getInt(x, y, z) != 0; }
+    public double getDouble(int x, int y, int z) { return getFloat(x, y, z); }
     public void set(int x, int y, int z, float value) { scalar[x][y][z] = value; }
+    public void set(int x, int y, int z, double value) { scalar[x][y][z] = (float) value; }
+    public void set(int x, int y, int z, int value) { scalar[x][y][z] = value; }
     public void set(int x, int y, int z, int component, float value) { vector[x][y][z][component] = value; }
     public ImageHeader getHeader() { return header; }
     public void setHeader(ImageHeader value) { header = value; }
