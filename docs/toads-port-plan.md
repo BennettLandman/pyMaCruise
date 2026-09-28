@@ -487,5 +487,8 @@ field modes; see the [P18am report](reports/toads-optimized-variance-2026-09-28.
 Assigned-class standard deviations for those optimized tissue types are now
 separately checked with the Java formula harness, including source handling
 for empty classes; see the [P18an report](reports/toads-optimized-class-variance-2026-09-28.md).
+The pairwise centroid-similarity coefficient that consumes those variance
+values is also matched for the selected default scale, with source zero
+diagonal and IEEE zero-deviation behavior; see the [P18ao report](reports/toads-optimized-similarity-2026-09-28.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
