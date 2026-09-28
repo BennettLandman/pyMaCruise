@@ -2,6 +2,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import edu.jhu.ece.iacl.algorithms.tgdm.DynamicPressureTGDM;
 import edu.jhu.ece.iacl.algorithms.tgdm.ProfileTGDM;
@@ -111,7 +114,7 @@ public final class DuraTGDMFullEvolutionReferenceHarness {
         out.append(']');
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         PrintStream stdout=System.out;
         System.setOut(new PrintStream(new ByteArrayOutputStream()));
         float[][][] outer=field(0), inner=field(1), gm=field(2);
@@ -124,8 +127,14 @@ public final class DuraTGDMFullEvolutionReferenceHarness {
         System.setOut(stdout);
 
         StringBuilder json=new StringBuilder();
-        json.append("{\"source\":\"VandyCRUISE GenericTGDM + DynamicPressureTGDM + DynamicPressureCortexProfile; local DistanceFieldyh seam\",");
+        String distanceFieldSource = Boolean.getBoolean("dura.original_jist")
+                ? "original JIST DistanceField.class"
+                : "local DistanceFieldyh seam";
+        json.append("{\"source\":\"VandyCRUISE GenericTGDM + DynamicPressureTGDM + DynamicPressureCortexProfile; "+distanceFieldSource+"\",");
         json.append("\"phantom\":\""+(FOLDED ? "folded_cortex" : "nested_surfaces")+"\",");
+        json.append("\"distance_field_sha256\":\""+(Boolean.getBoolean("dura.original_jist")
+                ? "92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7"
+                : "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811")+"\",");
         json.append("\"generic_sha256\":\"70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1\",");
         json.append("\"dims\":["+NX+","+NY+","+NZ+"],\"membership_level\":0.4,\"alpha\":0.5,");
         json.append("\"alignment_force\":1.0,\"curvature_force\":0.5,\"pressure_force\":0.5,");
@@ -140,6 +149,12 @@ public final class DuraTGDMFullEvolutionReferenceHarness {
         json.append("],\"initial_point_update\":"); emitVolume(json,initialUpdates);
         json.append(",\"final\":"); emitVolume(json,result.toArray3d());
         json.append('}');
-        System.out.println(json);
+        if (args.length == 1) {
+            Path output = Paths.get(args[0]);
+            Files.createDirectories(output.toAbsolutePath().getParent());
+            Files.writeString(output, json.toString());
+        } else {
+            System.out.println(json);
+        }
     }
 }

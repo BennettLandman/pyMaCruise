@@ -19,7 +19,8 @@ javac -d "$classes" \
   "$upstream/tgdm/DynamicPressureCortexProfile.java" \
   "$upstream/tgdm/ProfileTGDM.java" \
   "$upstream/gvf/FastMarchingGradient.java" \
-  "$reference_root/DuraTGDMFullEvolutionReferenceHarness.java"
+  "$reference_root/DuraTGDMFullEvolutionReferenceHarness.java" \
+  "$reference_root/dura_stubs/gov/nih/mipav/view/Preferences.java"
 java -Ddura.nx="$nx" -Ddura.ny="$ny" -Ddura.nz="$nz" \
   -Ddura.folded="$folded" -cp "$classes" \
   DuraTGDMFullEvolutionReferenceHarness > "$output"

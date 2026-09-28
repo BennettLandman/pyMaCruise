@@ -6,6 +6,7 @@ public class AbstractCalculation {
     public AbstractCalculation(AbstractCalculation parent) {}
     public void setLabel(String label) {}
     public void setTotalUnits(int units) {}
+    public void setTotalUnits(long units) {}
     public void incrementCompletedUnits() {}
     public void decrementCompletedUnits() {}
     public void markCompleted() {}

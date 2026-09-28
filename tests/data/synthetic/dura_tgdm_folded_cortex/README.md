@@ -10,16 +10,18 @@
   `DuraTGDMFullEvolutionReferenceHarness.java`; no subject images are used.
 - **Reference code:** selected VandyCRUISE `GenericTGDM`,
   `DynamicPressureTGDM`, and `DynamicPressureCortexProfile`; the harness uses
-  the supplied `DistanceFieldyh` implementation through a minimal local JIST
-  adapter. See `docs/toads-port-plan.md` for source hashes and the distinction
-  from the separate original-JIST distance-field test.
+  the original JIST `DistanceField.class` (SHA-256
+  `92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7`). A
+  headless compatibility shim avoids loading MIPAV UI classes; JIST's actual
+  image and distance-field classes are used.
 - **Regeneration:**
 
   ```sh
-  DURA_TGDM_OUTPUT=tests/data/synthetic/dura_tgdm_folded_cortex/java_reference.json \
+  JIST_TEST_JAR=/path/to/JIST-Test.jar JIST_LIB_DIR=/path/to/JIST/lib \
+    DURA_TGDM_OUTPUT=tests/data/synthetic/dura_tgdm_folded_cortex/java_reference.json \
     DURA_TGDM_NX=25 DURA_TGDM_NY=25 DURA_TGDM_NZ=25 \
     DURA_TGDM_FOLDED=true \
-    scripts/generate_java_dura_tgdm_full_evolution_reference.sh
+    scripts/generate_java_dura_original_jist_reference.sh
   ```
 
 The Java profile stops its first pass after 27 updates when the landmine

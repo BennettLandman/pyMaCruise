@@ -320,28 +320,29 @@ mean absolute difference is 1.01e-7 voxel. Pre-reinitialization differences
 peak at 0.01083 voxel. These are measured discrepancies, not a claim of exact
 intermediate parity.
 
-This harness compiles the selected VandyCRUISE `GenericTGDM`,
-`DynamicPressureTGDM`, and `DynamicPressureCortexProfile` source, but its local
-`DistanceField` adapter calls the supplied MaCRUISE `DistanceFieldyh` source.
-It does not execute the original JIST `DistanceField.class` during iterative
-evolution: that class requires JIST image binaries incompatible with the
-minimal synthetic presentation stubs. The separate four-case original-JIST
-distance-field test remains exact. This small case does not trigger a
-topology landmine restart or exercise folding. A separate 25×25×25 angularly
-folded cortex fixture now triggers the source landmine restart in both
-implementations: Java and Python complete 147 updates with one restart. Final
-output metrics pass the project gates: Dice 0.997923, symmetric mean surface
-distance 0.005180 mm, and Hausdorff distance 0.328474 mm. Four voxel signs
-differ, and intermediate reinitialization fields differ by up to 0.36 voxel;
-this is reported explicitly rather than hidden in the surface tolerances. See
-`tests/data/synthetic/dura_tgdm_folded_cortex/README.md` for the fixture and
-metric details.
+The full-evolution harness compiles the selected VandyCRUISE `GenericTGDM`,
+`DynamicPressureTGDM`, and `DynamicPressureCortexProfile` source and runs the
+original JIST `DistanceField.class` during iterative evolution. The
+reproducible headless setup uses the actual JIST image/distance classes and a
+small framework shim for presentation/preferences. Its class SHA-256 is
+`92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7`. The
+companion `DistanceFieldyh` harness is retained as an auxiliary check; its
+full-evolution arrays match the original JIST class exactly on both committed
+cases.
 
-The larger harness still uses the local `DistanceFieldyh` adapter rather than
-the original JIST `DistanceField.class` during iterative evolution. The
-separate original-JIST distance-field tests and Dura initial-surface fixture
-are exact, but they do not establish whole-evolution equivalence. Attached
-dura, outer masks, the two pre-evolution topology corrections, and
+The 11×10×9 nested-surface case schedules five 30-step passes with no landmine
+restarts. A separate 25×25×25 angularly folded cortex fixture triggers one
+source landmine restart in both implementations: Java and Python complete
+147 updates. Final output metrics pass the project gates: Dice 0.997923,
+symmetric mean surface distance 0.005180 mm, and Hausdorff distance 0.328474
+mm. Four voxel signs differ, and intermediate reinitialization fields differ
+by up to 0.36 voxel; this is reported explicitly rather than hidden in the
+surface tolerances. See
+`tests/data/synthetic/dura_tgdm_folded_cortex/README.md` for the fixture and
+metrics. Regenerate the actual-JIST references using
+`scripts/generate_java_dura_original_jist_reference.sh`.
+
+Attached dura, outer masks, the two pre-evolution topology corrections, and
 post-evolution end-to-end wrapper behavior remain open before P18 can be Done.
 
 The reference fixture is `tests/data/synthetic/dura_tgdm_full_evolution/java_reference.json`;

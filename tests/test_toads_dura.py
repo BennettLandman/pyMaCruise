@@ -119,7 +119,10 @@ def test_dura_output_mask_rejects_invalid_fields(
 
 def test_dura_tgdm_full_profile_matches_vandy_java_harness() -> None:
     reference = json.loads(DURA_TGDM_FIXTURE.read_text())
-    assert "local DistanceFieldyh seam" in reference["source"]
+    assert "original JIST DistanceField.class" in reference["source"]
+    assert reference["distance_field_sha256"] == (
+        "92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7"
+    )
     shape = tuple(reference["dims"])
     x, y, z = np.indices(shape, dtype=np.float64)
     level_set = (
@@ -173,6 +176,7 @@ def test_dura_tgdm_folded_cortex_meets_segmentation_and_surface_tolerances() -> 
         (Path(__file__).parent / "data" / "synthetic" / "dura_tgdm_folded_cortex" / "java_reference.json").read_text()
     )
     assert reference["phantom"] == "folded_cortex"
+    assert "original JIST DistanceField.class" in reference["source"]
     shape = tuple(reference["dims"])
     x, y, z = np.indices(shape, dtype=np.float64)
     center = tuple((size - 1.0) / 2.0 for size in shape)

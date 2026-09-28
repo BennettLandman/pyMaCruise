@@ -35,6 +35,21 @@ NIfTI (`.nii.gz`) golden outputs. It requires a JDK but does not run MIPAV or
 JIST as applications. Regenerate the fixtures from the repository root with
 `scripts/generate_java_tgdm_reference.sh`.
 
+## Dura full-evolution reference
+
+`DuraTGDMFullEvolutionReferenceHarness.java` compiles the selected VandyCRUISE
+TGDM/profile source and runs it with the original JIST `DistanceField.class`.
+Regenerate the small nested-surface and 25³ folded-cortex JSON checkpoints
+with `scripts/generate_java_dura_original_jist_reference.sh`, setting
+`JIST_TEST_JAR` and `JIST_LIB_DIR` to the supplied JIST build. This harness
+uses the actual JIST image/distance classes with minimal headless framework
+shims; it does not start MIPAV or the JIST application. The older
+`scripts/generate_java_dura_tgdm_full_evolution_reference.sh` generator uses
+the supplied `DistanceFieldyh` source as an auxiliary cross-check. On both
+committed cases, those checkpoint arrays match the original JIST class
+exactly. Detailed numerical metrics and the known voxel-level differences
+between Python and Java are in `docs/toads-port-plan.md`.
+
 ## Source used
 
 `upstream/` contains source copies from the supplied checkouts, with their
