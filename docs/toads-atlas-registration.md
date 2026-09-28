@@ -188,6 +188,19 @@ absolute difference `1.49e-8` (one float32 ULP at the affected magnitude).
 This is synthetic optimizer-integration evidence only, not a Java full-method
 registration comparison or alignment-quality claim.
 
+P18aa adds a standalone Java formula excerpt combining the scaled source
+mapping, block means, closest-edge interpolation, prior derivatives, and
+exact-membership energy/coefficient loops. Committed odd-dimension 4D RAS
+NIfTI fields exercise scales 2 and 4, anisotropic spacing, nonzero rigid
+parameters, class-0 exclusion, and zero-support skipping. Python energy, raw
+cost, and norm match the fixture within `rtol=2e-7`, `atol=3e-8`; coefficient
+arrays meet `rtol=1e-5`, `atol=3e-8`, with maximum absolute difference capped
+at `1.5e-7`. Java and Python scalar samplers agree on positive/zero-prior
+counts at both scales. The harness is a source-formula excerpt, not execution
+of the private Java atlas class, and does not compare the complete line search
+or final multilevel transform. Details and source anchors are in
+[the P18aa report](reports/toads-scaled-registration-java-comparison-2026-09-28.md).
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
@@ -216,11 +229,10 @@ with these source-grounded items before using bundled atlas grids or proceeding
 to full segmentation:
 
 1. Build a Java harness that executes the selected full rigid-registration
-   method body and compare transformed coordinates, energy, coefficients,
-   accepted/rejected trials, and the final transform on known asymmetric
-   synthetic alignment cases. The existing harnesses compare isolated formula
-   slices and the Python multi-level integration, not the private Java atlas
-   registration method.
+   method body and compare accepted/rejected trials and the final transform on
+   known asymmetric synthetic alignment cases. The existing Java harnesses
+   compare source-formula kernels and Python multilevel integration, not the
+   private Java atlas registration method.
 2. Exercise transformed support-bound refresh and registration-driven crop
    changes on larger asymmetric folded synthetic phantoms.
 3. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
