@@ -2,7 +2,9 @@
 
 **Date:** 2026-09-28  
 **Roadmap:** P18z complete  
-**Implementation commit:** `23584b675c57b72b6014930bc28a687de63159ee`
+**Optimizer implementation commit:** `23584b675c57b72b6014930bc28a687de63159ee`
+
+**Validated implementation/fixture commit:** `2b42a9567e6cbdfc4a59da316f87ba28ba838df2`
 
 ## Source behavior ported
 
@@ -43,9 +45,10 @@ A separate scale-2 fixture compares the vectorized optimizer kernels with
 per-voxel scalar shape sampling, prior derivatives, rigid Jacobians, and the
 existing exact-membership accumulation kernel. Energy is exactly equal. Raw
 coefficient arrays pass `rtol=2e-7`, `atol=3e-10`; maximum absolute difference
-is `1.49e-8`, attributable to float32 rounding in the vectorized accumulated
-coefficients. This small coefficient deviation is recorded rather than hidden
-inside an alignment tolerance.
+is `1.49e-8`, at float32 rounding scale for the affected coefficient. The
+precise operation responsible for this difference has not been isolated. This
+coefficient deviation is recorded rather than hidden inside an alignment
+tolerance.
 
 The tests also verify the source's one-level/no-scale-1 behavior. The fixtures
 are synthetic probability fields, not clinical scans; bundled atlas files are
@@ -63,7 +66,7 @@ and [the main plan](../../plan.md).
 ## Full-suite evidence
 
 - Command: `./.venv/bin/pytest -q`
-- Result: **266 passed in 56.94 seconds**
+- Result: **266 passed in 48.40 seconds**
 - Pytest: 9.1.1; Python 3.13.2
-- Tested implementation commit: `23584b675c57b72b6014930bc28a687de63159ee`
+- Tested implementation commit: `2b42a9567e6cbdfc4a59da316f87ba28ba838df2`
 - Run date: 2026-09-28

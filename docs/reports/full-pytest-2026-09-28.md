@@ -288,6 +288,23 @@ P18y adds exact synthetic comparisons for coarse-scale rigid coordinates and
 all 18 entries of the rigid coordinate Jacobian at scales 1, 2, and 4. Earlier
 rows retain their respective full-suite evidence; P18y cites this run.
 
+## Additional full-suite run for P18z
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **266 passed in 48.40 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `2b42a9567e6cbdfc4a59da316f87ba28ba838df2` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 266 tests collected and all passed |
+
+P18z adds coarse-to-fine rigid optimizer integration at source scales 4 and 2,
+including committed synthetic RAS NIfTI inputs, deterministic transform
+handoff, the scale-1 no-op contract, and scaled-kernel comparisons. Earlier
+rows retain their respective full-suite evidence; P18z cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -337,6 +354,7 @@ rows retain their respective full-suite evidence; P18y cites this run.
 | P18w — Vectorize source-ordered TOADS sampling and accumulation | `tests/test_toads_registration_sampling.py` compares vectorized, scalar, and dense energies/coefficients exactly across two anisotropic grids and full/subsampled scans; reproducible 6³/10³/16³ performance and scratch-memory results: `docs/reports/toads-registration-vectorization-2026-09-28.md`. | `253 passed`; commit `dad38b855a480638eb717c0d90421b5c8aa9de38` |
 | P18x — Port source TOADS pyramid block downsampling and level schedule | `tests/test_toads_registration_sampling.py` compares factor-2/4 results with the committed standalone Java harness and checks source scale schedule/dimensions for levels 1–5. | `259 passed`; commit `d855faf8e49aab850eb4c47e71ec7fd14702651f` |
 | P18y — Port coarse-scale TOADS rigid coordinates and Jacobians | `tests/test_toads_shape_sampling.py` compares mapped coordinates and the complete rigid Jacobian with a committed standalone Java formula fixture at scales 1/2/4, odd image dimensions, anisotropic resolution, and nonzero parameters; scale and center validation are tested. | `263 passed`; commit `0854326892f347b95b58d7d582f116674293afa3` |
+| P18z — Integrate coarse-to-fine rigid atlas registration | Committed synthetic inputs `tests/data/synthetic/toads_registration_pyramid_optimizer/*.nii.gz`; `tests/test_toads_registration_sampling.py` verifies RAS geometry and exact seeded values, scales 4→2 updates, deterministic history/transform handoff, level-1 no-op, and scale-2 mapped-kernel comparisons; coefficient maximum absolute difference is `1.49e-8`. | `266 passed`; commit `2b42a9567e6cbdfc4a59da316f87ba28ba838df2` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
