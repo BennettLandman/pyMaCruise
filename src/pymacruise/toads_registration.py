@@ -167,6 +167,94 @@ def exact_registration_coefficient_contributions(
     )
 
 
+def exact_membership_registration_coefficients(
+    memberships: ArrayLike,
+    shape_priors: ArrayLike,
+    prior_gradients_xyz: ArrayLike,
+    coordinate_jacobians: ArrayLike,
+    *,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 1,
+) -> RegistrationCoefficientSums:
+    """Accumulate exact-membership rigid coefficients over a sampled grid.
+
+    Inputs contain source-sampled priors, prior x/y/z derivatives, and a
+    per-voxel `(3, 6)` rigid Jacobian. Loops follow the selected Java
+    x/y/z/class ordering so each running sum retains float32 source semantics.
+    This numerical kernel does not perform coordinate mapping or atlas
+    interpolation.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    prior = np.asarray(shape_priors, dtype=np.float32)
+    prior_grad = np.asarray(prior_gradients_xyz, dtype=np.float32)
+    jacobian = np.asarray(coordinate_jacobians, dtype=np.float32)
+    if mem.ndim != 4 or mem.shape != prior.shape or mem.shape[-1] < 2:
+        raise ValueError("membership and prior arrays must share a 4D grid with at least two classes")
+    if prior_grad.shape != mem.shape + (3,):
+        raise ValueError("prior_gradients_xyz must have shape (x, y, z, class, 3)")
+    if jacobian.shape != mem.shape[:3] + (3, 6):
+        raise ValueError("coordinate_jacobians must have shape (x, y, z, 3, 6)")
+    if not all(np.isfinite(v).all() for v in (mem, prior, prior_grad, jacobian)):
+        raise ValueError("registration coefficient arrays must be finite")
+    if not isinstance(offset, (int, np.integer)) or offset < 0:
+        raise ValueError("offset must be a non-negative integer")
+    if not isinstance(subsample, (int, np.integer)) or subsample < 1:
+        raise ValueError("subsample must be a positive integer")
+    if offset >= min(mem.shape[:3]):
+        raise ValueError("offset must be inside every spatial axis")
+    if registered_classes is None:
+        registered = np.ones(mem.shape[-1], dtype=bool)
+    else:
+        registered = np.asarray(registered_classes, dtype=bool)
+        if registered.shape != (mem.shape[-1],):
+            raise ValueError("registered_classes must have one value per class")
+
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    norm_gradient = np.zeros(6, dtype=np.float32)
+    norm_hessian = np.zeros(6, dtype=np.float32)
+    for x in range(offset, mem.shape[0], subsample):
+        for y in range(offset, mem.shape[1], subsample):
+            for z in range(offset, mem.shape[2], subsample):
+                for k in range(1, mem.shape[-1]):
+                    p = prior[x, y, z, k]
+                    if not registered[k] or p <= np.float32(0.0):
+                        continue
+                    m = mem[x, y, z, k]
+                    m2 = np.float32(m * m)
+                    p2 = np.float32(p * p)
+                    cost = np.float32(cost + np.float32(np.float32(m2 * p) * p))
+                    norm = np.float32(norm + p2)
+                    dp = np.empty(6, dtype=np.float32)
+                    for parameter in range(6):
+                        value = np.float32(prior_grad[x, y, z, k, 0] * jacobian[x, y, z, 0, parameter])
+                        value = np.float32(value + np.float32(prior_grad[x, y, z, k, 1] * jacobian[x, y, z, 1, parameter]))
+                        dp[parameter] = np.float32(value + np.float32(prior_grad[x, y, z, k, 2] * jacobian[x, y, z, 2, parameter]))
+                    for parameter in range(6):
+                        gradient_term = np.float32(np.float32(2.0) * m)
+                        gradient_term = np.float32(gradient_term * m)
+                        gradient_term = np.float32(gradient_term * p)
+                        gradient_term = np.float32(gradient_term * dp[parameter])
+                        gradient[parameter] = np.float32(gradient[parameter] + gradient_term)
+                        hessian_term = np.float32(np.float32(2.0) * m)
+                        hessian_term = np.float32(hessian_term * m)
+                        hessian_term = np.float32(hessian_term * dp[parameter])
+                        hessian_term = np.float32(hessian_term * dp[parameter])
+                        hessian[parameter] = np.float32(hessian[parameter] + hessian_term)
+                        norm_gradient_term = np.float32(np.float32(2.0) * p)
+                        norm_gradient_term = np.float32(norm_gradient_term * dp[parameter])
+                        norm_gradient[parameter] = np.float32(norm_gradient[parameter] + norm_gradient_term)
+                        norm_hessian_term = np.float32(np.float32(2.0) * dp[parameter])
+                        norm_hessian_term = np.float32(norm_hessian_term * dp[parameter])
+                        norm_hessian[parameter] = np.float32(norm_hessian[parameter] + norm_hessian_term)
+    return RegistrationCoefficientSums(
+        cost, norm, gradient, hessian, norm_gradient, norm_hessian
+    )
+
+
 def exact_membership_registration_energy(
     memberships: ArrayLike,
     shape_priors: ArrayLike,

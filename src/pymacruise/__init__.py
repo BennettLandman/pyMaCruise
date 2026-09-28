@@ -67,6 +67,7 @@ from pymacruise.toads_registration import (
     RegistrationLineSearchResult,
     exact_registration_coefficient_contributions,
     exact_membership_registration_energy,
+    exact_membership_registration_coefficients,
     exact_registration_gradient_descent_step,
     exact_registration_measure_coefficients,
 )
@@ -110,6 +111,7 @@ __all__ = [
     "refine_segmentation_by_surfaces",
     "register_to_reference",
     "exact_membership_registration_energy",
+    "exact_membership_registration_coefficients",
     "exact_registration_measure_coefficients",
     "RegistrationCoefficientSums",
     "RegistrationLineSearchResult",

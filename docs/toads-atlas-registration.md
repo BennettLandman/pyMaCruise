@@ -116,6 +116,19 @@ energy, lambda, relative change, and reject count. This implements one
 registration update around a supplied energy callback; it does not yet run the
 TOADS energy or coefficient calculation end to end.
 
+### Full sampled-grid coefficient accumulation
+
+`exact_membership_registration_coefficients` now runs the sampled-volume
+x/y/z/class accumulation in the selected Java loop order. It accepts arrays of
+already sampled priors, their derivatives, and per-voxel rigid Jacobians, then
+returns source-order float32 cost, norm, and coefficient accumulators. Two
+small synthetic grids (full scan and offset/subsample scan) match the
+standalone Java source-formula harness exactly across all returned values.
+This is a numerical loop kernel only: it does not build transform-dependent
+prior fields or execute the registration optimization. The Python nested loops
+are currently correctness-first; runtime performance on full clinical grids
+has not been measured.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source

@@ -9,6 +9,7 @@ import pytest
 
 from pymacruise.toads_registration import (
     exact_membership_registration_energy,
+    exact_membership_registration_coefficients,
     exact_registration_measure_coefficients,
     exact_registration_coefficient_contributions,
     exact_registration_gradient_descent_step,
@@ -29,6 +30,7 @@ DERIVATIVE_HARNESS_HASH = "127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae9
 RIGID_JACOBIAN_HARNESS_HASH = "e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4"
 COEFFICIENT_ACCUMULATION_HARNESS_HASH = "20ac7238c1eaac7c6a9b72a2a974cca58582c0eaf2ab8fd7dead86755d7aa2d9"
 LINE_SEARCH_HARNESS_HASH = "bbe218ebe24b429b032ff023fb53bf0e65da64997d8567c54acd69a8503c3253"
+FULL_COEFFICIENT_HARNESS_HASH = "8f0d04367bc7e70a2ca9f9b48ad6331903f256a8c30f811e528530bb4d889246"
 
 
 def test_exact_membership_energy_matches_source_formula_harness() -> None:
@@ -63,6 +65,7 @@ def test_registration_reference_sources_have_recorded_hashes() -> None:
         ("ToadsRigidJacobianReferenceHarness.java", RIGID_JACOBIAN_HARNESS_HASH),
         ("ToadsRegistrationCoefficientAccumulationHarness.java", COEFFICIENT_ACCUMULATION_HARNESS_HASH),
         ("ToadsRegistrationLineSearchHarness.java", LINE_SEARCH_HARNESS_HASH),
+        ("ToadsRegistrationFullCoefficientsHarness.java", FULL_COEFFICIENT_HARNESS_HASH),
     ):
         harness = ROOT / "java_reference" / name
         assert hashlib.sha256(harness.read_bytes()).hexdigest() == expected
@@ -170,6 +173,37 @@ def test_registration_gradient_descent_accept_and_backtrack_match_source() -> No
         assert actual.relative_change == np.float32(record[3])
         assert actual.accepted is bool(record[4])
         assert actual.rejected_trials == int(record[5])
+
+
+def test_full_grid_registration_coefficients_match_source_loop_order() -> None:
+    x, y, z, k = np.indices((3, 2, 2, 4), dtype=np.int32)
+    memberships = (((7*x + 3*y + 5*z + 2*k) % 17) / np.float32(16.0)).astype(np.float32)
+    priors = (((2*x + 5*y + 3*z + 4*k) % 11) / np.float32(10.0)).astype(np.float32)
+    prior_gradients = np.empty(memberships.shape + (3,), dtype=np.float32)
+    for axis in range(3):
+        if axis == 0:
+            value = x + 2*y + 3*z + k
+        elif axis == 1:
+            value = 2*x + y + z + 2*k
+        else:
+            value = 3*x + y + 2*z + k
+        prior_gradients[..., axis] = ((value % 7 - 3) / np.float32(10.0)).astype(np.float32)
+    xj, yj, zj, axisj, parameter = np.indices((3, 2, 2, 3, 6), dtype=np.int32)
+    jacobians = (((3*xj + 5*yj + 7*zj + 2*axisj + 4*parameter) % 13 - 6) / np.float32(10.0)).astype(np.float32)
+    expected = json.loads((REFERENCE.parent / "java_full_coefficients_reference.json").read_text())
+    for name, offset, subsample in (("full_grid", 0, 1), ("offset_subsample", 1, 2)):
+        actual = exact_membership_registration_coefficients(
+            memberships, priors, prior_gradients, jacobians,
+            registered_classes=[True, True, False, True],
+            offset=offset, subsample=subsample,
+        )
+        reference = expected[name]
+        np.testing.assert_array_equal(
+            np.asarray([actual.cost, actual.norm], dtype=np.float32),
+            np.asarray(reference["cost_norm"], dtype=np.float32),
+        )
+        for field in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
+            np.testing.assert_array_equal(getattr(actual, field), np.asarray(reference[field], dtype=np.float32))
 
 
 @pytest.mark.parametrize(
