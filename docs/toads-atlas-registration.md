@@ -152,10 +152,14 @@ the streaming implementation.
 The synthetic benchmark measures one coefficient plus energy scan for three
 classes: 0.1053 s at 6³, 0.2481 s at 8³, and 0.4903 s at 10³. The separate
 Python-traced temporary allocation peak stays near 0.006 MiB and excludes the
-preallocated inputs. The voxel-at-a-time path controls scratch memory, but its
-current Python loop is still too slow for clinical-size volumes and repeated
-trial evaluation. Full details and a reproduction command are in
-[the P18v benchmark report](reports/toads-registration-streaming-2026-09-28.md).
+preallocated inputs. Those are P18v scalar-path measurements, retained for
+comparison; the current optimizer uses the P18w vectorized slab implementation.
+It matches the scalar and dense paths exactly on two synthetic anisotropic
+cases and takes 0.00689 s at 6³, 0.01176 s at 10³, and 0.02076 s at 16³ for
+one coefficient plus energy scan (15.05×, 41.02×, and 97.83× speedups). Its
+traced scratch peaks range from 0.0323 to 0.1580 MiB over those grids. These
+small-grid results still do not establish full atlas runtime or full-run
+performance. Details and the command are in [the P18w benchmark report](reports/toads-registration-vectorization-2026-09-28.md).
 
 ## Python-library reuse decision
 
