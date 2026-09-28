@@ -233,8 +233,10 @@ to full segmentation:
    known asymmetric synthetic alignment cases. The existing Java harnesses
    compare source-formula kernels and Python multilevel integration, not the
    private Java atlas registration method.
-2. Exercise transformed support-bound refresh and registration-driven crop
-   changes on larger asymmetric folded synthetic phantoms.
+2. Exercise registration-driven crop changes and transformed-bound refresh
+   during optimizer iterations. P18ab compares the standalone fixed-transform
+   bound scan with Java on a larger folded prior at three transforms; an
+   optimizer-driven multi-iteration crop update remains unvalidated.
 3. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
    geometry contract in a Java/Python atlas loader comparison before any atlas
    execution claim.
