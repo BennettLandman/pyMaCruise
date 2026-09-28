@@ -73,9 +73,13 @@ The selected TOADS segmentation also requires `critical186LUT.raw.gz` for
 67,108,864-byte payload is indexed by a
 26-bit x-major/y/z neighborhood key with the center omitted. This table is
 not interchangeable with P25's current 6/18 predicate: the two already differ
-for the single-corner key. The TOADS engine must use its selected LUT behavior
-until a separate 18/6 implementation is validated; see the fixture README and
-P18f in `plan.md`.
+for the single-corner key. `critical186_is_regular` now applies the bundled
+table to a single binary neighborhood. Sixty-eight committed synthetic cases
+match the copied VandyCRUISE `CriticalPointLUT` key and lookup methods exactly
+(see [the fixture README](../tests/data/synthetic/toads_critical_lut/README.md)
+and P18f/P18h in `plan.md`). This local LUT query does not port
+`MultipleToadSegmentation.isHomeomorphicSegmentation`, which also checks old
+and new objects and neighboring label relations, pairs, and triples.
 
 ## Historical V3 wrapper contract and selected Python deviation
 
