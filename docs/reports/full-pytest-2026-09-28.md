@@ -219,6 +219,24 @@ comparison or alignment-quality assessment; the dense implementation is not
 ready for clinical-size grids. Earlier rows retain their own full-suite
 evidence; P18u cites this run.
 
+## Additional full-suite run for P18v
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **252 passed in 70.82 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `0fe1161d6d5cf8f4af61b13346801ce9236d49dc` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 252 tests collected and all passed |
+
+This run validates the streamed energy and coefficient evaluator against the
+dense small-grid path, optimizer repeatability/stops through streaming, and
+the synthetic scratch-memory/time benchmark. Results and limitations are in
+[the P18v report](toads-registration-streaming-2026-09-28.md). Earlier rows
+retain their own full-suite evidence; P18v cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -264,6 +282,7 @@ evidence; P18u cites this run.
 | P18s — Port full sampled-grid TOADS registration coefficient accumulation | `tests/test_toads_registration.py` compares full-grid and offset/subsample source-order float32 sums to a Java formula excerpt. | `245 passed`; commit `5ba9abc87852f77787748a005c4586c1c3bdd36f` |
 | P18t — Build transform-dependent atlas fields for TOADS registration | `tests/test_toads_registration_sampling.py` composes class-bound sampling and prior derivatives on synthetic grids; companion kernel tests validate transform/interpolation and Jacobian references. Dense field storage is explicitly limited to small grids. | `248 passed`; commit `e45528ed129df5628f505f288a7281d73e4a3849` |
 | P18u — Integrate TOADS sampled-grid rigid registration optimizer | `tests/test_toads_registration_sampling.py` validates deterministic optimizer history, accepted trials, outer stop gates, and no-positive-prior rejection on a synthetic array fixture. Component kernels retain their separate source-reference checks. | `251 passed`; commit `bdc233277c2227049d6fe969cefbe7c929e5f983` |
+| P18v — Stream TOADS rigid registration samples and coefficients | `tests/test_toads_registration_sampling.py` asserts exact float32 equality between dense and streamed energy/coefficients on full and offset/subsample synthetic scans; reproducible time/scratch probe: `scripts/benchmark_toads_registration_streaming.py`. | `252 passed`; commit `0fe1161d6d5cf8f4af61b13346801ce9236d49dc` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |

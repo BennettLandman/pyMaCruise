@@ -129,6 +129,34 @@ prior fields or execute the registration optimization. The Python nested loops
 are currently correctness-first; runtime performance on full clinical grids
 has not been measured.
 
+### Integrated optimizer and streamed evaluation
+
+`register_toads_atlas_rigid` connects the transformed class-prior sampler,
+exact-membership energy and coefficient accumulation, source-faithful
+normalization, and rigid line search. `source_faithful=True` remains the
+default. The deterministic synthetic test repeats the loop and compares all
+history fields exactly, exercises accepted trials and the iteration, energy,
+and lambda stopping gates, and rejects an objective with no positive prior
+support. This is optimizer wiring evidence only: no full Java execution of
+`MultipleToadDeformableAtlas` or known-transform alignment claim is available.
+
+P18u initially used dense arrays. P18v switched the optimizer to
+`stream_toads_registration_energy` and
+`stream_toads_registration_coefficients`, which process one voxel and class
+at a time and keep source x/y/z/class accumulation order. The streamed path
+matches dense energy, cost, normalization, gradient, Hessian, norm-gradient,
+and norm-Hessian exactly on the anisotropic synthetic case, for both full and
+offset/subsample scans. The optimizer's deterministic/stopping tests run over
+the streaming implementation.
+
+The synthetic benchmark measures one coefficient plus energy scan for three
+classes: 0.1053 s at 6³, 0.2481 s at 8³, and 0.4903 s at 10³. The separate
+Python-traced temporary allocation peak stays near 0.006 MiB and excludes the
+preallocated inputs. The voxel-at-a-time path controls scratch memory, but its
+current Python loop is still too slow for clinical-size volumes and repeated
+trial evaluation. Full details and a reproduction command are in
+[the P18v benchmark report](reports/toads-registration-streaming-2026-09-28.md).
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
@@ -156,9 +184,10 @@ The current Python loop is integrated only on small synthetic arrays. Continue
 with these source-grounded items before using bundled atlas grids or proceeding
 to full segmentation:
 
-1. Replace dense per-trial field/Jacobian materialization with a source-order
-   streaming sampler/accumulator; quantify runtime and peak memory on increasing
-   synthetic grids, and compare all accumulated coefficients to P18s references.
+1. Accelerate the streamed source-order path using measured vectorization or
+   compiled kernels; preserve exact float32 accumulation and compare against
+   both the dense path and Java formula references. Keep runtime and memory
+   benchmarks across increasing synthetic grids.
 2. Build a Java harness that executes the selected full rigid-registration
    method body and compare transformed coordinates, energy, coefficients,
    accepted/rejected trials, and the final transform on known asymmetric
@@ -173,7 +202,7 @@ to full segmentation:
    deformable membership/topology evolution and inter-pass dura-removal port;
    this document does not close P18 or unblock P34.
 
-The dense optimizer currently preserves the source coefficient normalization
+The rigid optimizer currently preserves the source coefficient normalization
 call order by default. It does not establish that the source call order is
 numerically stable; the opt-in corrected calculation remains experimental and
 must stay out of defaults without owner sign-off.
