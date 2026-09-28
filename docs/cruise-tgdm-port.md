@@ -80,7 +80,7 @@ behavior, vector-component conversion, and a full nested run on the committed
 25³ concentric-tissue phantom under reduced synthetic iteration settings. This
 describes an earlier implementation snapshot; the authoritative complete-suite
 pass count and tested commit are recorded in
-[`reports/full-pytest-2026-09-27.md`](reports/full-pytest-2026-09-27.md). These
+[`reports/full-pytest-2026-09-28.md`](reports/full-pytest-2026-09-28.md). These
 checks do **not** by themselves establish Java numerical equivalence.
 
 `tgdm_evolve` now supplies the low-level source-style solver for an already
