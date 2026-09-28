@@ -1,0 +1,19 @@
+Structure Atlas File (edit at your own risks)
+
+Structures:	3
+Background	1	mask
+Lesion-WM	2	lesion
+Cortex	3	obj
+
+Topology Atlas:
+
+Intensity Atlas:	0
+T1_MPRAGE	0.0	0.4	0.8
+FLAIR	0.1	1.2	0.3
+
+Lesions:
+T1_MPRAGE	0.4	FLAIR	1.2
+
+Black Holes:
+T1_MPRAGE	0.1	FLAIR	0.6
+

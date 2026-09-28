@@ -52,6 +52,21 @@ class ToadsAtlasData:
     source_axis_codes: dict[str, tuple[str, str, str]]
 
 
+_MODALITY_ALIASES = {
+    "T1": "T1_SPGR",
+    "T1_SPGR": "T1_SPGR",
+    "T2": "T2",
+    "FLAIR": "FLAIR",
+    "MPRAGE": "T1_MPRAGE",
+    "T1_MPRAGE": "T1_MPRAGE",
+    "MPRAGE_RAW": "T1_RAW",
+    "T1_RAW": "T1_RAW",
+    "PD": "PD",
+    "PDFSE": "PDFSE",
+    "DIR": "DIR",
+}
+
+
 def _tag_values(line: str, tag: str, expected: int) -> tuple[float, ...]:
     key, separator, value = line.partition(":")
     if not separator or key.strip() != tag:
@@ -203,6 +218,81 @@ def load_toads_atlas(descriptor_path: str | Path) -> ToadsAtlas:
         orientations,
         tuple(geometry_warnings),
     )
+
+
+def load_toads_intensity_priors(
+    descriptor_path: str | Path,
+    modalities: tuple[str, ...] | list[str],
+) -> np.ndarray:
+    """Return selected descriptor intensity priors as ``(channels, classes)``.
+
+    The parser follows ``MultipleToadDeformableAtlas.modalityId`` and its
+    ``Intensity Atlas`` table: aliases map to the same modality identifier,
+    class values remain in descriptor structure order, and the caller's
+    modality ordering determines the output channel order. The selected base
+    workflow has explicit ``T1_MPRAGE`` priors. Source fallback behavior for
+    missing modality profiles is not silently synthesized here; unsupported
+    or absent profiles raise an actionable error. The source class is
+    `toads-cruise/src/edu/jhmi/rad/medic/methods/MultipleToadDeformableAtlas.java`
+    (June 2006; Pierre-Louis Bazin).
+    """
+    descriptor = Path(descriptor_path).resolve()
+    if not descriptor.is_file():
+        raise ToadsAtlasError(f"Missing TOADS atlas descriptor: {descriptor}")
+    if not modalities:
+        raise ToadsAtlasError("At least one image modality is required")
+    try:
+        lines = descriptor.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ToadsAtlasError(f"Cannot read TOADS atlas descriptor {descriptor}: {exc}") from exc
+
+    structures_index = next(
+        (index for index, line in enumerate(lines) if line.startswith("Structures:")), None
+    )
+    intensity_index = next(
+        (index for index, line in enumerate(lines) if line.startswith("Intensity Atlas:")), None
+    )
+    if structures_index is None or intensity_index is None:
+        raise ToadsAtlasError("TOADS descriptor lacks Structures or Intensity Atlas sections")
+    class_count = int(_tag_values(lines[structures_index], "Structures", 1)[0])
+
+    profiles: dict[str, np.ndarray] = {}
+    for line in lines[intensity_index + 1 :]:
+        tokens = line.split()
+        if not tokens:
+            continue
+        modality = _MODALITY_ALIASES.get(tokens[0])
+        if modality is None:
+            break
+        if modality in profiles:
+            raise ToadsAtlasError(f"Duplicate TOADS intensity profile for {modality}")
+        if len(tokens) != class_count + 1:
+            raise ToadsAtlasError(
+                f"TOADS intensity profile {tokens[0]} has {len(tokens) - 1} values; "
+                f"expected {class_count}"
+            )
+        try:
+            values = np.asarray([float(value) for value in tokens[1:]], dtype=np.float32)
+        except ValueError as exc:
+            raise ToadsAtlasError(
+                f"Invalid TOADS intensity prior in profile {tokens[0]}"
+            ) from exc
+        if not np.isfinite(values).all():
+            raise ToadsAtlasError(f"Non-finite TOADS intensity prior in profile {tokens[0]}")
+        profiles[modality] = values
+
+    rows: list[np.ndarray] = []
+    for requested in modalities:
+        modality = _MODALITY_ALIASES.get(requested)
+        if modality is None:
+            raise ToadsAtlasError(f"Unsupported TOADS image modality: {requested}")
+        try:
+            rows.append(profiles[modality])
+        except KeyError as exc:
+            raise ToadsAtlasError(
+                f"TOADS descriptor has no explicit intensity profile for {requested}"
+            ) from exc
+    return np.stack(rows, axis=0)
 
 
 def _metadata_file(lines: list[str], start: int) -> str:
