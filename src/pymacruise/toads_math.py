@@ -419,3 +419,106 @@ def toads_shape_weighted_membership_update(
                             updated[x, y, z, class_index] / denominator
                         )
     return updated
+
+
+def toads_ordered_membership_sweep(
+    data_energy: ArrayLike,
+    initial_memberships: ArrayLike,
+    shape_priors: ArrayLike,
+    closest_labels: ArrayLike,
+    smoothing_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    *,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[NDArray[np.float32], np.float32]:
+    """Run one source-ordered direct optimized-tissue membership sweep.
+
+    This small-grid stage consumes precomputed per-class data energies. It
+    visits interior voxels in x/y/z order and classes in ascending order,
+    reads six-face smoothing from the current in-place membership volume,
+    adds the half smoothing term to objective energy, applies shape relation
+    factors and the source reciprocal/normalization update, and accumulates
+    the objective in source order. It omits topology-admissibility checks and
+    does not generate data, PSF, or atlas-prior energy terms.
+    """
+    energies = np.asarray(data_energy, dtype=np.float32)
+    initial = np.asarray(initial_memberships, dtype=np.float32)
+    smooth_priors = np.asarray(smoothing_priors, dtype=np.float32)
+    smooth = np.float32(smoothing)
+    threshold = np.float32(zero_threshold)
+    reciprocal_cap = np.float32(infinite_reciprocal)
+    if energies.ndim != 4 or energies.shape[-1] < 1 or not np.isfinite(energies).all():
+        raise ValueError("data_energy must be finite 4-D with a class axis")
+    if initial.shape != energies.shape or not np.isfinite(initial).all():
+        raise ValueError("initial_memberships must be finite and match data_energy")
+    if smooth_priors.shape != (energies.shape[-1],) or not np.isfinite(smooth_priors).all():
+        raise ValueError("smoothing_priors must be finite and match the class count")
+    if not np.isfinite(smooth) or not np.isfinite(threshold) or not np.isfinite(reciprocal_cap):
+        raise ValueError("smoothing and reciprocal constants must be finite")
+    if threshold < 0 or reciprocal_cap <= 0:
+        raise ValueError("reciprocal threshold/cap must be nonnegative/positive")
+    factors, suppressed = toads_shape_relation_factors(shape_priors, closest_labels, prior_factor)
+    if factors.shape != energies.shape:
+        raise ValueError("shape_priors must match data_energy grid and class count")
+
+    updated = initial.copy()
+    total_objective = np.float32(0.0)
+    nx, ny, nz, classes = energies.shape
+    offsets = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                denominator = np.float32(0.0)
+                objective_at_voxel = np.zeros(classes, dtype=np.float32)
+                for class_index in range(classes):
+                    num = energies[x, y, z, class_index]
+                    objective_value = num
+                    if smooth > np.float32(0.0):
+                        neighbor_sum = np.float32(0.0)
+                        for dx, dy, dz in offsets:
+                            for other_class in range(classes):
+                                if other_class == class_index:
+                                    continue
+                                neighbor_value = updated[x + dx, y + dy, z + dz, other_class]
+                                neighbor_sum = np.float32(
+                                    neighbor_sum + np.float32(neighbor_value * neighbor_value)
+                                )
+                        scaled = np.float32(
+                            np.float32(smooth_priors[class_index] * smooth) * neighbor_sum
+                        )
+                        num = np.float32(num + scaled)
+                        energy_increment = np.float32(
+                            np.float32(np.float32(np.float32(0.5) * smooth_priors[class_index]) * smooth)
+                            * neighbor_sum
+                        )
+                        objective_value = np.float32(objective_value + energy_increment)
+
+                    if suppressed[x, y, z, class_index]:
+                        value = np.float32(0.0)
+                    else:
+                        reciprocal = (
+                            np.float32(np.float32(1.0) / num)
+                            if num > threshold
+                            else reciprocal_cap
+                        )
+                        value = np.float32(factors[x, y, z, class_index] * reciprocal)
+                        objective_at_voxel[class_index] = objective_value
+                    updated[x, y, z, class_index] = value
+                    denominator = np.float32(denominator + value)
+
+                if denominator > np.float32(0.0):
+                    for class_index in range(classes):
+                        updated[x, y, z, class_index] = np.float32(
+                            updated[x, y, z, class_index] / denominator
+                        )
+                        contribution = np.float32(
+                            np.float32(
+                                objective_at_voxel[class_index]
+                                * updated[x, y, z, class_index]
+                            )
+                            * updated[x, y, z, class_index]
+                        )
+                        total_objective = np.float32(total_objective + contribution)
+    return updated, total_objective
