@@ -15,6 +15,111 @@ class ToadShapeSample:
     template_xyz: tuple[np.float32, np.float32, np.float32] | None
 
 
+@dataclass(frozen=True)
+class ToadShapeBounds:
+    """Per-class support bounds produced by the selected atlas scan.
+
+    ``upper_xyz`` intentionally stores the largest positive-support voxel
+    index, not that index plus one. The selected source later treats it as an
+    exclusive bound, so the maximum-support plane is considered outside.
+    """
+
+    lower_xyz: tuple[int, int, int]
+    upper_xyz: tuple[int, int, int]
+    positive_support_xyz: tuple[tuple[int, int, int], ...]
+
+
+def compute_toad_shape_bounds(
+    shape: np.ndarray,
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    image_origin_xyz: tuple[float, float, float] | None = None,
+    template_origin_xyz: tuple[float, float, float] | None = None,
+) -> ToadShapeBounds:
+    """Scan positive atlas-shape support using TOADS' precomputed rigid map.
+
+    This reproduces the selected `computeTransformedShapeBoundingBox` scan
+    and its cached `ParametricTransform` matrix path for one rigid transform.
+    The source initializes minima to the input dimensions and maxima to zero,
+    then stores the greatest positive-support voxel index directly; it does
+    not add one to make the upper bound half-open.
+    """
+    values = np.asarray(shape, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("TOADS shape prior must be 3D with dimensions >= 2")
+    if not np.isfinite(values).all():
+        raise ValueError("TOADS shape prior must contain only finite values")
+    image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
+    image_res = _triple_float(image_resolutions_mm, "image_resolutions_mm", positive=True)
+    template_res = _triple_float(
+        template_resolutions_mm, "template_resolutions_mm", positive=True
+    )
+    parameters = np.asarray(transform, dtype=np.float32)
+    if parameters.shape != (6,) or not np.isfinite(parameters).all():
+        raise ValueError("transform must contain six finite rigid parameters")
+
+    image_origin = _triple_float(
+        image_origin_xyz
+        if image_origin_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in image_dims),
+        "image_origin_xyz",
+    )
+    template_origin = _triple_float(
+        template_origin_xyz
+        if template_origin_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in values.shape),
+        "template_origin_xyz",
+    )
+    rotation = _rotation_matrix(parameters[:3])
+    matrix = np.empty((3, 4), dtype=np.float32)
+    for axis in range(3):
+        for source_axis in range(3):
+            matrix[axis, source_axis] = np.float32(
+                np.float32(rotation[axis, source_axis] * image_res[source_axis])
+                / template_res[axis]
+            )
+        translated = np.float32(0.0)
+        for source_axis in range(3):
+            term = np.float32(
+                np.float32(
+                    np.float32(rotation[axis, source_axis] * np.float32(-image_origin[source_axis]))
+                    * image_res[source_axis]
+                )
+            )
+            translated = np.float32(translated + term)
+        translated = np.float32(translated + parameters[axis + 3])
+        translated = np.float32(translated / template_res[axis])
+        matrix[axis, 3] = np.float32(translated + template_origin[axis])
+
+    lower = list(image_dims)
+    upper = [0, 0, 0]
+    support: list[tuple[int, int, int]] = []
+    for x in range(image_dims[0]):
+        for y in range(image_dims[1]):
+            for z in range(image_dims[2]):
+                point = (x, y, z)
+                mapped: list[np.float32] = []
+                for axis in range(3):
+                    coordinate = np.float32(matrix[axis, 0] * np.float32(x))
+                    coordinate = np.float32(
+                        coordinate + np.float32(matrix[axis, 1] * np.float32(y))
+                    )
+                    coordinate = np.float32(
+                        coordinate + np.float32(matrix[axis, 2] * np.float32(z))
+                    )
+                    coordinate = np.float32(coordinate + matrix[axis, 3])
+                    mapped.append(coordinate)
+                if _linear_closest(values, mapped) > np.float32(0.0):
+                    support.append(point)
+                    for axis in range(3):
+                        lower[axis] = min(lower[axis], point[axis])
+                        upper[axis] = max(upper[axis], point[axis])
+    return ToadShapeBounds(tuple(lower), tuple(upper), tuple(support))
+
+
 def sample_toad_shape_prior(
     shape: np.ndarray,
     image_point_xyz: tuple[int, int, int],
@@ -53,7 +158,10 @@ def sample_toad_shape_prior(
     upper = _triple_int(bbox_high_xyz, "bbox_high_xyz")
     if any(point[a] < 0 or point[a] >= image_dims[a] for a in range(3)):
         raise ValueError("image_point_xyz must be inside the declared input grid")
-    if any(lower[a] < 0 or upper[a] > image_dims[a] or lower[a] > upper[a] for a in range(3)):
+    empty_support_bounds = lower == image_dims and upper == (0, 0, 0)
+    if any(lower[a] < 0 or lower[a] > image_dims[a] for a in range(3)) or any(
+        upper[a] < 0 or upper[a] > image_dims[a] for a in range(3)
+    ) or (not empty_support_bounds and any(lower[a] > upper[a] for a in range(3))):
         raise ValueError("class bounds must be ordered and inside the declared input grid")
     if not isinstance(class_index, (int, np.integer)) or class_index < 0:
         raise ValueError("class_index must be a nonnegative integer")
