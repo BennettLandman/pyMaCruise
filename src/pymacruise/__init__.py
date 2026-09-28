@@ -52,6 +52,15 @@ from pymacruise.segmentation_refine import (
     SegmentationRefinementResult,
     refine_segmentation_by_surfaces,
 )
+from pymacruise.registration import (
+    ANTsRegistrationError,
+    RegistrationConfig,
+    RegistrationResult,
+    apply_image_transform,
+    apply_transforms_to_points_ras,
+    apply_transforms_to_surface_ras,
+    register_to_reference,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -63,6 +72,9 @@ __all__ = [
     "SurfaceThicknessResult",
     "ThicknessVolumeResult",
     "SegmentationRefinementResult",
+    "RegistrationConfig",
+    "RegistrationResult",
+    "ANTsRegistrationError",
     "RawPreparationResult",
     "VolumeGeometryError",
     "ValidatedInputs",
@@ -87,6 +99,10 @@ __all__ = [
     "closest_point_thickness",
     "levelset_subtraction_thickness",
     "refine_segmentation_by_surfaces",
+    "register_to_reference",
+    "apply_image_transform",
+    "apply_transforms_to_points_ras",
+    "apply_transforms_to_surface_ras",
     "cortical_separation",
     "clean_csf_boundary",
     "clean_csf_boundary_image",

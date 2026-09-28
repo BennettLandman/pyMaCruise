@@ -1,0 +1,44 @@
+{
+  "purpose": "Synthetic ANTs transform direction/interpolation validation",
+  "shape_voxels": [
+    17,
+    17,
+    17
+  ],
+  "spacing_mm": [
+    1,
+    1,
+    1
+  ],
+  "orientation": "RAS",
+  "moving_landmark_ras_mm": [
+    5.0,
+    8.0,
+    7.0
+  ],
+  "fixed_landmark_ras_mm": [
+    7.0,
+    8.0,
+    7.0
+  ],
+  "moving_to_fixed_ras_translation_mm": [
+    2.0,
+    0.0,
+    0.0
+  ],
+  "ants_forward_image_resampling_lps_translation_mm": [
+    2,
+    0,
+    0
+  ],
+  "moving_to_fixed_point_translation_ras_mm": [
+    2,
+    0,
+    0
+  ],
+  "labels": {
+    "background": 0,
+    "sphere": 7
+  },
+  "seed": null
+}

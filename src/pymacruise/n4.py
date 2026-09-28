@@ -6,10 +6,11 @@ from dataclasses import dataclass
 import nibabel as nib
 import numpy as np
 
+from pymacruise.ants_utils import ANTsDependencyError, nifti_to_ants
 from pymacruise.image_io import normalize_image_to_ras
 
 
-class N4DependencyError(RuntimeError):
+class N4DependencyError(ANTsDependencyError):
     """Raised when the optional ANTsPy dependency is not usable."""
 
 
@@ -43,25 +44,11 @@ class N4Config:
 def _nib_to_ants(image: nib.spatialimages.SpatialImage):
     """Create an ANTsPy image while explicitly converting RAS geometry to LPS."""
     try:
-        import ants
-    except (ImportError, OSError) as exc:
+        return nifti_to_ants(image)
+    except ANTsDependencyError as exc:
         raise N4DependencyError(
             "ANTsPy is required for N4 correction; install PyMaCRUISE with its 'ants' extra"
         ) from exc
-
-    affine = np.asarray(image.affine, dtype=np.float64)
-    spacing = nib.affines.voxel_sizes(affine).astype(np.float64)
-    ras_to_lps = np.diag([-1.0, -1.0, 1.0])
-    direction_lps = ras_to_lps @ (affine[:3, :3] / spacing[np.newaxis, :])
-    origin_lps = ras_to_lps @ affine[:3, 3]
-    values = np.asarray(image.dataobj, dtype=np.float32)
-    ants_image = ants.from_numpy(
-        values,
-        origin=tuple(float(v) for v in origin_lps),
-        spacing=tuple(float(v) for v in spacing),
-        direction=direction_lps,
-    )
-    return ants, ants_image
 
 
 def n4_bias_correct(
