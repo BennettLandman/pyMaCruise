@@ -429,6 +429,7 @@ complete TOADS membership update; P18ad cites this run.
 | P18ac — Resolve selected TOADS atlas spacing source | Source-body audit of `MultipleToadDeformableAtlas.loadAtlas`, `loadTemplateImage`, and `loadShapeImage`, with committed source hash and line anchors; `tests/test_atlas_assets.py` confirms descriptor spacing, preserved NIfTI zooms, and the explicit warning. | `268 passed`; commit `32e6d804e56b312da04d02ec658abac57f36493a` |
 | P18ad — Assess NumPy power substitution for TOADS likelihoods | `tests/test_toads_powertable.py` compares 1,042 cases to the actual source `PowerTable` class and evaluates source float32 inverse-energy normalization; unquantized power changes three winners, while source-index quantization yields membership error <1e-6 with no winner changes. | `270 passed`; commit `b0dd1fe4aafd9f78b66b137fa0ed04c5630c65fb` |
 | P18ae — Port optimized CSF/GM/WM voxel likelihood terms | `tests/test_toads_optimized_likelihood.py` compares all 630 voxel/class energies in each of two field modes against a Java formula harness using the actual source `PowerTable`; committed 7×6×5×3 RAS `.nii.gz` values, field, and PSF bias are checked against their deterministic formulas; `rtol=0`, `atol=1e-7`. This is a data-term slice, not full membership evolution. | `271 passed`; commit `92550a4eeb11b2b049823a60b022581b0db0c84b` |
+| P18af — Port TOADS PSF ridge-bias calculation | `tests/test_toads_psf_bias.py` matches all outputs from the selected Java boundary and float32 stencil formula excerpts exactly, with and without a multiplicative field; committed image, field, and segmentation are RAS `.nii.gz` and recipe-checked. Seven focused tests include nonboundary, edge, zero-ridge, and invalid-input behavior. This does not validate membership evolution. | `278 passed`; commit `9afa5bb1c24c81475f6cbb7b4f45adc691217eee` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
@@ -462,6 +463,21 @@ complete TOADS membership update; P18ad cites this run.
 | Run scope | Complete configured suite; all collected tests passed |
 
 This run validates the P18ae implementation and committed synthetic fixture.
+Subsequent plan/report/README edits do not modify implementation or tests.
+
+## Additional full-suite run for P18af
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **278 passed in 53.28 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `9afa5bb1c24c81475f6cbb7b4f45adc691217eee` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18af implementation and committed synthetic fixture.
 Subsequent plan/report/README edits do not modify implementation or tests.
 
 ## Future rows
