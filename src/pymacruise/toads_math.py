@@ -359,3 +359,63 @@ def toads_shape_relation_factors(
                             min(np.float32(1.0), scaled)
                         )
     return factors, suppressed
+
+
+def toads_shape_weighted_membership_update(
+    data_energy: ArrayLike,
+    initial_memberships: ArrayLike,
+    shape_priors: ArrayLike,
+    closest_labels: ArrayLike,
+    prior_factor: float,
+    *,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> NDArray[np.float32]:
+    """Apply source relation factors to reciprocals, then normalize classes.
+
+    This composes the direct/neighbor/prior relation gate with the selected
+    optimized-tissue reciprocal-energy update at each interior voxel. A
+    prior-only class with zero shape is set to zero before the denominator is
+    summed. Smoothing and other terms are expected to have been composed into
+    ``data_energy`` by a caller; this helper does not implement the source's
+    asynchronous volume sweep.
+    """
+    energies = np.asarray(data_energy, dtype=np.float32)
+    initial = np.asarray(initial_memberships, dtype=np.float32)
+    if energies.ndim != 4 or energies.shape[-1] < 1 or not np.isfinite(energies).all():
+        raise ValueError("data_energy must be finite 4-D with a class axis")
+    if initial.shape != energies.shape or not np.isfinite(initial).all():
+        raise ValueError("initial_memberships must be finite and match data_energy")
+    factors, suppressed = toads_shape_relation_factors(shape_priors, closest_labels, prior_factor)
+    if factors.shape != energies.shape:
+        raise ValueError("shape_priors must match data_energy grid and class count")
+    threshold = np.float32(zero_threshold)
+    reciprocal_cap = np.float32(infinite_reciprocal)
+    if not np.isfinite(threshold) or not np.isfinite(reciprocal_cap) or threshold < 0 or reciprocal_cap <= 0:
+        raise ValueError("reciprocal thresholds must be finite and nonnegative/positive")
+
+    updated = initial.copy()
+    nx, ny, nz, classes = energies.shape
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                denominator = np.float32(0.0)
+                for class_index in range(classes):
+                    if suppressed[x, y, z, class_index]:
+                        value = np.float32(0.0)
+                    else:
+                        energy = energies[x, y, z, class_index]
+                        reciprocal = (
+                            np.float32(np.float32(1.0) / energy)
+                            if energy > threshold
+                            else reciprocal_cap
+                        )
+                        value = np.float32(factors[x, y, z, class_index] * reciprocal)
+                    updated[x, y, z, class_index] = value
+                    denominator = np.float32(denominator + value)
+                if denominator > np.float32(0.0):
+                    for class_index in range(classes):
+                        updated[x, y, z, class_index] = np.float32(
+                            updated[x, y, z, class_index] / denominator
+                        )
+    return updated
