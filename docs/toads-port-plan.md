@@ -84,10 +84,13 @@ secondary level `0.0`, maximum `5`, WM threshold `0.05`, and GM threshold
 The source Java atlas reader treats atlas files as headerless byte/float
 payloads in descriptor index order. The bundled NIfTIs have been axis-flipped
 to RAS and their headers do not necessarily represent the geometry used by
-that reader. The Python loader currently performs preflight only. Before
-consuming these assets in TOADS, add a tested array adapter that reconstructs
-the exact Java index ordering from audited source orientation/value metadata;
-do not simply pass the RAS-oriented NIfTI array to the source algorithm.
+that reader. `load_toads_atlas_data` uses the conversion audit's input axis
+codes to reverse only the RAS axis permutation/flips. Its synthetic asymmetric
+case checks the restoration without outside source files. A one-off
+value-by-value audit against the 12 selected `.raw` files still present in
+the supplied source checkout found exact equality for topology and all 11
+shape maps (zero mismatches). The raw source files are not bundled; runtime
+loading uses only repository NIfTIs and the committed conversion audit.
 
 ## Porting and validation sequence
 

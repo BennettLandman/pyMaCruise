@@ -5,9 +5,16 @@ import json
 from pathlib import Path
 
 import nibabel as nib
+import numpy as np
 import pytest
 
-from pymacruise.toads_atlas import ToadsAtlasError, load_toads_atlas
+from pymacruise.toads_atlas import (
+    ToadsAtlas,
+    ToadsAtlasError,
+    ToadsAtlasImage,
+    load_toads_atlas,
+    load_toads_atlas_data,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -77,3 +84,55 @@ def test_toads_descriptor_rejects_missing_atlas_images(tmp_path) -> None:
 
     with pytest.raises(ToadsAtlasError, match="Missing topology atlas image"):
         load_toads_atlas(broken)
+
+
+def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
+    shape = (2, 3, 4)
+    source = np.arange(np.prod(shape), dtype=np.int16).reshape(shape)
+    source_orientation = nib.orientations.axcodes2ornt(("L", "P", "S"))
+    ras_orientation = nib.orientations.axcodes2ornt(("R", "A", "S"))
+    to_ras = nib.orientations.ornt_transform(source_orientation, ras_orientation)
+    ras_array = nib.orientations.apply_orientation(source, to_ras)
+    affine = np.diag([1.0, 1.0, 1.0, 1.0])
+    affine[0, 3] = -(shape[0] - 1)
+    affine[1, 3] = -(shape[1] - 1)
+    topology_path = tmp_path / "topology.nii.gz"
+    shape_path = tmp_path / "shape.nii.gz"
+    nib.save(nib.Nifti1Image(ras_array, affine), topology_path)
+    nib.save(nib.Nifti1Image(ras_array, affine), shape_path)
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text("synthetic descriptor")
+    audit_path = tmp_path / "CONVERSION_AUDIT.json"
+    audit_path.write_text(
+        json.dumps(
+            {
+                "images": [
+                    {
+                        "nifti_output": name,
+                        "input_axis_codes": ["L", "P", "S"],
+                        "input_shape": list(shape),
+                    }
+                    for name in ("topology.nii.gz", "shape.nii.gz")
+                ]
+            }
+        )
+    )
+    topology = ToadsAtlasImage("topology", topology_path, shape, (1.0,) * 3, (1.0,) * 3)
+    shape_image = ToadsAtlasImage("shape Test", shape_path, shape, (1.0,) * 3, (1.0,) * 3)
+    atlas = ToadsAtlas(
+        descriptor,
+        (),
+        topology,
+        {"Test": shape_image},
+        1,
+        shape,
+        (1.0,) * 3,
+        (1, 1, 1, 1),
+        (),
+    )
+
+    data = load_toads_atlas_data(atlas, audit_path)
+
+    np.testing.assert_array_equal(data.topology, source)
+    np.testing.assert_array_equal(data.shapes["Test"], source)
+    assert data.source_axis_codes["topology.nii.gz"] == ("L", "P", "S")

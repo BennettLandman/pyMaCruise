@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +41,15 @@ class ToadsAtlas:
     shape_voxel_sizes_mm: tuple[float, float, float]
     orientations: tuple[int, int, int, int]
     geometry_warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ToadsAtlasData:
+    """Atlas arrays restored to the original descriptor/Java index order."""
+
+    topology: np.ndarray
+    shapes: dict[str, np.ndarray]
+    source_axis_codes: dict[str, tuple[str, str, str]]
 
 
 def _tag_values(line: str, tag: str, expected: int) -> tuple[float, ...]:
@@ -218,3 +228,71 @@ def _match_descriptor_image(
         f"TOADS descriptor resolutions {tuple(float(value) for value in resolutions)}; "
         "preserve both metadata sources until the historical loader behavior is verified",
     )
+
+
+def load_toads_atlas_data(
+    atlas: ToadsAtlas,
+    conversion_audit_path: str | Path | None = None,
+) -> ToadsAtlasData:
+    """Load atlas arrays in the historical Java index order.
+
+    The checked-in NIfTIs are RAS-oriented, while the legacy Java code indexes
+    headerless data in the original axis order. The conversion audit records
+    the pre-RAS axis codes and is required to undo only that axis permutation
+    and flipping. No interpolation, resampling, or physical-coordinate
+    transformation is performed.
+    """
+    audit_path = (
+        Path(conversion_audit_path)
+        if conversion_audit_path is not None
+        else atlas.descriptor.parent / "CONVERSION_AUDIT.json"
+    )
+    try:
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ToadsAtlasError(f"Cannot read atlas conversion audit {audit_path}: {exc}") from exc
+    rows = {
+        str(row["nifti_output"]): row
+        for row in audit.get("images", [])
+        if "nifti_output" in row
+    }
+    loaded: dict[str, np.ndarray] = {}
+    source_codes: dict[str, tuple[str, str, str]] = {}
+
+    def read_image(item: ToadsAtlasImage) -> np.ndarray:
+        try:
+            relative = item.path.relative_to(atlas.descriptor.parent).as_posix()
+        except ValueError as exc:
+            raise ToadsAtlasError(
+                f"Atlas image is outside descriptor directory: {item.path}"
+            ) from exc
+        row = rows.get(relative)
+        if row is None:
+            raise ToadsAtlasError(f"No conversion-audit row for atlas image {relative}")
+        try:
+            codes = tuple(str(code) for code in row["input_axis_codes"])
+            if len(codes) != 3:
+                raise ValueError("expected three axis codes")
+            source_orientation = nib.orientations.axcodes2ornt(codes)
+            image = nib.load(str(item.path))
+            ras_orientation = nib.orientations.io_orientation(image.affine)
+            transform = nib.orientations.ornt_transform(ras_orientation, source_orientation)
+            array = np.asanyarray(image.dataobj)
+            source_order = nib.orientations.apply_orientation(array, transform)
+        except (KeyError, OSError, ValueError, nib.filebasedimages.ImageFileError) as exc:
+            raise ToadsAtlasError(
+                f"Cannot restore source index order for atlas image {relative}: {exc}"
+            ) from exc
+        expected_shape = tuple(int(value) for value in row["input_shape"])
+        if source_order.shape != expected_shape or source_order.shape != item.shape:
+            raise ToadsAtlasError(
+                f"Restored {item.role} shape {source_order.shape} disagrees with "
+                f"audit {expected_shape} or descriptor image {item.shape}"
+            )
+        source_codes[relative] = codes  # type: ignore[assignment]
+        return np.array(source_order, copy=True)
+
+    loaded["topology"] = read_image(atlas.topology)
+    for name, image in atlas.shapes.items():
+        loaded[name] = read_image(image)
+    return ToadsAtlasData(loaded.pop("topology"), loaded, source_codes)
