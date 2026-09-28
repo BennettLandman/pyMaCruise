@@ -119,6 +119,26 @@ the fixture notes at
 `tests/data/synthetic/toads_homeomorphic_change/README.md` and the harness in
 `tests/java_reference/ToadsHomeomorphicChangeReferenceHarness.java`.
 
+### Completed substage: transformed shape support bounds
+
+`compute_toad_shape_bounds` in `src/pymacruise/toads_shapes.py` ports the
+selected rigid `precomputeImageToTemplateMatrix` path and the atlas wrapper's
+voxel scan for positive interpolated shape support. Its five synthetic
+6×5×4 cases match the copied Java transform/interpolation APIs and the
+`computeTransformedShapeBoundingBox` source-body excerpt at every positive
+support coordinate and bound. They cover anisotropic voxel sizes, rigid
+rotation/translation, full support touching every image face, and an empty
+support atlas prior.
+
+The source stores the greatest support index as its `max` value without
+adding one, then tests that value with an exclusive `>= max` condition during
+shape sampling. PyMaCRUISE preserves and tests this historical behavior,
+including the source empty-support sentinel (`min=input dimensions`,
+`max=0`). Changing it would require a separate source-faithfulness decision.
+This is only the fixed-transform support scan; registration optimization,
+iterative bound updates, and physical atlas-world origins remain open. See
+`tests/data/synthetic/toads_shape_bounds/README.md` for the fixture boundary.
+
 ## Historical V3 wrapper contract and selected Python deviation
 
 The historical `run_maCRUISE_v3.m` default selects BET. Its `run_Bet.m` branch

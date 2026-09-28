@@ -41,6 +41,24 @@ This run adds the P18j local TOADS multi-label topology gate. Earlier row
 entries retain their original full-suite run and exact tested commit; P18j
 cites this newer run.
 
+## Additional full-suite run for P18k
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
+| Result | **223 passed in 48.40 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `2ec8971da2c6e012c0cafb9f0669e680f043868b` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 223 tests collected and all passed |
+
+This run validates the P18k transformed shape-support bounds slice, including
+the follow-up that keeps per-voxel support-coordinate recording opt-in so
+normal atlas scans retain only bounds and a count. Earlier row entries retain
+their respective full-suite runs and exact tested commits; P18k cites this
+latest run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -75,6 +93,7 @@ cites this newer run.
 | P18h — Use selected TOADS 18/6 LUT predicate | `tests/test_toads_critical_lut.py` compares key packing and lookup result for all 68 committed neighborhoods against the selected Java `CriticalPointLUT` class (four edge cases plus 64 seeded patterns). This validates one-neighborhood regularity only, not multi-label homeomorphism checks. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P18i — Port fixed-transform TOADS shape sampling | `tests/test_toads_shape_sampling.py` compares eight fixed-transform prior samples, mapped coordinates, boundary defaults, and slope/clipping against the selected Java `ParametricTransform`, `ImageFunctions`, `Numerics`, and shape postprocessing harness. Float32 outputs and mapped coordinates match exactly. This does not run atlas registration or optimized bounds. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P18j — Port TOADS 18/6 multi-label homeomorphic-change gate | `tests/test_toads_topology.py` compares 130 synthetic cases against the selected Java method-body excerpt and actual `CriticalPointLUT`; fixture scope is documented under `tests/data/synthetic/toads_homeomorphic_change/`. | `218 passed`; commit `c06d00c654c7642b708049aeeb95c221c35b1dfb` |
+| P18k — Port transformed TOADS shape support bounds | `tests/test_toads_shape_bounds.py` compares all positive-support coordinates and bounds in five cases against the Java transform/interpolation methods plus selected atlas source scan excerpt; also verifies max-exclusive and empty-support semantics. The production call retains only bounds and support count. | `223 passed`; commit `2ec8971da2c6e012c0cafb9f0669e680f043868b` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
