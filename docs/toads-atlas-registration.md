@@ -172,6 +172,22 @@ and template centers, anisotropic spacing, and a nonzero rigid transform. They
 validate the coordinate and Jacobian primitives only; multi-resolution
 optimizer wiring and full Java optimizer equivalence remain open.
 
+P18z wires the source levels into
+`register_toads_atlas_rigid_pyramid`: each input is block-mean downsampled
+from its native grid, the full-resolution centers are retained, scaled maps
+and Jacobians drive the existing optimizer, and each level's final transform
+initializes the next level. It resets the line-search step at each level,
+matching `registerShapesExactPyramid`. A deterministic 17×15×13 membership /
+19×17×15 atlas fixture runs scales 4 and 2, accepts updates at the first
+level, checks exact transform handoff, and reproduces the full result exactly
+on repeat. `levels=1` returns the input transform because the selected source
+does not optimize a scale-1 stage. A separate scale-2 kernel comparison against
+scalar mapped priors, derivatives, and Jacobians has exact energy agreement;
+raw coefficient arrays are within `rtol=2e-7`, `atol=3e-10`, with maximum
+absolute difference `1.49e-8` (one float32 ULP at the affected magnitude).
+This is synthetic optimizer-integration evidence only, not a Java full-method
+registration comparison or alignment-quality claim.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
@@ -199,21 +215,18 @@ The current Python loop is integrated only on small synthetic arrays. Continue
 with these source-grounded items before using bundled atlas grids or proceeding
 to full segmentation:
 
-1. Wire the validated pyramid schedule, block-mean inputs, scaled coordinates,
-   and Jacobians through a coarse-to-fine registration optimizer; compare each
-   level's objective and coefficients against the native-scale formulation on
-   controlled synthetic data.
-2. Build a Java harness that executes the selected full rigid-registration
+1. Build a Java harness that executes the selected full rigid-registration
    method body and compare transformed coordinates, energy, coefficients,
    accepted/rejected trials, and the final transform on known asymmetric
    synthetic alignment cases. The existing harnesses compare isolated formula
-   slices, not the private atlas registration method.
-3. Exercise transformed support-bound refresh and registration-driven crop
+   slices and the Python multi-level integration, not the private Java atlas
+   registration method.
+2. Exercise transformed support-bound refresh and registration-driven crop
    changes on larger asymmetric folded synthetic phantoms.
-4. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
+3. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
    geometry contract in a Java/Python atlas loader comparison before any atlas
    execution claim.
-5. Integrate rigid registration into TOADS preprocessing, then continue the
+4. Integrate rigid registration into TOADS preprocessing, then continue the
    deformable membership/topology evolution and inter-pass dura-removal port;
    this document does not close P18 or unblock P34.
 

@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 import pytest
 
@@ -449,9 +450,24 @@ def test_vectorized_registration_matches_scalar_with_large_rigid_offset() -> Non
 def test_pyramid_registration_runs_scales_and_hands_transform_between_levels() -> None:
     membership_dims = (17, 15, 13)
     atlas_dims = (19, 17, 15)
+    fixture_dir = Path(__file__).parent / "data" / "synthetic" / "toads_registration_pyramid_optimizer"
+    membership_image = nib.load(fixture_dir / "memberships.nii.gz")
+    atlas_image = nib.load(fixture_dir / "atlas_shapes.nii.gz")
+    assert nib.aff2axcodes(membership_image.affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(atlas_image.affine) == ("R", "A", "S")
+    memberships = np.asanyarray(membership_image.dataobj, dtype=np.float32)
+    atlas = np.asanyarray(atlas_image.dataobj, dtype=np.float32)
+    assert memberships.shape == membership_dims + (3,)
+    assert atlas.shape == atlas_dims + (3,)
     rng = np.random.default_rng(2)
-    memberships = rng.uniform(0.05, 0.9, size=membership_dims + (3,)).astype(np.float32)
-    atlas = rng.uniform(0.05, 0.9, size=atlas_dims + (3,)).astype(np.float32)
+    np.testing.assert_array_equal(
+        memberships,
+        rng.uniform(0.05, 0.9, size=membership_dims + (3,)).astype(np.float32),
+    )
+    np.testing.assert_array_equal(
+        atlas,
+        rng.uniform(0.05, 0.9, size=atlas_dims + (3,)).astype(np.float32),
+    )
     initial = np.asarray((0.04, -0.025, 0.015, 0.03, -0.02, 0.01), dtype=np.float32)
     kwargs = dict(
         levels=3,
