@@ -128,6 +128,23 @@ non-singular synthetic case and rejects a singular unit-norm derivative case.
 It does not validate prior-gradient composition or registration quality.
 Earlier rows retain their respective full-suite evidence; P18p cites this run.
 
+## Additional full-suite run for P18q
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
+| Result | **243 passed in 69.40 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `309f7d66c672fb9c7d841928f62127a93bc3bc4d` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 243 tests collected and all passed |
+
+This run validates P18q's one-voxel exact coefficient contributions against a
+source-formula Java excerpt. It does not validate full-volume accumulation,
+coefficient normalization, optimizer behavior, or registration quality.
+Earlier rows retain their own full-suite evidence; P18q cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -167,6 +184,7 @@ Earlier rows retain their respective full-suite evidence; P18p cites this run.
 | P18n — Preserve TOADS registration coefficient normalization call order | `tests/test_toads_registration.py` matches the fixed source-formula harness in default source-faithful mode and separately checks that the apparent corrected gradient is opt-in. | `239 passed`; commit `57c2f42dc767ef901802ab6898656320622c9049` |
 | P18o — Port TOADS trilinear prior derivatives | `tests/test_toads_registration.py` compares x/y/z prior derivatives on four valid and out-of-bounds synthetic coordinates against the source-formula Java excerpt. | `240 passed`; commit `41e6e0cad3b9bd17dd0b982fcd5fd0a27a2a69d2` |
 | P18p — Port TOADS rigid transform coordinate Jacobian | `tests/test_toads_registration.py` compares the 3×6 rotation/translation Jacobian against the Java formula excerpt and checks singular-rotation rejection. | `242 passed`; commit `8e7a0c070f325349a5f24b006864bda46c26f10b` |
+| P18q — Port per-voxel TOADS registration coefficient accumulation | `tests/test_toads_registration.py` compares cost, norm, gradient, diagonal Hessian, norm-gradient, and norm-Hessian values for a synthetic voxel against a Java method-formula excerpt. | `243 passed`; commit `309f7d66c672fb9c7d841928f62127a93bc3bc4d` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
