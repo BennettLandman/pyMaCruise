@@ -16,6 +16,7 @@ from pymacruise.toads_registration import (
 from pymacruise.toads_registration_sampling import (
     build_toads_registration_pyramid,
     register_toads_atlas_rigid,
+    register_toads_atlas_rigid_pyramid,
     rigid_registration_coordinate_jacobians,
     sample_toads_registration_fields,
     stream_toads_registration_coefficients,
@@ -443,3 +444,155 @@ def test_vectorized_registration_matches_scalar_with_large_rigid_offset() -> Non
         for field in ("cost", "norm", "gradient", "hessian", "norm_gradient", "norm_hessian"):
             np.testing.assert_array_equal(getattr(scalar, field), getattr(dense, field))
             np.testing.assert_array_equal(getattr(vectorized, field), getattr(dense, field))
+
+
+def test_pyramid_registration_runs_scales_and_hands_transform_between_levels() -> None:
+    membership_dims = (17, 15, 13)
+    atlas_dims = (19, 17, 15)
+    rng = np.random.default_rng(2)
+    memberships = rng.uniform(0.05, 0.9, size=membership_dims + (3,)).astype(np.float32)
+    atlas = rng.uniform(0.05, 0.9, size=atlas_dims + (3,)).astype(np.float32)
+    initial = np.asarray((0.04, -0.025, 0.015, 0.03, -0.02, 0.01), dtype=np.float32)
+    kwargs = dict(
+        levels=3,
+        image_resolutions_mm=(0.8, 1.2, 1.5),
+        template_resolutions_mm=(0.9, 1.1, 1.3),
+        initial_transform=tuple(float(v) for v in initial),
+        max_iterations=2,
+    )
+
+    result = register_toads_atlas_rigid_pyramid(memberships, atlas, **kwargs)
+    repeated = register_toads_atlas_rigid_pyramid(memberships, atlas, **kwargs)
+
+    assert [level.scale for level in result.levels] == [4, 2]
+    assert any(
+        iteration.accepted
+        for level in result.levels
+        for iteration in level.result.iterations
+    )
+    np.testing.assert_array_equal(result.levels[0].initial_transform, initial)
+    np.testing.assert_array_equal(
+        result.levels[1].initial_transform, result.levels[0].result.transform
+    )
+    np.testing.assert_array_equal(result.transform, result.levels[-1].result.transform)
+    np.testing.assert_array_equal(result.transform, repeated.transform)
+    for left, right in zip(result.levels, repeated.levels, strict=True):
+        np.testing.assert_array_equal(left.initial_transform, right.initial_transform)
+        np.testing.assert_array_equal(left.result.transform, right.result.transform)
+        assert left.result.energy == right.result.energy
+        assert len(left.result.iterations) <= 2
+        assert np.isfinite(left.result.energy)
+
+
+def test_pyramid_registration_levels_one_is_source_noop() -> None:
+    memberships = np.ones((5, 4, 3, 2), dtype=np.float32)
+    atlas = np.ones((7, 6, 5, 2), dtype=np.float32)
+    initial = np.asarray((0.0, 0.0, 0.0, 0.2, -0.1, 0.05), dtype=np.float32)
+    result = register_toads_atlas_rigid_pyramid(
+        memberships,
+        atlas,
+        levels=1,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=tuple(float(v) for v in initial),
+    )
+    assert result.levels == ()
+    np.testing.assert_array_equal(result.transform, initial)
+
+
+def test_scaled_vectorized_registration_matches_scalar_reference_kernels() -> None:
+    dimensions = (3, 3, 2)
+    template_dimensions = (4, 3, 3)
+    image_center = (5.5, 5.0, 3.5)
+    template_center = (7.5, 5.5, 4.5)
+    image_res = (0.8, 1.2, 1.5)
+    template_res = (0.9, 1.1, 1.3)
+    scale = 2.0
+    transform = (0.14, 0.07, -0.05, 0.2, -0.1, 0.3)
+    ax, ay, az = np.indices(template_dimensions, dtype=np.float32)
+    atlas = np.empty(template_dimensions + (3,), dtype=np.float32)
+    atlas[..., 0] = 0.0
+    atlas[..., 1] = 0.2 + 0.04 * ax + 0.03 * ay + 0.02 * az + 0.005 * ax * ay
+    atlas[..., 2] = 0.15 + 0.025 * ax + 0.05 * ay + 0.03 * az + 0.004 * ay * az
+    mx, my, mz, mk = np.indices(dimensions + (3,), dtype=np.float32)
+    memberships = (0.12 + 0.03 * mx + 0.02 * my + 0.01 * mz + 0.015 * mk).astype(np.float32)
+    low = np.zeros((3, 3), dtype=np.int64)
+    high = np.broadcast_to(np.asarray(dimensions, dtype=np.int64), low.shape).copy()
+    priors = np.zeros(dimensions + (3,), dtype=np.float32)
+    gradients = np.zeros(dimensions + (3, 3), dtype=np.float32)
+    jacobians = np.empty(dimensions + (3, 6), dtype=np.float32)
+    for x in range(dimensions[0]):
+        for y in range(dimensions[1]):
+            for z in range(dimensions[2]):
+                jacobians[x, y, z] = rigid_image_to_template_jacobian(
+                    (x, y, z), transform, image_center, image_res, template_res,
+                    scale=scale,
+                )
+                for class_index in range(1, 3):
+                    sample = sample_toad_shape_prior(
+                        atlas[..., class_index],
+                        (x, y, z),
+                        image_dimensions_xyz=dimensions,
+                        image_resolutions_mm=image_res,
+                        template_resolutions_mm=template_res,
+                        transform=transform,
+                        class_index=class_index,
+                        bbox_low_xyz=(0, 0, 0),
+                        bbox_high_xyz=dimensions,
+                        shape_slope=1.0,
+                        scale=scale,
+                        image_center_xyz=image_center,
+                        template_center_xyz=template_center,
+                    )
+                    assert sample.template_xyz is not None
+                    priors[x, y, z, class_index] = sample.value
+                    gradients[x, y, z, class_index] = trilinear_prior_derivatives(
+                        atlas[..., class_index], sample.template_xyz
+                    )
+
+    reference = exact_membership_registration_coefficients(
+        memberships, priors, gradients, jacobians
+    )
+    actual = vectorized_toads_registration_coefficients(
+        memberships,
+        atlas,
+        image_resolutions_mm=image_res,
+        template_resolutions_mm=template_res,
+        transform=transform,
+        class_bounds_low_xyz=low,
+        class_bounds_high_xyz=high,
+        scale=scale,
+        image_center_xyz=image_center,
+        template_center_xyz=template_center,
+    )
+    max_absolute_difference = 0.0
+    max_difference_field = ""
+    for name in ("cost", "norm", "gradient", "hessian", "norm_gradient", "norm_hessian"):
+        field_difference = float(
+            np.max(np.abs(getattr(actual, name) - getattr(reference, name)))
+        )
+        if field_difference > max_absolute_difference:
+            max_absolute_difference = field_difference
+            max_difference_field = name
+        np.testing.assert_allclose(
+            getattr(actual, name),
+            getattr(reference, name),
+            rtol=2e-7,
+            atol=3e-10,
+            err_msg=name,
+        )
+    assert max_absolute_difference <= 1.5e-8, (max_difference_field, max_absolute_difference)
+    reference_energy = exact_membership_registration_energy(memberships, priors)
+    actual_energy = vectorized_toads_registration_energy(
+        memberships,
+        atlas,
+        image_resolutions_mm=image_res,
+        template_resolutions_mm=template_res,
+        transform=transform,
+        class_bounds_low_xyz=low,
+        class_bounds_high_xyz=high,
+        scale=scale,
+        image_center_xyz=image_center,
+        template_center_xyz=template_center,
+    )
+    assert actual_energy == reference_energy

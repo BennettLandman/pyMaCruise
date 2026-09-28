@@ -63,6 +63,23 @@ class ToadsRigidRegistrationResult:
 
 
 @dataclass(frozen=True)
+class ToadsRigidRegistrationPyramidLevelResult:
+    """One source-scale registration result and its transform handoff."""
+
+    scale: int
+    initial_transform: NDArray[np.float32]
+    result: ToadsRigidRegistrationResult
+
+
+@dataclass(frozen=True)
+class ToadsRigidRegistrationPyramidResult:
+    """Coarse-to-fine registration result; source omits a scale-1 stage."""
+
+    transform: NDArray[np.float32]
+    levels: tuple[ToadsRigidRegistrationPyramidLevelResult, ...]
+
+
+@dataclass(frozen=True)
 class ToadsRegistrationPyramidLevel:
     """Source-compatible coarse TOADS memberships and atlas priors."""
 
@@ -462,19 +479,25 @@ def vectorized_toads_registration_energy(
     registered_classes: ArrayLike | None = None,
     offset: int = 0,
     subsample: int = 1,
+    scale: float = 1.0,
+    image_center_xyz: ArrayLike | None = None,
+    template_center_xyz: ArrayLike | None = None,
 ) -> np.float32:
     """NumPy-slab exact-membership energy in source x/y/z/class order."""
     context = _vector_context(
         memberships, atlas_shapes, transform, image_resolutions_mm,
         template_resolutions_mm, class_bounds_low_xyz, class_bounds_high_xyz,
-        registered_classes, offset, subsample,
+        registered_classes, offset, subsample, scale, image_center_xyz,
+        template_center_xyz,
     )
-    mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs = context
+    (mem, shapes, params, image_res, template_res, low, high, registered,
+     rotation, ys, zs, scale_value, image_center, template_center) = context
     cost = np.float32(0.0)
     norm = np.float32(0.0)
     for x in range(offset, mem.shape[0], subsample):
         coordinates = _map_registration_slab(
-            x, ys, zs, mem.shape[:3], shapes.shape[:3], params, image_res, template_res, rotation
+            x, ys, zs, params, image_res, template_res, rotation,
+            scale_value, image_center, template_center,
         )
         y_grid, z_grid = ys[:, None], zs[None, :]
         cost_terms = np.zeros((ys.size, zs.size, mem.shape[-1]), dtype=np.float32)
@@ -512,28 +535,32 @@ def vectorized_toads_registration_coefficients(
     registered_classes: ArrayLike | None = None,
     offset: int = 0,
     subsample: int = 1,
+    scale: float = 1.0,
+    image_center_xyz: ArrayLike | None = None,
+    template_center_xyz: ArrayLike | None = None,
 ) -> RegistrationCoefficientSums:
     """Vectorize mapping/interpolation by x slab, preserving source sum order."""
     context = _vector_context(
         memberships, atlas_shapes, transform, image_resolutions_mm,
         template_resolutions_mm, class_bounds_low_xyz, class_bounds_high_xyz,
-        registered_classes, offset, subsample,
+        registered_classes, offset, subsample, scale, image_center_xyz,
+        template_center_xyz,
     )
-    mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs = context
+    (mem, shapes, params, image_res, template_res, low, high, registered,
+     rotation, ys, zs, scale_value, center, template_center) = context
     cost = np.float32(0.0)
     norm = np.float32(0.0)
     gradient = np.zeros(6, dtype=np.float32)
     hessian = np.zeros(6, dtype=np.float32)
     norm_gradient = np.zeros(6, dtype=np.float32)
     norm_hessian = np.zeros(6, dtype=np.float32)
-    center = tuple(np.float32(size / 2.0) for size in mem.shape[:3])
-
     for x in range(offset, mem.shape[0], subsample):
         coordinates = _map_registration_slab(
-            x, ys, zs, mem.shape[:3], shapes.shape[:3], params, image_res, template_res, rotation
+            x, ys, zs, params, image_res, template_res, rotation,
+            scale_value, center, template_center,
         )
         jacobian = _registration_jacobian_slab(
-            x, ys, zs, center, image_res, template_res, params
+            x, ys, zs, center, image_res, template_res, params, scale_value
         )
         y_grid, z_grid = ys[:, None], zs[None, :]
         slab_shape = (ys.size, zs.size, mem.shape[-1])
@@ -609,10 +636,14 @@ def _vector_context(
     registered_classes: ArrayLike | None,
     offset: int,
     subsample: int,
+    scale: float,
+    image_center_xyz: ArrayLike | None,
+    template_center_xyz: ArrayLike | None,
 ) -> tuple[
     NDArray[np.float32], NDArray[np.float32], NDArray[np.float32],
     NDArray[np.float32], NDArray[np.float32], NDArray[np.int64],
-    NDArray[np.int64], NDArray[np.bool_], NDArray[np.float32], NDArray[np.int64], NDArray[np.int64]
+    NDArray[np.int64], NDArray[np.bool_], NDArray[np.float32], NDArray[np.int64], NDArray[np.int64],
+    np.float32, tuple[np.float32, np.float32, np.float32], tuple[np.float32, np.float32, np.float32]
 ]:
     mem, shapes, low, high, registered = _registration_inputs(
         memberships, atlas_shapes, class_bounds_low_xyz, class_bounds_high_xyz, registered_classes
@@ -633,29 +664,54 @@ def _vector_context(
         raise ValueError("image_resolutions_mm must contain three positive finite values")
     if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
         raise ValueError("template_resolutions_mm must contain three positive finite values")
+    scale_value = np.float32(scale)
+    if not np.isfinite(scale_value) or scale_value <= 0:
+        raise ValueError("scale must be positive and finite")
+    if scale_value != np.float32(1.0) and (
+        image_center_xyz is None or template_center_xyz is None
+    ):
+        raise ValueError(
+            "coarse-scale registration requires full-resolution image and template centers"
+        )
+    center = np.asarray(
+        image_center_xyz if image_center_xyz is not None else tuple(size / 2.0 for size in mem.shape[:3]),
+        dtype=np.float32,
+    )
+    template_center = np.asarray(
+        template_center_xyz if template_center_xyz is not None else tuple(size / 2.0 for size in shapes.shape[:3]),
+        dtype=np.float32,
+    )
+    if center.shape != (3,) or not np.isfinite(center).all():
+        raise ValueError("image_center_xyz must contain three finite values")
+    if template_center.shape != (3,) or not np.isfinite(template_center).all():
+        raise ValueError("template_center_xyz must contain three finite values")
     rotation = _rotation_matrix(params[:3])
     ys = np.arange(offset, mem.shape[1], subsample, dtype=np.int64)
     zs = np.arange(offset, mem.shape[2], subsample, dtype=np.int64)
-    return mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs
+    return (
+        mem, shapes, params, image_res, template_res, low, high, registered,
+        rotation, ys, zs, scale_value, tuple(center), tuple(template_center),
+    )
 
 
 def _map_registration_slab(
     x: int,
     y_indices: NDArray[np.int64],
     z_indices: NDArray[np.int64],
-    input_dimensions: tuple[int, int, int],
-    template_dimensions: tuple[int, int, int],
     transform: NDArray[np.float32],
     image_res: NDArray[np.float32],
     template_res: NDArray[np.float32],
     rotation: NDArray[np.float32],
+    scale: np.float32,
+    image_center: tuple[np.float32, np.float32, np.float32],
+    template_center: tuple[np.float32, np.float32, np.float32],
 ) -> NDArray[np.float32]:
     y_grid = y_indices[:, None].astype(np.float32)
     z_grid = z_indices[None, :].astype(np.float32)
     physical = (
-        np.float32(np.float32(x - np.float32(input_dimensions[0] / 2.0)) * image_res[0]),
-        np.float32(np.float32(y_grid - np.float32(input_dimensions[1] / 2.0)) * image_res[1]),
-        np.float32(np.float32(z_grid - np.float32(input_dimensions[2] / 2.0)) * image_res[2]),
+        np.float32(np.float32(np.float32(x) * scale - image_center[0]) * image_res[0]),
+        np.float32(np.float32(y_grid * scale - image_center[1]) * image_res[1]),
+        np.float32(np.float32(z_grid * scale - image_center[2]) * image_res[2]),
     )
     coordinates = np.empty((y_indices.size, z_indices.size, 3), dtype=np.float32)
     for axis in range(3):
@@ -664,9 +720,8 @@ def _map_registration_slab(
         value = np.float32(value + np.float32(rotation[axis, 2] * physical[2]))
         value = np.float32(value + transform[axis + 3])
         value = np.float32(value / template_res[axis])
-        coordinates[..., axis] = np.float32(
-            value + np.float32(template_dimensions[axis] / 2.0)
-        )
+        value = np.float32(value + template_center[axis])
+        coordinates[..., axis] = np.float32(value / scale)
     return coordinates
 
 
@@ -765,6 +820,7 @@ def _registration_jacobian_slab(
     image_res: NDArray[np.float32],
     template_res: NDArray[np.float32],
     transform: NDArray[np.float32],
+    scale: np.float32,
 ) -> NDArray[np.float32]:
     basis_jacobians = []
     for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)):
@@ -776,9 +832,9 @@ def _registration_jacobian_slab(
     y_grid = y_indices[:, None].astype(np.float32)
     z_grid = z_indices[None, :].astype(np.float32)
     physical = (
-        np.float32(np.float32(np.float32(x) - center[0]) * image_res[0]),
-        np.float32(np.float32(y_grid - center[1]) * image_res[1]),
-        np.float32(np.float32(z_grid - center[2]) * image_res[2]),
+        np.float32(np.float32(np.float32(x) * scale - center[0]) * image_res[0]),
+        np.float32(np.float32(y_grid * scale - center[1]) * image_res[1]),
+        np.float32(np.float32(z_grid * scale - center[2]) * image_res[2]),
     )
     result = np.zeros((y_indices.size, z_indices.size, 3, 6), dtype=np.float32)
     for axis in range(3):
@@ -786,8 +842,11 @@ def _registration_jacobian_slab(
             value = np.float32(basis_jacobians[0][axis, parameter] * physical[0])
             value = np.float32(value + np.float32(basis_jacobians[1][axis, parameter] * physical[1]))
             value = np.float32(value + np.float32(basis_jacobians[2][axis, parameter] * physical[2]))
-            result[..., axis, parameter] = np.float32(value / template_res[axis])
-        result[..., axis, axis + 3] = np.float32(np.float32(1.0) / template_res[axis])
+            value = np.float32(value / template_res[axis])
+            result[..., axis, parameter] = np.float32(value / scale)
+        result[..., axis, axis + 3] = np.float32(
+            np.float32(np.float32(1.0) / template_res[axis]) / scale
+        )
     return result
 
 
@@ -817,6 +876,9 @@ def register_toads_atlas_rigid(
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
     source_faithful: bool = True,
+    scale: float = 1.0,
+    image_center_xyz: ArrayLike | None = None,
+    template_center_xyz: ArrayLike | None = None,
 ) -> ToadsRigidRegistrationResult:
     """Run the selected exact-membership rigid registration loop on a small grid.
 
@@ -871,6 +933,9 @@ def register_toads_atlas_rigid(
             registered_classes=registered,
             offset=offset,
             subsample=subsample,
+            scale=scale,
+            image_center_xyz=image_center_xyz,
+            template_center_xyz=template_center_xyz,
         )
 
     history: list[ToadsRigidRegistrationIteration] = []
@@ -892,6 +957,9 @@ def register_toads_atlas_rigid(
             registered_classes=registered,
             offset=offset,
             subsample=subsample,
+            scale=scale,
+            image_center_xyz=image_center_xyz,
+            template_center_xyz=template_center_xyz,
         )
         current_energy = energy_at(transform)
         if not np.isfinite(current_energy):
@@ -935,3 +1003,68 @@ def register_toads_atlas_rigid(
     return ToadsRigidRegistrationResult(
         transform.copy(), np.float32(current_energy), tuple(history), stop_reason
     )
+
+
+def register_toads_atlas_rigid_pyramid(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    levels: int,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    initial_transform: tuple[float, float, float, float, float, float],
+    registered_classes: ArrayLike | None = None,
+    max_iterations: int = 50,
+    energy_tolerance: float = 1e-6,
+    minimum_lambda: float = 1e-3,
+    source_faithful: bool = True,
+) -> ToadsRigidRegistrationPyramidResult:
+    """Run exact-membership rigid registration on source pyramid levels.
+
+    Membership and atlas arrays are independently downsampled from their
+    native grids. Full-resolution image/template centers are retained while
+    each coarse-grid level uses its source scale. The selected source method
+    does not optimize a scale-1 level. It also evaluates every registered
+    class across each coarse image grid, so this wrapper uses full-grid class
+    bounds at each level rather than fixed-transform support boxes.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    shapes = np.asarray(atlas_shapes, dtype=np.float32)
+    if mem.ndim != 4 or shapes.ndim != 4:
+        raise ValueError("pyramid inputs must be 4D (x, y, z, class) arrays")
+    pyramid = build_toads_registration_pyramid(mem, shapes, levels=levels)
+    transform = np.asarray(initial_transform, dtype=np.float32)
+    if transform.shape != (6,) or not np.isfinite(transform).all():
+        raise ValueError("initial_transform must contain six finite values")
+    image_center = tuple(np.float32(size / 2.0) for size in mem.shape[:3])
+    template_center = tuple(np.float32(size / 2.0) for size in shapes.shape[:3])
+    level_results: list[ToadsRigidRegistrationPyramidLevelResult] = []
+    for level in pyramid:
+        dimensions = level.memberships.shape[:3]
+        low = np.zeros((mem.shape[-1], 3), dtype=np.int64)
+        high = np.broadcast_to(np.asarray(dimensions, dtype=np.int64), low.shape).copy()
+        level_initial = transform.copy()
+        result = register_toads_atlas_rigid(
+            level.memberships,
+            level.atlas_shapes,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            initial_transform=tuple(float(value) for value in transform),
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered_classes,
+            max_iterations=max_iterations,
+            energy_tolerance=energy_tolerance,
+            minimum_lambda=minimum_lambda,
+            source_faithful=source_faithful,
+            scale=level.scale,
+            image_center_xyz=image_center,
+            template_center_xyz=template_center,
+        )
+        transform = result.transform.copy()
+        level_results.append(
+            ToadsRigidRegistrationPyramidLevelResult(
+                level.scale, level_initial, result
+            )
+        )
+    return ToadsRigidRegistrationPyramidResult(transform.copy(), tuple(level_results))
