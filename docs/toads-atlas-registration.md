@@ -237,9 +237,11 @@ to full segmentation:
    during optimizer iterations. P18ab compares the standalone fixed-transform
    bound scan with Java on a larger folded prior at three transforms; an
    optimizer-driven multi-iteration crop update remains unvalidated.
-3. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
-   geometry contract in a Java/Python atlas loader comparison before any atlas
-   execution claim.
+3. P18ac resolves the spacing source for the selected Java loader: it uses
+   descriptor resolutions and raw voxel data, ignoring the topology NIfTI
+   affine. The 0.9375 mm descriptor versus 1.0 mm NIfTI header remains a
+   warning and must not be hidden by metadata rewriting. Full atlas execution
+   and alignment still require validation.
 4. Integrate rigid registration into TOADS preprocessing, then continue the
    deformable membership/topology evolution and inter-pass dura-removal port;
    this document does not close P18 or unblock P34.

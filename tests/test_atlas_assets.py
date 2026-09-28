@@ -70,10 +70,17 @@ def test_selected_toads_2008_descriptor_resolves_all_ras_atlas_images() -> None:
     assert len(atlas.shapes) == 11
     assert atlas.shape_samples == 8
     assert atlas.shape_dimensions == (172, 216, 164)
+    assert atlas.shape_voxel_sizes_mm == (0.9375, 0.9375, 0.9375)
+    assert all(
+        image.descriptor_voxel_sizes_mm == (0.9375, 0.9375, 0.9375)
+        for image in atlas.shapes.values()
+    )
     assert atlas.orientations == (1, 1, 6, 3)
     assert len(atlas.geometry_warnings) == 1
     assert "topology NIfTI voxel sizes" in atlas.geometry_warnings[0]
     assert "descriptor resolutions" in atlas.geometry_warnings[0]
+    assert "Java loader uses descriptor spacing" in atlas.geometry_warnings[0]
+    assert "without the image-header affine" in atlas.geometry_warnings[0]
     assert all(image.path.suffixes[-2:] == [".nii", ".gz"] for image in atlas.shapes.values())
 
 

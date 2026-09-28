@@ -124,10 +124,12 @@ def load_toads_atlas(descriptor_path: str | Path) -> ToadsAtlas:
 
     The returned NIfTI images are inspected lazily; voxel payloads are not
     materialized. This performs asset preflight only and does not run TOADS.
-    The descriptor's grid spacing is kept separately from each NIfTI affine:
-    the selected source topology map declares 0.9375 mm while its source MIPAV
-    XML and normalized NIfTI declare 1 mm. That conflict is surfaced as a
-    geometry warning instead of silently changing either value.
+    The descriptor's grid spacing is kept separately from each NIfTI affine.
+    The selected Java loader reads descriptor resolutions and raw voxel
+    payloads, not the image-header affine, so descriptor spacing controls the
+    source algorithm. The topology NIfTI's 1 mm zoom (versus 0.9375 mm in the
+    descriptor) is retained as a visible conversion/header warning; values
+    are neither resampled nor relabeled as having the descriptor geometry.
     """
     descriptor = Path(descriptor_path).resolve()
     if not descriptor.is_file():
@@ -316,7 +318,8 @@ def _match_descriptor_image(
     return (
         f"{image.role} NIfTI voxel sizes {image.voxel_sizes_mm} disagree with "
         f"TOADS descriptor resolutions {tuple(float(value) for value in resolutions)}; "
-        "preserve both metadata sources until the historical loader behavior is verified",
+        "the selected Java loader uses descriptor spacing and reads raw voxel payloads "
+        "without the image-header affine",
     )
 
 

@@ -51,14 +51,19 @@ shrink the work to a generic intensity classifier.
 ## Bundled TOADS atlas geometry discrepancy
 
 The selected root descriptor declares a 172×216×164 topology grid at
-0.9375 mm. Its source MIPAV XML and the bundled `.nii.gz` instead declare
-1.0 mm. The selected companion `toads-cruise/src/.../MultipleToadDeformableAtlas.java`
-parser reads dimensions and resolutions from the text descriptor, then its
-loader reads exactly `Nx*Ny*Nz` bytes from the referenced file and does not
-use that image header's affine. The port
-therefore retains both sources in `load_toads_atlas`: descriptor spacing is
-the algorithm's declared atlas-grid spacing, NIfTI spacing is reported as an
-explicit warning, and no atlas payload or metadata is silently rescaled.
+0.9375 mm. Its source MIPAV XML and the bundled topology `.nii.gz` instead
+declare 1.0 mm. This is now resolved as a source contract: the selected
+`MultipleToadDeformableAtlas.loadAtlas` parser reads the topology and shape
+resolutions from the text descriptor (source SHA-256
+`df2f2ace677f2222e94c946730adf485d4401a76f7a9d2b302c9e5c8b652596c`, topology
+resolution assignments at lines 986–987 and per-class shape resolution at
+1061), then `loadTemplateImage` and `loadShapeImage` read headerless byte/float
+payloads using descriptor dimensions (lines 818–859, 990, 1077). The Java
+algorithm therefore uses descriptor spacing, not the NIfTI affine or source
+MIPAV XML. `load_toads_atlas` retains both metadata values and emits a visible
+warning for the topology discrepancy; it never silently resamples the atlas
+or rewrites its NIfTI header. This explains the selected loader behavior but
+does not establish full atlas geometry alignment or segmentation parity.
 The root descriptor's filenames were changed to `.nii.gz` for the Python
 repository's storage contract; the Java source reader expects raw payloads.
 The Python source-index array loader is implemented and exact against the 12
