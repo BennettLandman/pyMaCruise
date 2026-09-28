@@ -59,6 +59,7 @@ from pymacruise.registration import (
     apply_image_transform,
     apply_transforms_to_points_ras,
     apply_transforms_to_surface_ras,
+    register_flair_to_t1,
     register_to_reference,
 )
 
@@ -100,6 +101,7 @@ __all__ = [
     "levelset_subtraction_thickness",
     "refine_segmentation_by_surfaces",
     "register_to_reference",
+    "register_flair_to_t1",
     "apply_image_transform",
     "apply_transforms_to_points_ras",
     "apply_transforms_to_surface_ras",

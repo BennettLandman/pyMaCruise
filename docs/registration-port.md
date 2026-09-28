@@ -28,6 +28,10 @@ optimizer, metric, sampling schedule, pyramid, deterministic seed, and
 precision are configurable and recorded in `RegistrationConfig`; defaults
 are explicit rather than claimed to match Aladin's optimizer numerically.
 
+`register_flair_to_t1(t1, flair, ...)` is the MaCRUISEplus adapter: it pins
+the transform to rigid-only, uses T1 as the fixed/reference image, and uses
+FLAIR as the moving image. Metric and optimizer choices remain configurable.
+
 `apply_image_transform` writes the moving image on the fixed grid. Continuous
 images and level sets use cubic B-spline interpolation as the closest
 available ANTsPy counterpart to the NiftyReg default; labels use nearest
@@ -57,6 +61,10 @@ check:
 - RAS point and surface mapping, including topology retention;
 - fixed-mask geometry checks and a recovered rigid translation;
 - non-RAS warning/reorientation and missing-transform/invalid-label errors.
+
+The same fixture includes a square-root intensity-remapped FLAIR phantom;
+Mattes mutual-information rigid registration recovers the known 2 mm shift to
+within 1 mm, and the plus adapter rejects affine configuration.
 
 The fixture tests establish the Python API conventions and internally
 consistent coordinate transfer. They do not establish Aladin-vs-ANTs

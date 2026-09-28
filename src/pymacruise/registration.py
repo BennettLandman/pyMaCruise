@@ -216,6 +216,31 @@ def register_to_reference(
     return RegistrationResult(forward, inverse, warped, config.transform_type)
 
 
+def register_flair_to_t1(
+    t1: nib.spatialimages.SpatialImage,
+    flair: nib.spatialimages.SpatialImage,
+    *,
+    output_prefix: str | Path,
+    fixed_mask: nib.spatialimages.SpatialImage | None = None,
+    config: RegistrationConfig = RegistrationConfig(),
+) -> RegistrationResult:
+    """Register FLAIR (moving) to the T1 reference with a rigid transform.
+
+    This is the selected MaCRUISEplus `FlairRegistration.m` contract. ANTsPy
+    settings remain caller-configurable, while transform type is pinned to
+    rigid-only as in the source wrapper.
+    """
+    if config.transform_type != "Rigid":
+        raise ValueError("MaCRUISEplus FLAIR-to-T1 registration must be rigid-only")
+    return register_to_reference(
+        t1,
+        flair,
+        output_prefix=output_prefix,
+        fixed_mask=fixed_mask,
+        config=config,
+    )
+
+
 def apply_image_transform(
     fixed: nib.spatialimages.SpatialImage,
     moving: nib.spatialimages.SpatialImage,

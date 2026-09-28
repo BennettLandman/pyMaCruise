@@ -11,6 +11,7 @@ from pymacruise.registration import (
     apply_image_transform,
     apply_transforms_to_points_ras,
     apply_transforms_to_surface_ras,
+    register_flair_to_t1,
     register_to_reference,
 )
 from pymacruise.surfaces import SurfaceMesh
@@ -116,6 +117,39 @@ def test_registration_mask_and_estimated_rigid_transform_recover_known_shift(tmp
         np.array([[5.0, 8.0, 7.0]]), result.forward_transforms
     )
     np.testing.assert_allclose(point, [[7.0, 8.0, 7.0]], atol=1.0)
+
+
+def test_flair_to_t1_adapter_is_rigid_and_recovers_synthetic_shift(tmp_path: Path) -> None:
+    result = register_flair_to_t1(
+        _load("fixed_image"),
+        _load("moving_flair"),
+        fixed_mask=_load("fixed_mask"),
+        output_prefix=tmp_path / "flair_to_t1_",
+        config=RegistrationConfig(
+            transform_type="Rigid",
+            metric="mattes",
+            sampling_rate=1.0,
+            iterations=(60, 40, 20, 0),
+            shrink_factors=(6, 4, 2, 1),
+            smoothing_sigmas=(3, 2, 1, 0),
+        ),
+    )
+
+    point = apply_transforms_to_points_ras(
+        np.array([[5.0, 8.0, 7.0]]), result.forward_transforms
+    )
+    np.testing.assert_allclose(point, [[7.0, 8.0, 7.0]], atol=1.0)
+    assert result.transform_type == "Rigid"
+    assert all(Path(path).is_file() for path in result.forward_transforms)
+    assert all(Path(path).is_file() for path in result.inverse_transforms)
+    assert nib.aff2axcodes(result.warped_moving.affine) == ("R", "A", "S")
+    with pytest.raises(ValueError, match="must be rigid-only"):
+        register_flair_to_t1(
+            _load("fixed_image"),
+            _load("moving_flair"),
+            output_prefix=tmp_path / "affine_",
+            config=RegistrationConfig(transform_type="Affine"),
+        )
 
 
 def test_non_ras_inputs_warn_and_registration_grid_mismatches_fail() -> None:

@@ -30,12 +30,14 @@ def phantom(center: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     moving_image, moving_labels = phantom(MOVING_CENTER)
+    moving_flair = np.sqrt(moving_image).astype(np.float32)
     fixed_image, fixed_labels = phantom(MOVING_CENTER + SHIFT_RAS_MM)
     mask = np.zeros(SHAPE, dtype=np.uint8)
     mask[2:-2, 2:-2, 2:-2] = 1
     for name, values in {
         "fixed_image": fixed_image,
         "moving_image": moving_image,
+        "moving_flair": moving_flair,
         "fixed_labels": fixed_labels,
         "moving_labels": moving_labels,
         "fixed_mask": mask,
@@ -79,6 +81,7 @@ def main() -> None:
     names = [
         "fixed_image.nii.gz",
         "moving_image.nii.gz",
+        "moving_flair.nii.gz",
         "fixed_labels.nii.gz",
         "moving_labels.nii.gz",
         "fixed_mask.nii.gz",
