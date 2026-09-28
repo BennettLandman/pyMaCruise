@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import nibabel as nib
 import pytest
 
 from pymacruise.toads_shapes import compute_toad_shape_bounds, sample_toad_shape_prior
@@ -18,6 +19,13 @@ FIXTURE = (
 )
 ATLAS_SOURCE_SHA256 = "e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2"
 TRANSFORM_SOURCE_SHA256 = "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac"
+FOLDED_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "toads_shape_bounds_folded"
+    / "java_reference.json"
+)
 
 
 def _prior(kind: str, dims: tuple[int, int, int]) -> np.ndarray:
@@ -65,6 +73,37 @@ def test_transformed_shape_support_bounds_match_java_scan_excerpt() -> None:
             case["name"]
         )
         assert actual.support_count == case["support_count"]
+
+
+def test_folded_prior_support_bounds_refresh_match_java_scan() -> None:
+    reference = json.loads(FOLDED_FIXTURE.read_text())
+    assert reference["source_sha256"] == ATLAS_SOURCE_SHA256
+    assert reference["parametric_transform_sha256"] == TRANSFORM_SOURCE_SHA256
+    prior_path = FOLDED_FIXTURE.parent / "folded_shape_prior.nii.gz"
+    image = nib.load(str(prior_path))
+    assert image.shape == tuple(reference["template_dims"])
+    assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+    assert tuple(nib.affines.voxel_sizes(image.affine)) == (1.0, 1.0, 1.0)
+    prior = np.asarray(image.dataobj, dtype=np.float32)
+    assert np.isfinite(prior).all()
+    assert np.min(prior) == np.float32(0.0)
+    assert np.max(prior) > np.float32(0.99)
+
+    observed_bounds = []
+    for case in reference["cases"]:
+        actual = compute_toad_shape_bounds(
+            prior,
+            image_dimensions_xyz=tuple(reference["image_dims"]),
+            image_resolutions_mm=tuple(reference["resolutions"]),
+            template_resolutions_mm=tuple(reference["resolutions"]),
+            transform=tuple(case["transform"]),
+        )
+        assert list(actual.lower_xyz) == case["lower"], case["name"]
+        assert list(actual.upper_xyz) == case["upper"], case["name"]
+        assert actual.support_count == case["support_count"], case["name"]
+        observed_bounds.append((actual.lower_xyz, actual.upper_xyz))
+
+    assert len(set(observed_bounds)) == len(observed_bounds)
 
 
 def test_shape_sampler_preserves_source_maximum_as_exclusive_bound() -> None:
