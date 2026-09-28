@@ -1,4 +1,4 @@
-# Java TGDM reference harness
+# Java algorithm reference harnesses
 
 ## ThinACE reference
 
@@ -14,6 +14,20 @@ The selected source applies `DistanceField.solve(4.0)`; the reference harness
 uses the supplied MaCRUISE `DistanceFieldyh.java`, whose source header states
 that it is identical to `DistanceField`. Temporary binary interchange files
 and compiled classes are written under ignored `build/` and are not committed.
+
+## Generalized GVF reference
+
+`GVFReferenceHarness.java` runs the selected VandyCRUISE generalized GVF
+implementation using source copies under `upstream/.../algorithms/gvf/`.
+Regenerate the analytic ramp, asymmetric step, and Gaussian blob reference
+vectors with `python scripts/generate_java_gvf_reference.py`. The selected
+GVF, gradient, Poisson, multigrid transfer, and red/black solver sources retain
+their upstream comments and CVS revision 1.1 metadata. Minimal JIST/framework
+stubs exercise only the required in-memory image operations; they avoid
+requiring MIPAV or a JIST application. Vector arrays retain the source
+component order x/y/z, used by VandyCRUISE TGDM's corresponding x/y/z gradient
+terms. Comparison metrics and the voxel-axis/physical-space convention are
+documented in [`docs/gvf-port.md`](../../docs/gvf-port.md).
 
 This test-only harness runs the selected Java MaCRUISE TGDM adapter on the
 committed, deterministic 25³ synthetic phantom and writes small compressed

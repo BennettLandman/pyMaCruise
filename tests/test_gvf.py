@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import nibabel as nib
@@ -50,7 +51,8 @@ def test_generalized_gvf_solves_each_source_poisson_system_and_respects_lambda()
     scalar = np.exp(-sum((axis - 4) ** 2 for axis in axes) / 8.0).astype(np.float32)
     normalized = (scalar - scalar.min()) / (scalar.max() - scalar.min())
     gradient = _source_gradient(normalized)
-    edge_weight = np.exp(-np.sum(gradient * gradient, axis=-1) / (0.5**2))
+    gradient_magnitude = np.sqrt(np.sum(gradient * gradient, axis=-1))
+    edge_weight = np.exp(-gradient_magnitude / (0.5**2))
     g = edge_weight / 6.0
     h = 1.0 - edge_weight
 
@@ -86,7 +88,7 @@ def test_gvf_nifti_output_is_component_last_and_ras_with_warning() -> None:
     affine = image.affine.copy()
     affine[0, 0] *= -1
     affine[0, 3] = image.shape[0] - 1
-    non_ras = nib.Nifti1Image(np.asarray(image.dataobj), affine)
+    non_ras = nib.Nifti1Image(np.flip(np.asarray(image.dataobj), axis=0), affine)
 
     with pytest.warns(UserWarning, match="reorienting"):
         result = generalized_gvf_image(non_ras)
@@ -95,3 +97,21 @@ def test_gvf_nifti_output_is_component_last_and_ras_with_warning() -> None:
     assert nib.aff2axcodes(result.vector_field.affine) == ("R", "A", "S")
     assert result.vector_field.header.get_intent()[0] == "vector"
     assert np.isfinite(result.vector_field.get_fdata()).all()
+    ras_expected = generalized_gvf_image(image).vector_field
+    np.testing.assert_allclose(result.vector_field.dataobj, ras_expected.dataobj, atol=1e-7)
+
+
+def test_generalized_gvf_matches_vandy_java_reference() -> None:
+    java_cases = GVF_PHANTOM / "java_reference"
+    spec = json.loads((java_cases / "spec.json").read_text(encoding="utf-8"))
+    for name, case in spec["cases"].items():
+        source = nib.load(java_cases / case["input"])
+        reference = nib.load(java_cases / case["java_reference"])
+        result = generalized_gvf_image(source).vector_field
+
+        assert nib.aff2axcodes(result.affine) == ("R", "A", "S"), name
+        assert result.shape == reference.shape, name
+        assert result.header.get_intent()[0] == "vector", name
+        error = np.abs(np.asarray(result.dataobj) - np.asarray(reference.dataobj))
+        assert error.mean() <= 1e-5, (name, float(error.mean()))
+        assert error.max() <= 5e-5, (name, float(error.max()))

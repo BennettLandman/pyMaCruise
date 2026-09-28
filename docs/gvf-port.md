@@ -1,42 +1,70 @@
 # GVF port progress
 
-The selected workflow is `run_GVF_jist.m` →
-`MedicAlgorithmGradVecFlow` → VandyCRUISE `GradVecFlowGeneralized`. The
-MaCRUISE wrapper supplies a scalar ACE enhanced-GM image, `Generalized`, lambda
-1.0 by default (or configured `GVF_Lambda`), 200 iterations, and `normalize=false`.
+The selected workflow is MaCRUISE `run_GVF_jist.m` → JIST
+`MedicAlgorithmGradVecFlow` → VandyCRUISE `GradVecFlowGeneralized`. The wrapper
+selects `Generalized`, lambda 1.0 unless `GVF_Lambda` is configured, 200 maximum
+iterations, and `normalize=false`.
 
-The generalized implementation min/max normalizes its scalar input, computes
-the source central gradient (forward/backward differences on volume edges),
-forms `g = exp(-|grad f|²/lambda²)/6` and `h = 1-g`, and solves three
-component-wise Poisson systems with the same coefficient fields. The source
-uses a custom multigrid V-cycle and red/black Gauss-Seidel smoother. The Python
-implementation will use a matrix-free SciPy sparse solver for that same
-discretized equation; its convergence and component-wise residual must be
-compared against Java before P28 can be validated.
+## Source behavior and Python implementation
 
-NIfTI outputs will be RAS-oriented `.nii.gz` three-component vector fields;
-non-RAS input must be normalized with a warning. The 3-vector image
-representation uses shape `(x, y, z, 3)` with components in index-axis order,
-and physical-coordinate component convention will be confirmed against the
-source `ImageData`/TGDM use before downstream P29 integration.
+The Java path min/max normalizes the scalar volume, computes central
+differences with one-sided differences on the image boundary, and obtains the
+gradient magnitude with JIST `ImageDataMath.vectorMagnitude4D` (square root of
+the sum of squared components). Despite the Java local variable name
+`SqrMagf`, that magnitude is used directly in `exp(-magnitude/lambda²)`;
+`g=exp(...)/6` and `h=1-exp(...)`. It then solves three systems
+`h*u - g*laplacian(u) = h*gradient_component` using a multigrid V-cycle with
+red/black Gauss-Seidel smoothing. The earlier Python implementation squared
+the magnitude in the exponential; Java reference comparison caught and fixed
+that discrepancy.
 
-## Implemented and synthetic evidence
+`src/pymacruise/gvf.py` solves the same discrete mirrored-boundary system with
+matrix-free SciPy conjugate gradients. `generalized_gvf_image` reorients input
+images to RAS with a warning when needed and returns a component-last float32
+vector NIfTI with RAS affine/header. Components 0, 1, and 2 follow array axes
+x, y, and z. This matches VandyCRUISE `Gradient3d` and the downstream TGDM
+advection code, which pairs those components with x/y/z finite differences.
+The selected legacy equations are voxel-grid based and do not apply physical
+voxel-spacing factors; this preserves source behavior. Synthetic fixtures use
+1 mm isotropic grids.
 
-`src/pymacruise/gvf.py` implements the source scalar normalization, edge
-gradient, lambda weights, mirrored six-neighbor Laplacian, and three
-matrix-free sparse conjugate-gradient solves. The selected wrapper contract is
-also exposed through `generalized_gvf_image`, which warns/reorients a non-RAS
-input and returns a component-last RAS vector NIfTI image.
+The constant-image edge case is handled deliberately: Java's `(f-min)/(max-min)`
+produces NaNs when the image is constant, while Python returns a finite zero
+field. This defensive behavior is covered and documented as a source edge-case
+deviation.
 
-The committed synthetic input `tests/data/synthetic/gvf/gradient_ramp.nii.gz`
-has a hand-known constant gradient; its generator, specification, and hashes
-are in the same directory. Six GVF tests pass for the source edge differences,
-analytic ramp output, Poisson residual, lambda response, constant and zero
-iteration cases, input validation, and RAS vector output. The complete suite
-now passes 91 tests.
+## Synthetic Java comparison
 
-The SciPy solution targets the same discretized equation but is not yet
-numerically compared with the source multigrid output. Component-axis versus
-physical RAS vector semantics also still require confirmation against the
-source `ImageData` and downstream TGDM advection. No actual imaging scans are
-part of this stage.
+The test-only harness compiles the selected VandyCRUISE GVF sources against
+minimal JIST/framework stubs; no MIPAV or JIST application is required. Source
+files retain their author comments and CVS revision metadata. Reproduction
+instructions and fixture provenance are in
+[`tests/java_reference/README.md`](../tests/java_reference/README.md) and
+[`tests/data/synthetic/gvf/java_reference/README.md`](../tests/data/synthetic/gvf/java_reference/README.md).
+
+The committed 16×12×10 RAS `.nii.gz` fields include a mixed-axis ramp, an
+asymmetric step, and overlapping asymmetric Gaussian blobs. The Java
+references use lambda 1.0, up to 200 iterations, and no vector normalization.
+The generated `spec.json` reports:
+
+| Synthetic input | Mean absolute component error | Maximum absolute component error | RMSE |
+|---|---:|---:|---:|
+| Mixed-axis ramp | 1.30e-8 | 9.69e-8 | 1.71e-8 |
+| Asymmetric step | 6.69e-6 | 3.26e-5 | 1.04e-5 |
+| Asymmetric Gaussian blobs | 1.17e-6 | 8.55e-6 | 1.80e-6 |
+
+Acceptance for these fields is mean absolute error ≤1e-5 and maximum absolute
+error ≤5e-5. Analytic gradient, solver residual, lambda response, finite-value,
+RAS vector intent, and non-RAS reorientation tests also pass. The latter
+compares a physically equivalent flipped input to its RAS counterpart and
+confirms component signs follow the reoriented axes. No actual imaging data is
+used in this step.
+
+Regenerate golden outputs and their checksums with:
+
+```sh
+python scripts/generate_java_gvf_reference.py
+```
+
+This requires a JDK and the project Python dependencies. Temporary classes
+and binary interchange files are kept under ignored `build/`.

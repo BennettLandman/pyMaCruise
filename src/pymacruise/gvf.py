@@ -51,8 +51,14 @@ def generalized_gvf(
     else:
         normalized = ((values - minimum) / (maximum - minimum)).astype(np.float32)
     gradient = _source_gradient(normalized)
-    magnitude_squared = np.sum(gradient * gradient, axis=-1, dtype=np.float32)
-    edge_weight = np.exp(-magnitude_squared / np.float32(lambda_value * lambda_value)).astype(np.float32)
+    # ImageDataMath.vectorMagnitude4D returns sqrt(sum(component**2)); despite
+    # the historical local name SqrMagf, the source uses that magnitude here.
+    gradient_magnitude = np.sqrt(
+        np.sum(gradient * gradient, axis=-1, dtype=np.float64)
+    ).astype(np.float32)
+    edge_weight = np.exp(
+        -gradient_magnitude / np.float32(lambda_value * lambda_value)
+    ).astype(np.float32)
     g = (edge_weight / 6.0).astype(np.float32)
     h = (1.0 - edge_weight).astype(np.float32)
     shape = values.shape

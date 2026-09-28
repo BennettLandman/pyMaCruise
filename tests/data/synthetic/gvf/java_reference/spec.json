@@ -1,0 +1,53 @@
+{
+  "purpose": "VandyCRUISE generalized GVF synthetic parity references",
+  "provenance": "synthetic; analytic scalar fields",
+  "frame": "RAS",
+  "units": "voxel-axis component values; 1 mm isotropic fixtures",
+  "lambda": 1.0,
+  "iterations": 200,
+  "normalize_vectors": false,
+  "cases": {
+    "ramp_xyz": {
+      "shape": [
+        16,
+        12,
+        10
+      ],
+      "input": "ramp_xyz_input.nii.gz",
+      "java_reference": "ramp_xyz_gvf_java.nii.gz",
+      "python_vs_java": {
+        "mean_absolute_error": 1.2957348971553984e-08,
+        "maximum_absolute_error": 9.685754776000977e-08,
+        "root_mean_square_error": 1.7063836565966994e-08
+      }
+    },
+    "oblique_step": {
+      "shape": [
+        16,
+        12,
+        10
+      ],
+      "input": "oblique_step_input.nii.gz",
+      "java_reference": "oblique_step_gvf_java.nii.gz",
+      "python_vs_java": {
+        "mean_absolute_error": 6.6879865698865615e-06,
+        "maximum_absolute_error": 3.254413604736328e-05,
+        "root_mean_square_error": 1.0364371519244742e-05
+      }
+    },
+    "asymmetric_blobs": {
+      "shape": [
+        16,
+        12,
+        10
+      ],
+      "input": "asymmetric_blobs_input.nii.gz",
+      "java_reference": "asymmetric_blobs_gvf_java.nii.gz",
+      "python_vs_java": {
+        "mean_absolute_error": 1.1736528904293664e-06,
+        "maximum_absolute_error": 8.540228009223938e-06,
+        "root_mean_square_error": 1.8028993054031162e-06
+      }
+    }
+  }
+}
