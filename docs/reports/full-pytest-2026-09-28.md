@@ -437,6 +437,7 @@ complete TOADS membership update; P18ad cites this run.
 | P18ak — Port ordered TOADS membership sweep with six-face smoothing | `tests/test_toads_ordered_membership.py` compares every final membership and the cumulative objective to a Java source-formula sweep; it verifies asynchronous in-place ordering differs from a frozen-input synchronous update, while checking RAS fixtures and untouched borders. This is a small sweep over precomputed data energies, not a full TOADS run. | `317 passed`; commit `defd6c9c76b1c7a3f177eb2370e24d53621bd1b7` |
 | P18al — Port optimized-tissue centroid update in selected damped mode | `tests/test_toads_optimized_centroids.py` compares all nine centroids in both field modes against the actual selected Java `PowerTable` and the source accumulation/update order, covering zero-distance fallback and empty support. This validates only one centroid update. | `323 passed`; commit `3b2f7c12a98ad718f4de1f98fe37ab2b894f47e9` |
 | P18am — Port TOADS optimized-tissue image variance weights | `tests/test_toads_optimized_variance.py` compares normalized inverse variance and unnormalized image standard deviation with and without the field against the selected method's Java formula harness; includes one-modality and zero-residual `INF` behavior. This is optimized tissue only. | `326 passed`; commit `6862499021ca1b348559b0cf6f4730a7e4fe6a3a` |
+| P18an — Port optimized-tissue class standard deviations | `tests/test_toads_optimized_class_variance.py` compares per-modality/per-class assigned-label standard deviations with and without the field against a Java formula harness, including empty class support and invalid inputs. This does not cover other object types or membership evolution. | `332 passed`; commit `46408971a49138fcd8d76786f8c386f5fcefba44` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
@@ -592,6 +593,21 @@ Subsequent plan/report/README edits do not modify implementation or tests.
 | Run scope | Complete configured suite; all collected tests passed |
 
 This run validates the P18am implementation and committed synthetic fixture.
+Subsequent plan/report/README edits do not modify implementation or tests.
+
+## Additional full-suite run for P18an
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **332 passed in 60.47 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `46408971a49138fcd8d76786f8c386f5fcefba44` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18an implementation and committed synthetic fixture.
 Subsequent plan/report/README edits do not modify implementation or tests.
 
 ## Future rows

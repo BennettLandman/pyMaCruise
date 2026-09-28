@@ -484,5 +484,8 @@ synthetic data; see the [P18al reference report](reports/toads-optimized-centroi
 The source-compatible optimized-tissue image-variance weights and global
 standard deviations are also matched against a Java formula harness in both
 field modes; see the [P18am report](reports/toads-optimized-variance-2026-09-28.md).
+Assigned-class standard deviations for those optimized tissue types are now
+separately checked with the Java formula harness, including source handling
+for empty classes; see the [P18an report](reports/toads-optimized-class-variance-2026-09-28.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
