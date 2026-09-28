@@ -150,17 +150,33 @@ difference stays within the project acceptance criteria. This avoids
 reimplementing functionality where a library already matches while also
 preserving source fidelity where it does not.
 
-## Next implementation slices
+### Remaining implementation and validation slices
 
-1. Compose prior gradients with the rigid Jacobian and compare source-order
-   gradient/Hessian accumulation on analytic synthetic membership/prior fields.
-2. Implement and compare the remaining coefficients in Python, using SciPy
-   only for operations shown to preserve the reference within measured limits.
-3. Compare one rigid update and its accept/reject schedule before adding the
-   full iteration loop or pyramid levels.
-4. Validate transformed-bound refresh and registration-driven crop changes on
-   larger asymmetric folded synthetic phantoms. Resolve the atlas descriptor
-   versus NIfTI spacing discrepancy before any atlas execution claim.
+The current Python loop is integrated only on small synthetic arrays. Continue
+with these source-grounded items before using bundled atlas grids or proceeding
+to full segmentation:
+
+1. Replace dense per-trial field/Jacobian materialization with a source-order
+   streaming sampler/accumulator; quantify runtime and peak memory on increasing
+   synthetic grids, and compare all accumulated coefficients to P18s references.
+2. Build a Java harness that executes the selected full rigid-registration
+   method body and compare transformed coordinates, energy, coefficients,
+   accepted/rejected trials, and the final transform on known asymmetric
+   synthetic alignment cases. The existing harnesses compare isolated formula
+   slices, not the private atlas registration method.
+3. Exercise transformed support-bound refresh and registration-driven crop
+   changes on larger asymmetric folded synthetic phantoms.
+4. Resolve the descriptor (0.9375 mm) versus bundled image metadata (1.0 mm)
+   geometry contract in a Java/Python atlas loader comparison before any atlas
+   execution claim.
+5. Integrate rigid registration into TOADS preprocessing, then continue the
+   deformable membership/topology evolution and inter-pass dura-removal port;
+   this document does not close P18 or unblock P34.
+
+The dense optimizer currently preserves the source coefficient normalization
+call order by default. It does not establish that the source call order is
+numerically stable; the opt-in corrected calculation remains experimental and
+must stay out of defaults without owner sign-off.
 
 ## Source provenance
 
