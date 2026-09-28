@@ -12,25 +12,30 @@ from pymacruise.contracts import (
 )
 
 
-def _aligned_inputs() -> tuple[nib.Nifti1Image, nib.Nifti1Image]:
+def _aligned_inputs() -> tuple[nib.Nifti1Image, nib.Nifti1Image, nib.Nifti1Image]:
     affine = np.diag([1.0, 1.2, 1.5, 1.0])
     t1 = nib.Nifti1Image(np.ones((6, 7, 8), dtype=np.float32), affine)
     labels = np.zeros((6, 7, 8), dtype=np.uint8)
     labels[1:3, 2:5, 3:7] = 4
     labels[3:5, 2:5, 3:7] = 100
     maseg = nib.Nifti1Image(labels, affine)
-    return t1, maseg
+    mask = np.zeros((6, 7, 8), dtype=np.uint8)
+    mask[1:5, 1:6, 1:7] = 255
+    brain_mask = nib.Nifti1Image(mask, affine)
+    return t1, maseg, brain_mask
 
 
 def test_base_contract_reorients_images_and_records_original_axes() -> None:
-    t1, maseg = _aligned_inputs()
+    t1, maseg, brain_mask = _aligned_inputs()
     flip = np.diag([-1.0, -1.0, 1.0, 1.0])
     flip[0, 3] = t1.shape[0] - 1
     flip[1, 3] = t1.shape[1] - 1
     non_ras_labels = nib.Nifti1Image(np.asanyarray(maseg.dataobj)[::-1, ::-1, :], t1.affine @ flip)
 
     with pytest.warns(UserWarning, match="reorienting the image to RAS"):
-        result = validate_workflow_inputs("base", t1, non_ras_labels)
+        result = validate_workflow_inputs(
+            "base", t1, non_ras_labels, brain_mask=brain_mask
+        )
     assert result.profile is WorkflowProfile.BASE
     assert result.input_orientations["maseg"] == ("L", "P", "S")
     assert nib.aff2axcodes(result.maseg.affine) == ("R", "A", "S")
@@ -38,22 +43,22 @@ def test_base_contract_reorients_images_and_records_original_axes() -> None:
 
 
 def test_plus_requires_flair_and_accepts_a_distinct_input_grid() -> None:
-    t1, maseg = _aligned_inputs()
+    t1, maseg, brain_mask = _aligned_inputs()
     with pytest.raises(WorkflowInputError, match="requires a FLAIR"):
-        validate_workflow_inputs("plus", t1, maseg)
+        validate_workflow_inputs("plus", t1, maseg, brain_mask=brain_mask)
     with pytest.raises(WorkflowInputError, match="does not accept"):
-        validate_workflow_inputs("base", t1, maseg, t1)
+        validate_workflow_inputs("base", t1, maseg, t1, brain_mask=brain_mask)
 
     flair_affine = np.diag([0.8, 0.8, 2.0, 1.0])
     flair = nib.Nifti1Image(np.ones((9, 10, 11), dtype=np.float32), flair_affine)
-    result = validate_workflow_inputs("plus", t1, maseg, flair)
+    result = validate_workflow_inputs("plus", t1, maseg, flair, brain_mask=brain_mask)
     assert result.flair is flair
     assert result.profile is WorkflowProfile.PLUS
 
 
 @pytest.mark.parametrize("problem", ["shifted", "non_integer", "infinite", "4d"])
 def test_invalid_maseg_and_geometry_fail_with_actionable_errors(problem: str) -> None:
-    t1, maseg = _aligned_inputs()
+    t1, maseg, brain_mask = _aligned_inputs()
     if problem == "shifted":
         affine = maseg.affine.copy()
         affine[0, 3] = 2
@@ -73,20 +78,50 @@ def test_invalid_maseg_and_geometry_fail_with_actionable_errors(problem: str) ->
         maseg = nib.Nifti1Image(np.zeros((6, 7, 8, 1)), maseg.affine)
         message = "3D single-volume"
     with pytest.raises(WorkflowInputError, match=message):
-        validate_workflow_inputs("base", t1, maseg)
+        validate_workflow_inputs("base", t1, maseg, brain_mask=brain_mask)
 
 
 def test_file_contract_requires_compressed_nifti_and_reports_missing_path(tmp_path) -> None:
     with pytest.raises(WorkflowInputError, match="Missing T1 input"):
-        validate_workflow_files("base", tmp_path / "missing.nii.gz", tmp_path / "labels.nii.gz")
+        validate_workflow_files(
+            "base",
+            tmp_path / "missing.nii.gz",
+            tmp_path / "labels.nii.gz",
+            brain_mask_path=tmp_path / "mask.nii.gz",
+        )
 
-    t1, maseg = _aligned_inputs()
+    t1, maseg, brain_mask = _aligned_inputs()
     t1_path = tmp_path / "t1.nii.gz"
     maseg_path = tmp_path / "maseg.nii.gz"
+    mask_path = tmp_path / "mask.nii.gz"
     nib.save(t1, t1_path)
     nib.save(maseg, maseg_path)
-    assert validate_workflow_files("base", t1_path, maseg_path).profile is WorkflowProfile.BASE
+    nib.save(brain_mask, mask_path)
+    assert validate_workflow_files(
+        "base", t1_path, maseg_path, brain_mask_path=mask_path
+    ).profile is WorkflowProfile.BASE
     wrong_suffix = tmp_path / "t1.nii"
     wrong_suffix.write_bytes(b"placeholder")
     with pytest.raises(WorkflowInputError, match=".nii.gz"):
-        validate_workflow_files("base", wrong_suffix, maseg_path)
+        validate_workflow_files(
+            "base", wrong_suffix, maseg_path, brain_mask_path=mask_path
+        )
+
+
+def test_brain_mask_must_be_binary_nonempty_and_match_t1_grid() -> None:
+    t1, maseg, brain_mask = _aligned_inputs()
+    shifted_affine = brain_mask.affine.copy()
+    shifted_affine[0, 3] += 1
+    shifted = nib.Nifti1Image(np.asarray(brain_mask.dataobj), shifted_affine)
+    with pytest.raises(WorkflowInputError, match="Brain mask and T1 are not aligned"):
+        validate_workflow_inputs("base", t1, maseg, brain_mask=shifted)
+
+    nonbinary = nib.Nifti1Image(
+        np.full(brain_mask.shape, 2, dtype=np.uint8), brain_mask.affine
+    )
+    with pytest.raises(WorkflowInputError, match="must be binary"):
+        validate_workflow_inputs("base", t1, maseg, brain_mask=nonbinary)
+
+    empty = nib.Nifti1Image(np.zeros(brain_mask.shape, dtype=np.uint8), brain_mask.affine)
+    with pytest.raises(WorkflowInputError, match="at least one foreground"):
+        validate_workflow_inputs("base", t1, maseg, brain_mask=empty)

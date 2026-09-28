@@ -22,12 +22,16 @@ The MATLAB helper clips neither its radius-2 boxes nor their bounds, so its
 edge accesses can fail. The Python version clips boxes to the volume. MATLAB
 also assigns the row index returned by `[maxval,maxind]=max(tabulate(...))`
 instead of the corresponding label value, which can turn a tissue label into
-1 or 2. Python deliberately uses the actual modal label; ties choose the
-lowest numeric label, matching the ascending values and first-maximum rule of
-`tabulate`/`max`. Local updates remain sequential in MATLAB column-major index
-order so a fill can propagate to later candidate voxels during the same sweep.
-These two source defects are recorded as corrected behavior rather than
-preserved bugs.
+1 or 2. The default `source_faithful=True` reproduces MATLAB's historical bug:
+it assigns the one-based `maxind` row number returned by `max` over the
+`tabulate` counts instead of the label value in `foundtable(maxind,1)`. Set
+`source_faithful=False` to use the actual modal label; ties choose the lowest
+numeric label, matching the ascending values and first-maximum rule of
+`tabulate`/`max`. The corrected mode stays opt-in until the project owner
+signs off on changing the default. Local updates remain sequential in MATLAB
+column-major index order so a fill can propagate to later candidate voxels
+during the same sweep. The separate source edge-indexing defect is clipped to
+valid image bounds in both modes.
 
 The API requires co-gridded 3D NIfTI inputs and integer labels. Non-RAS inputs
 warn and are reoriented to RAS; the output preserves the segmentation grid
@@ -46,7 +50,8 @@ non-RAS warnings/output, grid mismatch, integer-label validation, the
 coefficient conversion on a 0.5 mm grid, and invalid options. No actual MRI
 data are used.
 
-The correction intentionally repairs the source bug rather than matching its
-corrupted label numbers. Synthetic measurements and changed-voxel audit maps
-are the basis for review; actual image comparison remains deferred to the
+Tests explicitly cover both the source-faithful default and corrected
+`source_faithful=False` mode, including the source's wrong category-row values
+and the corrected 44/45 labels. Synthetic measurements and changed-voxel audit
+maps are the basis for review; actual image comparison remains deferred to the
 roadmap's synthetic readiness and reference-data gates.

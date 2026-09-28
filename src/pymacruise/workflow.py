@@ -26,10 +26,10 @@ class WorkflowConfig:
     profile: WorkflowProfile | str
     t1_path: Path | str
     maseg_path: Path | str
+    brain_mask_path: Path | str
     output_dir: Path | str
     flair_path: Path | str | None = None
     bias_correction: str = "N4"
-    bet_fraction: float = 0.1
 
     def __post_init__(self) -> None:
         try:
@@ -37,11 +37,11 @@ class WorkflowConfig:
         except ValueError as exc:
             raise ValueError(f"Unsupported workflow profile: {self.profile!r}") from exc
         object.__setattr__(self, "profile", profile)
-        for name in ("t1_path", "maseg_path", "output_dir"):
+        for name in ("t1_path", "maseg_path", "brain_mask_path", "output_dir"):
             object.__setattr__(self, name, Path(getattr(self, name)))
         if self.flair_path is not None:
             object.__setattr__(self, "flair_path", Path(self.flair_path))
-        for name in ("t1_path", "maseg_path", "flair_path"):
+        for name in ("t1_path", "maseg_path", "brain_mask_path", "flair_path"):
             path = getattr(self, name)
             if path is not None and not path.name.lower().endswith(".nii.gz"):
                 raise ValueError(f"{name} must use compressed NIfTI (.nii.gz)")
@@ -51,8 +51,6 @@ class WorkflowConfig:
             raise ValueError("The base profile does not accept flair_path")
         if self.bias_correction != "N4":
             raise ValueError("Only the source-selected N4 bias correction is supported")
-        if not np.isfinite(self.bet_fraction) or not 0 <= self.bet_fraction <= 1:
-            raise ValueError("bet_fraction must be finite and within [0, 1]")
 
     def as_dict(self) -> dict[str, Any]:
         result = asdict(self)
@@ -89,11 +87,17 @@ def create_initial_manifest(
     paths = {
         "t1": config.t1_path,
         "maseg": config.maseg_path,
+        "brain_mask": config.brain_mask_path,
     }
     if config.flair_path is not None:
         paths["flair"] = config.flair_path
     input_records: dict[str, Any] = {}
-    images = {"t1": validated.t1, "maseg": validated.maseg, "flair": validated.flair}
+    images = {
+        "t1": validated.t1,
+        "maseg": validated.maseg,
+        "brain_mask": validated.brain_mask,
+        "flair": validated.flair,
+    }
     for role, path in paths.items():
         if not path.is_file():
             raise FileNotFoundError(f"Cannot write run manifest; missing {role} input: {path}")

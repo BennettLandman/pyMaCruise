@@ -7,8 +7,8 @@
 
 | Profile | Required input volumes | Additional behavior |
 |---|---|---|
-| Base V3 | T1-weighted MRI and MaSeg multi-atlas segmentation | BET/N4 preprocessing, TOADS, V3 topology correction and segmentation refinement. FLAIR is not an input to this runner. |
-| Plus V1 | T1-weighted MRI, FLAIR, and MaSeg multi-atlas segmentation | Rigid FLAIR-to-T1 registration followed by lesion-TOADS and the full MaSeg-informed plus surface workflow. |
+| Base V3 | T1-weighted MRI, MaSeg multi-atlas segmentation, and a user-supplied brain mask | N4 preprocessing, TOADS, V3 topology correction and segmentation refinement. The brain mask is used instead of BET/SPECTRE skull stripping. FLAIR is not an input to this runner. |
+| Plus V1 | T1-weighted MRI, brain mask, FLAIR, and MaSeg multi-atlas segmentation | Rigid FLAIR-to-T1 registration followed by lesion-TOADS and the full MaSeg-informed plus surface workflow. The brain mask is supplied by the user; BET/SPECTRE skull stripping is not run. |
 
 The two profiles must be explicit configuration choices. Do not infer plus mode from the presence of an arbitrary file, nor silently use the legacy no-MaSeg or Origin variants.
 
@@ -18,8 +18,9 @@ The two profiles must be explicit configuration choices. Do not infer plus mode 
 
 - Persisted workflow inputs, intermediates, and outputs use 3D, single-volume compressed NIfTI (`.nii.gz`) images with finite, scalar voxel data and a valid spatial affine. If an external image is supplied in another format, normalize it to `.nii.gz` before storing or reusing it in the workflow.
 - T1 is required for both profiles. FLAIR is required only for the plus profile and must be registered to the T1 reference grid by the explicit rigid-registration stage.
+- A brain mask is required for both profiles. Supply a binary 3D `.nii.gz` mask whose shape and physical affine exactly match T1 after RAS orientation normalization; accepted foreground encodings are 1 or 255, background is 0. The mask must be nonempty. It is reoriented to RAS with a warning when needed, but never implicitly resampled. This is a user-provided input, not an internally generated BET or SPECTRE result.
 - Preserve the stored voxel order and header on read. Keep physical geometry explicit. Input grids are validated independently; operations that combine arrays require matching grids or a documented, explicit resampling step.
-- The baseline T1 acquisition default is `T1_MPRAGE`; acquisition metadata is not inferred from the filename. The supported initial preprocessing defaults are N4 and BET threshold 0.1.
+- The baseline T1 acquisition default is `T1_MPRAGE`; acquisition metadata is not inferred from the filename. N4 remains the selected bias-correction stage. BET and SPECTRE are excluded; no FSL or FreeSurfer runtime is needed.
 
 ### MaSeg
 
@@ -63,6 +64,7 @@ Outputs are written beneath a caller-selected output directory. Every volume and
 
 - Valid base profile; valid plus profile; absent FLAIR accepted only for base and rejected for plus.
 - Missing T1/MaSeg, 2D/4D volumes, non-finite intensities, malformed affine, non-integer MaSeg labels, and out-of-contract label values produce clear diagnostics.
+- Missing, empty, nonbinary, shape-mismatched, or affine-mismatched brain masks produce clear diagnostics; valid non-RAS masks warn and normalize to the T1 RAS grid.
 - MaSeg labels map to the exact expected synthetic masks, including labels near each set boundary and labels intentionally excluded.
 - Shape-equal but affine-shifted inputs are rejected or explicitly resampled; FLAIR output is on the T1 reference grid after rigid registration.
 - Permuted/flipped-axis and LPS image/surface inputs are normalized to RAS with visible warnings and recorded transforms; generated volume and mesh outputs pass RAS orientation/frame checks.

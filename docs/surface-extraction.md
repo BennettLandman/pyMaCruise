@@ -38,6 +38,10 @@ and rendering are out of scope (P47 discussion).
   uses a marching-cubes triangulation. It does not duplicate JIST's exact
   table topology or mesh vertex ordering; compare the source mesh geometry on
   representative synthetic implicit fields before relying on subvoxel-level
-  equivalence downstream.
+  equivalence downstream. This is an explicit P37 risk: run JIST
+  `IsoSurfaceOnGrid.solveOriginal` and scikit-image Lewiner on identical
+  multi-fold level sets, then compare topology, surface distance, and derived
+  thickness. Until that comparison passes, P30 establishes analytic geometry
+  behavior only and does not claim exact JIST surface equivalence.
 - Non-RAS VTK files without frame metadata cannot be interpreted safely from
   coordinates alone. Callers must identify their frame explicitly.

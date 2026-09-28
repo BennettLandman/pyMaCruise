@@ -76,6 +76,7 @@ def _fill_by_local_mode(
     *,
     radius: int,
     max_sweeps: int,
+    source_faithful: bool,
 ) -> tuple[np.ndarray, int, int, int]:
     """Sequentially fill pending voxels from a clipped local modal label.
 
@@ -111,7 +112,13 @@ def _fill_by_local_mode(
             if values.size == 0:
                 continue
             modes, counts = np.unique(values, return_counts=True)
-            mode = int(modes[np.flatnonzero(counts == counts.max())[0]])
+            mode_index = int(np.flatnonzero(counts == counts.max())[0])
+            if source_faithful:
+                # MATLAB assigns the 1-based tabulate row index (`maxind`)
+                # instead of the label in column 1 (`foundtable(maxind,1)`).
+                mode = mode_index + 1
+            else:
+                mode = int(modes[mode_index])
             if mode != labels[coordinate]:
                 labels[coordinate] = mode
                 pending[coordinate] = False
@@ -134,10 +141,14 @@ def refine_segmentation_by_surfaces(
     deal_with_central: bool = True,
     neighborhood_radius: int = 2,
     max_sweeps: int = 50,
+    source_faithful: bool = True,
 ) -> SegmentationRefinementResult:
     """Refine MaSeg labels around the CRUISE inner/outer surfaces.
 
-    The source converts the four millimetre coefficients to voxel values by
+    ``source_faithful=True`` is the default and preserves the historical
+    ``maxind`` row-index assignment in MATLAB. Set it to ``False`` to assign
+    the actual modal label; that intentional correction remains opt-in pending
+    project-owner sign-off. The source converts the four millimetre coefficients to voxel values by
     dividing by the largest segmentation voxel spacing. It changes labels
     ``>=100`` on the inner side to local-mode WM labels 44/45, clears remaining
     labels ``>=100`` beyond the outer surface, and optionally fills central
@@ -186,6 +197,7 @@ def refine_segmentation_by_surfaces(
         "white_matter",
         radius=neighborhood_radius,
         max_sweeps=max_sweeps,
+        source_faithful=source_faithful,
     )
     changed_masks["inner_wm"] = labels != before
     changed_voxels["inner_wm"] = changed
@@ -219,6 +231,7 @@ def refine_segmentation_by_surfaces(
             "cortical",
             radius=neighborhood_radius,
             max_sweeps=max_sweeps,
+            source_faithful=source_faithful,
         )
         changed_masks["central_fill"] = labels != before
         changed_voxels["central_fill"] = changed

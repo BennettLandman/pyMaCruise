@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 
 import nibabel as nib
+import pytest
+
+from pymacruise.toads_atlas import ToadsAtlasError, load_toads_atlas
 
 
 ROOT = Path(__file__).parents[1]
@@ -39,3 +42,38 @@ def test_atlas_descriptors_reference_only_compressed_nifti() -> None:
         assert ".raw" not in content
         assert ".img" not in content
         assert not content or ".nii.gz" in content or descriptor.name.startswith("oasis-")
+
+    toads_descriptor = ATLAS_ROOT / "cruise-atlas-10obj-toads2008.txt"
+    assert toads_descriptor.is_file()
+    for line in toads_descriptor.read_text().splitlines():
+        if line.startswith("File:"):
+            referenced = line.split(":", 1)[1].strip()
+            assert referenced.endswith(".nii.gz")
+            assert (ATLAS_ROOT / referenced).is_file(), referenced
+
+
+def test_selected_toads_2008_descriptor_resolves_all_ras_atlas_images() -> None:
+    atlas = load_toads_atlas(ATLAS_ROOT / "cruise-atlas-10obj-toads2008.txt")
+
+    assert len(atlas.structures) == 11
+    assert {item.label for item in atlas.structures} == {1, 5, 6, 14, 15, 16, 17, 18, 22, 24, 25}
+    assert atlas.topology.shape == (172, 216, 164)
+    assert atlas.topology.voxel_sizes_mm == (1.0, 1.0, 1.0)
+    assert atlas.topology.descriptor_voxel_sizes_mm == (0.9375, 0.9375, 0.9375)
+    assert len(atlas.shapes) == 11
+    assert atlas.shape_samples == 8
+    assert atlas.shape_dimensions == (172, 216, 164)
+    assert atlas.orientations == (1, 1, 6, 3)
+    assert len(atlas.geometry_warnings) == 1
+    assert "topology NIfTI voxel sizes" in atlas.geometry_warnings[0]
+    assert "descriptor resolutions" in atlas.geometry_warnings[0]
+    assert all(image.path.suffixes[-2:] == [".nii", ".gz"] for image in atlas.shapes.values())
+
+
+def test_toads_descriptor_rejects_missing_atlas_images(tmp_path) -> None:
+    descriptor = ATLAS_ROOT / "cruise-atlas-10obj-toads2008.txt"
+    broken = tmp_path / descriptor.name
+    broken.write_text(descriptor.read_text().replace(".nii.gz", "-absent.nii.gz"))
+
+    with pytest.raises(ToadsAtlasError, match="Missing topology atlas image"):
+        load_toads_atlas(broken)

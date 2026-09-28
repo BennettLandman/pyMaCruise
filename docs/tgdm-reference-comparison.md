@@ -52,7 +52,11 @@ against the saved Java reference volumes.
 
 ## Limits
 
-This validates the selected voxel TGDM wrapper on one compact synthetic shape,
-not biological segmentation quality, arbitrary anisotropic grids, or the
-mesh-extraction and thickness stages. P29 performance characterization is
-recorded separately in [`tgdm-synthetic-benchmark.md`](tgdm-synthetic-benchmark.md).
+This means the Python implementation matches the Java harness reference for
+the selected voxel TGDM wrapper on this compact synthetic shape. It does not
+establish broad workflow equivalence, biological segmentation quality, or
+behavior on arbitrary grids. The separate committed 41³ folded-cortex fixture
+exercises Python narrow-band evolution and topology invariants but has not been
+compared with Java references. Mesh extraction and thickness remain separately
+validated stages. P29 performance characterization is recorded in
+[`tgdm-synthetic-benchmark.md`](tgdm-synthetic-benchmark.md).

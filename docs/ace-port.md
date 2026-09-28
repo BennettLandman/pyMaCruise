@@ -29,8 +29,9 @@ VandyCRUISE ACE classes. Their notices and attribution inventory remain under
 2. Initial CSF speed and prohibited-region construction using source thresholds.
 3. The Deriche recursive Gaussian and the structure-tensor anisotropic
    diffusion update, including source boundary differences and ten power-method
-   iterations. Zero tensors retain the initialized basis vector to avoid the
-   source implementation's divide-by-zero NaNs.
+   iterations. The normal processing mode retains the initialized basis vector
+   for stability; `ace_anisotropic_diffusion(source_faithful=True)` reproduces
+   the source's divide-by-zero NaNs for stage-level Java comparisons.
 4. The after-diffusion positive multi-atlas-CSF merge and speed-function blur.
 5. Unit-speed signed fast marching with subvoxel interface initialization,
    source six-neighbor Eikonal updates, and distance caps.
@@ -76,6 +77,19 @@ The comparison passed as follows:
 | Weighted fast-marching distance | Float32; measured tie/round-off deviation | 8.28e-6 | 1.91e-5 |
 | Pre-clean and cleaned membership | Exact array equality | 0 | 0 |
 | Enhanced gray matter | Exact array equality | 0 | 0 |
+
+### Zero-tensor exception
+
+The committed 24³ Java comparison phantom contains **0 zero tensors among
+13,824 voxels** after smoothing the structure-tensor components. That run
+therefore does not validate this corner case. A separate deterministic 3³
+zero-tensor test covers all **27 voxels**: normal mode retains its initialized
+`(0,0,1)` vector, while source-faithful mode produces NaNs for all three vector
+components, matching Java IEEE `0/0` behavior. The source-faithful option is
+available on the anisotropic-diffusion stage so callers can compare Java
+stages directly; it is not enabled by the full-pipeline API, whose subsequent
+finite-field stages intentionally use the robust default. The two behaviors
+are reported separately and are not absorbed into numerical tolerances.
 
 For each required ACE skeleton mask, Python and Java are voxel-identical:
 the cleaned skeleton has 663 foreground voxels and 1,830 surface vertices;

@@ -30,6 +30,7 @@ class ValidatedInputs:
     profile: WorkflowProfile
     t1: nib.spatialimages.SpatialImage
     maseg: nib.spatialimages.SpatialImage
+    brain_mask: nib.spatialimages.SpatialImage
     flair: nib.spatialimages.SpatialImage | None
     input_orientations: dict[str, tuple[str, str, str]]
 
@@ -56,12 +57,14 @@ def validate_workflow_inputs(
     t1: nib.spatialimages.SpatialImage,
     maseg: nib.spatialimages.SpatialImage,
     flair: nib.spatialimages.SpatialImage | None = None,
+    *,
+    brain_mask: nib.spatialimages.SpatialImage,
 ) -> ValidatedInputs:
     """Validate required images and return RAS-normalized inputs.
 
-    MaSeg must share the T1 grid. FLAIR is checked as a valid 3D intensity
-    image but may use another grid because explicit rigid registration is a
-    later MaCRUISEplus stage.
+    MaSeg and a binary brain mask must share the T1 grid. FLAIR is checked as a
+    valid 3D intensity image but may use another grid because explicit rigid
+    registration is a later MaCRUISEplus stage.
     """
     try:
         selected_profile = WorkflowProfile(profile)
@@ -75,9 +78,11 @@ def validate_workflow_inputs(
     original_orientations = {
         "t1": nib.aff2axcodes(t1.affine),
         "maseg": nib.aff2axcodes(maseg.affine),
+        "brain_mask": nib.aff2axcodes(brain_mask.affine),
     }
     normalized_t1 = _validate_image(t1, name="T1")
     normalized_maseg = _validate_image(maseg, name="MaSeg", labels=True)
+    normalized_brain_mask = _validate_image(brain_mask, name="brain mask", labels=True)
     if normalized_t1.shape != normalized_maseg.shape:
         raise WorkflowInputError(
             f"T1 and MaSeg shapes differ after orientation normalization: "
@@ -85,6 +90,17 @@ def validate_workflow_inputs(
         )
     if not np.allclose(normalized_t1.affine, normalized_maseg.affine, rtol=0, atol=1e-4):
         raise WorkflowInputError("T1 and MaSeg are not aligned on the same physical grid")
+    mask_data = np.asanyarray(normalized_brain_mask.dataobj)
+    if not np.isin(mask_data, (0, 1, 255)).all():
+        raise WorkflowInputError("Brain mask must be binary with values 0/1 or 0/255")
+    if not np.any(mask_data):
+        raise WorkflowInputError("Brain mask must contain at least one foreground voxel")
+    if normalized_t1.shape != normalized_brain_mask.shape:
+        raise WorkflowInputError("T1 and brain mask shapes differ after RAS normalization")
+    if not np.allclose(
+        normalized_t1.affine, normalized_brain_mask.affine, rtol=0, atol=1e-4
+    ):
+        raise WorkflowInputError("Brain mask and T1 are not aligned on the same physical grid")
 
     normalized_flair = None
     if flair is not None:
@@ -95,6 +111,7 @@ def validate_workflow_inputs(
         profile=selected_profile,
         t1=normalized_t1,
         maseg=normalized_maseg,
+        brain_mask=normalized_brain_mask,
         flair=normalized_flair,
         input_orientations=original_orientations,
     )
@@ -105,10 +122,16 @@ def validate_workflow_files(
     t1_path: str | Path,
     maseg_path: str | Path,
     flair_path: str | Path | None = None,
+    *,
+    brain_mask_path: str | Path,
 ) -> ValidatedInputs:
     """Read and validate compressed NIfTI inputs with path-specific errors."""
     selected_profile = WorkflowProfile(profile)
-    paths = {"T1": Path(t1_path), "MaSeg": Path(maseg_path)}
+    paths = {
+        "T1": Path(t1_path),
+        "MaSeg": Path(maseg_path),
+        "brain mask": Path(brain_mask_path),
+    }
     if flair_path is not None:
         paths["FLAIR"] = Path(flair_path)
     images: dict[str, nib.spatialimages.SpatialImage] = {}
@@ -126,4 +149,5 @@ def validate_workflow_files(
         images["T1"],
         images["MaSeg"],
         images.get("FLAIR"),
+        brain_mask=images["brain mask"],
     )

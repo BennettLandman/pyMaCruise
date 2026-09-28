@@ -92,8 +92,16 @@ def ace_anisotropic_diffusion(
     *,
     tensor_alpha: float = 1.6,
     iterations: int = 25,
+    source_faithful: bool = False,
 ) -> np.ndarray:
-    """Port ACE's structure-tensor diffusion and monotone update rule."""
+    """Port ACE's structure-tensor diffusion and monotone update rule.
+
+    ``source_faithful=True`` preserves the Java power iteration's IEEE
+    ``0/0 -> NaN`` result when its selected tensor-vector product is zero.
+    The default retains a finite initialized basis vector at those voxels for
+    stable production processing. Use the option for stage-level Java
+    comparisons and report the affected voxel count.
+    """
     values = np.asarray(initial, dtype=np.float32)
     guide_values = np.asarray(guide, dtype=np.float32)
     if values.ndim != 3 or values.shape != guide_values.shape:
@@ -116,7 +124,9 @@ def ace_anisotropic_diffusion(
         ace_gaussian_blur(pz * pz, tensor_alpha),
     ]
     a11, a12, a13, a22, a23, a33 = tensor
-    vector = _principal_tensor_vector(a11, a12, a13, a22, a23, a33)
+    vector = _principal_tensor_vector(
+        a11, a12, a13, a22, a23, a33, source_faithful=source_faithful
+    )
     vx, vy, vz = vector
     diffusion = (
         np.float32(0.999) - np.float32(0.998) * vx * vx,
@@ -438,8 +448,14 @@ def _principal_tensor_vector(
     a22: np.ndarray,
     a23: np.ndarray,
     a33: np.ndarray,
+    *,
+    source_faithful: bool = False,
 ) -> tuple[np.ndarray, ...]:
-    """Select the largest-eigenvalue vector using the source's 10 power steps."""
+    """Select the largest-eigenvalue vector using the source's 10 power steps.
+
+    In source-faithful mode, preserve Java's zero-magnitude division and its
+    resulting NaN values. Otherwise, leave the selected basis vector intact.
+    """
     # Match the Java branch and tie behavior exactly: ties involving a33 favor
     # z, while an a11/a22 tie favors whichever strictly exceeds a33.
     px = np.zeros_like(a11, dtype=np.float32)
@@ -457,13 +473,17 @@ def _principal_tensor_vector(
         ny = a12 * px + a22 * py + a23 * pz
         nz = a13 * px + a23 * py + a33 * pz
         magnitude = np.sqrt(nx * nx + ny * ny + nz * nz).astype(np.float32)
-        nonzero = magnitude > 0
-        # The Java implementation divides by zero for a zero tensor. Preserve
-        # its initialized basis vector there, avoiding NaNs in otherwise valid
-        # uniform-guide volumes.
-        px = np.divide(nx, magnitude, out=px.copy(), where=nonzero)
-        py = np.divide(ny, magnitude, out=py.copy(), where=nonzero)
-        pz = np.divide(nz, magnitude, out=pz.copy(), where=nonzero)
+        if source_faithful:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                px = np.asarray(nx / magnitude, dtype=np.float32)
+                py = np.asarray(ny / magnitude, dtype=np.float32)
+                pz = np.asarray(nz / magnitude, dtype=np.float32)
+        else:
+            nonzero = magnitude > 0
+            # Avoid the source implementation's divide-by-zero NaNs.
+            px = np.divide(nx, magnitude, out=px.copy(), where=nonzero)
+            py = np.divide(ny, magnitude, out=py.copy(), where=nonzero)
+            pz = np.divide(nz, magnitude, out=pz.copy(), where=nonzero)
     return px, py, pz
 
 

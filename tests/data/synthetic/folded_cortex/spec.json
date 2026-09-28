@@ -1,0 +1,29 @@
+{
+  "description": "Synthetic cortex-like surface with deterministic angular folds; no subject data.",
+  "shape_voxels": [
+    41,
+    41,
+    41
+  ],
+  "center_voxel": [
+    20.0,
+    20.0,
+    20.0
+  ],
+  "voxel_size_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "orientation": "RAS",
+  "outer_radius_mm": "13 + 2*sin(phi)^2*cos(6*theta) + sin(phi)^2*cos(4*phi)",
+  "cortical_thickness_mm": 4.5,
+  "generation": "deterministic analytic radial formula; NumPy float32 coordinates",
+  "roles": {
+    "initial_membership": "255 inside the folded outer surface",
+    "white_matter": "230 inside the folded inner surface",
+    "gray_matter": "220 between inner and outer surfaces",
+    "multi_atlas_csf": "254 in the cortical shell",
+    "ace_skeleton": "254 within 0.55 mm of the shell mid-surface"
+  }
+}

@@ -8,6 +8,7 @@ import numpy as np
 from pymacruise.ace import (
     _central_gradient_mirror,
     _distance_and_characteristic_fmm,
+    _principal_tensor_vector,
     _signed_distance_fmm,
     ace_anisotropic_diffusion,
     ace_close_wm,
@@ -141,3 +142,40 @@ def test_ace_stages_match_selected_macruise_java_reference() -> None:
         )
         assert metrics["hausdorff_mm"] <= 1.0
         assert metrics["mean_absolute_distance_mm"] <= 0.01
+
+
+def test_ace_source_faithful_mode_preserves_zero_tensor_nan_and_reports_count() -> None:
+    zero_component = np.zeros((3, 3, 3), dtype=np.float32)
+    robust = _principal_tensor_vector(
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+    )
+    source = _principal_tensor_vector(
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+        zero_component,
+        source_faithful=True,
+    )
+    zero_tensor_voxels = int(
+        np.count_nonzero(
+            (zero_component == 0)
+            & (zero_component == 0)
+            & (zero_component == 0)
+            & (zero_component == 0)
+            & (zero_component == 0)
+            & (zero_component == 0)
+        )
+    )
+
+    assert zero_tensor_voxels == 27
+    np.testing.assert_array_equal(robust[0], 0)
+    np.testing.assert_array_equal(robust[1], 0)
+    np.testing.assert_array_equal(robust[2], 1)
+    assert all(np.isnan(component).all() for component in source)

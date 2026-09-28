@@ -25,9 +25,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {_package_version()}")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    prepare = commands.add_parser("prepare-raw", help="validate and prepare T1 plus MaSeg inputs")
+    prepare = commands.add_parser(
+        "prepare-raw", help="validate and prepare T1, MaSeg, and brain mask inputs"
+    )
     prepare.add_argument("--t1", required=True, type=Path)
     prepare.add_argument("--maseg", required=True, type=Path)
+    prepare.add_argument("--brain-mask", required=True, type=Path)
     prepare.add_argument("--output-dir", required=True, type=Path)
     prepare.add_argument("--overwrite", action="store_true")
 
@@ -48,9 +51,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "prepare-raw":
-        result = prepare_raw(args.t1, args.maseg, args.output_dir, overwrite=args.overwrite)
+        result = prepare_raw(
+            args.t1,
+            args.maseg,
+            args.brain_mask,
+            args.output_dir,
+            overwrite=args.overwrite,
+        )
         print(f"Prepared T1: {result.t1_path}")
         print(f"Prepared MaSeg: {result.maseg_path}")
+        print(f"Prepared brain mask: {result.brain_mask_path}")
     elif args.command == "cortical-separation":
         image = nib.load(str(args.maseg))
         if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):

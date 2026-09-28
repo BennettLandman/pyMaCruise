@@ -1,0 +1,101 @@
+Structure Atlas File (edit at your own risks)
+ 
+Structures:	11
+Background		1	mask
+SulcalCSF		5	optimized_csf
+Ventricles		6	optimized_csf
+CerebellarGM	14	optimized_gm
+CerebralGM		15	optimized_gm
+Caudate			16	optimized_gm
+Thalamus		17	optimized_gm
+Putamen			18	optimized_gm
+Brainstem		22	optimized_wm
+CerebellarWM	24	optimized_wm
+CerebralWM		25	optimized_wm
+ 
+Topology Atlas: 
+File:	cruise-atlas-10obj/brain-atlas-cruise-10obj-topology.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+ 
+Shape Atlas:	8
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Orientations:	1	1	6	3
+Structure:	Background
+File:	cruise-atlas-10obj/atlas_Background_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	SulcalCSF
+File:	cruise-atlas-10obj/atlas_SulcalCSF_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	Ventricles
+File:	cruise-atlas-10obj/atlas_Ventricles_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	CerebellarGM
+File:	cruise-atlas-10obj/atlas_CerebellarGM_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	CerebralGM
+File:	cruise-atlas-10obj/atlas_CerebralGM_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	Caudate
+File:	cruise-atlas-10obj/atlas_Caudate_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	Thalamus
+File:	cruise-atlas-10obj/atlas_Thalamus_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	Putamen
+File:	cruise-atlas-10obj/atlas_Putamen_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	Brainstem
+File:	cruise-atlas-10obj/atlas_Brainstem_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	CerebellarWM
+File:	cruise-atlas-10obj/atlas_CerebellarWM_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+Structure:	CerebralWM
+File:	cruise-atlas-10obj/atlas_CerebralWM_cruise.nii.gz
+Dimensions:	172	216	164
+Resolutions:	0.9375	0.9375	0.9375
+Center:	0.0	0.0	0.0
+ 
+Intensity Atlas:	0
+T1_SPGR		0.0	0.2	0.2	0.5	0.5	0.5	0.7	0.7	0.9	0.9	0.9
+T1_MPRAGE	0.0	0.1	0.1	0.6	0.5	0.5	0.7	0.8	0.9	1.0	1.0
+T2			0.0	0.9	0.9	0.6	0.6	0.6	0.6	0.6	0.5	0.5	0.5
+FLAIR		0.0	0.5	0.5	0.8	0.8	0.8	0.8	0.8	0.8	0.8	0.8
+PD			0.0	0.9	0.9	0.8	0.8	0.8	0.8	0.8	0.6	0.6	0.6
+ 
+Intensity Variance Factor:	0
+T1_SPGR		1.0	1.0	1.0	1.0	1.0	1.0	0.25	1.0	1.0	1.0	1.0
+T1_MPRAGE	1.0	1.0	1.0	1.0	1.0	1.0	0.25	1.0	1.0	1.0	1.0
+T2			1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+FLAIR		1.0	0.0	0.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+PD			1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+ 
+Optimized factors:
+T1_SPGR		1.00	1.00	1.00
+T1_MPRAGE	0.80	1.00	1.00
+T2			1.00	1.00	1.00
+FLAIR		1.00	1.00	1.00
+PD			1.00	1.00	1.00
+ 
