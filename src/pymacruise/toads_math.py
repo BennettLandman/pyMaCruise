@@ -181,3 +181,56 @@ def toads_psf_ridge_bias(
                                 value = np.float32(value + contribution)
                     bias[x, y, z, channel] = np.float32(value * ridge)
     return bias
+
+
+def toads_six_neighbor_smoothing_terms(
+    memberships: ArrayLike,
+    smoothing: float,
+    smoothing_priors: ArrayLike,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Compute the selected TOADS six-face membership-smoothing terms.
+
+    The input has a final class axis. For each interior voxel and candidate
+    class, the source visits X+, X-, Y+, Y-, Z+, Z- neighbors in that order,
+    summing squared memberships for every class except the candidate. The
+    returned arrays are the increment to reciprocal-energy ``num`` and the
+    half-scaled increment to the objective energy. Border voxels are not
+    visited by the source update and therefore receive zero terms. The
+    source's ``smoothing > 0`` guard also makes nonpositive values return zero.
+    """
+    mems = np.asarray(memberships, dtype=np.float32)
+    priors = np.asarray(smoothing_priors, dtype=np.float32)
+    smooth = np.float32(smoothing)
+    if mems.ndim != 4 or mems.shape[-1] < 1 or not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite 4-D with a class axis")
+    if priors.shape != (mems.shape[-1],) or not np.isfinite(priors).all():
+        raise ValueError("smoothing_priors must be finite and match the class count")
+    if not np.isfinite(smooth):
+        raise ValueError("smoothing must be finite")
+
+    num_increment = np.zeros(mems.shape, dtype=np.float32)
+    energy_increment = np.zeros(mems.shape, dtype=np.float32)
+    if smooth <= np.float32(0.0):
+        return num_increment, energy_increment
+    nx, ny, nz, classes = mems.shape
+    neighbor_offsets = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                for candidate in range(classes):
+                    neighbor_sum = np.float32(0.0)
+                    for dx, dy, dz in neighbor_offsets:
+                        for other_class in range(classes):
+                            if other_class == candidate:
+                                continue
+                            value = mems[x + dx, y + dy, z + dz, other_class]
+                            neighbor_sum = np.float32(
+                                neighbor_sum + np.float32(value * value)
+                            )
+                    scaled = np.float32(np.float32(priors[candidate] * smooth) * neighbor_sum)
+                    num_increment[x, y, z, candidate] = scaled
+                    energy_increment[x, y, z, candidate] = np.float32(
+                        np.float32(np.float32(np.float32(0.5) * priors[candidate]) * smooth)
+                        * neighbor_sum
+                    )
+    return num_increment, energy_increment
