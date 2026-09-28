@@ -62,6 +62,74 @@ class ToadsRigidRegistrationResult:
     stop_reason: str
 
 
+@dataclass(frozen=True)
+class ToadsRegistrationPyramidLevel:
+    """Source-compatible coarse TOADS memberships and atlas priors."""
+
+    scale: int
+    memberships: NDArray[np.float32]
+    atlas_shapes: NDArray[np.float32]
+
+
+def source_block_mean_subsample(image: ArrayLike, factor: int) -> NDArray[np.float32]:
+    """Recreate VandyCRUISE `ImageFunctions.subsample` for 3D/4D arrays.
+
+    Complete non-overlapping factor-cubed blocks are averaged in source
+    `x/y/z` offset order using float32 additions. Trailing partial blocks are
+    dropped; any trailing dimensions (normally classes) are kept unchanged.
+    """
+    values = np.asarray(image, dtype=np.float32)
+    if values.ndim not in (3, 4) or any(size <= 0 for size in values.shape[:3]):
+        raise ValueError("pyramid input must be a nonempty 3D or 4D array")
+    if not np.isfinite(values).all():
+        raise ValueError("pyramid input must be finite")
+    if not isinstance(factor, (int, np.integer)) or factor < 1:
+        raise ValueError("factor must be a positive integer")
+    output_dims = tuple(size // factor for size in values.shape[:3])
+    if any(size <= 0 for size in output_dims):
+        raise ValueError("factor is too large for the spatial dimensions")
+    output = np.zeros(output_dims + values.shape[3:], dtype=np.float32)
+    for dx in range(factor):
+        for dy in range(factor):
+            for dz in range(factor):
+                output += values[
+                    dx : output_dims[0] * factor : factor,
+                    dy : output_dims[1] * factor : factor,
+                    dz : output_dims[2] * factor : factor,
+                    ...,
+                ]
+    output /= np.float32(factor * factor * factor)
+    return output
+
+
+def build_toads_registration_pyramid(
+    memberships: ArrayLike, atlas_shapes: ArrayLike, *, levels: int
+) -> tuple[ToadsRegistrationPyramidLevel, ...]:
+    """Create the selected exact-membership pyramid, coarsest level first.
+
+    `registerShapesExactPyramid` starts at factor `2**(levels - 1)`, halves
+    the factor each stage, and stops at factor 2; scale 1 is not optimized by
+    that method. Each level is subsampled directly from the full-resolution
+    source arrays.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    shapes = np.asarray(atlas_shapes, dtype=np.float32)
+    if mem.ndim != 4 or mem.shape[-1] < 2 or not np.isfinite(mem).all():
+        raise ValueError("memberships must be finite 4D (x, y, z, class) values")
+    if shapes.ndim != 4 or shapes.shape[-1] != mem.shape[-1] or not np.isfinite(shapes).all():
+        raise ValueError("atlas_shapes must be finite 4D values with matching classes")
+    if not isinstance(levels, (int, np.integer)) or levels < 1:
+        raise ValueError("levels must be a positive integer")
+    return tuple(
+        ToadsRegistrationPyramidLevel(
+            scale,
+            source_block_mean_subsample(mem, scale),
+            source_block_mean_subsample(shapes, scale),
+        )
+        for scale in (2**power for power in range(levels - 1, 0, -1))
+    )
+
+
 def sample_toads_registration_fields(
     atlas_shapes: ArrayLike,
     *,

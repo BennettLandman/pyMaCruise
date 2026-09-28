@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -10,15 +14,75 @@ from pymacruise.toads_registration import (
     trilinear_prior_derivatives,
 )
 from pymacruise.toads_registration_sampling import (
+    build_toads_registration_pyramid,
     register_toads_atlas_rigid,
     rigid_registration_coordinate_jacobians,
     sample_toads_registration_fields,
     stream_toads_registration_coefficients,
     stream_toads_registration_energy,
+    source_block_mean_subsample,
     vectorized_toads_registration_coefficients,
     vectorized_toads_registration_energy,
 )
 from pymacruise.toads_shapes import sample_toad_shape_prior
+
+
+PYRAMID_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "toads_registration_pyramid"
+    / "java_reference.json"
+)
+PYRAMID_HARNESS_SHA256 = "3893d0fed7f3635ba1002a07c08bcf021475cd72fc95ddde68e8d78da3dc9f32"
+
+
+def test_source_block_mean_subsampling_matches_java_harness() -> None:
+    reference = json.loads(PYRAMID_FIXTURE.read_text())
+    x, y, z, k = np.indices((9, 8, 7, 3), dtype=np.int32)
+    values = (((11 * x + 5 * y + 3 * z + 7 * k) % 29) / np.float32(28.0)).astype(np.float32)
+    for factor in (2, 4):
+        expected = reference[str(factor)]
+        actual = source_block_mean_subsample(values, factor)
+        assert list(actual.shape) == expected["shape"]
+        np.testing.assert_array_equal(actual.reshape(-1), np.asarray(expected["values"], np.float32))
+
+
+def test_pyramid_subsampling_harness_hash_and_coarse_to_fine_schedule() -> None:
+    harness = Path(__file__).parent / "java_reference" / "ToadsPyramidSubsampleHarness.java"
+    assert hashlib.sha256(harness.read_bytes()).hexdigest() == PYRAMID_HARNESS_SHA256
+    assert [level.scale for level in build_toads_registration_pyramid(
+        np.ones((32, 32, 32, 2), np.float32),
+        np.ones((32, 32, 32, 2), np.float32),
+        levels=1,
+    )] == []
+    for levels in range(2, 6):
+        pyramid = build_toads_registration_pyramid(
+            np.ones((32, 32, 32, 2), np.float32),
+            np.ones((32, 32, 32, 2), np.float32),
+            levels=levels,
+        )
+        # The source halves integer power-of-two scales at each step.
+        expected_scales = [2**power for power in range(levels - 1, 0, -1)]
+        assert [level.scale for level in pyramid] == expected_scales
+        assert all(level.memberships.shape[:3] == tuple(size // level.scale for size in (32, 32, 32)) for level in pyramid)
+        assert all(level.atlas_shapes.shape == level.memberships.shape for level in pyramid)
+
+
+@pytest.mark.parametrize(
+    ("image", "factor", "message"),
+    [
+        (np.ones((3, 4), np.float32), 2, "3D or 4D"),
+        (np.ones((3, 4, 5), np.float32), 0, "positive integer"),
+        (np.ones((3, 4, 5), np.float32), 4, "too large"),
+        (np.full((3, 4, 5), np.nan, np.float32), 2, "finite"),
+    ],
+)
+def test_source_block_mean_subsampling_rejects_invalid_inputs(
+    image: np.ndarray, factor: int, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        source_block_mean_subsample(image, factor)
 
 
 def _atlas() -> np.ndarray:
