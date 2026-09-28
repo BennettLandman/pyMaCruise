@@ -463,4 +463,7 @@ and P18af validates its PSF-bias input primitive in
 [a separate source-formula comparison](reports/toads-psf-ridge-bias-2026-09-28.md).
 P18ag validates the six-face smoothing increment in
 [another source-formula report](reports/toads-six-face-smoothing-2026-09-28.md).
-These slices do not complete membership evolution.
+P18ah validates direct reciprocal-energy normalization in
+[its own Java formula report](reports/toads-direct-membership-2026-09-28.md).
+These slices do not complete the asynchronous membership sweep or full
+membership evolution.
