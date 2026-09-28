@@ -23,17 +23,27 @@ notices are retained in `licenses/upstream/` and `license_info.md`.
 The public array API is `thin_ace`; `thin_ace_image` provides NIfTI input,
 non-RAS warning/reorientation, and RAS output.
 
-## Synthetic evidence and open checks
+## Synthetic evidence
 
-Tests check exact retention of a one-voxel line, volume reduction of a solid
-cube, 18-connected output, border clearing, and RAS warning/output behavior.
-The committed ACE concentric phantom inputs are under
-`tests/data/synthetic/ace/`; `make_phantom.py` regenerates the `.nii.gz` images
-and their checksums. The full offline test suite passes 85 tests.
+The source comparison harness compiles the original selected `ThinACE.java`
+with small test-only JIST data-structure stubs; it runs the real algorithm
+without a MIPAV/JIST application install. See
+[`tests/java_reference/README.md`](../tests/java_reference/README.md) and
+[`tests/data/synthetic/skeleton/README.md`](../tests/data/synthetic/skeleton/README.md).
+Committed analytic `.nii.gz` inputs and Java outputs cover a line, cube,
+nested GM/WM ellipsoid, and symmetric spheres of radii 7, 8, 9, 10, 11, 12,
+14, and 16 voxels. Python output is voxel-exact against Java for every case
+(Dice 1.0); symmetric mesh Hausdorff and mean nearest-surface distances are
+both 0 mm for these equal masks. The sphere cases exercise equal-distance
+priority ties at several sizes.
 
-The implementation is not yet marked validated: Java heap tie ordering has not
-been reproduced byte-for-byte, the historical `DistanceField` source used by
-ThinACE is not present as a Java file in the supplied checkout, and no trusted
-Java result mask has yet been generated. Compare line, cube, sphere, and nested
-GM/WM cases to the source runtime before closing P27; retain the project's Dice
-and surface-distance thresholds.
+The Python port reproduces JIST heap insertion/removal tie behavior and the
+source connectivity routines' neighborhood seed domains. Its distance field
+uses the bundled MaCRUISE `DistanceFieldyh.java` reference, whose upstream
+header identifies it as identical to the `DistanceField` class called by
+ThinACE. NIfTI adapter tests confirm RAS output; a non-RAS input warns and is
+reoriented. The project's acceptance limits are Dice >=0.97, symmetric
+Hausdorff <=1 mm, and symmetric mean nearest-surface distance <=0.01 mm; the
+committed source-reference fixtures exceed these limits exactly. Regenerate
+goldens with `python scripts/generate_java_thinace_reference.py` (requires a
+JDK and the project's Python dependencies).

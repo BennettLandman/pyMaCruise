@@ -14,6 +14,7 @@ public class ImageData {
     public int getCols() { return cols; }
     public int getSlices() { return slices; }
     public float getFloat(int x, int y, int z) { return scalar[x][y][z]; }
+    public int getInt(int x, int y, int z) { return (int) scalar[x][y][z]; }
     public ImageHeader getHeader() { return header; }
     public void setHeader(ImageHeader value) { header = value; }
     public String getName() { return name; }

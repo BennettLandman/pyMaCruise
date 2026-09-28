@@ -455,7 +455,12 @@ def _principal_tensor_vector(
     return px, py, pz
 
 
-def _signed_distance_fmm(level_set: np.ndarray, max_distance: float = 1000.0) -> np.ndarray:
+def _signed_distance_fmm(
+    level_set: np.ndarray,
+    max_distance: float = 1000.0,
+    *,
+    round_updates_to_float32: bool = False,
+) -> np.ndarray:
     """Port VandyCRUISE's six-neighbor, unit-speed signed fast-marching field.
 
     Zero voxels and sign-crossing voxels form the initial accepted set. Crossing
@@ -479,7 +484,12 @@ def _signed_distance_fmm(level_set: np.ndarray, max_distance: float = 1000.0) ->
         value = float(phi[index])
         offsets = _source_crossing_offsets(phi, index)
         if offsets:
-            distance[index] = 1.0 / np.sqrt(sum(1.0 / (offset * offset) for offset in offsets))
+            seed_distance = 1.0 / np.sqrt(sum(1.0 / (offset * offset) for offset in offsets))
+            distance[index] = (
+                float(np.float32(seed_distance))
+                if round_updates_to_float32
+                else seed_distance
+            )
             alive[index] = True
 
     state = np.zeros(phi.shape, dtype=np.uint8)  # 0 far, 1 narrow band, 2 accepted
@@ -526,6 +536,8 @@ def _signed_distance_fmm(level_set: np.ndarray, max_distance: float = 1000.0) ->
                 if state[candidate] == 2:
                     continue
                 tentative = update(candidate)
+                if round_updates_to_float32:
+                    tentative = float(np.float32(tentative))
                 if tentative < distance[candidate]:
                     distance[candidate] = tentative
                     state[candidate] = 1
@@ -549,6 +561,8 @@ def _signed_distance_fmm(level_set: np.ndarray, max_distance: float = 1000.0) ->
                 if state[candidate] == 2:
                     continue
                 tentative = update(candidate)
+                if round_updates_to_float32:
+                    tentative = float(np.float32(tentative))
                 if tentative < distance[candidate]:
                     distance[candidate] = tentative
                     state[candidate] = 1

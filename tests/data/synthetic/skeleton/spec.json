@@ -1,0 +1,201 @@
+{
+  "purpose": "VandyCRUISE ThinACE synthetic parity reference",
+  "provenance": "synthetic; generated from analytic masks",
+  "frame": "RAS",
+  "units": "mm",
+  "voxel_spacing_mm": [
+    1,
+    1,
+    1
+  ],
+  "cases": {
+    "line": {
+      "shape": [
+        15,
+        15,
+        15
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "line_input.nii.gz",
+      "java_reference": "line_thinace_java.nii.gz"
+    },
+    "cube": {
+      "shape": [
+        15,
+        15,
+        15
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "cube_input.nii.gz",
+      "java_reference": "cube_thinace_java.nii.gz"
+    },
+    "sphere_r7": {
+      "shape": [
+        25,
+        25,
+        25
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r7_input.nii.gz",
+      "java_reference": "sphere_r7_thinace_java.nii.gz"
+    },
+    "sphere_r8": {
+      "shape": [
+        25,
+        25,
+        25
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r8_input.nii.gz",
+      "java_reference": "sphere_r8_thinace_java.nii.gz"
+    },
+    "sphere_r9": {
+      "shape": [
+        25,
+        25,
+        25
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r9_input.nii.gz",
+      "java_reference": "sphere_r9_thinace_java.nii.gz"
+    },
+    "sphere_r10": {
+      "shape": [
+        25,
+        25,
+        25
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r10_input.nii.gz",
+      "java_reference": "sphere_r10_thinace_java.nii.gz"
+    },
+    "sphere_r11": {
+      "shape": [
+        25,
+        25,
+        25
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r11_input.nii.gz",
+      "java_reference": "sphere_r11_thinace_java.nii.gz"
+    },
+    "sphere_r12": {
+      "shape": [
+        35,
+        35,
+        35
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r12_input.nii.gz",
+      "java_reference": "sphere_r12_thinace_java.nii.gz"
+    },
+    "sphere_r14": {
+      "shape": [
+        35,
+        35,
+        35
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r14_input.nii.gz",
+      "java_reference": "sphere_r14_thinace_java.nii.gz"
+    },
+    "sphere_r16": {
+      "shape": [
+        35,
+        35,
+        35
+      ],
+      "input_values": [
+        0,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "sphere_r16_input.nii.gz",
+      "java_reference": "sphere_r16_thinace_java.nii.gz"
+    },
+    "nested_gm_wm": {
+      "shape": [
+        33,
+        33,
+        33
+      ],
+      "input_values": [
+        0,
+        128,
+        255
+      ],
+      "reference_values": [
+        0,
+        254
+      ],
+      "input": "nested_gm_wm_input.nii.gz",
+      "java_reference": "nested_gm_wm_thinace_java.nii.gz"
+    }
+  }
+}

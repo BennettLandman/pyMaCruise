@@ -235,8 +235,11 @@ def test_thin_ace_preserves_line_and_reduces_solid_while_clearing_border() -> No
     line = np.zeros((15, 15, 15), dtype=np.uint8)
     line[2:13, 7, 7] = 255
     thin_line = thin_ace(line)
-    np.testing.assert_array_equal(thin_line[2:13, 7, 7], 254)
-    assert np.count_nonzero(thin_line) == np.count_nonzero(line)
+    java_line = nib.load(
+        Path(__file__).parent
+        / "data/synthetic/skeleton/line_thinace_java.nii.gz"
+    )
+    np.testing.assert_array_equal(thin_line, np.asarray(java_line.dataobj))
 
     solid = np.zeros_like(line)
     solid[2:13, 2:13, 2:13] = 255

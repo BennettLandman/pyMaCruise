@@ -1,5 +1,20 @@
 # Java TGDM reference harness
 
+## ThinACE reference
+
+`ThinACEReferenceHarness.java` runs the copied VandyCRUISE `ThinACE.java`
+implementation on committed analytic masks. Regenerate the line, cube,
+nested GM/WM, and symmetric sphere `.nii.gz` source/output fixtures with
+`python scripts/generate_java_thinace_reference.py`. The harness uses minimal
+test-only JIST image and voxel stubs under `stubs/`; it does not run a MIPAV or
+JIST application. Source attribution and provenance are documented in the
+fixture README and `license_info.md`.
+
+The selected source applies `DistanceField.solve(4.0)`; the reference harness
+uses the supplied MaCRUISE `DistanceFieldyh.java`, whose source header states
+that it is identical to `DistanceField`. Temporary binary interchange files
+and compiled classes are written under ignored `build/` and are not committed.
+
 This test-only harness runs the selected Java MaCRUISE TGDM adapter on the
 committed, deterministic 25³ synthetic phantom and writes small compressed
 NIfTI (`.nii.gz`) golden outputs. It requires a JDK but does not run MIPAV or
