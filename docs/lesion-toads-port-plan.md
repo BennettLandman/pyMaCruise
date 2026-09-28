@@ -114,11 +114,18 @@ adapter details. Therefore the P39 slices validate only their named selected
 VandyCRUISE source methods; no historical plus-workflow equivalence claim is
 made until the deployed version is identified.
 
-The selected `LesionToadSegmentation` source calls MIPAV
-`AlgorithmMorphology3D` and `AlgorithmMorphology25D`. Reuse SciPy morphology
-primitives when they implement the needed operation; a Java reimplementation
-is unnecessary when the library operation matches. First compare the source
-and library behavior for the reachable calls, including dimensionality,
-structuring element, border handling, dtype, and iteration semantics. Add a
-small adapter or port only for behavior the library does not provide, and
-record any remaining differences as explicit deviations.
+The selected VandyCRUISE `LesionToadSegmentation` does not call MIPAV
+`AlgorithmMorphology3D` or `AlgorithmMorphology25D`. Those calls occur in the
+alternate, older `toads-cruise/src/.../LesionToadSegmentation.java` copy
+(SHA-256 `77016c000b8bbbfe55bfbe8d665ddd8be914c8ecbae8563ccce59aaa834bcfe0`),
+while the selected VandyCRUISE file (SHA-256
+`545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99`) has no
+MIPAV morphology calls. Because the deployed LesionTOADS version remains
+unidentified, these alternate-version operations are not currently required
+for the selected port. If source-version review makes them reachable, reuse
+SciPy morphology primitives when their behavior matches; a Java
+reimplementation is unnecessary when the library operation matches. Compare
+the exact reachable call semantics, including dimensionality, structuring
+element, border handling, dtype, and iteration behavior. Add a small adapter
+or port only for behavior SciPy does not provide, and record any remaining
+differences as explicit deviations.
