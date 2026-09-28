@@ -10,6 +10,7 @@ import pytest
 from pymacruise.toads_registration import (
     exact_membership_registration_energy,
     exact_registration_measure_coefficients,
+    rigid_image_to_template_jacobian,
     synthetic_registration_objective_inputs,
     trilinear_prior_derivatives,
 )
@@ -23,6 +24,7 @@ COEFFICIENT_REFERENCE = (
 HARNESS_HASH = "3c2e8bc403a1e04f201cbc29f6aa468175b202c4d2013bc1aefa4429d7bf8b41"
 COEFFICIENT_HARNESS_HASH = "cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b2952114c39af1a5"
 DERIVATIVE_HARNESS_HASH = "127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae91c72f85a5b0"
+RIGID_JACOBIAN_HARNESS_HASH = "e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4"
 
 
 def test_exact_membership_energy_matches_source_formula_harness() -> None:
@@ -54,6 +56,7 @@ def test_registration_reference_sources_have_recorded_hashes() -> None:
         ("ToadsRegistrationEnergyReferenceHarness.java", HARNESS_HASH),
         ("ToadsRegistrationCoefficientReferenceHarness.java", COEFFICIENT_HARNESS_HASH),
         ("ToadsPriorDerivativeReferenceHarness.java", DERIVATIVE_HARNESS_HASH),
+        ("ToadsRigidJacobianReferenceHarness.java", RIGID_JACOBIAN_HARNESS_HASH),
     ):
         harness = ROOT / "java_reference" / name
         assert hashlib.sha256(harness.read_bytes()).hexdigest() == expected
@@ -96,6 +99,31 @@ def test_prior_derivatives_match_selected_java_formula_excerpt() -> None:
         np.testing.assert_array_equal(
             trilinear_prior_derivatives(shape, point),
             np.asarray(reference, dtype=np.float32),
+        )
+
+
+def test_rigid_coordinate_jacobian_matches_selected_java_formula_excerpt() -> None:
+    expected = json.loads(
+        (REFERENCE.parent / "java_rigid_jacobian_reference.json").read_text()
+    )
+    actual = rigid_image_to_template_jacobian(
+        (2, 1, 3),
+        (0.14, 0.07, -0.05, 1.0, 2.0, 3.0),
+        (2.5, 2.0, 1.5),
+        (0.8, 1.2, 2.0),
+        (0.9, 1.1, 1.3),
+    )
+    np.testing.assert_array_equal(actual, np.asarray(expected["jacobian"], dtype=np.float32))
+
+
+def test_rigid_coordinate_jacobian_rejects_singular_rotation_derivative() -> None:
+    with pytest.raises(ValueError, match="singular"):
+        rigid_image_to_template_jacobian(
+            (1, 1, 1),
+            (1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            (1.0, 1.0, 1.0),
+            (1.0, 1.0, 1.0),
+            (1.0, 1.0, 1.0),
         )
 
 

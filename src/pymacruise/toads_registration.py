@@ -179,6 +179,112 @@ def trilinear_prior_derivatives(
     return result
 
 
+def rigid_image_to_template_jacobian(
+    image_xyz: ArrayLike,
+    transform_parameters: ArrayLike,
+    image_center_xyz: ArrayLike,
+    image_resolutions_mm: ArrayLike,
+    template_resolutions_mm: ArrayLike,
+    *,
+    scale: float = 1.0,
+) -> NDArray[np.float32]:
+    """Return the source rigid-map coordinate Jacobian for one input voxel.
+
+    Output axes are `(template coordinate, rigid parameter)` where parameters
+    are inverse-Rodrigues x/y/z followed by x/y/z millimetre translations.
+    The implementation follows the selected `RotationMatrix.derivatives` and
+    `ParametricTransform.imageToTemplateDerivatives` float32 formulas.
+    """
+    voxel = np.asarray(image_xyz, dtype=np.float32)
+    transform = np.asarray(transform_parameters, dtype=np.float32)
+    center = np.asarray(image_center_xyz, dtype=np.float32)
+    image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
+    template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
+    scale_value = np.float32(scale)
+    if voxel.shape != (3,) or not np.isfinite(voxel).all():
+        raise ValueError("image_xyz must contain three finite coordinates")
+    if transform.shape != (6,) or not np.isfinite(transform).all():
+        raise ValueError("transform_parameters must contain six finite rigid parameters")
+    if center.shape != (3,) or not np.isfinite(center).all():
+        raise ValueError("image_center_xyz must contain three finite values")
+    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res <= 0):
+        raise ValueError("image_resolutions_mm must contain three positive finite values")
+    if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
+        raise ValueError("template_resolutions_mm must contain three positive finite values")
+    if not np.isfinite(scale_value) or scale_value <= 0:
+        raise ValueError("scale must be positive and finite")
+
+    def f(value: float) -> np.float32:
+        return np.float32(value)
+
+    a, b, c = (f(v) for v in transform[:3])
+    norm_square = f(f(f(a * a) + f(b * b)) + f(c * c))
+    norm = f(np.sqrt(norm_square))
+    if norm > f(1.0):
+        magnitude = f(norm % f(2.0))
+        if magnitude > f(1.0):
+            a = f(f(f(magnitude * a) / norm) - f(f(f(2.0) * a) / norm))
+            b = f(f(f(magnitude * b) / norm) - f(f(f(2.0) * b) / norm))
+            c = f(f(f(magnitude * c) / norm) - f(f(f(2.0) * c) / norm))
+        else:
+            a, b, c = (f(f(v * magnitude) / norm) for v in (a, b, c))
+    a2, b2, c2 = f(a * a), f(b * b), f(c * c)
+    ab, ac, bc = f(a * b), f(a * c), f(b * c)
+    x2 = f(f(f(1.0) - a2) - b2)
+    x2 = f(x2 - c2)
+    x = f(np.sqrt(x2))
+    if x == f(0.0):
+        raise ValueError("rigid rotation derivative is singular at unit parameter norm")
+    ax, bx, cx = f(x * a), f(x * b), f(x * c)
+
+    def rotation_derivative(da: np.float32, db: np.float32, dc: np.float32) -> NDArray[np.float32]:
+        out = np.zeros((3, 3), dtype=np.float32)
+        out[0, 0] = f(f(-4.0) * f(f(b * db) + f(c * dc)))
+        q = f(f(f(bx - ac) * da) + f(f(ax - bc) * db))
+        q = f(q + f(f(x2 - c2) * dc))
+        out[1, 0] = f(f(f(2.0) / x) * q)
+        q = f(f(f(cx + ab) * da) + f(f(b2 - x2) * db))
+        q = f(q + f(f(ax + bc) * dc))
+        out[2, 0] = f(f(f(2.0) / x) * q)
+        q = f(f(f(bx + ac) * da) + f(f(ax + bc) * db))
+        q = f(q + f(f(c2 - x2) * dc))
+        out[0, 1] = f(f(f(2.0) / x) * q)
+        out[1, 1] = f(f(f(-4.0) * f(f(a * da) + f(c * dc))))
+        q = f(f(f(x2 - a2) * da) + f(f(cx - ab) * db))
+        q = f(q + f(f(bx - ac) * dc))
+        out[2, 1] = f(f(f(2.0) / x) * q)
+        q = f(f(f(cx - ab) * da) + f(f(x2 - b2) * db))
+        q = f(q + f(f(ax - bc) * dc))
+        out[0, 2] = f(f(f(2.0) / x) * q)
+        q = f(f(f(a2 - x2) * da) + f(f(cx + ab) * db))
+        q = f(q + f(f(bx + ac) * dc))
+        out[1, 2] = f(f(f(2.0) / x) * q)
+        out[2, 2] = f(f(f(-4.0) * f(f(a * da) + f(b * db))))
+        return out
+
+    derivatives = (
+        rotation_derivative(f(1.0), f(0.0), f(0.0)),
+        rotation_derivative(f(0.0), f(1.0), f(0.0)),
+        rotation_derivative(f(0.0), f(0.0), f(1.0)),
+    )
+    physical = tuple(
+        f(f(f(voxel[axis] * scale_value) - center[axis]) * image_res[axis])
+        for axis in range(3)
+    )
+    jacobian = np.zeros((3, 6), dtype=np.float32)
+    for parameter, derivative in enumerate(derivatives):
+        for axis in range(3):
+            value = f(derivative[axis, 0] * physical[0])
+            value = f(value + f(derivative[axis, 1] * physical[1]))
+            value = f(value + f(derivative[axis, 2] * physical[2]))
+            value = f(value / template_res[axis])
+            jacobian[axis, parameter] = f(value / scale_value)
+    jacobian[0, 3] = f(f(f(1.0) / template_res[0]) / scale_value)
+    jacobian[1, 4] = f(f(f(1.0) / template_res[1]) / scale_value)
+    jacobian[2, 5] = f(f(f(1.0) / template_res[2]) / scale_value)
+    return jacobian
+
+
 def synthetic_registration_objective_inputs() -> tuple[NDArray[np.float32], NDArray[np.float32]]:
     """Return the deterministic 5×4×3×4 Java-reference objective phantom."""
     x, y, z, k = np.indices((5, 4, 3, 4), dtype=np.int32)

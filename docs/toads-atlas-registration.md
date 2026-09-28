@@ -78,9 +78,20 @@ alignment quality.
 not the energy sampler's closest-edge behavior: if any coordinate lies below
 zero or above `size - 2`, all three derivatives are zero. Four deterministic
 points match the source-formula Java excerpt exactly after float32 conversion,
-including the upper face and both outside-bound cases. This provides the
-prior-coordinate derivative primitive; the rigid transform Jacobian and
-coefficient accumulation are still unimplemented.
+including the upper face and both outside-bound cases. The rigid transform
+Jacobian is now implemented as the next separate primitive.
+
+### Rigid transform coordinate Jacobian
+
+`rigid_image_to_template_jacobian` combines the selected rotation-matrix
+derivatives with the RIGID branch of `ParametricTransform` for one voxel. It
+returns a 3×6 float32 matrix (template x/y/z by three rotation and three
+translation parameters). A fixed non-singular synthetic rotation and
+anisotropic image/template spacing match the Java formula excerpt exactly,
+including translation derivatives. The singular unit-norm rotation case is
+rejected explicitly; it has not been shown to occur in the selected optimizer.
+This does not yet validate transform mapping, prior-gradient composition, or
+registration coefficient accumulation.
 
 ## Python-library reuse decision
 
@@ -105,10 +116,9 @@ preserving source fidelity where it does not.
 
 ## Next implementation slices
 
-1. Make a small Java harness for the exact rigid objective's energy, gradient,
-   and diagonal Hessian on analytic synthetic membership/prior fields. Record
-   transform, interpolation, derivative, accumulation order, and source hashes.
-2. Implement and compare the objective/coefficients in Python, using SciPy
+1. Compose prior gradients with the rigid Jacobian and compare source-order
+   gradient/Hessian accumulation on analytic synthetic membership/prior fields.
+2. Implement and compare the remaining coefficients in Python, using SciPy
    only for operations shown to preserve the reference within measured limits.
 3. Compare one rigid update and its accept/reject schedule before adding the
    full iteration loop or pyramid levels.
