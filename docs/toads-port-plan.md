@@ -196,6 +196,24 @@ complete `MedicAlgorithmRemoveDura09` pipeline. See
 JAR/class hashes, fixture recipe, and Java invocation. Focused regression
 coverage is in `tests/test_toads_dura.py`.
 
+### Completed geometry slice: TOADS crop and topology resampling
+
+`src/pymacruise/toads_crop.py` ports the selected source's inclusive crop-bound
+calculation, inverse-Rodrigues rotation matrix, zero-padded image crop,
+source-style translation update/reversal, and nearest-neighbor categorical
+topology sampling. It preserves the Java `[x][y][z]` voxel order and the
+source's `dimension / 2.0` center convention. The asymmetric formula-level
+fixture exercises mixed axis signs, unequal voxel resolutions, nonzero
+rotation, a border-touching image region, atlas labels 2 and 3, and clipped
+uncropping. Its test compares bounds and labels exactly, serialized float32
+image arrays exactly after parsing, and transform translations within
+`2e-7`. The reference is explicitly a standalone transcription of source
+formulas; it does not execute the upstream `MultipleToadPreprocess` class.
+This slice excludes iterative atlas registration and does not resolve the
+separately documented atlas physical-spacing discrepancy. See
+`tests/data/synthetic/toads_crop_geometry/README.md` for source hashes, exact
+phantom, and regeneration details.
+
 ## Porting and validation sequence
 
 1. **Freeze the source path and parameters.** Trace V3 `run_Toads_pipeline.m`,
