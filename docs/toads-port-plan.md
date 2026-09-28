@@ -3,7 +3,10 @@
 **Status:** P18 is in progress. P34 base orchestration is blocked until the
 TOADS route below is implemented and validated. The user-supplied brain mask
 decision removes BET/SPECTRE skull stripping from the runtime contract; it does
-not establish algorithmic equivalence to either tool.
+not establish algorithmic equivalence to either tool. The owner has selected
+native T1 RAS space for the Python TOADS path. This is a deliberate working-
+space deviation from historical V3, whose selected BET branch also ran
+SPECTRE affine registration/resampling before TOADS.
 
 ## Selected implementation decisions
 
@@ -12,7 +15,7 @@ not establish algorithmic equivalence to either tool.
 | TOADS tissue segmentation | Port the selected VandyCRUISE `MedicAlgorithmToads08` behavior and the MaCRUISE two-pass adapter contract into Python. Reuse NumPy/SciPy for array and image operations where they match source semantics; keep atlas alignment, iteration order, labels, masks, stopping rules, and wrapper settings source-derived. Do not substitute a generic classifier. | No MIPAV/JIST Java runtime in the finished package. Bundle all required atlas/configuration inputs under `data/atlases/` as regular Git files; image payloads stay `.nii.gz`. | Build a Java comparison harness around the supplied implementation. First compare intermediate/terminal fields on deterministic synthetic intensity, class-boundary, bias, and mask cases. Then compare final GM/WM-fill/WM-mask labels and geometry. Record voxel Dice per label, exact label agreement where deterministic, and all numeric deviations. |
 | Dura removal between TOADS passes | Port the active `MedicAlgorithmRemoveDura09` stage and reproduce its selected placement between the two TOADS runs. Do not replace it with generic hole filling or morphology. | No separate external executable. | Use synthetic attached dura, disconnected outside tissue, thin bridges, and no-dura cases. Compare Java outputs and preserve exact masks/topology where the source is deterministic. |
 | BET skull stripping | Exclude BET from the selected Python workflow. The user supplies the brain mask, which must be binary, nonempty, and on the T1 physical grid. | No FSL BET executable or Python BET wrapper. | Test binary/value validation, RAS reorientation warning, and exact shape/affine agreement against T1. This is an input-contract substitution, not a claim that the provided mask reproduces BET. |
-| SPECTRE skull-strip cleanup | Exclude SPECTRE from the selected runtime path because the caller supplies the required brain mask. Retain its source only as historical behavior evidence. Do not install or require FreeSurfer. | No SPECTRE plugin runtime and no FreeSurfer. | Document the workflow difference. Compare the port with MaCRUISE references supplied with masks; do not claim SPECTRE parity. If future evidence shows another SPECTRE product is consumed beyond the brain mask, add it as a separately approved scope item. |
+| SPECTRE registration and skull-strip path | Exclude BET and SPECTRE from the Python runtime. The caller supplies a binary brain mask on the T1 grid, and the owner selected native T1 RAS as TOADS working space. Retain historical SPECTRE as a source/reference detail. Do not install or require FreeSurfer. | No FSL, BET, SPECTRE, or FreeSurfer runtime. | Historical V3 applies SPECTRE's 12-DOF affine registration with trilinear resampling before TOADS and later transfers labels back to the MaSeg grid. The selected Python path intentionally omits that transform/resampling. Record this in comparisons; use native-grid synthetic phantoms for stage validation and do not claim historical working-space equivalence. |
 
 ## Source inventory and available material
 
@@ -21,8 +24,9 @@ The active TOADS implementation is present in the supplied companion
 far is:
 
 - `toads-cruise/src/edu/jhu/ece/iacl/plugins/classification/MedicAlgorithmToads08.java`:
-  MIPAV/JIST wrapper, selected output type, isotropic sinc resampling, and
-  wrapper parameter defaults/forwarding.
+  MIPAV/JIST wrapper, selected output type, active direct-copy image input,
+  and wrapper parameter defaults/forwarding. Its isotropic WSINC resampling
+  call is commented out and is not part of the selected execution path.
 - `toads-cruise/src/edu/jhmi/rad/medic/algorithms/AlgorithmMultipleToads.java`:
   1,282-line workflow/algorithm driver, including input preprocessing,
   inhomogeneity correction, atlas alignment, segmentation and result products.
@@ -62,18 +66,37 @@ available raw source maps. A future test-only Java comparison adapter must
 serialize these arrays in the source primitive type and byte order. Physical
 atlas geometry is still an open P18 validation item.
 
-## Selected MaCRUISE wrapper contract
+The selected TOADS segmentation also requires `critical186LUT.raw.gz` for
+18/6 connectivity. The 936 KB compressed asset is bundled at
+`src/pymacruise/data/critical186LUT.raw.gz`; its compressed SHA-256 is
+`cbf1e339d78a0a2c673c939ee2c8a30ee3a35bfd9603d07ed2d48864bb0e88be`. Its
+67,108,864-byte payload is indexed by a
+26-bit x-major/y/z neighborhood key with the center omitted. This table is
+not interchangeable with P25's current 6/18 predicate: the two already differ
+for the single-corner key. The TOADS engine must use its selected LUT behavior
+until a separate 18/6 implementation is validated; see the fixture README and
+P18f in `plan.md`.
 
-The selected `run_Toads_pipeline.m` sequence is N4 correction, skull-mask
-preparation, TOADS pass one (`dura removal inputs` output), dura removal, and
-TOADS pass two (`dura removal inputs` is the default final mode). The user
-brain mask replaces skull stripping; it must mask the N4 image supplied to
-TOADS. With SPECTRE registration excluded, the selected substitution keeps
-the corrected N4 image on the original T1 grid: TOADS receives that image
-zeroed outside the user mask; dura removal receives the corrected unmasked N4
-image as `inOriginal`, plus the TOADS tissue maps. This is the defined
-brain-mask workflow and does not claim SPECTRE's affine registration or output
-equivalence.
+## Historical V3 wrapper contract and selected Python deviation
+
+The historical `run_maCRUISE_v3.m` default selects BET. Its `run_Bet.m` branch
+runs BET, then SPECTRE affine registration of that stripped image to the
+OASIS atlas using correlation ratio and trilinear interpolation. TOADS pass 1
+consumes the SPECTRE-transformed image; dura removal's `inOriginal` is also
+that stripped/registered image; pass 2 consumes the dura-stripped result; and
+the three TOADS products are transferred to the MaSeg reference grid. The
+SPECTRE step therefore changes TOADS working space and image sampling, in
+addition to skull-mask preparation.
+
+The selected Python contract is explicit: caller-provided binary mask,
+native T1 RAS working space, and no BET/SPECTRE resampling. N4 T1 values are
+zeroed outside that mask before TOADS, and the same masked native-space image
+is supplied as `inOriginal` to dura removal. This preserves the selected
+algorithm/atlas/parameter/output contracts while intentionally changing the
+historical working space and trilinear interpolation effects. Routine
+TOADS-output transfer-back is identity on this path; the generic nonidentity
+transfer utility remains tested separately. P37/P43 must report the working-
+space difference rather than attributing it to numerical noise.
 
 `run_Toads_jist.m` passes `-inAtlas2 2.0`, `-inSmooting 0.2`,
 `-inMaximum 1e-4`, `-inMaximum2 50`, rigid atlas alignment, and `(18,6)`
@@ -88,9 +111,26 @@ size `30.0`. The wrapper also fixes `inOutput2=false` and
 into the selected companion `AlgorithmMultipleToads` constructor. `run_RemoveDura_jist.m` passes `-inCurvature
 0.5`, `-inLevel 1.0`, `-inAlignment 0.5`, `-inPressure 0.5`, `-inTarget
 0.3`, `-inMask 2.0`, `-inLevel2 0.0`, `-inMaximum 5`, `-inWM3 0.05`, and
-`-inGM2 0.02`. Keep these as source option/value pairs until each is mapped
-to the implementation's parameter fields; the JIST flag names and parameter
-labels are not always identical.
+`-inGM2 0.02`. The source maps `-inLevel` to alignment force 1.0 and
+`-inAlignment` to alpha 0.5; `-inTarget` is the target membership/isovalue
+membership 0.3. Do not infer parameter meaning from the flag names.
+
+The dura wrapper topology-corrects WM, then topology-corrects the sum of that
+result and GM; the second product is a corrected union, not simply a GM map.
+It constructs `inner = 0.5 - wmTC/255` and
+`outer = membership - unionTC/255`, runs original JIST `DistanceField` with
+caps 15 and 10, then evolves the outer field with
+`DynamicPressureTGDM(CONNECT_18_6)`. The P29 Python port covers a reusable
+`GenericTGDM`-style evolution kernel, but the selected
+`DynamicPressureTGDM.updatePoint` adds a reference-gradient alignment penalty
+and uses a specific profile schedule; that part is not implemented or
+validated yet. Although `MaGenericTGDM` and VandyCRUISE `GenericTGDM` share
+most core update behavior, they are distinct classes. `setReferenceLevelSet`
+computes the reference gradient; `solveBrainMaskSurface` clears the inner and
+outer bounds, so the gradient penalty remains active without bound clamping.
+P18 must compare at least one Java/Python single-point update before claiming
+this dura stage. Full evolution then needs the selected 4.8/3.6 narrow-band
+profile, 30 inner updates, five outer iterations, and signed-distance caps 6/5.
 
 The JIST option strings in `MedicAlgorithmToads08` and the matching output
 branches in the companion `toads-cruise/src/.../AlgorithmMultipleToads.java`

@@ -104,3 +104,19 @@ The selected algorithm is a separate LesionTOADS engine, so its preprocessing
 and descriptor work can proceed while base P18 is incomplete. Full
 MaCRUISEplus assembly remains dependent on shared input preparation and
 verified tissue/dura products.
+
+### Source-version and runtime caveats
+
+Per owner direction, VandyCRUISE is the selected algorithm source for this
+port. The exact deployed plugin JAR used by historical MaCRUISEplus runs has
+not been identified, and companion `toads-cruise` copies differ in classes and
+adapter details. Therefore the P39 slices validate only their named selected
+VandyCRUISE source methods; no historical plus-workflow equivalence claim is
+made until the deployed version is identified.
+
+The selected `LesionToadSegmentation` source calls MIPAV
+`AlgorithmMorphology3D` and `AlgorithmMorphology25D`. These are numerical
+operations, not just image containers or UI. Port the reachable morphology
+behavior from the supplied MIPAV source and validate its structuring-element
+and boundary semantics against the original classes; do not substitute a
+SciPy morphology operation without a source comparison.
