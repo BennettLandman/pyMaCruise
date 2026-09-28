@@ -41,6 +41,17 @@ trials. The outer loop is bounded by the configured iteration count and stops
 when relative energy change is at most `1e-6` or `lambda <= 0.001`. The source
 uses float32 arithmetic and source-specific rotation/interpolation routines.
 
+### Implemented objective-kernel slice
+
+`src/pymacruise/toads_registration.py::exact_membership_registration_energy`
+now implements that energy accumulation for an already sampled prior field,
+including the source's first-class skip, registered-class selection, positive
+prior filter, offset/subsample traversal, float32 accumulation, and empty-norm
+NaN behavior. Two deterministic Java harness cases cover all registered
+classes and a selected-class/subsampled scan. The harness is a source-formula
+excerpt: it does not execute the full private source method, transform mapping,
+interpolation, derivatives, or the rigid update.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source
