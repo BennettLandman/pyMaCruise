@@ -56,13 +56,15 @@ def test_transformed_shape_support_bounds_match_java_scan_excerpt() -> None:
             image_resolutions_mm=tuple(reference["image_resolutions"]),
             template_resolutions_mm=tuple(reference["template_resolutions"]),
             transform=tuple(case["transform"]),
+            record_support=True,
         )
         assert list(actual.lower_xyz) == case["lower"], case["name"]
         assert list(actual.upper_xyz) == case["upper"], case["name"]
+        assert actual.positive_support_xyz is not None
         assert [list(point) for point in actual.positive_support_xyz] == case["support"], (
             case["name"]
         )
-        assert len(actual.positive_support_xyz) == case["support_count"]
+        assert actual.support_count == case["support_count"]
 
 
 def test_shape_sampler_preserves_source_maximum_as_exclusive_bound() -> None:
@@ -75,6 +77,8 @@ def test_shape_sampler_preserves_source_maximum_as_exclusive_bound() -> None:
         template_resolutions_mm=tuple(reference["template_resolutions"]),
         transform=tuple(case["transform"]),
     )
+    assert bounds.positive_support_xyz is None
+    assert bounds.support_count == case["support_count"]
     kwargs = {
         "image_dimensions_xyz": tuple(reference["image_dims"]),
         "image_resolutions_mm": tuple(reference["image_resolutions"]),

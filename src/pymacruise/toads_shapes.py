@@ -26,7 +26,8 @@ class ToadShapeBounds:
 
     lower_xyz: tuple[int, int, int]
     upper_xyz: tuple[int, int, int]
-    positive_support_xyz: tuple[tuple[int, int, int], ...]
+    support_count: int
+    positive_support_xyz: tuple[tuple[int, int, int], ...] | None
 
 
 def compute_toad_shape_bounds(
@@ -38,6 +39,7 @@ def compute_toad_shape_bounds(
     transform: tuple[float, float, float, float, float, float],
     image_origin_xyz: tuple[float, float, float] | None = None,
     template_origin_xyz: tuple[float, float, float] | None = None,
+    record_support: bool = False,
 ) -> ToadShapeBounds:
     """Scan positive atlas-shape support using TOADS' precomputed rigid map.
 
@@ -46,6 +48,9 @@ def compute_toad_shape_bounds(
     The source initializes minima to the input dimensions and maxima to zero,
     then stores the greatest positive-support voxel index directly; it does
     not add one to make the upper bound half-open.
+
+    For production use, only the bounds and support count are retained. Set
+    ``record_support`` when a test or diagnostic needs every support coordinate.
     """
     values = np.asarray(shape, dtype=np.float32)
     if values.ndim != 3 or any(size < 2 for size in values.shape):
@@ -96,7 +101,8 @@ def compute_toad_shape_bounds(
 
     lower = list(image_dims)
     upper = [0, 0, 0]
-    support: list[tuple[int, int, int]] = []
+    support: list[tuple[int, int, int]] | None = [] if record_support else None
+    support_count = 0
     for x in range(image_dims[0]):
         for y in range(image_dims[1]):
             for z in range(image_dims[2]):
@@ -113,11 +119,18 @@ def compute_toad_shape_bounds(
                     coordinate = np.float32(coordinate + matrix[axis, 3])
                     mapped.append(coordinate)
                 if _linear_closest(values, mapped) > np.float32(0.0):
-                    support.append(point)
+                    support_count += 1
+                    if support is not None:
+                        support.append(point)
                     for axis in range(3):
                         lower[axis] = min(lower[axis], point[axis])
                         upper[axis] = max(upper[axis], point[axis])
-    return ToadShapeBounds(tuple(lower), tuple(upper), tuple(support))
+    return ToadShapeBounds(
+        tuple(lower),
+        tuple(upper),
+        support_count,
+        None if support is None else tuple(support),
+    )
 
 
 def sample_toad_shape_prior(
