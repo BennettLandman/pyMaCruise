@@ -1,0 +1,182 @@
+"""Source-shaped sampling of TOADS atlas membership priors."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+
+@dataclass(frozen=True)
+class ToadShapeSample:
+    """One transformed atlas membership sample and its template coordinate."""
+
+    value: np.float32
+    template_xyz: tuple[np.float32, np.float32, np.float32] | None
+
+
+def sample_toad_shape_prior(
+    shape: np.ndarray,
+    image_point_xyz: tuple[int, int, int],
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_index: int,
+    bbox_low_xyz: tuple[int, int, int],
+    bbox_high_xyz: tuple[int, int, int],
+    shape_slope: float = 2.0,
+) -> ToadShapeSample:
+    """Sample a source TOADS shape prior at one input-grid voxel.
+
+    The transform is VandyCRUISE's six-float rigid parameter vector: the first
+    three values define its inverse-Rodrigues rotation and the last three are
+    translations in millimetres. Input and template arrays use the source
+    x/y/z order; callers must pass RAS-oriented image arrays. The atlas map is
+    linearly interpolated with the source closest-edge rule, then its shape
+    slope is restored and clipped to [0, 1].
+
+    This ports the fixed-transform sampler, not atlas registration or
+    registration-optimized shape bounds. A point outside the class-specific
+    input bounds receives the source default (class 0 => 1, other classes =>
+    0) and has no mapped template coordinate.
+    """
+    values = np.asarray(shape, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("TOADS shape prior must be 3D with dimensions >= 2")
+    if not np.isfinite(values).all():
+        raise ValueError("TOADS shape prior must contain only finite values")
+    image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
+    point = _triple_int(image_point_xyz, "image_point_xyz")
+    lower = _triple_int(bbox_low_xyz, "bbox_low_xyz")
+    upper = _triple_int(bbox_high_xyz, "bbox_high_xyz")
+    if any(point[a] < 0 or point[a] >= image_dims[a] for a in range(3)):
+        raise ValueError("image_point_xyz must be inside the declared input grid")
+    if any(lower[a] < 0 or upper[a] > image_dims[a] or lower[a] > upper[a] for a in range(3)):
+        raise ValueError("class bounds must be ordered and inside the declared input grid")
+    if not isinstance(class_index, (int, np.integer)) or class_index < 0:
+        raise ValueError("class_index must be a nonnegative integer")
+
+    image_res = _triple_float(image_resolutions_mm, "image_resolutions_mm", positive=True)
+    template_res = _triple_float(
+        template_resolutions_mm, "template_resolutions_mm", positive=True
+    )
+    transform_values = np.asarray(transform, dtype=np.float32)
+    if transform_values.shape != (6,) or not np.isfinite(transform_values).all():
+        raise ValueError("transform must contain six finite rigid parameters")
+    slope = np.float32(shape_slope)
+    if not np.isfinite(slope):
+        raise ValueError("shape_slope must be finite")
+
+    if any(point[axis] < lower[axis] or point[axis] >= upper[axis] for axis in range(3)):
+        default = np.float32(1.0 if class_index == 0 else 0.0)
+        return ToadShapeSample(default, None)
+
+    matrix = _rotation_matrix(transform_values[:3])
+    image_center = tuple(np.float32(size / 2.0) for size in image_dims)
+    template_center = tuple(np.float32(size / 2.0) for size in values.shape)
+    physical = tuple(
+        np.float32(np.float32(point[axis]) - image_center[axis]) * image_res[axis]
+        for axis in range(3)
+    )
+    mapped: list[np.float32] = []
+    for axis in range(3):
+        rotated = np.float32(
+            np.float32(
+                np.float32(matrix[axis, 0] * physical[0])
+                + np.float32(matrix[axis, 1] * physical[1])
+            )
+            + np.float32(matrix[axis, 2] * physical[2])
+        )
+        rotated = np.float32(rotated + transform_values[axis + 3])
+        coordinate = np.float32(rotated / template_res[axis])
+        coordinate = np.float32(coordinate + template_center[axis])
+        mapped.append(coordinate)
+
+    sampled = _linear_closest(values, mapped)
+    recovered = np.float32(
+        np.float32(slope * np.float32(sampled - np.float32(0.5))) + np.float32(0.5)
+    )
+    result = np.float32(np.clip(recovered, np.float32(0.0), np.float32(1.0)))
+    return ToadShapeSample(result, tuple(mapped))
+
+
+def _rotation_matrix(parameters: np.ndarray) -> np.ndarray:
+    """Recreate ``RotationMatrix.setParameters`` from selected source."""
+    a, b, c = (float(value) for value in parameters)
+    norm = float(np.sqrt(a * a + b * b + c * c))
+    if norm > 1.0:
+        magnitude = norm % 2.0
+        if magnitude > 1.0:
+            a, b, c = (
+                magnitude * value / norm - 2.0 * value / norm for value in (a, b, c)
+            )
+        else:
+            a, b, c = (value * magnitude / norm for value in (a, b, c))
+    a2, b2, c2 = a * a, b * b, c * c
+    x = 1.0 - a2 - b2 - c2
+    if x < 0.0 and x > -1e-10:
+        x = 0.0
+    scalar = float(np.sqrt(x))
+    return np.asarray(
+        [
+            [1.0 - 2.0 * b2 - 2.0 * c2, 2.0 * a * b - 2.0 * scalar * c, 2.0 * a * c + 2.0 * scalar * b],
+            [2.0 * a * b + 2.0 * scalar * c, 1.0 - 2.0 * a2 - 2.0 * c2, 2.0 * b * c - 2.0 * scalar * a],
+            [2.0 * a * c - 2.0 * scalar * b, 2.0 * b * c + 2.0 * scalar * a, 1.0 - 2.0 * a2 - 2.0 * b2],
+        ],
+        dtype=np.float32,
+    )
+
+
+def _linear_closest(values: np.ndarray, point: list[np.float32]) -> np.float32:
+    indices = [
+        min(max(int(np.floor(point[axis])), 0), values.shape[axis] - 2)
+        for axis in range(3)
+    ]
+    alpha = [
+        np.float32(np.clip(np.float32(point[axis] - indices[axis]), 0.0, 1.0))
+        for axis in range(3)
+    ]
+    complement = [np.float32(np.float32(1.0) - value) for value in alpha]
+    x, y, z = indices
+    ax, ay, az = alpha
+    bx, by, bz = complement
+    # Preserve the expression order in ImageFunctions.linearClosestInterpolation.
+    terms = (
+        np.float32(np.float32(np.float32(bx * by) * bz) * values[x, y, z]),
+        np.float32(np.float32(np.float32(ax * by) * bz) * values[x + 1, y, z]),
+        np.float32(np.float32(np.float32(bx * ay) * bz) * values[x, y + 1, z]),
+        np.float32(np.float32(np.float32(bx * by) * az) * values[x, y, z + 1]),
+        np.float32(np.float32(np.float32(ax * ay) * bz) * values[x + 1, y + 1, z]),
+        np.float32(np.float32(np.float32(bx * ay) * az) * values[x, y + 1, z + 1]),
+        np.float32(np.float32(np.float32(ax * by) * az) * values[x + 1, y, z + 1]),
+        np.float32(np.float32(np.float32(ax * ay) * az) * values[x + 1, y + 1, z + 1]),
+    )
+    total = np.float32(terms[0] + terms[1])
+    for term in terms[2:]:
+        total = np.float32(total + term)
+    return total
+
+
+def _triple_int(
+    values: tuple[int, int, int], name: str, *, positive: bool = False
+) -> tuple[int, int, int]:
+    array = np.asarray(values)
+    if array.shape != (3,) or not np.issubdtype(array.dtype, np.integer):
+        raise ValueError(f"{name} must contain three integers")
+    result = tuple(int(value) for value in array)
+    if positive and any(value <= 0 for value in result):
+        raise ValueError(f"{name} values must be positive")
+    return result
+
+
+def _triple_float(
+    values: tuple[float, float, float], name: str, *, positive: bool = False
+) -> tuple[np.float32, np.float32, np.float32]:
+    array = np.asarray(values, dtype=np.float32)
+    if array.shape != (3,) or not np.isfinite(array).all():
+        raise ValueError(f"{name} must contain three finite values")
+    if positive and np.any(array <= 0):
+        raise ValueError(f"{name} values must be positive")
+    return tuple(np.float32(value) for value in array)
