@@ -12,6 +12,8 @@ import numpy as np
 from pymacruise.toads_registration_sampling import (
     stream_toads_registration_coefficients,
     stream_toads_registration_energy,
+    vectorized_toads_registration_coefficients,
+    vectorized_toads_registration_energy,
 )
 
 
@@ -48,12 +50,34 @@ def benchmark(size: int) -> dict[str, float | int]:
         class_bounds_low_xyz=lower,
         class_bounds_high_xyz=upper,
     )
-    elapsed = time.perf_counter() - start
+    scalar_elapsed = time.perf_counter() - start
+    start = time.perf_counter()
+    vector_coefficients = vectorized_toads_registration_coefficients(
+        memberships,
+        atlas,
+        image_resolutions_mm=(1.0, 1.2, 0.8),
+        template_resolutions_mm=(1.0, 1.2, 0.8),
+        transform=transform,
+        class_bounds_low_xyz=lower,
+        class_bounds_high_xyz=upper,
+    )
+    vector_energy = vectorized_toads_registration_energy(
+        memberships,
+        atlas,
+        image_resolutions_mm=(1.0, 1.2, 0.8),
+        template_resolutions_mm=(1.0, 1.2, 0.8),
+        transform=transform,
+        class_bounds_low_xyz=lower,
+        class_bounds_high_xyz=upper,
+    )
+    vectorized_elapsed = time.perf_counter() - start
+    if energy != vector_energy or coefficients.cost != vector_coefficients.cost:
+        raise RuntimeError(f"vectorized registration disagrees for size {size}")
 
     # Measure Python-visible temporary allocations in a separate call so
     # tracing overhead does not distort the elapsed-time measurement above.
     tracemalloc.start()
-    stream_toads_registration_coefficients(
+    vectorized_toads_registration_coefficients(
         memberships,
         atlas,
         image_resolutions_mm=(1.0, 1.2, 0.8),
@@ -70,7 +94,9 @@ def benchmark(size: int) -> dict[str, float | int]:
         "size_xyz": size,
         "classes": 3,
         "voxels": size**3,
-        "coefficient_plus_energy_seconds": elapsed,
+        "scalar_coefficient_plus_energy_seconds": scalar_elapsed,
+        "vectorized_coefficient_plus_energy_seconds": vectorized_elapsed,
+        "speedup": scalar_elapsed / vectorized_elapsed,
         "python_tracemalloc_peak_mib": peak / (1024.0**2),
         "energy": float(energy),
     }
@@ -85,7 +111,7 @@ def main() -> None:
     report = {
         "purpose": "synthetic-only streaming TOADS sampler cost/memory probe",
         "measurements": [benchmark(size) for size in args.sizes],
-        "memory_note": "tracemalloc measures Python-visible allocations during the sampler call; input arrays are allocated before measurement",
+        "memory_note": "tracemalloc measures Python-visible allocations during a vectorized coefficient scan; input arrays are allocated before measurement",
     }
     print(json.dumps(report, indent=2))
 

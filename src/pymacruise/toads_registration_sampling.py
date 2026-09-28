@@ -21,7 +21,7 @@ from pymacruise.toads_registration import (
     rigid_image_to_template_jacobian,
     trilinear_prior_derivatives,
 )
-from pymacruise.toads_shapes import sample_toad_shape_prior
+from pymacruise.toads_shapes import _rotation_matrix, sample_toad_shape_prior
 
 
 @dataclass(frozen=True)
@@ -382,6 +382,357 @@ def _validate_scan(
         raise ValueError("offset must be inside every spatial axis")
 
 
+def vectorized_toads_registration_energy(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 1,
+) -> np.float32:
+    """NumPy-slab exact-membership energy in source x/y/z/class order."""
+    context = _vector_context(
+        memberships, atlas_shapes, transform, image_resolutions_mm,
+        template_resolutions_mm, class_bounds_low_xyz, class_bounds_high_xyz,
+        registered_classes, offset, subsample,
+    )
+    mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs = context
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    for x in range(offset, mem.shape[0], subsample):
+        coordinates = _map_registration_slab(
+            x, ys, zs, mem.shape[:3], shapes.shape[:3], params, image_res, template_res, rotation
+        )
+        y_grid, z_grid = ys[:, None], zs[None, :]
+        cost_terms = np.zeros((ys.size, zs.size, mem.shape[-1]), dtype=np.float32)
+        norm_terms = np.zeros_like(cost_terms)
+        for k in range(1, mem.shape[-1]):
+            if not registered[k]:
+                continue
+            inside = (
+                (x >= low[k, 0]) & (x < high[k, 0])
+                & (y_grid >= low[k, 1]) & (y_grid < high[k, 1])
+                & (z_grid >= low[k, 2]) & (z_grid < high[k, 2])
+            )
+            prior = _linear_closest_grid(shapes[..., k], coordinates)
+            prior = np.where(inside, prior, np.float32(0.0)).astype(np.float32, copy=False)
+            membership = mem[x, y_grid, z_grid, k]
+            membership_square = np.float32(membership * membership)
+            prior_square = np.float32(prior * prior)
+            cost_terms[..., k] = np.float32(membership_square * prior_square)
+            norm_terms[..., k] = prior_square
+        cost = _accumulate_ordered(cost, cost_terms)
+        norm = _accumulate_ordered(norm, norm_terms)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.float32(cost / norm)
+
+
+def vectorized_toads_registration_coefficients(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 1,
+) -> RegistrationCoefficientSums:
+    """Vectorize mapping/interpolation by x slab, preserving source sum order."""
+    context = _vector_context(
+        memberships, atlas_shapes, transform, image_resolutions_mm,
+        template_resolutions_mm, class_bounds_low_xyz, class_bounds_high_xyz,
+        registered_classes, offset, subsample,
+    )
+    mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs = context
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    norm_gradient = np.zeros(6, dtype=np.float32)
+    norm_hessian = np.zeros(6, dtype=np.float32)
+    center = tuple(np.float32(size / 2.0) for size in mem.shape[:3])
+
+    for x in range(offset, mem.shape[0], subsample):
+        coordinates = _map_registration_slab(
+            x, ys, zs, mem.shape[:3], shapes.shape[:3], params, image_res, template_res, rotation
+        )
+        jacobian = _registration_jacobian_slab(
+            x, ys, zs, center, image_res, template_res, params
+        )
+        y_grid, z_grid = ys[:, None], zs[None, :]
+        slab_shape = (ys.size, zs.size, mem.shape[-1])
+        cost_terms = np.zeros(slab_shape, dtype=np.float32)
+        norm_terms = np.zeros(slab_shape, dtype=np.float32)
+        gradient_terms = np.zeros(slab_shape + (6,), dtype=np.float32)
+        hessian_terms = np.zeros_like(gradient_terms)
+        norm_gradient_terms = np.zeros_like(gradient_terms)
+        norm_hessian_terms = np.zeros_like(gradient_terms)
+
+        for k in range(1, mem.shape[-1]):
+            if not registered[k]:
+                continue
+            inside = (
+                (x >= low[k, 0]) & (x < high[k, 0])
+                & (y_grid >= low[k, 1]) & (y_grid < high[k, 1])
+                & (z_grid >= low[k, 2]) & (z_grid < high[k, 2])
+            )
+            prior = _linear_closest_grid(shapes[..., k], coordinates)
+            prior = np.where(inside, prior, np.float32(0.0)).astype(np.float32, copy=False)
+            contributing = prior > np.float32(0.0)
+            if not np.any(contributing):
+                continue
+            prior_gradient = _trilinear_derivatives_grid(shapes[..., k], coordinates)
+            membership = mem[x, y_grid, z_grid, k]
+            membership_square = np.float32(membership * membership)
+            prior_square = np.float32(prior * prior)
+            cost_terms[..., k] = np.where(
+                contributing,
+                np.float32(np.float32(membership_square * prior) * prior),
+                np.float32(0.0),
+            )
+            norm_terms[..., k] = np.where(contributing, prior_square, np.float32(0.0))
+            for parameter in range(6):
+                dp = np.float32(prior_gradient[..., 0] * jacobian[..., 0, parameter])
+                dp = np.float32(dp + np.float32(prior_gradient[..., 1] * jacobian[..., 1, parameter]))
+                dp = np.float32(dp + np.float32(prior_gradient[..., 2] * jacobian[..., 2, parameter]))
+
+                gradient_term = np.float32(np.float32(np.float32(2.0) * membership) * membership)
+                gradient_term = np.float32(gradient_term * prior)
+                gradient_term = np.float32(gradient_term * dp)
+                gradient_terms[..., k, parameter] = np.where(contributing, gradient_term, 0.0)
+
+                hessian_term = np.float32(np.float32(np.float32(2.0) * membership) * membership)
+                hessian_term = np.float32(hessian_term * dp)
+                hessian_term = np.float32(hessian_term * dp)
+                hessian_terms[..., k, parameter] = np.where(contributing, hessian_term, 0.0)
+
+                norm_gradient_term = np.float32(np.float32(np.float32(2.0) * prior) * dp)
+                norm_gradient_terms[..., k, parameter] = np.where(contributing, norm_gradient_term, 0.0)
+
+                norm_hessian_term = np.float32(np.float32(np.float32(2.0) * dp) * dp)
+                norm_hessian_terms[..., k, parameter] = np.where(contributing, norm_hessian_term, 0.0)
+
+        cost = _accumulate_ordered(cost, cost_terms)
+        norm = _accumulate_ordered(norm, norm_terms)
+        for parameter in range(6):
+            gradient[parameter] = _accumulate_ordered(gradient[parameter], gradient_terms[..., parameter])
+            hessian[parameter] = _accumulate_ordered(hessian[parameter], hessian_terms[..., parameter])
+            norm_gradient[parameter] = _accumulate_ordered(norm_gradient[parameter], norm_gradient_terms[..., parameter])
+            norm_hessian[parameter] = _accumulate_ordered(norm_hessian[parameter], norm_hessian_terms[..., parameter])
+    return RegistrationCoefficientSums(cost, norm, gradient, hessian, norm_gradient, norm_hessian)
+
+
+def _vector_context(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    transform: ArrayLike,
+    image_resolutions_mm: ArrayLike,
+    template_resolutions_mm: ArrayLike,
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registered_classes: ArrayLike | None,
+    offset: int,
+    subsample: int,
+) -> tuple[
+    NDArray[np.float32], NDArray[np.float32], NDArray[np.float32],
+    NDArray[np.float32], NDArray[np.float32], NDArray[np.int64],
+    NDArray[np.int64], NDArray[np.bool_], NDArray[np.float32], NDArray[np.int64], NDArray[np.int64]
+]:
+    mem, shapes, low, high, registered = _registration_inputs(
+        memberships, atlas_shapes, class_bounds_low_xyz, class_bounds_high_xyz, registered_classes
+    )
+    _validate_scan(mem.shape[:3], offset, subsample)
+    dims = np.asarray(mem.shape[:3], dtype=np.int64)
+    empty_bounds = np.all(low == dims, axis=1) & np.all(high == 0, axis=1)
+    if np.any(low < 0) or np.any(high < 0) or np.any(low > dims) or np.any(high > dims):
+        raise ValueError("class bounds must be inside the declared input grid")
+    if np.any(np.any(low > high, axis=1) & ~empty_bounds):
+        raise ValueError("class bounds must be ordered unless they encode empty support")
+    params = np.asarray(transform, dtype=np.float32)
+    image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
+    template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
+    if params.shape != (6,) or not np.isfinite(params).all():
+        raise ValueError("transform must contain six finite values")
+    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res <= 0):
+        raise ValueError("image_resolutions_mm must contain three positive finite values")
+    if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
+        raise ValueError("template_resolutions_mm must contain three positive finite values")
+    rotation = _rotation_matrix(params[:3])
+    ys = np.arange(offset, mem.shape[1], subsample, dtype=np.int64)
+    zs = np.arange(offset, mem.shape[2], subsample, dtype=np.int64)
+    return mem, shapes, params, image_res, template_res, low, high, registered, rotation, ys, zs
+
+
+def _map_registration_slab(
+    x: int,
+    y_indices: NDArray[np.int64],
+    z_indices: NDArray[np.int64],
+    input_dimensions: tuple[int, int, int],
+    template_dimensions: tuple[int, int, int],
+    transform: NDArray[np.float32],
+    image_res: NDArray[np.float32],
+    template_res: NDArray[np.float32],
+    rotation: NDArray[np.float32],
+) -> NDArray[np.float32]:
+    y_grid = y_indices[:, None].astype(np.float32)
+    z_grid = z_indices[None, :].astype(np.float32)
+    physical = (
+        np.float32(np.float32(x - np.float32(input_dimensions[0] / 2.0)) * image_res[0]),
+        np.float32(np.float32(y_grid - np.float32(input_dimensions[1] / 2.0)) * image_res[1]),
+        np.float32(np.float32(z_grid - np.float32(input_dimensions[2] / 2.0)) * image_res[2]),
+    )
+    coordinates = np.empty((y_indices.size, z_indices.size, 3), dtype=np.float32)
+    for axis in range(3):
+        value = np.float32(rotation[axis, 0] * physical[0])
+        value = np.float32(value + np.float32(rotation[axis, 1] * physical[1]))
+        value = np.float32(value + np.float32(rotation[axis, 2] * physical[2]))
+        value = np.float32(value + transform[axis + 3])
+        value = np.float32(value / template_res[axis])
+        coordinates[..., axis] = np.float32(
+            value + np.float32(template_dimensions[axis] / 2.0)
+        )
+    return coordinates
+
+
+def _linear_closest_grid(values: NDArray[np.float32], coordinates: NDArray[np.float32]) -> NDArray[np.float32]:
+    indices = [
+        np.clip(np.floor(coordinates[..., axis]).astype(np.int64), 0, values.shape[axis] - 2)
+        for axis in range(3)
+    ]
+    alpha = [
+        np.clip(np.float32(coordinates[..., axis] - indices[axis].astype(np.float32)), 0.0, 1.0).astype(np.float32)
+        for axis in range(3)
+    ]
+    beta = [np.float32(np.float32(1.0) - value) for value in alpha]
+    x, y, z = indices
+    ax, ay, az = alpha
+    bx, by, bz = beta
+
+    def weighted(weight_a: NDArray[np.float32], weight_b: NDArray[np.float32], weight_c: NDArray[np.float32], voxel: NDArray[np.float32]) -> NDArray[np.float32]:
+        return np.float32(np.float32(np.float32(weight_a * weight_b) * weight_c) * voxel)
+
+    terms = (
+        weighted(bx, by, bz, values[x, y, z]),
+        weighted(ax, by, bz, values[x + 1, y, z]),
+        weighted(bx, ay, bz, values[x, y + 1, z]),
+        weighted(bx, by, az, values[x, y, z + 1]),
+        weighted(ax, ay, bz, values[x + 1, y + 1, z]),
+        weighted(bx, ay, az, values[x, y + 1, z + 1]),
+        weighted(ax, by, az, values[x + 1, y, z + 1]),
+        weighted(ax, ay, az, values[x + 1, y + 1, z + 1]),
+    )
+    total = np.float32(terms[0] + terms[1])
+    for term in terms[2:]:
+        total = np.float32(total + term)
+    return total
+
+
+def _trilinear_derivatives_grid(
+    values: NDArray[np.float32], coordinates: NDArray[np.float32]
+) -> NDArray[np.float32]:
+    valid = np.ones(coordinates.shape[:2], dtype=bool)
+    for axis in range(3):
+        valid &= (coordinates[..., axis] >= 0.0) & (coordinates[..., axis] <= values.shape[axis] - 2)
+    result = np.zeros(coordinates.shape[:2] + (3,), dtype=np.float32)
+    if not np.any(valid):
+        return result
+    indices = [
+        np.clip(np.floor(coordinates[..., axis]).astype(np.int64), 0, values.shape[axis] - 2)
+        for axis in range(3)
+    ]
+    alpha, beta, gamma = [
+        np.float32(coordinates[..., axis] - indices[axis].astype(np.float32))
+        for axis in range(3)
+    ]
+    nalpha, nbeta, ngamma = [np.float32(np.float32(1.0) - q) for q in (alpha, beta, gamma)]
+    x, y, z = indices
+
+    def product(*factors: NDArray[np.float32]) -> NDArray[np.float32]:
+        value = np.asarray(factors[0], dtype=np.float32)
+        for factor in factors[1:]:
+            value = np.float32(value * factor)
+        return value
+
+    def difference(a: tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.int64]], b: tuple[NDArray[np.int64], NDArray[np.int64], NDArray[np.int64]]) -> NDArray[np.float32]:
+        return np.float32(values[a] - values[b])
+
+    dx_terms = (
+        product(nbeta, ngamma, difference((x + 1, y, z), (x, y, z))),
+        product(beta, ngamma, difference((x + 1, y + 1, z), (x, y + 1, z))),
+        product(nbeta, gamma, difference((x + 1, y, z + 1), (x, y, z + 1))),
+        product(beta, gamma, difference((x + 1, y + 1, z + 1), (x, y + 1, z + 1))),
+    )
+    dy_terms = (
+        product(nalpha, ngamma, difference((x, y + 1, z), (x, y, z))),
+        product(alpha, ngamma, difference((x + 1, y + 1, z), (x + 1, y, z))),
+        product(nalpha, gamma, difference((x, y + 1, z + 1), (x, y, z + 1))),
+        product(alpha, gamma, difference((x + 1, y + 1, z + 1), (x + 1, y, z + 1))),
+    )
+    dz_terms = (
+        product(nalpha, nbeta, difference((x, y, z + 1), (x, y, z))),
+        product(alpha, nbeta, difference((x + 1, y, z + 1), (x + 1, y, z))),
+        product(nalpha, beta, difference((x, y + 1, z + 1), (x, y + 1, z))),
+        product(alpha, beta, difference((x + 1, y + 1, z + 1), (x + 1, y + 1, z))),
+    )
+    for axis, terms in enumerate((dx_terms, dy_terms, dz_terms)):
+        total = np.float32(terms[0] + terms[1])
+        total = np.float32(total + terms[2])
+        result[..., axis] = np.where(valid, np.float32(total + terms[3]), 0.0)
+    return result
+
+
+def _registration_jacobian_slab(
+    x: int,
+    y_indices: NDArray[np.int64],
+    z_indices: NDArray[np.int64],
+    center: tuple[np.float32, np.float32, np.float32],
+    image_res: NDArray[np.float32],
+    template_res: NDArray[np.float32],
+    transform: NDArray[np.float32],
+) -> NDArray[np.float32]:
+    basis_jacobians = []
+    for basis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)):
+        basis_jacobians.append(
+            rigid_image_to_template_jacobian(
+                basis, transform, (0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)
+            )[:, :3]
+        )
+    y_grid = y_indices[:, None].astype(np.float32)
+    z_grid = z_indices[None, :].astype(np.float32)
+    physical = (
+        np.float32(np.float32(np.float32(x) - center[0]) * image_res[0]),
+        np.float32(np.float32(y_grid - center[1]) * image_res[1]),
+        np.float32(np.float32(z_grid - center[2]) * image_res[2]),
+    )
+    result = np.zeros((y_indices.size, z_indices.size, 3, 6), dtype=np.float32)
+    for axis in range(3):
+        for parameter in range(3):
+            value = np.float32(basis_jacobians[0][axis, parameter] * physical[0])
+            value = np.float32(value + np.float32(basis_jacobians[1][axis, parameter] * physical[1]))
+            value = np.float32(value + np.float32(basis_jacobians[2][axis, parameter] * physical[2]))
+            result[..., axis, parameter] = np.float32(value / template_res[axis])
+        result[..., axis, axis + 3] = np.float32(np.float32(1.0) / template_res[axis])
+    return result
+
+
+def _accumulate_ordered(total: np.float32, terms: NDArray[np.float32]) -> np.float32:
+    flat = terms.reshape(-1)
+    if flat.size == 0:
+        return total
+    # Seed the first term with the prior-slab accumulator, preserving the
+    # source's single sequential float32 addition stream across x slabs.
+    flat[0] = np.float32(total + flat[0])
+    return np.float32(np.cumsum(flat, dtype=np.float32)[-1])
+
+
 def register_toads_atlas_rigid(
     memberships: ArrayLike,
     atlas_shapes: ArrayLike,
@@ -441,7 +792,7 @@ def register_toads_atlas_rigid(
         raise ValueError("registered_classes must contain one flag per class")
 
     def energy_at(candidate: NDArray[np.float32]) -> np.float32:
-        return stream_toads_registration_energy(
+        return vectorized_toads_registration_energy(
             mem,
             shapes,
             image_resolutions_mm=image_resolutions_mm,
@@ -462,7 +813,7 @@ def register_toads_atlas_rigid(
     stop_reason = "iteration_limit"
 
     for _iteration in range(max_iterations):
-        coefficients: RegistrationCoefficientSums = stream_toads_registration_coefficients(
+        coefficients: RegistrationCoefficientSums = vectorized_toads_registration_coefficients(
             mem,
             shapes,
             image_resolutions_mm=image_resolutions_mm,

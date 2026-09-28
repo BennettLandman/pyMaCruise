@@ -15,6 +15,8 @@ from pymacruise.toads_registration_sampling import (
     sample_toads_registration_fields,
     stream_toads_registration_coefficients,
     stream_toads_registration_energy,
+    vectorized_toads_registration_coefficients,
+    vectorized_toads_registration_energy,
 )
 from pymacruise.toads_shapes import sample_toad_shape_prior
 
@@ -295,3 +297,85 @@ def test_streaming_registration_matches_dense_fields_and_coefficients_exactly() 
             assert getattr(streaming, name) == getattr(dense, name)
         for name in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
             np.testing.assert_array_equal(getattr(streaming, name), getattr(dense, name))
+
+        vectorized_energy = vectorized_toads_registration_energy(
+            memberships,
+            atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        assert vectorized_energy == dense_energy
+        vectorized = vectorized_toads_registration_coefficients(
+            memberships,
+            atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered,
+            offset=offset,
+            subsample=subsample,
+        )
+        for name in ("cost", "norm"):
+            assert getattr(vectorized, name) == getattr(dense, name)
+        for name in ("gradient", "hessian", "norm_gradient", "norm_hessian"):
+            np.testing.assert_array_equal(getattr(vectorized, name), getattr(dense, name))
+
+
+def test_vectorized_registration_matches_scalar_with_large_rigid_offset() -> None:
+    atlas = _atlas()
+    dimensions = (3, 4, 2)
+    image_res = (1.7, 0.8, 2.1)
+    template_res = (0.9, 1.2, 0.7)
+    transform = (0.21, -0.11, 0.07, 2.0, -1.5, 1.1)
+    low = np.asarray(((0, 0, 0), (1, 1, 0), (0, 0, 1)), dtype=np.int64)
+    high = np.asarray((dimensions, (3, 4, 1), (3, 4, 2)), dtype=np.int64)
+    x, y, z, k = np.indices(dimensions + (3,), dtype=np.int32)
+    memberships = (((5 * x + 3 * y + 7 * z + 2 * k) % 13) / np.float32(12.0)).astype(np.float32)
+    fields = sample_toads_registration_fields(
+        atlas,
+        input_dimensions_xyz=dimensions,
+        image_resolutions_mm=image_res,
+        template_resolutions_mm=template_res,
+        transform=transform,
+        class_bounds_low_xyz=low,
+        class_bounds_high_xyz=high,
+    )
+    jacobians = rigid_registration_coordinate_jacobians(
+        dimensions, transform, image_res, template_res
+    )
+    for offset, subsample in ((0, 1), (1, 2)):
+        dense = exact_membership_registration_coefficients(
+            memberships, fields.priors, fields.prior_gradients_xyz, jacobians,
+            offset=offset, subsample=subsample,
+        )
+        scalar = stream_toads_registration_coefficients(
+            memberships, atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            offset=offset,
+            subsample=subsample,
+        )
+        vectorized = vectorized_toads_registration_coefficients(
+            memberships, atlas,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            offset=offset,
+            subsample=subsample,
+        )
+        for field in ("cost", "norm", "gradient", "hessian", "norm_gradient", "norm_hessian"):
+            np.testing.assert_array_equal(getattr(scalar, field), getattr(dense, field))
+            np.testing.assert_array_equal(getattr(vectorized, field), getattr(dense, field))
