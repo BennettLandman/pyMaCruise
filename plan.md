@@ -1,5 +1,19 @@
 # PyMaCRUISE Porting Plan
 
+## Progress and completion estimate
+
+**Estimate date: 2026-09-28.** This is a planning estimate, not a validated performance or delivery commitment. Re-estimate after the TOADS port is complete and the first end-to-end synthetic base workflow runs.
+
+| Measure | Current estimate | Basis and caveats |
+|---|---:|---|
+| Checklist completion | 37 of 51 rows (about 73%) are Done; 1 Started, 1 Blocked, and 12 Not started. | Counts roadmap rows equally and therefore overstates overall progress: many completed rows are contracts, adapters, or individual stages, while TOADS and end-to-end integration remain. |
+| Effort-weighted completion | About 50% (plausible range 40–60%). | Approximate judgment based on completed source review, dependency/asset work, Python stage ports, and synthetic validation versus the remaining TOADS/dura algorithm, plus-specific lesion path, orchestration, equivalence, and acceptance work. This is not computed from row count. |
+| Project tokens spent to date | Not available from the usage information exposed in this task. | No reliable cumulative token counter for prior project turns is available, so a numeric historical total would be invented. Record a measured value in a later revision if project-wide usage becomes available. |
+| Remaining focused engineering time | Roughly 250–450 hours (about 6–12 full-time weeks). | Assumes the selected source and bundled assets are sufficient, synthetic-first implementation continues, and reference-environment access is available for the later equivalence gate. Delays resolving source behavior or reference access can extend this. |
+| Remaining model-token budget | Roughly 300,000–650,000 tokens. | A broad planning range for implementation, source analysis, debugging, documentation, and validation over the estimated remaining effort; actual usage depends on how much algorithm work can be reproduced directly from source and harnesses. |
+
+The largest schedule uncertainty is P18: the faithful TOADS and dura-removal implementation. P34 remains blocked on it. Subsequent plus-workflow integration (P39–P41), stage-wise equivalence and acceptance (P35–P37, P42–P46), and the required real-data gates account for much of the remaining effort. Actual imaging data remains deferred until the synthetic readiness gate as specified below.
+
 This is the step-by-step implementation and acceptance plan for a Python-native MaCRUISE. Work proceeds from source contracts and synthetic cases to stage-by-stage ports, and only then to a small, approved set of real reference cases. Synthetic image volumes, phantoms, and expected outputs created for this project are intended to be committed under `tests/data/synthetic/`; no human imaging data belongs in that directory.
 
 ## Completion definition
