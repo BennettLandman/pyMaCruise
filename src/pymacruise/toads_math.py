@@ -234,3 +234,71 @@ def toads_six_neighbor_smoothing_terms(
                         * neighbor_sum
                     )
     return num_increment, energy_increment
+
+
+def toads_direct_membership_update(
+    data_energy: ArrayLike,
+    initial_memberships: ArrayLike,
+    *,
+    objective_energy: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Normalize reciprocal energies for direct optimized-tissue updates.
+
+    This captures the selected source's direct relation update after all
+    non-data terms have already been added to ``data_energy``. Interior
+    values above ``zero_threshold`` are inverted; values at or below it use
+    ``infinite_reciprocal``. Class reciprocals are summed and normalized in
+    source order. Border memberships are copied unchanged. The second return
+    value contains each class's contribution to the source objective sum
+    ``objective_energy * membership * membership`` on updated interior
+    voxels; border contributions remain zero.
+
+    This is not the asynchronous spatial-smoothing/update sweep or its
+    topology/prior relations; those require separate source-stage composition.
+    """
+    energies = np.asarray(data_energy, dtype=np.float32)
+    initial = np.asarray(initial_memberships, dtype=np.float32)
+    objective = energies if objective_energy is None else np.asarray(objective_energy, dtype=np.float32)
+    threshold = np.float32(zero_threshold)
+    reciprocal_cap = np.float32(infinite_reciprocal)
+    if energies.ndim != 4 or energies.shape[-1] < 1 or not np.isfinite(energies).all():
+        raise ValueError("data_energy must be finite 4-D with a class axis")
+    if initial.shape != energies.shape or not np.isfinite(initial).all():
+        raise ValueError("initial_memberships must be finite and match data_energy")
+    if objective.shape != energies.shape or not np.isfinite(objective).all():
+        raise ValueError("objective_energy must be finite and match data_energy")
+    if not np.isfinite(threshold) or not np.isfinite(reciprocal_cap) or threshold < 0 or reciprocal_cap <= 0:
+        raise ValueError("reciprocal thresholds must be finite and nonnegative/positive")
+
+    updated = initial.copy()
+    contributions = np.zeros(energies.shape, dtype=np.float32)
+    nx, ny, nz, classes = energies.shape
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                denominator = np.float32(0.0)
+                for class_index in range(classes):
+                    value = energies[x, y, z, class_index]
+                    reciprocal = (
+                        np.float32(np.float32(1.0) / value)
+                        if value > threshold
+                        else reciprocal_cap
+                    )
+                    updated[x, y, z, class_index] = reciprocal
+                    denominator = np.float32(denominator + reciprocal)
+                if denominator > np.float32(0.0):
+                    for class_index in range(classes):
+                        updated[x, y, z, class_index] = np.float32(
+                            updated[x, y, z, class_index] / denominator
+                        )
+                        contribution = np.float32(
+                            np.float32(
+                                objective[x, y, z, class_index]
+                                * updated[x, y, z, class_index]
+                            )
+                            * updated[x, y, z, class_index]
+                        )
+                        contributions[x, y, z, class_index] = contribution
+    return updated, contributions
