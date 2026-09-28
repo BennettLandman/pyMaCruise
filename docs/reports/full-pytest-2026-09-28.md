@@ -428,6 +428,7 @@ complete TOADS membership update; P18ad cites this run.
 | P18ab — Validate transformed support-bound refresh on folded cortex-like priors | Committed folded synthetic RAS `.nii.gz` prior; `tests/test_toads_shape_bounds.py` matches support count and all bounds with the Java transform/interpolation harness for identity, translated, and rotated-plus-translated cases; outputs have distinct bounds. | `268 passed`; commit `ecbebfe5ed27d5c22e85271471dc4e2f22da3e84` |
 | P18ac — Resolve selected TOADS atlas spacing source | Source-body audit of `MultipleToadDeformableAtlas.loadAtlas`, `loadTemplateImage`, and `loadShapeImage`, with committed source hash and line anchors; `tests/test_atlas_assets.py` confirms descriptor spacing, preserved NIfTI zooms, and the explicit warning. | `268 passed`; commit `32e6d804e56b312da04d02ec658abac57f36493a` |
 | P18ad — Assess NumPy power substitution for TOADS likelihoods | `tests/test_toads_powertable.py` compares 1,042 cases to the actual source `PowerTable` class and evaluates source float32 inverse-energy normalization; unquantized power changes three winners, while source-index quantization yields membership error <1e-6 with no winner changes. | `270 passed`; commit `b0dd1fe4aafd9f78b66b137fa0ed04c5630c65fb` |
+| P18ae — Port optimized CSF/GM/WM voxel likelihood terms | `tests/test_toads_optimized_likelihood.py` compares all 630 voxel/class energies in each of two field modes against a Java formula harness using the actual source `PowerTable`; committed 7×6×5×3 RAS `.nii.gz` values, field, and PSF bias are checked against their deterministic formulas; `rtol=0`, `atol=1e-7`. This is a data-term slice, not full membership evolution. | `271 passed`; commit `92550a4eeb11b2b049823a60b022581b0db0c84b` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
@@ -447,6 +448,21 @@ complete TOADS membership update; P18ad cites this run.
 | P39a — Port LesionTOADS intensity and centroid initialization | `tests/test_lesion_toads_preprocessing.py`, its test-only Java harness, and the committed two-channel RAS `.nii.gz` phantom compare robust bounds, all normalized values, and lesion/black-hole centroids; zero-span rejection is documented as a deliberate invalid-input deviation. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P39b — Parse LesionTOADS atlas priors | `tests/test_lesion_atlas_priors.py` and the image-free descriptor fixture verify structure order, selected T1 MPRAGE/FLAIR rows, lesion/black-hole priors, source aliases, and malformed/incomplete descriptor handling. The bundled atlas values match the selected source descriptor. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P39c — Port LesionTOADS capped distance support | `tests/test_lesion_toads_distance.py` compares all synthetic mask fields against a standalone transcription of the selected VandyCRUISE boolean-mask helper; per-voxel exact equality includes the source's cap-1 behavior. This is not lesion segmentation equivalence. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
+
+## Additional full-suite run for P18ae
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **271 passed in 59.58 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `92550a4eeb11b2b049823a60b022581b0db0c84b` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18ae implementation and committed synthetic fixture.
+Subsequent plan/report/README edits do not modify implementation or tests.
 
 ## Future rows
 

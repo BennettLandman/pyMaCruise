@@ -451,8 +451,12 @@ phantom, and regeneration details.
 
 ## Blocker for P34
 
-The Python repository currently contains TOADS-like adapter tests but has no
-TOADS or dura-removal implementation in `src/pymacruise/`. P34 requires a real
-base workflow and cannot be validated by wiring synthetic TOADS-like inputs
-through substitute behavior. Therefore P34 remains **Blocked** until the
-selected source algorithms are ported and their reference comparison passes.
+The Python repository now contains selected TOADS preprocessing, atlas
+sampling/registration kernels, and the optimized CSF/GM/WM per-voxel intensity
+likelihood term. It still has no complete TOADS segmentation or dura-removal
+workflow in `src/pymacruise/`. P34 requires a real base workflow and cannot be
+validated by wiring synthetic TOADS-like inputs through substitute behavior.
+Therefore P34 remains **Blocked** until the selected source algorithms are
+ported and their reference comparison passes. The P18ae data-term slice is
+described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md);
+it does not complete membership evolution.
