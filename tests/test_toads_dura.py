@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_dura import (
+    dura_tgdm_evolve,
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
 )
@@ -26,6 +27,64 @@ DYNAMIC_UPDATE_FIXTURE = (
     / "dura_dynamic_update"
     / "java_reference.json"
 )
+DURA_TGDM_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "dura_tgdm_full_evolution"
+    / "java_reference.json"
+)
+
+
+def test_dura_tgdm_full_profile_matches_vandy_java_harness() -> None:
+    reference = json.loads(DURA_TGDM_FIXTURE.read_text())
+    assert "local DistanceFieldyh seam" in reference["source"]
+    shape = tuple(reference["dims"])
+    x, y, z = np.indices(shape, dtype=np.float64)
+    level_set = (
+        np.sqrt((x - 5.0) ** 2 + (y - 4.5) ** 2 + (z - 4.0) ** 2) - 3.2
+    ).astype(np.float32)
+    reference_level_set = (
+        np.sqrt((x - 5.25) ** 2 + (y - 4.25) ** 2 + (z - 4.0) ** 2) - 2.6
+    ).astype(np.float32)
+    gray_matter_volume = (
+        102.0 + 31.0 * np.sin(0.38 * x + 0.20 * y) + 27.0 * np.cos(0.31 * y - 0.25 * z)
+    ).astype(np.float32)
+
+    actual = dura_tgdm_evolve(
+        level_set,
+        gray_matter_volume,
+        reference_level_set,
+        membership_level=reference["membership_level"],
+        alpha=reference["alpha"],
+        alignment_force=reference["alignment_force"],
+        curvature_force=reference["curvature_force"],
+        pressure_force=reference["pressure_force"],
+        outer_iterations=reference["outer_iterations"],
+        record_passes=True,
+    )
+
+    assert actual.completed_steps == 150
+    assert actual.completed_outer_passes == 5
+    assert actual.landmine_restarts == 0
+    assert (
+        len(actual.pre_reinitialization_level_sets)
+        == len(reference["pre_reinitialization_passes"])
+        == 5
+    )
+    assert len(actual.pass_level_sets) == len(reference["passes"]) == 5
+    for actual_pre, expected_pre in zip(
+        actual.pre_reinitialization_level_sets, reference["pre_reinitialization_passes"]
+    ):
+        expected = np.asarray(expected_pre, dtype=np.float32).reshape(shape)
+        assert np.array_equal(np.signbit(actual_pre), np.signbit(expected))
+        assert float(np.max(np.abs(actual_pre - expected))) <= 0.011
+    for actual_pass, expected_pass in zip(actual.pass_level_sets, reference["passes"]):
+        expected = np.asarray(expected_pass, dtype=np.float32).reshape(shape)
+        assert np.array_equal(np.signbit(actual_pass), np.signbit(expected))
+        assert float(np.max(np.abs(actual_pass - expected))) <= 0.0041
+    expected_final = np.asarray(reference["final"], dtype=np.float32).reshape(shape)
+    np.testing.assert_allclose(actual.level_set, expected_final, rtol=0.0, atol=5e-7)
 
 
 @pytest.mark.parametrize("case_index", range(4))

@@ -13,7 +13,13 @@ from __future__ import annotations
 import numpy as np
 
 from pymacruise.ace import _signed_distance_fmm
-from pymacruise.tgdm import tgdm_geometry
+from pymacruise.tgdm import (
+    TGDMGeometry,
+    TGDMProfileSettings,
+    TGDMEvolutionResult,
+    tgdm_evolve,
+    tgdm_geometry,
+)
 
 
 def dura_signed_distance_field(
@@ -162,3 +168,136 @@ def _fast_marching_unit_gradient_at(
     if length > 0:
         vector = np.asarray(vector / length, dtype=np.float32)
     return vector.astype(np.float64)
+
+
+def dura_tgdm_evolve(
+    level_set: np.ndarray,
+    gray_matter_volume: np.ndarray,
+    reference_level_set: np.ndarray,
+    *,
+    membership_level: float = 0.4,
+    alpha: float = 0.5,
+    alignment_force: float = 1.0,
+    curvature_force: float = 0.5,
+    pressure_force: float = 0.5,
+    outer_iterations: int = 5,
+    record_passes: bool = False,
+) -> TGDMEvolutionResult:
+    """Run Dura's selected DynamicPressureTGDM narrow-band evolution.
+
+    This applies the `MedicAlgorithmRemoveDura09` membership normalization
+    and sign convention, the VandyCRUISE dynamic-pressure point force,
+    GenericTGDM's selected 18/6 scheduler/topology gate, and original-JIST
+    float32-rounded distance reinitialization after each outer pass. The rest
+    of the removal wrapper's mask cleanup and membership edits is separate.
+    """
+    phi = np.asarray(level_set, dtype=np.float32)
+    gm = np.asarray(gray_matter_volume, dtype=np.float32)
+    reference = np.asarray(reference_level_set, dtype=np.float32)
+    if phi.ndim != 3 or any(size < 2 for size in phi.shape):
+        raise ValueError("dura TGDM fields must be 3D with dimensions >= 2")
+    if gm.shape != phi.shape or reference.shape != phi.shape:
+        raise ValueError("dura TGDM fields must share identical shapes")
+    if not np.isfinite(phi).all() or not np.isfinite(gm).all() or not np.isfinite(reference).all():
+        raise ValueError("dura TGDM fields must contain only finite values")
+    controls = np.asarray(
+        [membership_level, alpha, alignment_force, curvature_force, pressure_force],
+        dtype=np.float32,
+    )
+    if not np.isfinite(controls).all():
+        raise ValueError("dura TGDM controls must be finite")
+    if membership_level <= 0:
+        raise ValueError("membership_level must be positive")
+    if outer_iterations < 0:
+        raise ValueError("outer_iterations must be nonnegative")
+
+    # MedicAlgorithmRemoveDura09 -> DynamicPressureTGDM wrapper arithmetic.
+    membership = np.float32(membership_level)
+    denominator = np.float32(membership * np.float32(255.0))
+    normalized_region = np.asarray((gm - denominator) / denominator, dtype=np.float32)
+    reference_gradient = _fast_marching_unit_gradient_field(reference)
+    settings = TGDMProfileSettings(
+        max_distance=4.8,
+        how_close=3.6,
+        max_signed_distance=6.0,
+        final_max_signed_distance=5.0,
+        internal_iterations=30,
+        final_internal_iterations=30,
+        delta_t=0.1,
+        final_delta_t=0.045,
+    )
+
+    def evaluate(
+        geometry: TGDMGeometry, roi: tuple[slice, slice, slice]
+    ) -> np.ndarray:
+        return _dynamic_pressure_force_field(
+            geometry,
+            normalized_region[roi],
+            reference_gradient[roi],
+            alpha=float(np.float32(alpha)),
+            alignment_force=float(np.float32(alignment_force)),
+            curvature_force=-float(np.float32(curvature_force)),
+            pressure_force=float(np.float32(pressure_force)),
+        )
+
+    return tgdm_evolve(
+        phi,
+        profile="inner",
+        curvature_force=0.0,
+        pressure_force=0.0,
+        outer_iterations=outer_iterations,
+        settings=settings,
+        force_evaluator=evaluate,
+        round_reinitialization_updates_to_float32=True,
+        record_passes=record_passes,
+    )
+
+
+def _fast_marching_unit_gradient_field(level_set: np.ndarray) -> np.ndarray:
+    result = np.empty((*level_set.shape, 3), dtype=np.float32)
+    for point in np.ndindex(level_set.shape):
+        result[point] = _fast_marching_unit_gradient_at(level_set, point).astype(np.float32)
+    return result
+
+
+def _dynamic_pressure_force_field(
+    geometry: TGDMGeometry,
+    normalized_region: np.ndarray,
+    reference_gradient: np.ndarray,
+    *,
+    alpha: float,
+    alignment_force: float,
+    curvature_force: float,
+    pressure_force: float,
+) -> np.ndarray:
+    """Vectorized point force, preserving DynamicPressureCortexProfile math."""
+    region_force = pressure_force * normalized_region.astype(np.float64)
+    backward = geometry.backward
+    forward = geometry.forward
+    positive_pressure = region_force > 0.0
+    region_gradient = np.where(
+        positive_pressure[..., None],
+        np.maximum(backward, 0.0) + np.minimum(forward, 0.0),
+        np.minimum(backward, 0.0) + np.maximum(forward, 0.0),
+    )
+    region_length = np.linalg.norm(region_gradient, axis=-1)
+    dot = np.sum(reference_gradient.astype(np.float64) * region_gradient, axis=-1)
+    angular_force = 0.5 - 0.5 * dot / np.where(region_length > 0.0, region_length, 1.0)
+    if np.float32(alpha) != np.float32(1.0):
+        angular_force = np.abs(angular_force) ** float(np.float32(alpha))
+    region_force = region_force - float(np.float32(alignment_force)) * angular_force
+
+    gradient_length = np.linalg.norm(geometry.gradient, axis=-1)
+    profile_gradient_length = gradient_length + float(np.float32(0.001))
+    normalized_mean = geometry.mean_curvature_numerator / profile_gradient_length**3
+    normalized_gaussian = geometry.gaussian_curvature_numerator / profile_gradient_length**4
+    discriminant = normalized_mean**2 - 2.0 * normalized_gaussian
+    transformed_mean = normalized_mean.copy()
+    positive = discriminant > 0.0
+    transformed_mean[positive] = (
+        normalized_mean[positive] * normalized_gaussian[positive] / discriminant[positive]
+    )
+    return (
+        curvature_force * transformed_mean * profile_gradient_length
+        + region_force * region_length
+    )

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Callable, Literal
 
 import numpy as np
 from scipy import ndimage
@@ -35,6 +35,8 @@ class TGDMEvolutionResult:
     completed_steps: int
     completed_outer_passes: int
     landmine_restarts: int
+    pass_level_sets: tuple[np.ndarray, ...] = ()
+    pre_reinitialization_level_sets: tuple[np.ndarray, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -128,6 +130,10 @@ def tgdm_evolve(
     skeletal_bound: np.ndarray | None = None,
     outer_iterations: int = 7,
     settings: TGDMProfileSettings | None = None,
+    force_evaluator: Callable[[TGDMGeometry, tuple[slice, slice, slice]], np.ndarray]
+    | None = None,
+    round_reinitialization_updates_to_float32: bool = False,
+    record_passes: bool = False,
 ) -> TGDMEvolutionResult:
     """Evolve one source-style TGDM surface from an already signed level set.
 
@@ -179,6 +185,8 @@ def tgdm_evolve(
     outer = _optional_field(outer_bound, phi.shape, "outer_bound")
     skeleton = _optional_field(skeletal_bound, phi.shape, "skeletal_bound")
     completed_steps = completed_passes = restarts = 0
+    pass_level_sets: list[np.ndarray] = []
+    pre_reinitialization_level_sets: list[np.ndarray] = []
 
     for pass_index in range(outer_iterations):
         final_pass = pass_index == outer_iterations - 1
@@ -203,15 +211,21 @@ def tgdm_evolve(
                 upper = np.minimum(points.max(axis=0) + 2, phi.shape)
                 roi = tuple(slice(int(a), int(b)) for a, b in zip(lower, upper))
                 geometry = tgdm_geometry(phi[roi])
-                force = tgdm_force(
-                    geometry,
-                    profile=profile,
-                    curvature_force=curvature_force,
-                    pressure_force=pressure_force,
-                    external_force=external_force,
-                    region_force=None if region is None else region[roi],
-                    advection=None if vector is None else vector[roi],
-                )
+                if force_evaluator is None:
+                    force = tgdm_force(
+                        geometry,
+                        profile=profile,
+                        curvature_force=curvature_force,
+                        pressure_force=pressure_force,
+                        external_force=external_force,
+                        region_force=None if region is None else region[roi],
+                        advection=None if vector is None else vector[roi],
+                    )
+                else:
+                    force = np.asarray(force_evaluator(geometry, roi), dtype=np.float64)
+                    expected_shape = tuple(int(part.stop) - int(part.start) for part in roi)
+                    if force.shape != expected_shape or not np.isfinite(force).all():
+                        raise ValueError("custom TGDM force must be finite and match the update ROI")
             else:
                 lower = np.zeros(3, dtype=np.int64)
                 force = None
@@ -245,13 +259,28 @@ def tgdm_evolve(
                 current_signs = np.asarray([_level_sign(phi[tuple(p)]) for p in landmine_points])
                 mine_hit = bool(np.any(current_signs != landmine_signs))
 
-        phi = _signed_distance_fmm(phi, max_distance=max_signed_distance)
+        if record_passes:
+            pre_reinitialization_level_sets.append(phi.copy())
+        phi = _signed_distance_fmm(
+            phi,
+            max_distance=max_signed_distance,
+            round_updates_to_float32=round_reinitialization_updates_to_float32,
+        )
         phi = _apply_level_set_bounds(
             phi, inner, outer, narrow_only=True, band=max_signed_distance
         )
         completed_passes += 1
+        if record_passes:
+            pass_level_sets.append(phi.copy())
 
-    return TGDMEvolutionResult(phi, completed_steps, completed_passes, restarts)
+    return TGDMEvolutionResult(
+        phi,
+        completed_steps,
+        completed_passes,
+        restarts,
+        tuple(pass_level_sets),
+        tuple(pre_reinitialization_level_sets),
+    )
 
 
 def tgdm_initial_membership_level_set(

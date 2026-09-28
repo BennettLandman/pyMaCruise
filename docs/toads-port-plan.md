@@ -303,6 +303,50 @@ complete `MedicAlgorithmRemoveDura09` pipeline. See
 JAR/class hashes, fixture recipe, and Java invocation. Focused regression
 coverage is in `tests/test_toads_dura.py`.
 
+### Started substage: Dura dynamic-pressure TGDM evolution
+
+`src/pymacruise/toads_dura.py::dura_tgdm_evolve` now connects the selected
+`DynamicPressureTGDM` profile to the reusable `tgdm_evolve` kernel. It applies
+the wrapper's gray-matter membership normalization, reference-gradient
+alignment, curvature sign, 4.8/3.6/6.0/5.0 distance profile, 30-step outer
+passes, time steps, selected 18/6 scheduler, and float32 distance updates.
+`tests/test_toads_dura.py::test_dura_tgdm_full_profile_matches_vandy_java_harness`
+compares five deterministic outer passes on an 11×10×9 synthetic nested-surface
+phantom against the committed Java harness fixture. The five passes schedule
+150 steps and produce no landmine vetoes on this case. Signs match at every
+voxel and pass. The maximum level-set difference after each reinitialization
+is 0.004042, 0.003458, 0.000504, 0.0000117, and 0.00000048 voxel; the final
+mean absolute difference is 1.01e-7 voxel. Pre-reinitialization differences
+peak at 0.01083 voxel. These are measured discrepancies, not a claim of exact
+intermediate parity.
+
+This harness compiles the selected VandyCRUISE `GenericTGDM`,
+`DynamicPressureTGDM`, and `DynamicPressureCortexProfile` source, but its local
+`DistanceField` adapter calls the supplied MaCRUISE `DistanceFieldyh` source.
+It does not execute the original JIST `DistanceField.class` during iterative
+evolution: that class requires JIST image binaries incompatible with the
+minimal synthetic presentation stubs. The separate four-case original-JIST
+distance-field test remains exact. This small case also does not trigger a
+topology landmine veto or exercise folded cortex, attached dura, outer masks,
+or wrapper post-evolution membership/mask cleanup. Larger folding and dura
+cases, and resolution of the reinitialization discrepancy, remain required
+before this substage or P18 can be marked Done.
+
+The reference fixture is `tests/data/synthetic/dura_tgdm_full_evolution/java_reference.json`;
+its generator and Java harness are under `scripts/` and `tests/java_reference/`.
+It is generated from synthetic fields only. Source SHA-256 values:
+
+- `GenericTGDM.java`: `70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1`
+- `DynamicPressureTGDM.java`: `53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc`
+- `DynamicPressureCortexProfile.java`: `f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505`
+- `FastMarchingGradient.java`: `cf857c0c62e2c7a219e9e530c863b4e40ae594b55e90a355cd7fdf6e0709d3a3`
+- `DistanceFieldyh.java`: `a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811`
+
+The focused Dura test module passes 11 tests, including this harness comparison.
+This remains Started pending broader topology/dura phantoms, source-faithful
+reinitialization comparison during the complete evolution, and wrapper cleanup
+behavior.
+
 ### Completed geometry slice: TOADS crop and topology resampling
 
 `src/pymacruise/toads_crop.py` ports the selected source's inclusive crop-bound
