@@ -222,6 +222,19 @@ difference stays within the project acceptance criteria. This avoids
 reimplementing functionality where a library already matches while also
 preserving source fidelity where it does not.
 
+The optimized CSF/GM/WM likelihoods use the selected Java `PowerTable` with
+the T1 MPRAGE exponents `[0.8, 1.0, 1.0]`. Direct unquantized NumPy power
+differs by at most `8.96e-6` in the tested scalar powers, but near-zero lookup
+rounding changes normalized three-class memberships by up to `0.4847` and
+changes the winner in three synthetic cases. The selected source passes a
+float32 `0.000001f` step that promotes to `9.999999974752427e-7`; rounding to
+that grid before `numpy.power` preserves all tested source memberships within
+`1e-6` with no winner changes. `toads_powertable_lookup` provides this small
+adapter, and the source class, seed, fixtures, and measurements are in the
+[P18ad report](reports/toads-powertable-substitution-2026-09-28.md). This
+validates only the scalar power and inverse-energy normalization slice, not
+the complete optimized likelihood, membership evolution, or TOADS output.
+
 ### Remaining implementation and validation slices
 
 The current Python loop is integrated only on small synthetic arrays. Continue

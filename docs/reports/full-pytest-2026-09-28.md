@@ -356,6 +356,24 @@ resolution drives the selected Java algorithm, while conflicting NIfTI
 metadata remains reported. Earlier rows retain their respective full-suite
 evidence; P18ac cites this run.
 
+## Additional full-suite run for P18ad
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **270 passed in 52.01 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `b0dd1fe4aafd9f78b66b137fa0ed04c5630c65fb` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 270 tests collected and all passed |
+
+P18ad compares direct NumPy power and source-index-quantized NumPy power
+against 1,042 cases from the actual selected Java `PowerTable` class. The
+small normalized likelihood probe shows direct power changes three class
+winners, while source-index rounding preserves them. This does not test the
+complete TOADS membership update; P18ad cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -409,6 +427,7 @@ evidence; P18ac cites this run.
 | P18aa — Validate coarse-scale registration objective and coefficients against Java formulas | Committed 4D RAS NIfTI fixtures and `ToadsScaledRegistrationKernelsReferenceHarness.java`; `tests/test_toads_registration_sampling.py` compares energy/coefficients/counts at scales 2 and 4 and confirms scalar positive/zero support counts. Maximum absolute difference is guarded at `1.5e-7`. | `267 passed`; commit `3eb7215847917d8d6dda0fa97bbc295b3107f436` |
 | P18ab — Validate transformed support-bound refresh on folded cortex-like priors | Committed folded synthetic RAS `.nii.gz` prior; `tests/test_toads_shape_bounds.py` matches support count and all bounds with the Java transform/interpolation harness for identity, translated, and rotated-plus-translated cases; outputs have distinct bounds. | `268 passed`; commit `ecbebfe5ed27d5c22e85271471dc4e2f22da3e84` |
 | P18ac — Resolve selected TOADS atlas spacing source | Source-body audit of `MultipleToadDeformableAtlas.loadAtlas`, `loadTemplateImage`, and `loadShapeImage`, with committed source hash and line anchors; `tests/test_atlas_assets.py` confirms descriptor spacing, preserved NIfTI zooms, and the explicit warning. | `268 passed`; commit `32e6d804e56b312da04d02ec658abac57f36493a` |
+| P18ad — Assess NumPy power substitution for TOADS likelihoods | `tests/test_toads_powertable.py` compares 1,042 cases to the actual source `PowerTable` class and evaluates source float32 inverse-energy normalization; unquantized power changes three winners, while source-index quantization yields membership error <1e-6 with no winner changes. | `270 passed`; commit `b0dd1fe4aafd9f78b66b137fa0ed04c5630c65fb` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
