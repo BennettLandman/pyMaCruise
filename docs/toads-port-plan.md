@@ -66,6 +66,23 @@ available raw source maps. A future test-only Java comparison adapter must
 serialize these arrays in the source primitive type and byte order. Physical
 atlas geometry is still an open P18 validation item.
 
+### Completed substage: fixed-transform shape-prior sampling
+
+`src/pymacruise/toads_shapes.py` ports the selected rigid transform mapping,
+closest-edge trilinear interpolation, class-specific input-bounds defaults,
+and `shapeSlope` recovery/clipping around
+`MultipleToadDeformableAtlas.getRegularTransformedShape`. The six-value rigid
+parameter vector uses the source inverse-Rodrigues transform and millimetre
+translations; input arrays use RAS-oriented x/y/z axes, and the template
+spacing passed to the map comes from the atlas descriptor (0.9375 mm in the
+selected atlas). Eight synthetic cases match the copied Java
+`ParametricTransform`, `ImageFunctions`, and `Numerics` APIs exactly at
+float32 precision, including mapped template coordinates. This fixture
+transcribes the private atlas method's class-bounds and slope wrapper; it does
+not instantiate the atlas class, validate class-bound optimization, perform
+registration, or resolve the converted NIfTI world origin. Registration
+optimization and physical-world geometry reconciliation remain separate work.
+
 The selected TOADS segmentation also requires `critical186LUT.raw.gz` for
 18/6 connectivity. The 936 KB compressed asset is bundled at
 `src/pymacruise/data/critical186LUT.raw.gz`; its compressed SHA-256 is
