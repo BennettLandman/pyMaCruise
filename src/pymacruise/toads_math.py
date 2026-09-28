@@ -608,3 +608,87 @@ def toads_optimized_centroid_update(
                 damped_old = np.float32(smooth * old_centroids[channel, class_index])
                 updated[channel, class_index] = np.float32(weighted_mean + damped_old)
     return updated
+
+
+def toads_optimized_image_variance(
+    image_values: ArrayLike,
+    memberships: ArrayLike,
+    centroids: ArrayLike,
+    *,
+    intensity_field: ArrayLike | None = None,
+    infinite_variance: float = 1e10,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Compute source image-variance weights for optimized tissue classes.
+
+    Every membership channel is assumed to be an optimized CSF, GM, or WM
+    object. The source scans the full grid (including borders), accumulates
+    ``(membership**2 + 1e-30) * residual**4`` and
+    ``membership**2 + 1e-30`` in class/x/y/z order for each modality, then
+    normalizes inverse variances across modalities. The second return value
+    is the source's image-level standard deviation, computed from the
+    *unnormalized* inverse variance. Optional fields multiply the intensity
+    before the residual is calculated.
+
+    Source `INF` behavior is preserved: a channel with no positive numerator
+    receives ``infinite_variance`` before cross-modality normalization, so
+    all-zero residuals can yield NaN normalized weights as in Java.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    mems = np.asarray(memberships, dtype=np.float32)
+    centers = np.asarray(centroids, dtype=np.float32)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    if mems.ndim != 4 or mems.shape[:3] != images.shape[:3] or mems.shape[-1] < 1:
+        raise ValueError("memberships must be finite 4-D and match image spatial dimensions")
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    expected = (images.shape[-1], mems.shape[-1])
+    if centers.shape != expected or not np.isfinite(centers).all():
+        raise ValueError("centroids must be finite and match (modality, class) dimensions")
+    infvar = np.float32(infinite_variance)
+    if not np.isfinite(infvar) or infvar <= np.float32(0.0):
+        raise ValueError("infinite_variance must be finite and positive")
+    if intensity_field is None:
+        corrected = images
+    else:
+        field = np.asarray(intensity_field, dtype=np.float32)
+        if field.shape != images.shape or not np.isfinite(field).all():
+            raise ValueError("intensity_field must be finite and match image_values")
+        corrected = np.asarray(field * images, dtype=np.float32)
+
+    modalities = images.shape[-1]
+    classes = mems.shape[-1]
+    variances = np.empty(modalities, dtype=np.float32)
+    for channel in range(modalities):
+        numerator = np.float32(0.0)
+        denominator = np.float32(0.0)
+        for class_index in range(classes):
+            for x in range(images.shape[0]):
+                for y in range(images.shape[1]):
+                    for z in range(images.shape[2]):
+                        membership = mems[x, y, z, class_index]
+                        weight = np.float32(
+                            np.float32(membership * membership) + np.float32(1e-30)
+                        )
+                        residual = np.float32(
+                            corrected[x, y, z, channel] - centers[channel, class_index]
+                        )
+                        difference = np.float32(residual * residual)
+                        weighted_difference = np.float32(weight * difference)
+                        contribution = np.float32(weighted_difference * difference)
+                        numerator = np.float32(
+                            numerator + contribution
+                        )
+                        denominator = np.float32(denominator + weight)
+        if numerator > np.float32(0.0):
+            variances[channel] = np.float32(denominator / numerator)
+        else:
+            variances[channel] = infvar
+
+    total = np.float32(0.0)
+    for value in variances:
+        total = np.float32(total + value)
+    image_stddev = np.asarray(np.sqrt(variances), dtype=np.float32)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        normalized = np.asarray(variances / total, dtype=np.float32)
+    return normalized, image_stddev
