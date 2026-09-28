@@ -452,10 +452,13 @@ phantom, and regeneration details.
 ## Blocker for P34
 
 The Python repository now contains selected TOADS preprocessing, atlas
-sampling/registration kernels, and the optimized CSF/GM/WM per-voxel intensity
-likelihood term. It still has no complete TOADS segmentation or dura-removal
-workflow in `src/pymacruise/`. P34 requires a real base workflow and cannot be
-validated by wiring synthetic TOADS-like inputs through substitute behavior.
+sampling/registration kernels, optimized CSF/GM/WM per-voxel intensity
+likelihood and membership-update terms, and the selected damped centroid
+update. The centroid slice matches the actual Java `PowerTable`-weighted
+reference on synthetic fixtures in both field modes. It still has no complete
+TOADS segmentation or dura-removal workflow in `src/pymacruise/`. P34 requires
+a real base workflow and cannot be validated by wiring synthetic TOADS-like
+inputs through substitute behavior.
 Therefore P34 remains **Blocked** until the selected source algorithms are
 ported and their reference comparison passes. The P18ae data-term slice is
 described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md),
@@ -474,3 +477,9 @@ P18ak implements and compares one ordered in-place six-face-smoothed sweep in
 The full source membership evolution still depends on generating its data and
 atlas-prior terms, applying the topology admissibility gate, and iterating to
 the selected convergence condition.
+
+The latest isolated update slices now include optimized-tissue damped
+centroids, checked against the actual source `PowerTable` on committed
+synthetic data; see the [P18al reference report](reports/toads-optimized-centroids-2026-09-28.md).
+The next TOADS work must continue through source-backed stages and must not
+present these formula slices as an end-to-end segmentation.
