@@ -692,3 +692,73 @@ def toads_optimized_image_variance(
     with np.errstate(divide="ignore", invalid="ignore"):
         normalized = np.asarray(variances / total, dtype=np.float32)
     return normalized, image_stddev
+
+
+def toads_optimized_class_standard_deviation(
+    image_values: ArrayLike,
+    memberships: ArrayLike,
+    centroids: ArrayLike,
+    segmentation: ArrayLike,
+    *,
+    intensity_field: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Compute assigned-class standard deviations for optimized TOADS types.
+
+    This transcribes the optimized tissue branch of source
+    `computeExactVariances`. Each modality/class uses only voxels whose
+    categorical segmentation equals that class. The source includes the full
+    image grid (borders included), uses ``membership**2 + 1e-30`` as its
+    weight, and returns zero when no voxel is assigned to a class. The result
+    has shape ``(modality, class)``. All supplied classes are assumed to be
+    optimized CSF, GM, or WM types.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    mems = np.asarray(memberships, dtype=np.float32)
+    centers = np.asarray(centroids, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    if mems.ndim != 4 or mems.shape[:3] != images.shape[:3] or mems.shape[-1] < 1:
+        raise ValueError("memberships must be finite 4-D and match image spatial dimensions")
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    if labels.shape != images.shape[:3] or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer array matching the image grid")
+    expected = (images.shape[-1], mems.shape[-1])
+    if centers.shape != expected or not np.isfinite(centers).all():
+        raise ValueError("centroids must be finite and match (modality, class) dimensions")
+    if intensity_field is None:
+        corrected = images
+    else:
+        field = np.asarray(intensity_field, dtype=np.float32)
+        if field.shape != images.shape or not np.isfinite(field).all():
+            raise ValueError("intensity_field must be finite and match image_values")
+        corrected = np.asarray(field * images, dtype=np.float32)
+
+    deviations = np.zeros(expected, dtype=np.float32)
+    for channel in range(images.shape[-1]):
+        for class_index in range(mems.shape[-1]):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(images.shape[0]):
+                for y in range(images.shape[1]):
+                    for z in range(images.shape[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = mems[x, y, z, class_index]
+                        membership_squared = np.float32(membership * membership)
+                        weight = np.float32(membership_squared + np.float32(1e-30))
+                        residual = np.float32(
+                            corrected[x, y, z, channel] - centers[channel, class_index]
+                        )
+                        weighted_residual = np.float32(weight * residual)
+                        contribution = np.float32(weighted_residual * residual)
+                        numerator = np.float32(
+                            numerator + contribution
+                        )
+                        denominator = np.float32(denominator + weight)
+            if denominator > np.float32(0.0):
+                deviations[channel, class_index] = np.sqrt(
+                    np.float32(numerator / denominator)
+                )
+    return deviations
