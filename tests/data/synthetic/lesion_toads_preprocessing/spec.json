@@ -1,0 +1,49 @@
+{
+  "shape_xyz": [
+    9,
+    8,
+    7
+  ],
+  "channels": [
+    "T1_MPRAGE",
+    "FLAIR"
+  ],
+  "affine_ras_mm": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "robust_fraction": 0.01,
+  "robust_scales": 2,
+  "lesion_priors": [
+    0.4000000059604645,
+    1.2000000476837158
+  ],
+  "black_hole_priors": [
+    0.10000000149011612,
+    0.6000000238418579
+  ],
+  "recipe": "Two source-indexed modular ramps with periodic negative values, and four high outliers; negatives are clamped to zero before source robust bounds are computed.",
+  "java_reference": "java_reference.json"
+}

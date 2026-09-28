@@ -1,0 +1,13 @@
+{
+  "source": "Selected toads-cruise MultipleToadPreprocess.initialCentroids and initialExactMemberships methods",
+  "shape_xyz": [6, 6, 6],
+  "channels": 2,
+  "classes": 4,
+  "crop_border_voxels": 1,
+  "low": [2.0, 3.0],
+  "high": [10.0, 13.0],
+  "intensity_priors": [[0.1, 0.4, 0.4, 0.8], [0.2, 0.5, 0.7, 0.9]],
+  "image_recipe": "float32 intensity channel c at (x,y,z) is 0.2 + ((x*11+y*7+z*3)%23)/20 for c=0 and 0.2 + ((x*5+y*13+z*17)%29)/25 for c=1; center voxel (2,2,2) is set to class-1 centroid in both channels to exercise the exact-zero distance branch.",
+  "expected_reference": "tests/data/synthetic/toads_initialization/java_reference.json",
+  "reference_generator": "tests/java_reference/ToadsInitializationReferenceHarness.java"
+}
