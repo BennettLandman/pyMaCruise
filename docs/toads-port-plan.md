@@ -467,5 +467,7 @@ P18ah validates direct reciprocal-energy normalization in
 [its own Java formula report](reports/toads-direct-membership-2026-09-28.md).
 P18ai records the direct/neighbor/prior shape-relation gate in
 [its Java formula report](reports/toads-shape-relations-2026-09-28.md).
+P18aj composes that gate with reciprocal-energy normalization in
+[a synthetic source-order comparison](reports/toads-shape-weighted-membership-2026-09-28.md).
 These slices do not complete the asynchronous membership sweep or full
 membership evolution.

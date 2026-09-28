@@ -433,6 +433,7 @@ complete TOADS membership update; P18ad cites this run.
 | P18ag — Port TOADS six-face spatial-smoothing contribution | `tests/test_toads_smoothing.py` matches both `num` and `energy` increments on the committed RAS membership fixture against a Java source-formula excerpt; independent perturbations cover all six face directions and candidate-class exclusion. Thirteen focused tests cover guards and invalid inputs. This is a smoothing-term slice only. | `291 passed`; commit `d8a02be707cc0a14ed1876e6bb7b3476aba71a43` |
 | P18ah — Port direct optimized-tissue reciprocal-energy membership normalization | `tests/test_toads_direct_membership.py` compares normalized memberships and class-wise objective contributions with a Java formula excerpt; fixtures cover zero, exact/below/above `1e-10f`, source class order, and unchanged outer memberships. This validates direct updates only, not the complete asynchronous source sweep. | `297 passed`; commit `e652c290efcf0c6c3d685f7282dd27e852c7a524` |
 | P18ai — Port TOADS direct/neighbor/prior shape-relation factors | `tests/test_toads_shape_relations.py` compares all direct, neighbor, and prior factors plus prior-only zero-shape suppression against a Java formula harness; the RAS NIfTI fixtures verify direct precedence, empty slots, both clamp limits, and deterministic inputs. | `305 passed`; commit `9e2e1d23ab2ecd325d382b871d4db98b7da89713` |
+| P18aj — Integrate TOADS shape relations with normalized reciprocal memberships | `tests/test_toads_shape_weighted_membership.py` compares all normalized voxel/class updates to the Java formula excerpt, including unsupported prior candidates, mixed relations, source threshold energies, positive-denominator normalization, zero-denominator behavior, and unchanged borders. It reuses the prior committed synthetic RAS `.nii.gz` fixtures. | `312 passed`; commit `7282405cdc3ead6ae00f495579240746f75aa7b4` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
@@ -527,6 +528,22 @@ Subsequent plan/report/README edits do not modify implementation or tests.
 
 This run validates the P18ai implementation and committed synthetic fixture.
 Subsequent plan/report/README edits do not modify implementation or tests.
+
+## Additional full-suite run for P18aj
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **312 passed in 50.92 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `7282405cdc3ead6ae00f495579240746f75aa7b4` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18aj implementation and committed Java formula
+reference. Subsequent plan/report/README edits do not modify implementation
+or tests.
 
 ## Future rows
 
