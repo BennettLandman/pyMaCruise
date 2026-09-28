@@ -762,3 +762,58 @@ def toads_optimized_class_standard_deviation(
                     np.float32(numerator / denominator)
                 )
     return deviations
+
+
+def toads_optimized_centroid_similarity(
+    centroids: ArrayLike,
+    class_standard_deviations: ArrayLike,
+    image_variance_weights: ArrayLike,
+    prior_scale: float = 0.05,
+) -> NDArray[np.float32]:
+    """Compute source centroid-similarity coefficients for optimized classes.
+
+    The source accumulates a modality-weighted squared centroid distance,
+    divided twice by the sum of the two class standard deviations, then maps
+    it through ``1 / (1 + (1-priorScale)/priorScale * distance)``. Diagonal
+    entries are explicitly zero. Float32 operation and modality order match
+    the selected `computeExactMemberships` formula. IEEE nonfinite results
+    from zero deviation sums or singular ``prior_scale`` values are preserved.
+    This is the pairwise coefficient only; it does not apply voxelwise shape
+    priors.
+    """
+    centers = np.asarray(centroids, dtype=np.float32)
+    deviations = np.asarray(class_standard_deviations, dtype=np.float32)
+    weights = np.asarray(image_variance_weights, dtype=np.float32)
+    scale = np.float32(prior_scale)
+    if centers.ndim != 2 or centers.shape[0] < 1 or centers.shape[1] < 1:
+        raise ValueError("centroids must be a nonempty (modality, class) array")
+    if deviations.shape != centers.shape or not np.isfinite(deviations).all():
+        raise ValueError("class_standard_deviations must be finite and match centroids")
+    if weights.shape != (centers.shape[0],) or not np.isfinite(weights).all():
+        raise ValueError("image_variance_weights must be finite and match modality count")
+    if not np.isfinite(centers).all() or not np.isfinite(scale):
+        raise ValueError("centroids and prior_scale must be finite")
+
+    classes = centers.shape[1]
+    similarities = np.zeros((classes, classes), dtype=np.float32)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        scale_factor = np.float32(np.float32(np.float32(1.0) - scale) / scale)
+        for k in range(classes):
+            for m in range(classes):
+                if m == k:
+                    continue
+                distance = np.float32(0.0)
+                for channel in range(centers.shape[0]):
+                    centroid_delta = np.float32(centers[channel, k] - centers[channel, m])
+                    deviation_sum = np.float32(
+                        deviations[channel, k] + deviations[channel, m]
+                    )
+                    term = np.float32(weights[channel] * centroid_delta)
+                    term = np.float32(term * centroid_delta)
+                    term = np.float32(term / deviation_sum)
+                    term = np.float32(term / deviation_sum)
+                    distance = np.float32(distance + term)
+                scaled_distance = np.float32(scale_factor * distance)
+                denominator = np.float32(np.float32(1.0) + scaled_distance)
+                similarities[k, m] = np.float32(np.float32(1.0) / denominator)
+    return similarities
