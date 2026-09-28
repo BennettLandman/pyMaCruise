@@ -12,15 +12,16 @@ documented in the linked evidence.
 | Field | Value |
 |---|---|
 | Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
-| Result | **154 passed in 75.61 seconds** |
+| Result | **164 passed in 73.23 seconds** |
 | Pytest | 9.1.1 |
 | Python | 3.13.2 |
-| Tested commit | `62b84a94f0553a11e04370e8e33bff267b605fd7` |
+| Tested commit | `54c343c838e3e22c99ec44c80c87c48145329f34` |
 | Run date | 2026-09-28 |
-| Run scope | Complete configured suite; 154 tests collected and all passed |
+| Run scope | Complete configured suite; 164 tests collected and all passed |
 
-The tested commit is the source state immediately before this evidence-only
-documentation commit. No implementation or test files changed after the run.
+The tested commit is the implementation and test state immediately before this
+progress/evidence documentation commit. No implementation or test files
+changed after the run.
 The per-row entries refer to this single run, rather than mixing results from
 different historical suite sizes. Older full-suite counts elsewhere in
 progress notes are snapshots and are superseded by this report for the state
@@ -30,43 +31,45 @@ identified by the tested commit above.
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
 |---|---|---|
-| P01 — Establish this roadmap | `README.md` links the roadmap; `plan.md` contains ordered criteria and status/date fields. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P02 — Select canonical base workflow | `docs/source-baseline.md` records the V3 source anchor and version clarification. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P03 — Select supported MaCRUISEplus contract | `docs/plus-baseline.md` documents the selected profile and deferred variants. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P04 — Build source-to-stage traceability map | `docs/source-map.md` maps the selected source stages and gaps. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P05 — Inventory external code and assets | `docs/assets-and-dependencies.md` records source trees, revisions, dependencies, and missing assets. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P05a — Bundle supplied workflow atlases | `tests/test_atlas_assets.py` validates the bundled atlas inventory and image assets. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P05b — Preserve license and attribution information | `license_info.md` and `licenses/upstream/` contain the preserved notices and handoff overview. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P05c — Normalize bundled image assets to RAS `.nii.gz` | `tests/test_atlas_assets.py` checks normalized atlas payloads and descriptors; audit details are in `data/atlases/README.md` and `docs/assets-and-dependencies.md`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P06 — Freeze image and coordinate conventions | `tests/test_image_io.py`, `tests/test_surfaces.py`, `tests/test_spatial_transfer.py`, plus `docs/image-coordinate-conventions.md`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P07 — Define workflow input/output contracts | `tests/test_contracts.py` and `docs/io-contract.md`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P08 — Define numerical acceptance policy | `tests/test_validation.py` and `docs/validation-tolerances.md`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P09 — Create deterministic synthetic phantom generator | `tests/test_synthetic.py` validates seeded fixture generation and metadata. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P10 — Create synthetic fixture corpus | `tests/data/synthetic/` inventory and `tests/test_synthetic.py`; atlas fixtures additionally use `tests/test_atlas_assets.py`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P11 — Establish test and comparison harness | `tests/test_validation.py` validates numerical and geometric comparison helpers. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P12 — Create packaging and dependency profiles | `tests/test_cli.py` checks installed command behavior; package and dependency declarations are in `pyproject.toml`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P13 — Implement geometry-aware image I/O | `tests/test_image_io.py` validates RAS normalization, round-trip behavior, and failure cases. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P14 — Implement configuration, logging, and run manifest | `tests/test_workflow.py` and `src/pymacruise/workflow.py` cover manifest/configuration behavior. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P15 — Validate existing generic volume operator | `tests/test_volume_ops.py` validates array operations, geometry, dtype, and NIfTI behavior. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P16 — Port raw input preparation | `tests/test_raw_preparation.py` validates synthetic RAS preparation behavior. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P17 — Port cortical separation and label preparation | `tests/test_cortical_separation.py` validates source label sets and output masks. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P18a — Port TOADS robust intensity normalization | `tests/test_toads_preprocessing.py`, `tests/java_reference/ToadsIntensityReferenceHarness.java`, and [docs/toads-port-plan.md](../toads-port-plan.md) record exact synthetic Java matching. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P22 — Port multi-atlas boundary/CSF generation | `tests/test_boundary.py` validates boundaries, exclusions, and empty cases. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P23 — Port boundary cleanup | `tests/test_boundary.py` validates cleanup behavior on designed synthetic arrays. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P24 — Port multi-atlas and TOADS tissue combination | `tests/test_boundary.py` validates priority, erosion, and grid behavior. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P25 — Port topology correction | `tests/test_topology.py` validates local connectivity, components, cavities, and repeatability. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P26 — Port ACE tissue enhancement | `tests/test_ace.py`, `tests/test_ace_reference.py`, and `docs/ace-port.md` provide Java-stage and numerical evidence. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P27 — Port enhanced skeleton generation | `tests/test_skeleton_reference.py` and `docs/skeleton-port.md` record source comparisons and surface metrics. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P28 — Port Gradient Vector Flow | `tests/test_gvf.py` and `docs/gvf-port.md` record the compiled-Java synthetic comparison. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P29 — Port CRUISE/TGDM level-set evolution | `tests/test_tgdm.py`, `docs/tgdm-reference-comparison.md`, and the committed Java-reference JSON report. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P30 — Port level-set to surface extraction | `tests/test_surfaces.py` and `docs/surface-extraction.md` document the analytic mesh checks and Lewiner substitution. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P31 — Port scientific surface and thickness outputs | `tests/test_thickness.py` and `docs/thickness-port.md` provide known-gap and geometry results. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P32 — Port segmentation refinement | `tests/test_segmentation_refine.py` and `docs/segmentation-refinement.md` record synthetic threshold and rule evidence. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P33 — Port MNI registration and transfer | `tests/test_registration.py`, `tests/test_spatial_transfer.py`, and `docs/registration-port.md` record synthetic transform evidence. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
-| P38 — Implement MaCRUISEplus FLAIR registration | `tests/test_registration.py` and `docs/registration-port.md` record the known-shift synthetic test and configuration checks. | `154 passed`; commit `62b84a94f0553a11e04370e8e33bff267b605fd7` |
+| P01 — Establish this roadmap | `README.md` links the roadmap; `plan.md` contains ordered criteria and status/date fields. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P02 — Select canonical base workflow | `docs/source-baseline.md` records the V3 source anchor and version clarification. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P03 — Select supported MaCRUISEplus contract | `docs/plus-baseline.md` documents the selected profile and deferred variants. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P04 — Build source-to-stage traceability map | `docs/source-map.md` maps the selected source stages and gaps. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P05 — Inventory external code and assets | `docs/assets-and-dependencies.md` records source trees, revisions, dependencies, and missing assets. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P05a — Bundle supplied workflow atlases | `tests/test_atlas_assets.py` validates the bundled atlas inventory and image assets. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P05b — Preserve license and attribution information | `license_info.md` and `licenses/upstream/` contain the preserved notices and handoff overview. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P05c — Normalize bundled image assets to RAS `.nii.gz` | `tests/test_atlas_assets.py` checks normalized atlas payloads and descriptors; audit details are in `data/atlases/README.md` and `docs/assets-and-dependencies.md`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P06 — Freeze image and coordinate conventions | `tests/test_image_io.py`, `tests/test_surfaces.py`, `tests/test_spatial_transfer.py`, plus `docs/image-coordinate-conventions.md`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P07 — Define workflow input/output contracts | `tests/test_contracts.py` and `docs/io-contract.md`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P08 — Define numerical acceptance policy | `tests/test_validation.py` and `docs/validation-tolerances.md`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P09 — Create deterministic synthetic phantom generator | `tests/test_synthetic.py` validates seeded fixture generation and metadata. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P10 — Create synthetic fixture corpus | `tests/data/synthetic/` inventory and `tests/test_synthetic.py`; atlas fixtures additionally use `tests/test_atlas_assets.py`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P11 — Establish test and comparison harness | `tests/test_validation.py` validates numerical and geometric comparison helpers. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P12 — Create packaging and dependency profiles | `tests/test_cli.py` checks installed command behavior; package and dependency declarations are in `pyproject.toml`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P13 — Implement geometry-aware image I/O | `tests/test_image_io.py` validates RAS normalization, round-trip behavior, and failure cases. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P14 — Implement configuration, logging, and run manifest | `tests/test_workflow.py` and `src/pymacruise/workflow.py` cover manifest/configuration behavior. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P15 — Validate existing generic volume operator | `tests/test_volume_ops.py` validates array operations, geometry, dtype, and NIfTI behavior. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P16 — Port raw input preparation | `tests/test_raw_preparation.py` validates synthetic RAS preparation behavior. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P17 — Port cortical separation and label preparation | `tests/test_cortical_separation.py` validates source label sets and output masks. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P18a — Port TOADS robust intensity normalization | `tests/test_toads_preprocessing.py`, `tests/java_reference/ToadsIntensityReferenceHarness.java`, and [docs/toads-port-plan.md](../toads-port-plan.md) record exact synthetic Java matching. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P18b — Implement TOADS initial centroids and exact memberships | `tests/test_toads_initialization.py`, `tests/java_reference/ToadsInitializationReferenceHarness.java`, and `tests/data/synthetic/toads_initialization/` compare all centroid and membership values against the Java harness, including tied-centroid weighting and the zero-distance cap. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P22 — Port multi-atlas boundary/CSF generation | `tests/test_boundary.py` validates boundaries, exclusions, and empty cases. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P23 — Port boundary cleanup | `tests/test_boundary.py` validates cleanup behavior on designed synthetic arrays. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P24 — Port multi-atlas and TOADS tissue combination | `tests/test_boundary.py` validates priority, erosion, and grid behavior. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P25 — Port topology correction | `tests/test_topology.py` validates local connectivity, components, cavities, and repeatability. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P26 — Port ACE tissue enhancement | `tests/test_ace.py`, `tests/test_ace_reference.py`, and `docs/ace-port.md` provide Java-stage and numerical evidence. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P27 — Port enhanced skeleton generation | `tests/test_skeleton_reference.py` and `docs/skeleton-port.md` record source comparisons and surface metrics. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P28 — Port Gradient Vector Flow | `tests/test_gvf.py` and `docs/gvf-port.md` record the compiled-Java synthetic comparison. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P29 — Port CRUISE/TGDM level-set evolution | `tests/test_tgdm.py`, `docs/tgdm-reference-comparison.md`, and the committed Java-reference JSON report. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P30 — Port level-set to surface extraction | `tests/test_surfaces.py` and `docs/surface-extraction.md` document the analytic mesh checks and Lewiner substitution. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P31 — Port scientific surface and thickness outputs | `tests/test_thickness.py` and `docs/thickness-port.md` provide known-gap and geometry results. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P32 — Port segmentation refinement | `tests/test_segmentation_refine.py` and `docs/segmentation-refinement.md` record synthetic threshold and rule evidence. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P33 — Port MNI registration and transfer | `tests/test_registration.py`, `tests/test_spatial_transfer.py`, and `docs/registration-port.md` record synthetic transform evidence. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P38 — Implement MaCRUISEplus FLAIR registration | `tests/test_registration.py` and `docs/registration-port.md` record the known-shift synthetic test and configuration checks. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
+| P39a — Port LesionTOADS intensity and centroid initialization | `tests/test_lesion_toads_preprocessing.py`, its test-only Java harness, and the committed two-channel RAS `.nii.gz` phantom compare robust bounds, all normalized values, and lesion/black-hole centroids; zero-span rejection is documented as a deliberate invalid-input deviation. | `164 passed`; commit `54c343c838e3e22c99ec44c80c87c48145329f34` |
 
 ## Future rows
 

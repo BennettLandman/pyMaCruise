@@ -130,6 +130,33 @@ javac -d build/java-reference tests/java_reference/ToadsIntensityReferenceHarnes
 java -cp build/java-reference ToadsIntensityReferenceHarness > tests/data/synthetic/toads_preprocessing/java_reference.json
 ```
 
+### Completed substage: exact initial intensity centroids and memberships
+
+`src/pymacruise/toads_initialization.py` ports
+`MultipleToadPreprocess.initialCentroids` and the exact
+`initialExactMemberships` branch. `AlgorithmMultipleToads` sets
+`useApprox=false` in the selected source constructor, so this is the active
+initial membership branch for the selected wrapper. Centroids use
+`low/(high-low) + atlas_prior`, retaining the source's zero-preserving
+normalization convention. Membership scores sum channel-wise squared
+distances in Java float order, invert distances above `1e-20f` (otherwise use
+`1e20f`), multiply by the exact channel-0 centroid tie count, then normalize.
+
+The committed 6×6×6 two-channel fixture compares all four class centroids and
+all 864 output memberships exactly against the standalone Java harness. It
+exercises tied centroids, an exact zero-distance sample, and the crop's zero
+padding. Because the source multiplies scores by tie-group size after building
+the denominator, memberships need not sum to one when centroids tie; the port
+preserves that behavior. Atlas descriptor intensity-prior parsing, transformed
+atlas memberships, registration, and iterative TOADS segmentation remain open.
+Regenerate the reference with:
+
+```sh
+javac -d /tmp/pymacruise-toads-init tests/java_reference/ToadsInitializationReferenceHarness.java
+java -cp /tmp/pymacruise-toads-init ToadsInitializationReferenceHarness \
+  > tests/data/synthetic/toads_initialization/java_reference.json
+```
+
 The source Java atlas reader treats atlas files as headerless byte/float
 payloads in descriptor index order. The bundled NIfTIs have been axis-flipped
 to RAS and their headers do not necessarily represent the geometry used by
