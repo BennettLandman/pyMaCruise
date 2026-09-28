@@ -104,7 +104,7 @@ pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --out
 ### 2026-09-27 implementation update
 
 - Completed P07 and P11–P17 with profile/input contracts, a synthetic comparison harness, package/CLI scaffolding, RAS NIfTI I/O, configuration/manifests, the generic operator, raw input preparation, and exact MaSeg cortical-separation masks.
-- Updated `data/atlases/`: all 35 supplied NIfTI conversions are in the correct atlas folders, use RAS axes, match the original voxel values exactly after axis reorientation, and have updated compressed-NIfTI descriptors and checksums. P05c remains Started while unresolved legacy physical-origin metadata is reviewed.
+- Completed P05c: all 35 bundled atlas image payloads are RAS `.nii.gz`, voxel values match the source payload after axis normalization, descriptor references/checksums resolve, and no raw Analyze payloads remain. The audit records that three Analyze examples have no recoverable physical origin and flags Unknown-orientation/endian metadata; no full physical-space parity is claimed. Two atlas asset tests pass.
 - The user confirmed the segmentation and surface-position metric interpretations; P08 is complete.
 - The synthetic suite passes 59 tests; the editable install and `pymacruise --version` / `--help` succeed. The N4 test runs with the optional ANTsPy package installed.
 
