@@ -32,3 +32,9 @@ The separate coefficient call-order excerpt is
 SHA-256 `cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b2952114c39af1a5`.
 Its output fixture is `java_coefficient_reference.json`, SHA-256
 `a0288b795161d02d42e83cda857ce61355924fbb597e172d7c0b8781bafba368`.
+The prior-derivative excerpt is
+`tests/java_reference/ToadsPriorDerivativeReferenceHarness.java`, SHA-256
+`127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae91c72f85a5b0`; its
+four synthetic reference points are in
+`java_prior_derivative_reference.json` (SHA-256
+`957162ea13b990895098c61a81876a87884c26d22834e570f51476d14718d849`).

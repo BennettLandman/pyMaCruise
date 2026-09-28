@@ -11,6 +11,7 @@ from pymacruise.toads_registration import (
     exact_membership_registration_energy,
     exact_registration_measure_coefficients,
     synthetic_registration_objective_inputs,
+    trilinear_prior_derivatives,
 )
 
 
@@ -21,6 +22,7 @@ COEFFICIENT_REFERENCE = (
 )
 HARNESS_HASH = "3c2e8bc403a1e04f201cbc29f6aa468175b202c4d2013bc1aefa4429d7bf8b41"
 COEFFICIENT_HARNESS_HASH = "cc62e5e25bd3297a0d03a981c951cea0f7bb137810fe0791b2952114c39af1a5"
+DERIVATIVE_HARNESS_HASH = "127099ca604f07537992594a9dbe871ce0efe0fdf3a3106277ae91c72f85a5b0"
 
 
 def test_exact_membership_energy_matches_source_formula_harness() -> None:
@@ -51,6 +53,7 @@ def test_registration_reference_sources_have_recorded_hashes() -> None:
     for name, expected in (
         ("ToadsRegistrationEnergyReferenceHarness.java", HARNESS_HASH),
         ("ToadsRegistrationCoefficientReferenceHarness.java", COEFFICIENT_HARNESS_HASH),
+        ("ToadsPriorDerivativeReferenceHarness.java", DERIVATIVE_HARNESS_HASH),
     ):
         harness = ROOT / "java_reference" / name
         assert hashlib.sha256(harness.read_bytes()).hexdigest() == expected
@@ -80,6 +83,20 @@ def test_registration_coefficient_correction_is_opt_in() -> None:
     )
     np.testing.assert_array_equal(gradient, np.asarray([0.3, -0.05, 1.4], dtype=np.float32))
     np.testing.assert_array_equal(hessian, np.asarray([0.8, 0.2, 3.3], dtype=np.float32))
+
+
+def test_prior_derivatives_match_selected_java_formula_excerpt() -> None:
+    expected = json.loads(
+        (REFERENCE.parent / "java_prior_derivative_reference.json").read_text()
+    )
+    x, y, z = np.indices((5, 5, 5), dtype=np.int32)
+    shape = (((7 * x + 3 * y + 5 * z + 2 * x * y + 4 * y * z) % 23) / np.float32(22.0)).astype(np.float32)
+    points = ((0.25, 1.5, 2.75), (3.0, 3.0, 3.0), (3.25, 1.0, 1.0), (-0.1, 1.0, 1.0))
+    for point, reference in zip(points, expected["derivatives"], strict=True):
+        np.testing.assert_array_equal(
+            trilinear_prior_derivatives(shape, point),
+            np.asarray(reference, dtype=np.float32),
+        )
 
 
 @pytest.mark.parametrize(

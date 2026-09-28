@@ -71,6 +71,17 @@ exactly after float32 conversion. This establishes the selected method's
 call-order behavior, not the coefficient accumulators, optimizer schedule, or
 alignment quality.
 
+### Trilinear shape-prior derivatives
+
+`trilinear_prior_derivatives` now follows the three selected
+`ImageFunctions.linearInterpolation*derivative` methods. Its edge behavior is
+not the energy sampler's closest-edge behavior: if any coordinate lies below
+zero or above `size - 2`, all three derivatives are zero. Four deterministic
+points match the source-formula Java excerpt exactly after float32 conversion,
+including the upper face and both outside-bound cases. This provides the
+prior-coordinate derivative primitive; the rigid transform Jacobian and
+coefficient accumulation are still unimplemented.
+
 ## Python-library reuse decision
 
 ANTsPy registration is already available for workflow stages whose source

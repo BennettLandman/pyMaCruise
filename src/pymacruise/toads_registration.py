@@ -113,6 +113,72 @@ def exact_registration_measure_coefficients(
     return scaled_gradient, scaled_hessian
 
 
+def trilinear_prior_derivatives(
+    shape_prior: ArrayLike,
+    template_xyz: ArrayLike,
+) -> NDArray[np.float32]:
+    """Return source-compatible x/y/z derivatives of a trilinear atlas prior.
+
+    This follows `ImageFunctions.linearInterpolation[XYZ]derivative`, which
+    returns zero outside the closed domain `[0, size - 2]` on any axis. That
+    boundary policy is deliberately different from the closest-edge value
+    interpolation used for the registration energy.
+    """
+    values = np.asarray(shape_prior, dtype=np.float32)
+    point = np.asarray(template_xyz, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("shape_prior must be a 3D array with dimensions >= 2")
+    if point.shape != (3,) or not np.isfinite(point).all():
+        raise ValueError("template_xyz must contain three finite coordinates")
+    if not np.isfinite(values).all():
+        raise ValueError("shape_prior must contain only finite values")
+    if any(point[axis] < 0.0 or point[axis] > values.shape[axis] - 2 for axis in range(3)):
+        return np.zeros(3, dtype=np.float32)
+
+    xyz0 = tuple(int(np.floor(point[axis])) for axis in range(3))
+    alpha, beta, gamma = (
+        np.float32(point[axis] - np.float32(xyz0[axis])) for axis in range(3)
+    )
+    nalpha, nbeta, ngamma = (
+        np.float32(np.float32(1.0) - t) for t in (alpha, beta, gamma)
+    )
+    x, y, z = xyz0
+
+    def product(*factors: np.float32) -> np.float32:
+        result = np.float32(factors[0])
+        for factor in factors[1:]:
+            result = np.float32(result * np.float32(factor))
+        return result
+
+    def difference(a: tuple[int, int, int], b: tuple[int, int, int]) -> np.float32:
+        return np.float32(values[a] - values[b])
+
+    dx_terms = (
+        product(nbeta, ngamma, difference((x + 1, y, z), (x, y, z))),
+        product(beta, ngamma, difference((x + 1, y + 1, z), (x, y + 1, z))),
+        product(nbeta, gamma, difference((x + 1, y, z + 1), (x, y, z + 1))),
+        product(beta, gamma, difference((x + 1, y + 1, z + 1), (x, y + 1, z + 1))),
+    )
+    dy_terms = (
+        product(nalpha, ngamma, difference((x, y + 1, z), (x, y, z))),
+        product(alpha, ngamma, difference((x + 1, y + 1, z), (x + 1, y, z))),
+        product(nalpha, gamma, difference((x, y + 1, z + 1), (x, y, z + 1))),
+        product(alpha, gamma, difference((x + 1, y + 1, z + 1), (x + 1, y, z + 1))),
+    )
+    dz_terms = (
+        product(nalpha, nbeta, difference((x, y, z + 1), (x, y, z))),
+        product(alpha, nbeta, difference((x + 1, y, z + 1), (x + 1, y, z))),
+        product(nalpha, beta, difference((x, y + 1, z + 1), (x, y + 1, z))),
+        product(alpha, beta, difference((x + 1, y + 1, z + 1), (x + 1, y + 1, z))),
+    )
+    result = np.zeros(3, dtype=np.float32)
+    for axis, terms in enumerate((dx_terms, dy_terms, dz_terms)):
+        total = np.float32(terms[0] + terms[1])
+        total = np.float32(total + terms[2])
+        result[axis] = np.float32(total + terms[3])
+    return result
+
+
 def synthetic_registration_objective_inputs() -> tuple[NDArray[np.float32], NDArray[np.float32]]:
     """Return the deterministic 5×4×3×4 Java-reference objective phantom."""
     x, y, z, k = np.indices((5, 4, 3, 4), dtype=np.int32)
