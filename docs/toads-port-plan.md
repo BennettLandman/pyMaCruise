@@ -469,5 +469,8 @@ P18ai records the direct/neighbor/prior shape-relation gate in
 [its Java formula report](reports/toads-shape-relations-2026-09-28.md).
 P18aj composes that gate with reciprocal-energy normalization in
 [a synthetic source-order comparison](reports/toads-shape-weighted-membership-2026-09-28.md).
-These slices do not complete the asynchronous membership sweep or full
-membership evolution.
+P18ak implements and compares one ordered in-place six-face-smoothed sweep in
+[a small-grid source-formula report](reports/toads-ordered-membership-2026-09-28.md).
+The full source membership evolution still depends on generating its data and
+atlas-prior terms, applying the topology admissibility gate, and iterating to
+the selected convergence condition.
