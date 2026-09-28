@@ -108,6 +108,28 @@ exposing it to the dura-removal wrapper. The MATLAB stage saves all five as
 names. Final meaning, encoding, and RAS affines should be verified in the Java
 harness instead of inferred from variable names.
 
+### Completed substage: masked robust intensity normalization
+
+`src/pymacruise/toads_preprocessing.py` ports the selected
+`MultipleToadPreprocess` initialization of a T1 channel. It applies the
+required user mask, reproduces `ImageFunctions.robustMinimum` and
+`robustMaximum` using the source 10-bin histogram refinement (fraction 0.01,
+two scales), and divides each masked voxel by `Ihigh-Ilow` without subtracting
+`Ilow`. This keeps outside-mask zeros at zero, as in the source. The committed
+13×11×9 NIfTI phantom includes zero background and bright outliers; all 1,287
+normalized float32 values and both bounds match the test-only Java harness
+exactly. A non-RAS input test checks the warning, reorientation, and same
+normalized RAS values. The implementation rejects a zero robust span with a
+clear error rather than propagating division-by-zero NaNs.
+
+Regenerate this substage reference with:
+
+```sh
+./.venv/bin/python tests/data/synthetic/toads_preprocessing/make_phantom.py
+javac -d build/java-reference tests/java_reference/ToadsIntensityReferenceHarness.java
+java -cp build/java-reference ToadsIntensityReferenceHarness > tests/data/synthetic/toads_preprocessing/java_reference.json
+```
+
 The source Java atlas reader treats atlas files as headerless byte/float
 payloads in descriptor index order. The bundled NIfTIs have been axis-flipped
 to RAS and their headers do not necessarily represent the geometry used by

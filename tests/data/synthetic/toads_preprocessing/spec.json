@@ -1,0 +1,37 @@
+{
+  "shape": [
+    13,
+    11,
+    9
+  ],
+  "affine": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "foreground_voxels": 693,
+  "masked_voxels": 594,
+  "recipe": "TOADS source-indexed ramp with three bright outliers and a rectangular brain mask",
+  "java_reference": "tests/data/synthetic/toads_preprocessing/java_reference.json"
+}
