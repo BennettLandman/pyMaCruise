@@ -111,6 +111,23 @@ coordinates against a source-formula Java excerpt, including boundary cases.
 It does not validate rigid-transform derivatives or registration coefficients.
 Earlier rows retain their respective full-suite evidence; P18o cites this run.
 
+## Additional full-suite run for P18p
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest` from the `pymacruise/` repository root |
+| Result | **242 passed in 69.63 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `8e7a0c070f325349a5f24b006864bda46c26f10b` |
+| Run date | 2026-09-28 |
+| Run scope | Complete configured suite; 242 tests collected and all passed |
+
+This run validates the P18p rigid coordinate Jacobian on the recorded
+non-singular synthetic case and rejects a singular unit-norm derivative case.
+It does not validate prior-gradient composition or registration quality.
+Earlier rows retain their respective full-suite evidence; P18p cites this run.
+
 ## Evidence by Done row
 
 | Plan row | Row-specific validation evidence | Full-suite evidence |
@@ -149,6 +166,7 @@ Earlier rows retain their respective full-suite evidence; P18o cites this run.
 | P18m — Port exact-membership rigid-registration energy kernel | `tests/test_toads_registration.py` compares two synthetic objective accumulations against the Java source-formula harness and checks source empty-norm NaN behavior and invalid inputs. This is kernel evidence only, not registration equivalence. | `237 passed`; commit `365ef755c7f0cfb5a927001b02f0d8ae68fe3bd4` |
 | P18n — Preserve TOADS registration coefficient normalization call order | `tests/test_toads_registration.py` matches the fixed source-formula harness in default source-faithful mode and separately checks that the apparent corrected gradient is opt-in. | `239 passed`; commit `57c2f42dc767ef901802ab6898656320622c9049` |
 | P18o — Port TOADS trilinear prior derivatives | `tests/test_toads_registration.py` compares x/y/z prior derivatives on four valid and out-of-bounds synthetic coordinates against the source-formula Java excerpt. | `240 passed`; commit `41e6e0cad3b9bd17dd0b982fcd5fd0a27a2a69d2` |
+| P18p — Port TOADS rigid transform coordinate Jacobian | `tests/test_toads_registration.py` compares the 3×6 rotation/translation Jacobian against the Java formula excerpt and checks singular-rotation rejection. | `242 passed`; commit `8e7a0c070f325349a5f24b006864bda46c26f10b` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |

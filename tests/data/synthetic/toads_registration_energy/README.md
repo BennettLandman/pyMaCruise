@@ -38,3 +38,8 @@ The prior-derivative excerpt is
 four synthetic reference points are in
 `java_prior_derivative_reference.json` (SHA-256
 `957162ea13b990895098c61a81876a87884c26d22834e570f51476d14718d849`).
+The rigid-coordinate Jacobian excerpt is
+`tests/java_reference/ToadsRigidJacobianReferenceHarness.java`, SHA-256
+`e04a9319eae051362547f0461100512a0bcf58e0d7f70763c300238f939bbcc4`; its
+synthetic reference is `java_rigid_jacobian_reference.json` (SHA-256
+`db9450821c6142e7383b94b27a158224efc6531f4980a04bd89a0c0251d542a3`).
