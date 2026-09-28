@@ -181,6 +181,21 @@ the supplied source checkout found exact equality for topology and all 11
 shape maps (zero mismatches). The raw source files are not bundled; runtime
 loading uses only repository NIfTIs and the committed conversion audit.
 
+### Completed substage: original-JIST signed distance field
+
+`src/pymacruise/toads_dura.py::dura_signed_distance_field` adapts the shared
+six-neighbor unit-speed fast-marching implementation to the selected dura
+stage. It explicitly rounds each intermediate distance update to float32,
+matching JIST `DistanceField` storage. The four deterministic fields include
+an exact-zero plane, an oblique multi-axis crossing, an interface near a volume
+face, and a truncated curved interface. All 648 output voxels match the
+original `DistanceField.class` loaded from the supplied JIST-Test JAR exactly.
+The comparison does not validate dura mask topology, surface evolution, or the
+complete `MedicAlgorithmRemoveDura09` pipeline. See
+`tests/data/synthetic/p18_distancefield_jar_reference/README.md` for the exact
+JAR/class hashes, fixture recipe, and Java invocation. Focused regression
+coverage is in `tests/test_toads_dura.py`.
+
 ## Porting and validation sequence
 
 1. **Freeze the source path and parameters.** Trace V3 `run_Toads_pipeline.m`,
