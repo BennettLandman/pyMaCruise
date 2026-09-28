@@ -77,9 +77,11 @@ field rejection. The TGDM-specific suite has 19 tests. It also checks zero-
 force planar evolution, signed-pressure planar-front movement, bound handling,
 wrapper force-field quantization, nested-stage routing, RAS warning/output
 behavior, vector-component conversion, and a full nested run on the committed
-25³ concentric-tissue phantom under reduced synthetic iteration settings. The
-full synthetic suite passes 110 tests. This is early iterative coverage; it does **not** establish Java
-numerical equivalence.
+25³ concentric-tissue phantom under reduced synthetic iteration settings. This
+describes an earlier implementation snapshot; the authoritative complete-suite
+pass count and tested commit are recorded in
+[`reports/full-pytest-2026-09-27.md`](reports/full-pytest-2026-09-27.md). These
+checks do **not** by themselves establish Java numerical equivalence.
 
 `tgdm_evolve` now supplies the low-level source-style solver for an already
 signed scalar level set. It applies the profile's narrow-band width, exact
