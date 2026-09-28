@@ -302,3 +302,60 @@ def toads_direct_membership_update(
                         )
                         contributions[x, y, z, class_index] = contribution
     return updated, contributions
+
+
+def toads_shape_relation_factors(
+    shape_priors: ArrayLike,
+    closest_labels: ArrayLike,
+    prior_factor: float,
+) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
+    """Return source TOADS direct/neighbor/prior membership factors.
+
+    ``closest_labels[..., :2]`` are the source direct slots and
+    ``closest_labels[..., 2:]`` are its neighbor slots. Direct relation has
+    precedence. Neighbor factors use the source clamp
+    ``max(0.25, min(2*prior_factor*shape, 1))``; prior factors use
+    ``min(1, 2*prior_factor*shape)``. A prior-only class with shape exactly
+    zero is separately marked as suppressed, matching the update's early
+    support check.
+    """
+    shapes = np.asarray(shape_priors, dtype=np.float32)
+    labels = np.asarray(closest_labels)
+    factor = np.float32(prior_factor)
+    if shapes.ndim != 4 or shapes.shape[-1] < 1 or not np.isfinite(shapes).all():
+        raise ValueError("shape_priors must be finite 4-D with a class axis")
+    if labels.shape != shapes.shape[:3] + (4,) or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("closest_labels must be an integer four-slot array matching the shape grid")
+    if not np.isfinite(factor):
+        raise ValueError("prior_factor must be finite")
+    classes = shapes.shape[-1]
+    if np.any((labels < -1) | (labels >= classes)):
+        raise ValueError("closest_labels values must be -1 or valid class indices")
+
+    factors = np.empty(shapes.shape, dtype=np.float32)
+    suppressed = np.zeros(shapes.shape, dtype=np.bool_)
+    for x in range(shapes.shape[0]):
+        for y in range(shapes.shape[1]):
+            for z in range(shapes.shape[2]):
+                for class_index in range(classes):
+                    shape = shapes[x, y, z, class_index]
+                    direct = bool(np.any(labels[x, y, z, :2] == class_index))
+                    neighbor = bool(np.any(labels[x, y, z, 2:] == class_index))
+                    if direct:
+                        factors[x, y, z, class_index] = np.float32(1.0)
+                    elif neighbor:
+                        scaled = np.float32(np.float32(2.0) * factor)
+                        scaled = np.float32(scaled * shape)
+                        factors[x, y, z, class_index] = np.float32(
+                            max(np.float32(0.25), min(scaled, np.float32(1.0)))
+                        )
+                    elif shape == np.float32(0.0):
+                        factors[x, y, z, class_index] = np.float32(0.0)
+                        suppressed[x, y, z, class_index] = True
+                    else:
+                        scaled = np.float32(np.float32(2.0) * factor)
+                        scaled = np.float32(scaled * shape)
+                        factors[x, y, z, class_index] = np.float32(
+                            min(np.float32(1.0), scaled)
+                        )
+    return factors, suppressed
