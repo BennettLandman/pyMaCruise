@@ -522,3 +522,89 @@ def toads_ordered_membership_sweep(
                         )
                         total_objective = np.float32(total_objective + contribution)
     return updated, total_objective
+
+
+def toads_optimized_centroid_update(
+    image_values: ArrayLike,
+    memberships: ArrayLike,
+    centroids: ArrayLike,
+    exponents: ArrayLike,
+    centroid_smoothness: float,
+    *,
+    intensity_field: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+) -> NDArray[np.float32]:
+    """Update optimized CSF/GM/WM centroids with source damped mode.
+
+    Inputs use ``(x, y, z, modality)`` images/membership spatial grids,
+    ``(x, y, z, class)`` memberships, and ``(modality, class)`` centroids and
+    exponents. The source accumulates ``factor * membership² * intensity``
+    and ``factor * membership²`` in modality/class/x/y/z order, where
+    ``factor = PowerTable(distance) / distance`` above ``ZERO`` and one at or
+    below it. The result is damped against the prior centroid; a class with
+    no positive support keeps its previous centroid. Only interior voxels are
+    used, matching the selected source loop.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    mems = np.asarray(memberships, dtype=np.float32)
+    old_centroids = np.asarray(centroids, dtype=np.float32)
+    powers = np.asarray(exponents, dtype=np.float32)
+    smooth = np.float32(centroid_smoothness)
+    zero = np.float32(zero_threshold)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    if mems.ndim != 4 or mems.shape[:3] != images.shape[:3] or mems.shape[-1] < 1:
+        raise ValueError("memberships must be 4-D and match image spatial dimensions")
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    expected = (images.shape[-1], mems.shape[-1])
+    if old_centroids.shape != expected or powers.shape != expected:
+        raise ValueError("centroids and exponents must match (modality, class) dimensions")
+    if not np.isfinite(old_centroids).all() or not np.isfinite(powers).all():
+        raise ValueError("centroids and exponents must be finite")
+    if not np.isfinite(smooth) or not np.isfinite(zero) or zero < 0.0:
+        raise ValueError("centroid smoothness and ZERO threshold must be finite; ZERO nonnegative")
+    if intensity_field is None:
+        corrected = images
+    else:
+        field_values = np.asarray(intensity_field, dtype=np.float32)
+        if field_values.shape != images.shape or not np.isfinite(field_values).all():
+            raise ValueError("intensity_field must be finite and match image_values")
+        corrected = np.asarray(field_values * images, dtype=np.float32)
+
+    updated = old_centroids.copy()
+    nx, ny, nz, modalities = images.shape
+    classes = mems.shape[-1]
+    one_minus_smooth = np.float32(np.float32(1.0) - smooth)
+    for channel in range(modalities):
+        for class_index in range(classes):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            exponent = float(powers[channel, class_index])
+            for x in range(1, nx - 1):
+                for y in range(1, ny - 1):
+                    for z in range(1, nz - 1):
+                        image_value = corrected[x, y, z, channel]
+                        residual = np.float32(image_value - old_centroids[channel, class_index])
+                        distance = np.float32(residual * residual)
+                        factor = np.float32(1.0)
+                        if distance > zero:
+                            powered = toads_powertable_lookup(
+                                distance,
+                                exponent,
+                                cached_exponent=exponent,
+                            )
+                            factor = np.float32(np.float64(powered) / np.float64(distance))
+                        membership = mems[x, y, z, class_index]
+                        weight = np.float32(np.float32(factor * membership) * membership)
+                        numerator = np.float32(
+                            numerator + np.float32(weight * image_value)
+                        )
+                        denominator = np.float32(denominator + weight)
+            if denominator > np.float32(0.0):
+                weighted_mean = np.float32(
+                    np.float32(one_minus_smooth * numerator) / denominator
+                )
+                damped_old = np.float32(smooth * old_centroids[channel, class_index])
+                updated[channel, class_index] = np.float32(weighted_mean + damped_old)
+    return updated
