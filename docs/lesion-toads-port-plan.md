@@ -606,10 +606,29 @@ with two expected RAS warnings in 67.49 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-voxel-membership-normalization.md`](reports/full-pytest-2026-09-29-lesion-toads-voxel-membership-normalization.md)
 and [`tests/data/synthetic/lesion_toads_voxel_membership_normalization/README.md`](../tests/data/synthetic/lesion_toads_voxel_membership_normalization/README.md).
 
-### Started substage: P39zc selected lesion-membership integration
+### Completed substage: P39zc selected lesion-membership integration
 
 Compose the already checked per-class inverse/prior conversion, source
 direct/prior auxiliary lesion relation initialization, lesion and black-hole
 distance modulation, and final voxel denominator/normalization. Keep class
 energies as synthetic precomputed inputs; smoothing and spatial-prior energy
 assembly are not part of this integration slice.
+
+Five selected-Java cases match class and auxiliary membership float32 bits,
+`lesionRelation`, denominator, and local energy through class inversion,
+direct/prior scaling, distance modulation, and normalization. They cover
+mixed ordinary/lesion/black-hole classes, ventricle and GM paths, brainstem,
+and zero denominator. Focused suite: 1 passed; full suite: 448 passed with
+two expected RAS warnings in 61.93 seconds on implementation commit
+`a55cc41d6c451f8d3698d1e80ee5128c9a909ee1`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-membership-integration.md)
+and [`tests/data/synthetic/lesion_toads_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_membership_integration/README.md).
+
+### Started substage: P39zd six-face smoothing-energy update
+
+Port one source-ordered voxel update from the `smoothing > 0` branch of
+`computeMemberships`. Sum, in the Java face/class order, all other classes'
+neighbor membership squares and the lesion/black-hole auxiliary squares;
+then apply the class-specific current-label self term and lesion/black-hole/
+outmask energy cross terms. Preserve separate full and half-energy updates.
+This does not iterate smoothing over a volume or update memberships.
