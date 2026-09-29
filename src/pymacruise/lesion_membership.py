@@ -36,6 +36,20 @@ class LesionVoxelMembershipNormalization:
     energy: np.float32
 
 
+@dataclass(frozen=True)
+class LesionToadsSmoothingEnergyUpdate:
+    """One class/auxiliary energy update from the selected six-face stencil."""
+
+    class_energy: np.float32
+    lesion_energy: np.float32
+    black_hole_energy: np.float32
+    outmask_membership_energy: np.float32
+    other_class_neighbor_squares: np.float32
+    lesion_neighbor_squares: np.float32
+    black_hole_neighbor_squares: np.float32
+    current_class_neighbor_squares: np.float32
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
@@ -308,4 +322,105 @@ def normalize_lesion_toads_voxel_memberships(
         outlier_membership=outlier,
         denominator=denominator,
         energy=local_energy,
+    )
+
+
+def update_lesion_toads_smoothing_energies(
+    class_neighbor_memberships: np.ndarray,
+    lesion_neighbor_memberships: np.ndarray,
+    black_hole_neighbor_memberships: np.ndarray,
+    *,
+    class_index: int,
+    class_type: str,
+    smoothing_prior: float,
+    smoothing: float,
+    class_energy: float,
+    lesion_energy: float,
+    black_hole_energy: float,
+    outmask_membership_energy: float,
+) -> LesionToadsSmoothingEnergyUpdate:
+    """Apply one source-ordered six-face smoothing update at a voxel.
+
+    Face order for the input is X+, X-, Y+, Y-, Z+, Z-. The selected source
+    accumulates all other-class neighbor squares in that face order and class
+    order, then separately sums the current class's self-neighbor term in
+    X-, X+, Y-, Y+, Z-, Z+ order for lesion-related types.
+    """
+    memberships = np.asarray(class_neighbor_memberships, dtype=np.float32)
+    lesion_faces = np.asarray(lesion_neighbor_memberships, dtype=np.float32)
+    black_hole_faces = np.asarray(black_hole_neighbor_memberships, dtype=np.float32)
+    if memberships.ndim != 2 or memberships.shape[0] != 6 or memberships.shape[1] == 0:
+        raise ValueError("class_neighbor_memberships must have shape (6, classes)")
+    if lesion_faces.shape != (6,) or black_hole_faces.shape != (6,):
+        raise ValueError("auxiliary neighbor memberships must each have six face values")
+    if isinstance(class_index, (bool, np.bool_)) or not isinstance(class_index, (int, np.integer)):
+        raise ValueError("class_index must be an integer")
+    if not 0 <= int(class_index) < memberships.shape[1]:
+        raise ValueError("class_index must identify one input membership channel")
+    supported = {"OBJECT", "LESION", "OPTIMIZED_LESION", "BLACKHOLE", "OUTMASK", "OUTLIER", "MASK"}
+    if class_type not in supported:
+        raise ValueError("class_type must be OBJECT, LESION, OPTIMIZED_LESION, BLACKHOLE, or OUTMASK")
+
+    k = int(class_index)
+    other = np.float32(0.0)
+    lesion_sum = np.float32(0.0)
+    black_hole_sum = np.float32(0.0)
+    # The Java source visits X+, X-, Y+, Y-, Z+, Z- and each class in order.
+    for face in range(6):
+        for class_no in range(memberships.shape[1]):
+            if class_no != k:
+                square = np.float32(memberships[face, class_no] * memberships[face, class_no])
+                other = np.float32(other + square)
+        lesion_square = np.float32(lesion_faces[face] * lesion_faces[face])
+        lesion_sum = np.float32(lesion_sum + lesion_square)
+        black_hole_square = np.float32(black_hole_faces[face] * black_hole_faces[face])
+        black_hole_sum = np.float32(black_hole_sum + black_hole_square)
+
+    current_sum = np.float32(0.0)
+    if class_type in {"LESION", "OPTIMIZED_LESION", "BLACKHOLE"}:
+        for face in (1, 0, 3, 2, 5, 4):
+            square = np.float32(memberships[face, k] * memberships[face, k])
+            current_sum = np.float32(current_sum + square)
+
+    p = np.float32(smoothing_prior)
+    smooth = np.float32(smoothing)
+    cls_energy = np.float32(class_energy)
+    lesion_e = np.float32(lesion_energy)
+    black_hole_e = np.float32(black_hole_energy)
+    outmask_e = np.float32(outmask_membership_energy)
+
+    all_neighbor_sum = np.float32(other + lesion_sum)
+    all_neighbor_sum = np.float32(all_neighbor_sum + black_hole_sum)
+    class_full = np.float32(np.float32(p * smooth) * all_neighbor_sum)
+    class_half = np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * all_neighbor_sum)
+    cls_energy = np.float32(cls_energy + class_half)
+
+    if class_type in {"LESION", "OPTIMIZED_LESION", "BLACKHOLE"}:
+        lesion_sum_for_update = np.float32(other + current_sum)
+        lesion_sum_for_update = np.float32(lesion_sum_for_update + black_hole_sum)
+        lesion_half = np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * lesion_sum_for_update)
+        lesion_e = np.float32(lesion_e + lesion_half)
+
+    if class_type == "BLACKHOLE":
+        black_hole_sum_for_update = np.float32(other + current_sum)
+        black_hole_sum_for_update = np.float32(black_hole_sum_for_update + lesion_sum)
+        black_hole_half = np.float32(
+            np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * black_hole_sum_for_update)
+        )
+        black_hole_e = np.float32(black_hole_e + black_hole_half)
+
+    if class_type == "OUTMASK":
+        outmask_sum = np.float32(other + lesion_sum)
+        outmask_full = np.float32(np.float32(p * smooth) * outmask_sum)
+        outmask_e = np.float32(outmask_e + outmask_full)
+
+    return LesionToadsSmoothingEnergyUpdate(
+        class_energy=cls_energy,
+        lesion_energy=lesion_e,
+        black_hole_energy=black_hole_e,
+        outmask_membership_energy=outmask_e,
+        other_class_neighbor_squares=other,
+        lesion_neighbor_squares=lesion_sum,
+        black_hole_neighbor_squares=black_hole_sum,
+        current_class_neighbor_squares=current_sum,
     )
