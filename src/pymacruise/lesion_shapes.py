@@ -1,0 +1,133 @@
+"""Selected LesionTOADS class-wise rigid shape-prior sampling."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+from pymacruise.toads_shapes import sample_toad_shape_prior
+
+
+@dataclass(frozen=True)
+class LesionShapeSample:
+    """One sampled LesionTOADS prior and its rigidly mapped template point."""
+
+    value: np.float32
+    template_xyz: tuple[np.float32, np.float32, np.float32] | None
+
+
+def sample_lesion_shape_prior(
+    shape: np.ndarray,
+    image_point_xyz: tuple[int, int, int],
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    class_index: int,
+    bbox_low_xyz: tuple[int, int, int],
+    bbox_high_xyz: tuple[int, int, int],
+    transform_mode: str = "rigid",
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+) -> LesionShapeSample:
+    """Sample one class as in `LesionToadAtlas.getRegularTransformedShape`.
+
+    Rigid mapping reuses the source-compared `ParametricTransform` port in
+    :mod:`pymacruise.toads_shapes`. The selected LesionTOADS wrapper differs
+    from TOADS shape membership sampling: class 0 uses interpolation default
+    1, other classes use 0, out-of-template coordinates return that complete
+    default value, and no `shapeSlope` recovery or closest-edge clamping is
+    applied. `transform_mode="none"` directly indexes the map as the Java
+    method does. Multiple/deformable transforms are outside this slice.
+    """
+    values = np.asarray(shape, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("LesionTOADS shape prior must be 3D with dimensions >= 2")
+    if not np.isfinite(values).all():
+        raise ValueError("LesionTOADS shape prior must contain only finite values")
+    image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
+    point = _triple_int(image_point_xyz, "image_point_xyz")
+    if any(point[axis] < 0 or point[axis] >= image_dims[axis] for axis in range(3)):
+        raise ValueError("image_point_xyz must be inside the declared input grid")
+    if not isinstance(class_index, (int, np.integer)) or class_index < 0:
+        raise ValueError("class_index must be a nonnegative integer")
+    default = np.float32(1.0 if class_index == 0 else 0.0)
+
+    mode = transform_mode.strip().lower()
+    if mode == "none":
+        if values.shape != image_dims:
+            raise ValueError("untransformed shape dimensions must match the input grid")
+        return LesionShapeSample(np.float32(values[point]), None)
+    if mode != "rigid":
+        raise ValueError("LesionTOADS shape sampling supports only 'none' or 'rigid' here")
+
+    bounds = sample_toad_shape_prior(
+        values,
+        point,
+        image_dimensions_xyz=image_dims,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolutions_mm,
+        transform=transform,
+        class_index=int(class_index),
+        bbox_low_xyz=bbox_low_xyz,
+        bbox_high_xyz=bbox_high_xyz,
+        shape_slope=1.0,
+        scale=1.0,
+        image_center_xyz=image_center_xyz,
+        template_center_xyz=template_center_xyz,
+    )
+    if bounds.template_xyz is None:
+        return LesionShapeSample(default, None)
+    mapped = bounds.template_xyz
+    sampled = _linear_interpolation_with_default(values, mapped, default)
+    return LesionShapeSample(sampled, mapped)
+
+
+def _linear_interpolation_with_default(
+    image: np.ndarray,
+    point_xyz: tuple[np.float32, np.float32, np.float32],
+    default: np.float32,
+) -> np.float32:
+    """Match ImageFunctions.linearInterpolation(value,...), including bounds."""
+    if any(
+        point_xyz[axis] < np.float32(0.0)
+        or point_xyz[axis] > np.float32(image.shape[axis] - 2)
+        for axis in range(3)
+    ):
+        return np.float32(default)
+
+    lower = tuple(int(np.floor(point_xyz[axis])) for axis in range(3))
+    fraction = tuple(
+        np.float32(point_xyz[axis] - np.float32(lower[axis])) for axis in range(3)
+    )
+    complement = tuple(np.float32(np.float32(1.0) - fraction[axis]) for axis in range(3))
+    x, y, z = lower
+    a, b, c = fraction
+    na, nb, nc = complement
+    terms = (
+        np.float32(np.float32(np.float32(na * nb) * nc) * image[x, y, z]),
+        np.float32(np.float32(np.float32(a * nb) * nc) * image[x + 1, y, z]),
+        np.float32(np.float32(np.float32(na * b) * nc) * image[x, y + 1, z]),
+        np.float32(np.float32(np.float32(na * nb) * c) * image[x, y, z + 1]),
+        np.float32(np.float32(np.float32(a * b) * nc) * image[x + 1, y + 1, z]),
+        np.float32(np.float32(np.float32(na * b) * c) * image[x, y + 1, z + 1]),
+        np.float32(np.float32(np.float32(a * nb) * c) * image[x + 1, y, z + 1]),
+        np.float32(np.float32(np.float32(a * b) * c) * image[x + 1, y + 1, z + 1]),
+    )
+    result = np.float32(terms[0] + terms[1])
+    for term in terms[2:]:
+        result = np.float32(result + term)
+    return result
+
+
+def _triple_int(
+    values: tuple[int, ...], name: str, *, positive: bool = False
+) -> tuple[int, int, int]:
+    if len(values) != 3 or any(not isinstance(item, (int, np.integer)) for item in values):
+        raise ValueError(f"{name} must contain three integers")
+    result = tuple(int(item) for item in values)
+    if positive and any(item <= 0 for item in result):
+        raise ValueError(f"{name} values must be positive")
+    return result

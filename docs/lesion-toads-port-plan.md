@@ -161,3 +161,20 @@ assets and synthetic malformed-path, missing-file, shape, dimension, value,
 alias, and orientation cases are covered. This intentionally does not
 implement the selected Java raw-float reader, atlas registration, or
 transformed-prior interpolation; those remain separate steps.
+
+### Started substage: P39f transformed shape-prior sampling
+
+`sample_lesion_shape_prior` follows the selected rigid branch of
+`LesionToadAtlas.getRegularTransformedShape`. It reuses the source-compared
+rigid coordinate mapping from `toads_shapes.py`, applies the LesionTOADS
+per-class image bounds, then samples with the source `ImageFunctions`
+constant-outside linear interpolation. Class index 0 uses default value 1;
+other classes use 0. This path deliberately skips TOADS's closest-edge
+interpolation and `shapeSlope` recovery. A headless selected-Java formula
+harness covers identity/rigid mapping, anisotropic grid resolution, fractional
+coordinates, per-class bounds, and low/high template out-of-range behavior.
+The focused tests pass; the next check is the full suite and plan evidence.
+The harness does not instantiate the complete atlas class and this slice does
+not perform registration, transformed-bound optimization, or lesion
+segmentation. Provenance and fixture are in
+`tests/data/synthetic/lesion_shape_sampling/README.md`.
