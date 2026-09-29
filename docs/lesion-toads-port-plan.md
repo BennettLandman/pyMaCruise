@@ -3,7 +3,8 @@
 **Status:** P39 is Started. P39a–P39s have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
-queue exhaustion with pre-supplied memberships. P39d/e validate bundled
+queue exhaustion with pre-supplied memberships and P39t validates the
+membership update's centroid-similarity setup. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
 include atlas sampling, transform optimization, or segmentation. This
 document tracks algorithm scope and source contracts; it does not claim a
@@ -439,7 +440,7 @@ and [`tests/data/synthetic/lesion_growing_pass/README.md`](../tests/data/synthet
 Statistical membership estimation, competition/thinning, and final
 LesionTOADS segmentation remain unvalidated.
 
-### Started substage: P39t centroid-similarity setup
+### Completed substage: P39t centroid-similarity setup
 
 The selected `computeMemberships` method first builds class-to-class and
 lesion-to-class similarity coefficients from the current centroids, standard
@@ -448,6 +449,15 @@ involving `Sulcal-CSF` uses only the T1 channel; lesion similarity otherwise
 uses all channels and excludes lesion, black-hole, and optimized-lesion
 classes. The source's black-hole similarity calculation is commented out, so
 this slice must preserve its existing state rather than invent a formula.
-Validation will compare each coefficient's float32 bits with a small Java
-formula harness. This is preparation for membership estimation only; it does
-not compute per-voxel memberships or lesion segmentation.
+Four deterministic two-channel/four-class Java formula cases match the
+class-similarity matrix and lesion-similarity vector bit-for-bit, including
+the T1-specific Sulcal-CSF branch, the no-T1 fallback, lesion-type exclusions,
+and zero-standard-deviation NaNs. The source-initialized black-hole similarity
+vector is preserved unchanged because its only update in the selected method
+is commented out. One focused test passes; the full suite reports 427 passed
+with two expected RAS warnings in 63.35 seconds on implementation commit
+`91fc287a4b1dffc1f4acc701e0c44beca2816d61`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-similarity.md`](reports/full-pytest-2026-09-29-lesion-toads-similarity.md)
+and [`tests/data/synthetic/lesion_toads_similarity/README.md`](../tests/data/synthetic/lesion_toads_similarity/README.md).
+This validates coefficient setup only; voxelwise membership estimation and
+lesion segmentation remain open.
