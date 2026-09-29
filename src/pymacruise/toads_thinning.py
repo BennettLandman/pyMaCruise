@@ -1,9 +1,10 @@
 """Selected VandyCRUISE TOADS thinning operations.
 
 Behavior follows ``MultipleToadSegmentation.java`` (April 2006, author
-Pierre-Louis Bazin), especially ``initThinningLabels`` and
-``propagateThinning``. See synthetic Java-reference reports for source hashes,
-matched slices, and known limits; this module is not a complete TOADS port.
+Pierre-Louis Bazin), especially ``initGrowingLabels``,
+``initThinningLabels``, and ``propagateThinning``. See synthetic
+Java-reference reports for source hashes, matched slices, and known limits;
+this module is not a complete TOADS port.
 """
 
 from __future__ import annotations
@@ -165,6 +166,111 @@ class ToadsThinningQueueInitialization:
     class_volumes: NDArray[np.float32]
     boundary_counts: NDArray[np.int32]
     queue: ToadsPriorityHeap4D
+
+
+@dataclass(frozen=True)
+class ToadsGrowingQueueInitialization:
+    """Availability and min-heap entries emitted by source initGrowingLabels."""
+
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    queue: ToadsPriorityHeap4D
+
+
+def toads_initialize_growing_queue(
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    ordering: ArrayLike,
+    *,
+    initial_available: ArrayLike | None = None,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsGrowingQueueInitialization:
+    """Initialize the selected VandyCRUISE initGrowingLabels queue.
+
+    Interior empty-skeleton voxels begin available for every class; nonempty
+    skeleton voxels begin unavailable. A candidate is then inserted for each
+    available class touching that class on a six-face, using source priority
+    ordering + maxMembershipRatio in a min-heap. Existing border availability
+    is preserved, but it must be false so the source neighbor reads remain
+    in bounds.
+    """
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    orderings = np.asarray(ordering, dtype=np.float32)
+    if skel.ndim != 3 or any(length < 3 for length in skel.shape):
+        raise ValueError("skeleton must be a 3-D grid with every dimension at least 3")
+    if not np.issubdtype(skel.dtype, np.integer):
+        raise ValueError("skeleton labels must be integers")
+    if mems.ndim != 4 or mems.shape[:3] != skel.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D, match skeleton, and contain at least two classes")
+    classes = mems.shape[-1]
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    if orderings.shape != skel.shape or not np.isfinite(orderings).all():
+        raise ValueError("ordering must be finite and match the skeleton grid")
+    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+        raise ValueError("skeleton labels must be valid class indices or empty_label")
+    zero = np.float32(zero_threshold)
+    if not np.isfinite(zero) or zero < np.float32(0.0):
+        raise ValueError("zero_threshold must be finite and nonnegative")
+
+    if initial_available is None:
+        available = np.zeros(skel.shape + (classes,), dtype=np.bool_)
+    else:
+        source_available = np.asarray(initial_available)
+        if source_available.shape != skel.shape + (classes,) or source_available.dtype != np.bool_:
+            raise ValueError("initial_available must be boolean and match skeleton and classes")
+        available = source_available.copy()
+    border = np.zeros(skel.shape, dtype=np.bool_)
+    for axis in range(3):
+        selectors = [slice(None)] * 3
+        selectors[axis] = 0
+        border[tuple(selectors)] = True
+        selectors[axis] = -1
+        border[tuple(selectors)] = True
+    if np.any(available[border]):
+        raise ValueError("initial border availability must be false for source-safe six-face reads")
+
+    nx, ny, nz = skel.shape
+    updated_skeleton = skel.astype(np.int16, copy=True)
+    queue = ToadsPriorityHeap4D(nx * ny + ny * nz + nz * nx, "min")
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                is_empty = int(skel[x, y, z]) == empty_label
+                available[x, y, z, :] = is_empty
+
+    for x in range(nx):
+        for y in range(ny):
+            for z in range(nz):
+                for label in range(classes):
+                    if not available[x, y, z, label]:
+                        continue
+                    boundary = any(
+                        int(updated_skeleton[x + dx, y + dy, z + dz]) == label
+                        for dx, dy, dz in _FACE_NEIGHBORS
+                    )
+                    if not boundary:
+                        continue
+                    available[x, y, z, label] = False
+                    best = 0
+                    maximum = np.float32(0.0)
+                    for candidate in range(classes):
+                        if mems[x, y, z, candidate] > maximum:
+                            best = candidate
+                            maximum = mems[x, y, z, candidate]
+                    if label == best:
+                        ratio = np.float32(1.0)
+                    else:
+                        ratio = np.float32(
+                            np.float32(mems[x, y, z, best] + zero)
+                            / np.float32(mems[x, y, z, label] + zero)
+                        )
+                    priority = np.float32(orderings[x, y, z] + ratio)
+                    queue.add(priority, x, y, z, label)
+
+    return ToadsGrowingQueueInitialization(updated_skeleton, available, queue)
 
 
 def toads_initialize_thinning_queue(

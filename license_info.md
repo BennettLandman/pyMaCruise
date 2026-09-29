@@ -25,6 +25,8 @@ The project owner states that they are an author on all existing source code sup
 
 | VandyCRUISE initialized TOADS thinning-pass harness | The selected source excerpts are `MultipleToadSegmentation.initThinningLabels` and `propagateThinning` (April 2006; Pierre-Louis Bazin); the harness uses the test-only LUT and heap copies. | The test-only synthetic 12³ reference harness is documented in `tests/java_reference/README.md` and `tests/data/synthetic/toads_initialized_thinning_pass/README.md`; it is excluded from the runtime. Include it in the tech-transfer source and notice review. |
 
+| VandyCRUISE TOADS growing-queue initializer harness | The selected source behavior follows `MultipleToadSegmentation.initGrowingLabels` (April 2006; Pierre-Louis Bazin) and test-only `BinaryHeap4D`. | Java harness and fixture provenance are recorded in `tests/java_reference/README.md` and `tests/data/synthetic/toads_growing_queue/README.md`; test-only, not a runtime dependency. Include in tech-transfer source and notice review. |
+
 ## Comment and notice practice during the port
 
 For algorithm modules derived from a supplied source behavior, preserve a short attribution comment in the Python file. For example:

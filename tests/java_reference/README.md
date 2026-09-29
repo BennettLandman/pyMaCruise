@@ -116,3 +116,14 @@ zero GVF, and a planar thin skeleton. It has a 1 mm identity RAS affine. There
 is no subject data. `tests/data/synthetic/tgdm/java_reference/` contains the
 initial signed seed, smoothed seed, tissue-sign field, initial inner surface,
 central surface, central shrink, final inner surface, and outer surface.
+
+
+## TOADS growing-queue initialization
+
+`ToadsGrowingQueueInitializationReferenceHarness.java` transcribes the selected
+`initGrowingLabels` initialization against the test-only Java `BinaryHeap4D`.
+Three synthetic cases verify class-specific six-face seed detection, float32
+priority construction, availability changes, and full min-heap pop order.
+Regenerate with
+`scripts/generate_java_toads_growing_queue_initialization_reference.sh`; see
+`tests/data/synthetic/toads_growing_queue/README.md`.
