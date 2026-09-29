@@ -117,6 +117,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P40d is complete. `plus_tgdm_parameters` maps the MaCRUISEplus `WMIsoLevel=0.5` to the existing TGDM parameter and preserves all other selected defaults; a nondefault synthetic setting proves the mapping. Focused plus/TGDM tests: 29 passed. The full suite reports **468 passed in 57.98 seconds**, with two expected RAS warnings, on implementation commit `cef0c45023013c3fd5ba0d51a9ceec2ecc0a8510`; see the [P40d report](docs/reports/full-pytest-2026-09-29-plus-wm-isolevel-routing.md) and [source mapping](docs/plus-pipeline-contract.md). This validates option routing, not surface-output equivalence. The roadmap counts 146/160 rows (~91%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+**Progress update (2026-09-29):** P40e is complete. The plus ACE adapter now passes profile mode 3 into MaACE and honors `update_Enhance=0`; unsupported enabled update mode fails explicitly. The Java-referenced synthetic output agrees within the established ACE tolerance for enhanced GM and exactly for cleaned/thinned skeletons. Focused plus ACE tests: 5 passed. The full suite reports **470 passed in 57.48 seconds**, with two expected RAS warnings, on implementation commit `89514b8d4886d668733af2e9ec204a6b641a99c9`; see the [P40e report](docs/reports/full-pytest-2026-09-29-plus-maace-stage.md) and [fixture provenance](tests/data/synthetic/ace_after_gaussian/README.md). Full plus orchestration remains open. The roadmap counts 147/161 rows (~91%) Done, 2 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

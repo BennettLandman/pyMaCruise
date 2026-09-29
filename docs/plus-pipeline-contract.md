@@ -19,7 +19,7 @@ ported by the settings object.
 | `GVF_Lambda` | `0.2` | `gvf_lambda` | `run_plus_gvf_stage` forwards this value to `generalized_gvf_image` with the source wrapper's 200-iteration maximum and no vector normalization. See the [P40c parameter-routing report](reports/full-pytest-2026-09-29-plus-gvf-routing.md). |
 | `IfGenerateIntermediate` | `true` | `generate_intermediate` | Request intermediate output files in the selected source workflow. |
 | `NewCSFfile` | output of boundary cleaning | not a scalar option | Supplies the updated CSF/boundary input to ACE. |
-| `UseUpdatedCSFinACE` | `3` | `use_updated_csf_in_ace` | Merge positive updated-CSF voxels after the speed map's second alpha-1.8 Gaussian; the selected MaACE wrapper writes speed 0.1 there. See [the P40b Java comparison](reports/full-pytest-2026-09-29-plus-ace-after-gaussian-csf-merge.md). |
+| `UseUpdatedCSFinACE` | `3` | `use_updated_csf_in_ace` | `run_plus_ace_stage` passes placement 3 to the existing ACE API. Merge positive updated-CSF voxels after the speed map's second alpha-1.8 Gaussian; the selected MaACE wrapper writes speed 0.1 there. See [the P40b Java comparison](reports/full-pytest-2026-09-29-plus-ace-after-gaussian-csf-merge.md) and [the P40e wiring report](reports/full-pytest-2026-09-29-plus-maace-stage.md). |
 | `MaWM` | cropped pre-update WM file | not a scalar option | Input used for topology refinement. |
 | `refineTopoCorrectByMa` | `1` | `refine_topology_by_maseg` | Enable source refinement using MaSeg-derived WM. |
 
