@@ -894,3 +894,95 @@ def toads_inverse_shape_prior_energy(
                         half_coefficient * inverse_prior
                     )
     return inverse_energy, objective_energy
+
+
+def toads_optimized_membership_pass(
+    image_values: ArrayLike,
+    initial_memberships: ArrayLike,
+    centroids: ArrayLike,
+    exponent_by_channel_class: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    segmentation: ArrayLike,
+    transformed_shape_values: ArrayLike,
+    closest_labels: ArrayLike,
+    atlas_shape_priors: ArrayLike,
+    smoothing_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    prior_coefficient: float,
+    *,
+    intensity_field: ArrayLike | None = None,
+    psf_ridge: float = 0.0,
+    prior_scale: float = 0.05,
+) -> tuple[NDArray[np.float32], np.float32]:
+    """Run one composed optimized-CSF/GM/WM TOADS membership pass.
+
+    This wires the individually validated source-compatible terms together:
+    image-wide inverse-variance weights, assigned-class standard deviations,
+    centroid similarities, optional PSF bias, optimized-tissue likelihood,
+    atlas inverse-shape-prior energy, six-face smoothing, relation factors,
+    reciprocal conversion, normalization, and cumulative objective. All
+    membership classes supplied are assumed to be optimized tissue types.
+    The selected sweep is asynchronous/in-place and updates only interior
+    voxels, matching the current source scan. Topology admissibility, centroid
+    re-estimation, atlas deformation, other object types, and convergence are
+    outside this one-pass helper.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    memberships = np.asarray(initial_memberships, dtype=np.float32)
+    centers = np.asarray(centroids, dtype=np.float32)
+    shapes = np.asarray(transformed_shape_values, dtype=np.float32)
+    labels = np.asarray(closest_labels)
+    atlas_priors = np.asarray(atlas_shape_priors, dtype=np.float32)
+    classes = memberships.shape[-1] if memberships.ndim == 4 else 0
+    if images.ndim != 4 or memberships.ndim != 4 or images.shape[:3] != memberships.shape[:3]:
+        raise ValueError("images and memberships must be 4-D with matching spatial grids")
+    if memberships.shape[-1] < 1 or not np.isfinite(memberships).all():
+        raise ValueError("initial_memberships must be finite with at least one class")
+    if shapes.shape != memberships.shape or not np.isfinite(shapes).all():
+        raise ValueError("transformed_shape_values must be finite and match memberships")
+    if labels.shape != memberships.shape[:3] + (4,) or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("closest_labels must be an integer grid with four label slots")
+    if atlas_priors.shape != (classes,) or not np.isfinite(atlas_priors).all():
+        raise ValueError("atlas_shape_priors must be finite and match the class count")
+    expected_centroids = (images.shape[-1], classes)
+    if centers.shape != expected_centroids or not np.isfinite(centers).all():
+        raise ValueError("centroids must be finite and match (modality, class) dimensions")
+
+    image_variance_weights, _ = toads_optimized_image_variance(
+        images, memberships, centers, intensity_field=intensity_field
+    )
+    class_deviations = toads_optimized_class_standard_deviation(
+        images, memberships, centers, segmentation, intensity_field=intensity_field
+    )
+    similarities = toads_optimized_centroid_similarity(
+        centers, class_deviations, image_variance_weights, prior_scale
+    )
+    bias = toads_psf_ridge_bias(
+        images, segmentation, psf_ridge, intensity_field=intensity_field
+    )
+    data_energy = toads_optimized_tissue_data_term(
+        images,
+        centers,
+        exponent_by_channel_class,
+        modality_weights,
+        class_variance_weights,
+        image_variance_weights,
+        intensity_field=intensity_field,
+        psf_bias=bias,
+    )
+    prior_inverse, prior_objective = toads_inverse_shape_prior_energy(
+        shapes, atlas_priors, similarities, prior_coefficient
+    )
+    return toads_ordered_membership_sweep(
+        data_energy,
+        memberships,
+        shapes,
+        labels,
+        smoothing_priors,
+        smoothing,
+        prior_factor,
+        prior_inverse_energy=prior_inverse,
+        prior_objective_energy=prior_objective,
+    )
