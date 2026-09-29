@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zza have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK and BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zzb have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1059,9 +1059,23 @@ and
 This remains selected formula validation, not whole-engine equivalence.
 
 
-### Started substage: P39zzb three-auxiliary volume composition
+### Completed substage: P39zzb three-auxiliary volume composition
 
 Compose LESION, BLACKHOLE, and OUTMASK classes in one source-ordered volume
 sweep. Preserve distinct LESION and BLACKHOLE smoothing/prior equations,
 distance-map behavior, OUTMASK blending, shared map updates, and denominator
 normalization under multiple atlas class orders.
+
+Two committed selected-Java synthetic references exercise both orders for the
+last lesion-related class, which determines the source-selected `lesionClass`.
+The fixtures cover all three auxiliary maps, smoothing and prior terms,
+distance sentinels, zero/unit outlier weights, shape gating, shared map
+normalization, and preserved boundaries. All interior class, lesion,
+black-hole, and outlier float32 membership bits match. Focused suite: 13
+passed. Full suite: 518 passed with two expected RAS orientation warnings in
+87.97 seconds on implementation commit
+`b44982bef1e9b87c34d597fa8c9fb9d008161908`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-three-auxiliary-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-three-auxiliary-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md`](../tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md).
+This is selected formula validation, not whole-engine equivalence.
