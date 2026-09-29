@@ -817,3 +817,60 @@ def toads_optimized_centroid_similarity(
                 denominator = np.float32(np.float32(1.0) + scaled_distance)
                 similarities[k, m] = np.float32(np.float32(1.0) / denominator)
     return similarities
+
+
+def toads_inverse_shape_prior_energy(
+    shape_values: ArrayLike,
+    shape_priors: ArrayLike,
+    centroid_similarity: ArrayLike,
+    prior_coefficient: float,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Compute TOADS' atlas inverse-prior and objective-energy terms.
+
+    For each interior voxel and candidate class ``k``, the source sums over
+    all ``m != k`` the product ``shape_prior[m] * similarity[k,m] *
+    shape[m] * shape[m]``. It adds ``prior_coefficient * invprior`` to the
+    class inverse-energy and half that amount to objective energy. The source
+    only enters this calculation when the coefficient is positive; borders
+    therefore receive zero terms here. Class and spatial traversal use the
+    selected source order and float32 arithmetic.
+    """
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    priors = np.asarray(shape_priors, dtype=np.float32)
+    similarity = np.asarray(centroid_similarity, dtype=np.float32)
+    coefficient = np.float32(prior_coefficient)
+    if shapes.ndim != 4 or shapes.shape[-1] < 1 or not np.isfinite(shapes).all():
+        raise ValueError("shape_values must be finite 4-D with a class axis")
+    classes = shapes.shape[-1]
+    if priors.shape != (classes,) or not np.isfinite(priors).all():
+        raise ValueError("shape_priors must be finite and match the class count")
+    if similarity.shape != (classes, classes) or not np.isfinite(similarity).all():
+        raise ValueError("centroid_similarity must be finite and square by class")
+    if not np.isfinite(coefficient):
+        raise ValueError("prior_coefficient must be finite")
+    inverse_energy = np.zeros(shapes.shape, dtype=np.float32)
+    objective_energy = np.zeros(shapes.shape, dtype=np.float32)
+    if coefficient <= np.float32(0.0):
+        return inverse_energy, objective_energy
+
+    nx, ny, nz, _ = shapes.shape
+    half_coefficient = np.float32(np.float32(0.5) * coefficient)
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                for candidate in range(classes):
+                    inverse_prior = np.float32(0.0)
+                    for other in range(classes):
+                        if other == candidate:
+                            continue
+                        term = np.float32(priors[other] * similarity[candidate, other])
+                        term = np.float32(term * shapes[x, y, z, other])
+                        term = np.float32(term * shapes[x, y, z, other])
+                        inverse_prior = np.float32(inverse_prior + term)
+                    inverse_energy[x, y, z, candidate] = np.float32(
+                        coefficient * inverse_prior
+                    )
+                    objective_energy[x, y, z, candidate] = np.float32(
+                        half_coefficient * inverse_prior
+                    )
+    return inverse_energy, objective_energy
