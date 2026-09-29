@@ -59,3 +59,21 @@ Java/LUT/heap harness on a synthetic folded-band phantom. Event outcomes and
 all final arrays match the Java harness reference exactly. This is not an
 end-to-end TOADS or atlas-registration validation. Subsequent plan, report,
 and README edits do not modify implementation or tests.
+## P48: MaCRUISE and CCSE paper mapping
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/python -m pytest -q` from the `pymacruise/` repository root |
+| Result | **365 passed in 76.38 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested implementation commit | `0ecf26f5327253329f23bfc40c29ab62318f061a` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run includes the documentation/docstring paper map for MaCRUISE CCSE.
+P48 adds no runtime behavior; validation confirms the existing suite remains
+green for the exact code/documentation commit. The P48 report links the paper,
+maps §2.4 to the selected V3 helper, and records source/paper differences.
+
+Subsequent plan, report, and README edits do not modify implementation or tests.
