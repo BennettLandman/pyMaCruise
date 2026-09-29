@@ -493,5 +493,8 @@ diagonal and IEEE zero-deviation behavior; see the [P18ao report](reports/toads-
 The voxelwise inverse shape-prior contribution and its half-weighted objective
 energy are now matched against the source formula, with the source interior
 scan and untouched borders; see the [P18ap report](reports/toads-inverse-shape-prior-2026-09-29.md).
+That contribution is now composed into the ordered in-place, six-face
+membership sweep and compared end-to-end at formula level on a small synthetic
+grid; see the [P18aq report](reports/toads-ordered-prior-sweep-2026-09-29.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
