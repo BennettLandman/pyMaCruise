@@ -749,6 +749,23 @@ Subsequent plan/report/README edits do not modify implementation or tests.
 This run validates the P18aw implementation and committed synthetic references.
 Subsequent plan/report/README edits do not modify implementation or tests.
 
+## Additional full-suite run for P18ax
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **359 passed in 73.99 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `6b2c74adadf05097a6e21662a6bf7ae07c0c2330` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the one-event P18ax composition and all previously
+committed synthetic references. The exact output arrays and remaining Java heap
+order are recorded in the P18ax report. Subsequent plan/report/README edits do
+not modify implementation or tests.
+
 ## Future rows
 
 When a roadmap row is completed, run the complete suite and add its row-specific

@@ -521,5 +521,16 @@ priority/volume guards. These queue slices preserve two source counter quirks,
 recorded in the respective P18av/P18aw reports, and are not repeated global
 thinning or segmentation validation.
 
+P18ax now composes the pop, source volume/skeleton gates, best-class and
+relation target selection, 18/6 topology decision, skeleton/volume update, and
+post-removal neighbor scheduling into one queue event. Seven 5³ source-harness
+cases match the Java LUT, heap, arrays, float32 class volumes, and remaining
+queue exactly. The additional source rule discovered in this composition is
+recorded: queue class `k` selects the center membership and volume update, and
+the source only gates on `skeleton[x][y][z] == k`, even if the center
+segmentation label differs. The [P18ax report](reports/toads-thinning-queue-step-2026-09-29.md)
+contains reference hashes and per-case evidence. This remains a single event;
+it does not establish repeated queue evolution or full segmentation.
+
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
