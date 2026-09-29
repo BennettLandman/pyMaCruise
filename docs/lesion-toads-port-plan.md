@@ -196,3 +196,20 @@ suite passes 399 tests with two expected non-RAS reorientation warnings on
 implementation commit `683ad5063549de8fcb56f40ec3cdabaab7505fab`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-derivatives.md`](reports/full-pytest-2026-09-29-lesion-derivatives.md).
 This does not implement registration updates or segmentation.
+
+### Completed substage: P39h one-voxel rigid-registration coefficients
+
+`lesion_registration_voxel_contributions` composes the class-ordered
+LesionTOADS sampler and derivative, the selected rigid image-to-template
+Jacobian, and the shared source-compared coefficient accumulator. It follows
+the selected `computeRegistrationCoefficients` class-0 and `priorT > 0`
+gates. The 6³ synthetic formula case matches the Java excerpt exactly for
+sampled priors, gradients, Jacobian, cost/norm, gradient, and diagonal
+Hessian. Full suite: 401 passed in 56.22 seconds on implementation commit
+`74e15e7a094a71dc14c1784d5f3bf0e1ec748d31`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-registration-voxel.md`](reports/full-pytest-2026-09-29-lesion-registration-voxel.md).
+The fixture is documented in
+`tests/data/synthetic/lesion_registration_voxel/README.md`. This composes a
+single source-shaped voxel only: it does not implement scan-order volume
+accumulation, energy normalization, transform optimization, atlas bounds
+optimization, or lesion segmentation.
