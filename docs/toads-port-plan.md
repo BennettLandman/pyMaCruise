@@ -534,5 +534,14 @@ snapshot plus the final queue state to Java; see the [P18ay report](reports/toad
 That test begins from a P18ax fixture rather than composing queue initialization
 and the repeated loop, and still does not establish full TOADS segmentation.
 
+P18az composes initialization and the repeated event loop on the deterministic
+12³ four-class phantom. All 1,000 initial queue entries are processed; the
+initial/minimum/final volumes, boundary counts, discrete arrays, and queue
+state match the Java harness exactly. A 0.8 volume ratio exercises both the
+source 100 floor and ratio-derived minimum branches. See the [P18az report](reports/toads-initialized-thinning-pass-2026-09-29.md).
+This validates one source-faithful synthetic thinning pass, while full
+registration, other TOADS iteration stages, growing, Dura, and real-data
+equivalence remain open.
+
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.

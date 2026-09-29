@@ -782,6 +782,23 @@ This run validates the repeated queue driver, per-event source-reference
 checkpoints, and all previously committed synthetic references. Subsequent
 plan/report/README edits do not modify implementation or tests.
 
+## Additional full-suite run for P18az
+
+| Field | Value |
+|---|---|
+| Command | .venv/bin/pytest -q from the pymacruise/ repository root |
+| Result | **361 passed in 74.01 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | 2d5418aa32584ad2de5e6c9dc9df9085ef6265ba |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates initialization, the minimum-volume calculation, and a
+complete synthetic thinning pass to queue exhaustion, plus all previously
+committed synthetic references. Subsequent plan/report/README edits do not
+modify implementation or tests.
+
 ## Future rows
 
 When a roadmap row is completed, run the complete suite and add its row-specific
