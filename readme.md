@@ -83,6 +83,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39y is complete. Eleven selected-Java formula cases match direct/prior class membership conversion bit-for-bit, including the strict `ZERO` cutoff, finite `INF` sentinel, float32 inverse, and source `Numerics.min(1, 2*shape)` behavior below, at, and above shape saturation. The full suite reports **438 passed in 54.59 seconds**, with two expected RAS warnings, on implementation commit `6c92a3db7da65c96b2f01c0f06e791cd479b9813`; see the [P39y full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-membership-conversion.md) and [formula fixture](tests/data/synthetic/lesion_toads_membership_conversion/README.md). This is one class conversion only; lesion auxiliary membership, distance modulation, denominator accumulation, and voxel normalization remain open. The roadmap counts 129/143 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39z is Started: the next scalar slice applies ventricle/GM precedence and independent brainstem distance modulation to lesion membership and its relation factor, using the source's `spread` rule at distance zero. The roadmap counts 129/144 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

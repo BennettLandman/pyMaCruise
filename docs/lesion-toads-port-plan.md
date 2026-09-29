@@ -543,3 +543,14 @@ pass; the full suite reports 438 passed with two expected RAS warnings in
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-membership-conversion.md`](reports/full-pytest-2026-09-29-lesion-toads-membership-conversion.md)
 and [`tests/data/synthetic/lesion_toads_membership_conversion/README.md`](../tests/data/synthetic/lesion_toads_membership_conversion/README.md).
 This remains one class-level conversion, not a full membership update.
+
+### Started substage: P39z lesion distance modulation
+
+The selected source modulates lesion membership and `lesionRelation` using
+valid ventricle distance first, or gray-matter distance only when the
+ventricle branch is inactive and `GMflag` is true. A valid brainstem distance
+then multiplies the current values independently. At zero ventricle/GM
+distance, the numerator uses `spread`; brainstem uses its stored distance
+directly, so zero clears the value. Preserve source maxima, `-1` sentinels,
+branch precedence, and float32 operation order. This scalar slice does not
+generate the distance maps or include black-hole membership.
