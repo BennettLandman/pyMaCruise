@@ -33,6 +33,11 @@ def compute_lesion_toads_unfielded_data_energies(
     use_lesion_weight: bool = False,
     lesion_power_exponent: float | None = None,
     cached_lesion_power_exponent: float | None = None,
+    structure_name: str | None = None,
+    t1_channel: int = -1,
+    has_mprage: bool = False,
+    csf_power_exponent: float | None = None,
+    cached_csf_power_exponent: float | None = None,
 ) -> LesionToadsDataEnergies:
     """Compute one selected unfielded class's weighted squared residuals.
 
@@ -97,15 +102,37 @@ def compute_lesion_toads_unfielded_data_energies(
             raise ValueError("cached_lesion_power_exponent must be finite")
     else:
         cached_exponent = None
+    if not isinstance(t1_channel, (int, np.integer)) or not -1 <= t1_channel < image.size:
+        raise ValueError("t1_channel must be -1 or a valid channel index")
+    if not isinstance(has_mprage, (bool, np.bool_)):
+        raise ValueError("has_mprage must be boolean")
+    sulcal_csf_t1 = bool(
+        object_type in {"obj", "object"}
+        and structure_name == "Sulcal-CSF"
+        and t1_channel != -1
+    )
+    if sulcal_csf_t1 and has_mprage:
+        if csf_power_exponent is None or not np.isfinite(csf_power_exponent):
+            raise ValueError("a finite csf_power_exponent is required for Sulcal-CSF MPRAGE weighting")
+        cached_csf_exponent = (
+            csf_power_exponent
+            if cached_csf_power_exponent is None
+            else cached_csf_power_exponent
+        )
+        if not np.isfinite(cached_csf_exponent):
+            raise ValueError("cached_csf_power_exponent must be finite")
+    else:
+        cached_csf_exponent = None
 
     class_energy = np.float32(0.0)
     lesion_energy = np.float32(0.0)
     black_hole_energy = np.float32(0.0)
     for channel in range(image.size):
-        difference = np.float32(values[channel] - centroid[channel])
-        weighted_difference = np.float32(weights[channel] * difference)
-        contribution = np.float32(weighted_difference * difference)
-        class_energy = np.float32(class_energy + contribution)
+        if not sulcal_csf_t1:
+            difference = np.float32(values[channel] - centroid[channel])
+            weighted_difference = np.float32(weights[channel] * difference)
+            contribution = np.float32(weighted_difference * difference)
+            class_energy = np.float32(class_energy + contribution)
         if object_type == "lesion" and not weighted_lesion_energy:
             lesion_difference = np.float32(values[channel] - lesion[channel])
             lesion_weighted_difference = np.float32(weights[channel] * lesion_difference)
@@ -120,6 +147,22 @@ def compute_lesion_toads_unfielded_data_energies(
             black_hole_weighted_difference = np.float32(weights[channel] * black_hole_difference)
             black_hole_contribution = np.float32(black_hole_weighted_difference * black_hole_difference)
             black_hole_energy = np.float32(black_hole_energy + black_hole_contribution)
+
+    if sulcal_csf_t1:
+        difference = np.float32(values[t1_channel] - centroid[t1_channel])
+        squared_difference = np.float32(difference * difference)
+        if has_mprage:
+            lookup = toads_powertable_lookup(
+                float(squared_difference),
+                float(csf_power_exponent),
+                cached_exponent=float(cached_csf_exponent),
+                minimum=0.0,
+                maximum=4.0,
+                step=float(np.float32(1.0e-6)),
+            ).item()
+            class_energy = np.float32(float(class_energy) + lookup)
+        else:
+            class_energy = squared_difference
 
     if weighted_lesion_energy:
         lesion_difference = np.float32(values[flair_channel] - lesion[flair_channel])
