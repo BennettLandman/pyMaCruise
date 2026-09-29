@@ -24,6 +24,18 @@ class LesionBlackHoleDistanceModulation:
     relation: np.float32
 
 
+@dataclass(frozen=True)
+class LesionVoxelMembershipNormalization:
+    """Normalized class/auxiliary memberships and energy for one voxel."""
+
+    class_memberships: np.ndarray
+    lesion_membership: np.float32
+    black_hole_membership: np.float32
+    outlier_membership: np.float32
+    denominator: np.float32
+    energy: np.float32
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
@@ -216,4 +228,84 @@ def modulate_lesion_toads_blackhole_memberships_by_distances(
         lesion_membership=lesion_result.membership,
         black_hole_membership=black_hole,
         relation=lesion_result.relation,
+    )
+
+
+def normalize_lesion_toads_voxel_memberships(
+    class_memberships: np.ndarray,
+    class_energies: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    *,
+    lesion_membership: float,
+    black_hole_membership: float,
+    outlier_membership: float,
+    lesion_energy: float,
+    black_hole_energy: float,
+) -> LesionVoxelMembershipNormalization:
+    """Run the selected final denominator/normalization loop for one voxel.
+
+    Inputs are already-assigned class and auxiliary memberships plus their
+    local energies. This deliberately preserves source traversal behavior,
+    including adding lesion auxiliaries to the denominator for each matching
+    class and dividing shared auxiliary maps once per matching class during
+    normalization.
+    """
+    memberships = np.asarray(class_memberships, dtype=np.float32).copy()
+    energies = np.asarray(class_energies, dtype=np.float32)
+    types = tuple(class_types)
+    if memberships.ndim != 1 or energies.ndim != 1:
+        raise ValueError("class_memberships and class_energies must be vectors")
+    if len(memberships) == 0 or len(energies) != len(memberships):
+        raise ValueError("class membership and energy vectors must have equal nonzero length")
+    if len(types) != len(memberships):
+        raise ValueError("class_types must have one entry per class")
+    supported = {"OBJECT", "LESION", "OPTIMIZED_LESION", "BLACKHOLE", "OUTLIER", "OUTMASK", "MASK"}
+    if any(not isinstance(kind, str) or kind not in supported for kind in types):
+        raise ValueError("class_types contains an unsupported LesionTOADS type")
+
+    lesion = np.float32(lesion_membership)
+    black_hole = np.float32(black_hole_membership)
+    outlier = np.float32(outlier_membership)
+    lesion_term = np.float32(lesion_energy)
+    black_hole_term = np.float32(black_hole_energy)
+
+    denominator = np.float32(0.0)
+    for membership, kind in zip(memberships, types):
+        if kind in {"LESION", "OPTIMIZED_LESION"}:
+            denominator = np.float32(denominator + lesion)
+        elif kind == "BLACKHOLE":
+            auxiliary_sum = np.float32(lesion + black_hole)
+            denominator = np.float32(denominator + auxiliary_sum)
+        denominator = np.float32(denominator + membership)
+
+    local_energy = np.float32(0.0)
+    if denominator > np.float32(0.0):
+        for index, kind in enumerate(types):
+            memberships[index] = np.float32(memberships[index] / denominator)
+            if kind in {"LESION", "OPTIMIZED_LESION"}:
+                lesion = np.float32(lesion / denominator)
+            elif kind == "BLACKHOLE":
+                lesion = np.float32(lesion / denominator)
+                black_hole = np.float32(black_hole / denominator)
+            elif kind in {"OUTLIER", "OUTMASK"}:
+                outlier = np.float32(outlier / denominator)
+
+            energy_membership = np.float32(energies[index] * memberships[index])
+            energy_membership = np.float32(energy_membership * memberships[index])
+            local_energy = np.float32(local_energy + energy_membership)
+
+    lesion_energy_value = np.float32(lesion_term * lesion)
+    lesion_energy_value = np.float32(lesion_energy_value * lesion)
+    black_hole_energy_value = np.float32(black_hole_term * black_hole)
+    black_hole_energy_value = np.float32(black_hole_energy_value * black_hole)
+    auxiliary_energy = np.float32(lesion_energy_value + black_hole_energy_value)
+    local_energy = np.float32(local_energy + auxiliary_energy)
+
+    return LesionVoxelMembershipNormalization(
+        class_memberships=memberships,
+        lesion_membership=lesion,
+        black_hole_membership=black_hole,
+        outlier_membership=outlier,
+        denominator=denominator,
+        energy=local_energy,
     )
