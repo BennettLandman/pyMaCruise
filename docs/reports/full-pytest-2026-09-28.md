@@ -766,6 +766,22 @@ committed synthetic references. The exact output arrays and remaining Java heap
 order are recorded in the P18ax report. Subsequent plan/report/README edits do
 not modify implementation or tests.
 
+## Additional full-suite run for P18ay
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **360 passed in 84.50 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `858651f71030628bd4adb5ae8db6f950c41b0a60` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the repeated queue driver, per-event source-reference
+checkpoints, and all previously committed synthetic references. Subsequent
+plan/report/README edits do not modify implementation or tests.
+
 ## Future rows
 
 When a roadmap row is completed, run the complete suite and add its row-specific

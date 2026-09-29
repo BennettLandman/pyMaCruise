@@ -518,8 +518,7 @@ P18at validates the local topology-aware thinning transition using the selected
 composes source thinning initialization and boundary-queue seeding. P18aw
 validates the post-removal face-neighbor scheduling loop and its source
 priority/volume guards. These queue slices preserve two source counter quirks,
-recorded in the respective P18av/P18aw reports, and are not repeated global
-thinning or segmentation validation.
+recorded in the respective P18av/P18aw reports.
 
 P18ax now composes the pop, source volume/skeleton gates, best-class and
 relation target selection, 18/6 topology decision, skeleton/volume update, and
@@ -529,8 +528,11 @@ queue exactly. The additional source rule discovered in this composition is
 recorded: queue class `k` selects the center membership and volume update, and
 the source only gates on `skeleton[x][y][z] == k`, even if the center
 segmentation label differs. The [P18ax report](reports/toads-thinning-queue-step-2026-09-29.md)
-contains reference hashes and per-case evidence. This remains a single event;
-it does not establish repeated queue evolution or full segmentation.
+contains reference hashes and per-case evidence. P18ay now repeats this event
+under the source outer `val > -limit` condition and compares every event
+snapshot plus the final queue state to Java; see the [P18ay report](reports/toads-thinning-queue-run-2026-09-29.md).
+That test begins from a P18ax fixture rather than composing queue initialization
+and the repeated loop, and still does not establish full TOADS segmentation.
 
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
