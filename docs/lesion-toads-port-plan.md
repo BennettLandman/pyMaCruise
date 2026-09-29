@@ -662,7 +662,7 @@ warnings in 57.57 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-membership-integration.md)
 and [`tests/data/synthetic/lesion_toads_smoothing_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_smoothing_membership_integration/README.md).
 
-### Started substage: P39zf atlas-prior energy terms
+### Completed substage: P39zf atlas-prior energy terms
 
 Port the selected one-voxel `priorCoefficient` accumulation into class,
 lesion, and black-hole membership data terms and their separate half-weighted
@@ -670,3 +670,22 @@ energy accumulators. Preserve source class-index exclusion and loop order,
 lesion-class additions, and the special extra black-hole contribution when
 the lesion class itself is a black-hole class. Inputs are already computed
 shape/similarity vectors; building those fields and maps remains separate.
+
+Six selected-Java one-voxel cases match class, lesion, and black-hole prior
+sums; full data-term increments; and half-weighted energy increments for
+ordinary, lesion, black-hole, optimized-lesion, and outmask targets. They
+exercise absent/present lesion classes, a black-hole lesion class, the
+`m != k` exclusion, zero priors/shapes, and float32-sensitive values.
+Focused suite: 1 passed; full suite: 451 passed with two expected RAS
+warnings in 57.63 seconds on implementation commit
+`0a7fc6ca18fcc433568711839515f3e506201c10`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-prior-energy.md`](reports/full-pytest-2026-09-29-lesion-toads-prior-energy.md)
+and [`tests/data/synthetic/lesion_toads_prior_energy/README.md`](../tests/data/synthetic/lesion_toads_prior_energy/README.md).
+
+### Started substage: P39zg smoothing/prior membership integration
+
+Compose selected smoothing and prior additions to class and auxiliary data
+terms and energy values before inverse/prior conversion, distance modulation,
+denominator normalization, and local energy evaluation. Use committed
+synthetic neighbor stencils and shape/similarity vectors; do not claim
+similarity-field construction or volume-wide updates.
