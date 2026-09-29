@@ -1079,3 +1079,13 @@ passed. Full suite: 518 passed with two expected RAS orientation warnings in
 and
 [`tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md`](../tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md).
 This is selected formula validation, not whole-engine equivalence.
+
+
+### Started substage: P39zzc OPTIMIZED_LESION in three-auxiliary sweep
+
+VandyCRUISE routes `OPTIMIZED_LESION` through the lesion membership, smoothing,
+prior, inversion, and distance branches. Extend the combined
+LESION/BLACKHOLE/OUTMASK volume validation to this source class, preserving
+last-lesion-related-class selection and class iteration order. Compare against
+selected-Java synthetic references before treating the Python class alias as
+source-equivalent.
