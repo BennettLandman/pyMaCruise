@@ -113,6 +113,14 @@ class LesionToadsBlackHoleSweepResult:
     black_hole_membership: np.ndarray
 
 
+@dataclass(frozen=True)
+class LesionToadsOutmaskSweepResult:
+    """Class and outlier maps after the bounded OUTMASK volume sweep."""
+
+    class_memberships: np.ndarray
+    outlier_membership: np.ndarray
+
+
 def iter_lesion_toads_six_face_neighborhoods(
     class_memberships: np.ndarray,
     lesion_memberships: np.ndarray,
@@ -901,6 +909,129 @@ def run_lesion_toads_blackhole_smoothing_sweep(
                     lesion[x, y, z] = np.float32(lesion[x, y, z] / denominator)
                     black_hole[x, y, z] = np.float32(black_hole[x, y, z] / denominator)
     return LesionToadsBlackHoleSweepResult(current, lesion, black_hole)
+
+
+def run_lesion_toads_outmask_smoothing_sweep(
+    initial_class_memberships: np.ndarray,
+    initial_outlier_membership: np.ndarray,
+    class_data_terms: np.ndarray,
+    outmask_data_terms: np.ndarray,
+    shape_values: np.ndarray,
+    smoothing_priors: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    relation_types: tuple[str, ...] | list[str],
+    *,
+    smoothing: float,
+    zero: float = 1.0e-10,
+    infinity: float = 1.0e10,
+) -> LesionToadsOutmaskSweepResult:
+    """Sweep ordinary OBJECT classes plus one OUTMASK/outlier map.
+
+    This composes selected six-face smoothing with inversion of the OUTMASK
+    and outlier terms, direct/prior blending, in-place x/y/z neighborhood
+    reads, and source denominator normalization. Atlas priors and other
+    auxiliary/class branches remain separate.
+    """
+    current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
+    outlier = np.asarray(initial_outlier_membership, dtype=np.float32).copy()
+    data = np.asarray(class_data_terms, dtype=np.float32)
+    outmask_data = np.asarray(outmask_data_terms, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    if current.ndim != 4 or any(size < 3 for size in current.shape[:3]) or current.shape[3] == 0:
+        raise ValueError("initial_class_memberships must have shape (x, y, z, classes), with spatial sizes >= 3")
+    spatial_shape = current.shape[:3]
+    classes = current.shape[3]
+    types = tuple(class_types)
+    relations = tuple(relation_types)
+    if len(types) != classes or types.count("OUTMASK") != 1 or any(
+        kind not in {"OBJECT", "OUTMASK"} for kind in types
+    ):
+        raise ValueError("class_types must contain ordinary OBJECT classes and exactly one OUTMASK class")
+    if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
+        raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
+    if data.shape != current.shape or shapes.shape != current.shape:
+        raise ValueError("class_data_terms and shape_values must match initial_class_memberships shape")
+    if outlier.shape != spatial_shape or outmask_data.shape != spatial_shape:
+        raise ValueError("outlier membership and OUTMASK data-term maps must match the class spatial shape")
+    priors = np.asarray(smoothing_priors, dtype=np.float32)
+    if priors.shape != (classes,) or not np.isfinite(priors).all() or np.any(priors < 0):
+        raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
+    if not all(np.isfinite(array).all() for array in (current, outlier, data, outmask_data, shapes)):
+        raise ValueError("membership, data-term, and shape arrays must be finite")
+    smoothing_value = np.float32(smoothing)
+    if not np.isfinite(smoothing_value) or smoothing_value <= 0:
+        raise ValueError("smoothing must be finite and positive")
+    zero_value = np.float32(zero)
+    infinity_value = np.float32(infinity)
+    if not np.isfinite(zero_value) or zero_value < 0:
+        raise ValueError("zero must be finite and nonnegative")
+    if not np.isfinite(infinity_value) or infinity_value < 0:
+        raise ValueError("infinity must be finite and nonnegative")
+
+    zero_map = np.zeros(spatial_shape, dtype=np.float32)
+    outmask_class = types.index("OUTMASK")
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, zero_map, zero_map):
+        x, y, z = neighborhood.coordinate
+        denominator = np.float32(0.0)
+        for k in range(classes):
+            if shapes[x, y, z, k] <= np.float32(0.0):
+                current[x, y, z, k] = np.float32(0.0)
+            else:
+                update = update_lesion_toads_smoothing_energies(
+                    neighborhood.class_memberships,
+                    neighborhood.lesion_memberships,
+                    neighborhood.black_hole_memberships,
+                    class_index=k,
+                    class_type=types[k],
+                    smoothing_prior=float(priors[k]),
+                    smoothing=float(smoothing_value),
+                    class_energy=0.0,
+                    lesion_energy=0.0,
+                    black_hole_energy=0.0,
+                    class_membership_data_term=float(data[x, y, z, k]),
+                    lesion_membership_data_term=0.0,
+                    black_hole_membership_data_term=0.0,
+                    outmask_membership_data_term=(float(outmask_data[x, y, z]) if k == outmask_class else 0.0),
+                )
+                class_membership = convert_lesion_toads_class_membership(
+                    float(update.class_membership_data_term),
+                    float(shapes[x, y, z, k]),
+                    relation_type=relations[k],
+                    zero=float(zero_value),
+                    infinity=float(infinity_value),
+                )
+                if k == outmask_class:
+                    outmask_membership = convert_lesion_toads_class_membership(
+                        float(update.outmask_membership_data_term),
+                        1.0,
+                        relation_type="direct",
+                        zero=float(zero_value),
+                        infinity=float(infinity_value),
+                    )
+                    mixed = update_lesion_toads_outmask_membership(
+                        float(convert_lesion_toads_class_membership(
+                            float(update.class_membership_data_term),
+                            1.0,
+                            relation_type="direct",
+                            zero=float(zero_value),
+                            infinity=float(infinity_value),
+                        )),
+                        float(outmask_membership),
+                        float(outlier[x, y, z]),
+                        relation_type=relations[k],
+                        shape_prior=float(shapes[x, y, z, k]),
+                    )
+                    current[x, y, z, k] = mixed.class_membership
+                    outlier[x, y, z] = mixed.outlier_membership
+                else:
+                    current[x, y, z, k] = class_membership
+            denominator = np.float32(denominator + current[x, y, z, k])
+        if denominator > np.float32(0.0):
+            for k in range(classes):
+                current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)
+                if k == outmask_class:
+                    outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
+    return LesionToadsOutmaskSweepResult(current, outlier)
 
 
 def convert_lesion_toads_class_membership(
