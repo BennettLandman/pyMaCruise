@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zr have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION shape-prior handling,
+**Status:** P39 is Started. P39a–P39zs have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION shape-prior and lesion-distance handling,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -893,3 +893,19 @@ commit `e6eb60e8a962786343f498fb17e9b95f66673e43`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-prior-sweep.md)
 and [`tests/data/synthetic/lesion_toads_lesion_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_prior_sweep/README.md). Distance
 modulation and other auxiliary class types remain open.
+
+
+### Completed substage: P39zs lesion-distance volume routing
+
+The OBJECT+LESION in-place sweep now optionally applies the selected
+ventricle-first distance modulation, GM fallback, and independent brainstem
+scaling after lesion membership conversion and before denominator
+normalization. It retains distance-zero `spread`, signed-byte sentinels, and
+lesion-relation scaling. The synthetic selected-Java harness matches every
+interior class and lesion membership bit with GM flag enabled and disabled;
+the no-distance path remains unchanged. Focused tests: 5 passed. Full suite:
+498 passed with two expected RAS warnings in 91.20 seconds on implementation
+commit `23eb94c768ad778e65004044f790c001124f43a7`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-distance-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-distance-sweep.md)
+and [`tests/data/synthetic/lesion_toads_lesion_distance_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_distance_sweep/README.md).
+BLACKHOLE-specific distance interaction remains open.
