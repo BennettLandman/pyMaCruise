@@ -799,6 +799,22 @@ complete synthetic thinning pass to queue exhaustion, plus all previously
 committed synthetic references. Subsequent plan/report/README edits do not
 modify implementation or tests.
 
+## Additional full-suite run for P18ba
+
+| Field | Value |
+|---|---|
+| Command | .venv/bin/pytest -q from the pymacruise/ repository root |
+| Result | **362 passed in 83.34 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | 4be9627c27617db8b6aa94fe3155eda4c71d1718 |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates TOADS growing-queue initialization and all previously
+committed synthetic references. Subsequent plan/report/README edits do not
+modify implementation or tests.
+
 ## Future rows
 
 When a roadmap row is completed, run the complete suite and add its row-specific
