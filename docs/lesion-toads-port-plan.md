@@ -1,10 +1,9 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39r have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39s have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
-coefficient slices on synthetic/reference data. P39s is now Started to
-compose growing-frontier initialization and per-event processing through
-queue exhaustion on a folded synthetic label phantom. P39d/e validate bundled
+coefficient slices on synthetic/reference data, as well as LesionTOADS growing
+queue exhaustion with pre-supplied memberships. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
 include atlas sampling, transform optimization, or segmentation. This
 document tracks algorithm scope and source contracts; it does not claim a
@@ -415,7 +414,7 @@ The reference composes a validated topology method body with selected
 LesionTOADS event formulas; it is not a whole-class run or full segmentation
 validation.
 
-### Started substage: P39s full growing-queue exhaustion
+### Completed substage: P39s full growing-queue exhaustion
 
 Compose the selected `initGrowingLabels` setup and `propagateGrowing` event
 body until the source min-heap is empty. The synthetic phantom will contain a
@@ -423,6 +422,19 @@ folded class boundary and narrow bands so the run exercises source scan order,
 lesion-aware priorities, accepted/rejected/stale events, and topology-gated
 neighbor scheduling across many iterations. Compare the full event trace and
 final segmentation, skeleton, availability, ordering, and class-volume state
-against a selected-method Java harness. This stage receives synthetic
-membership maps; it does not port statistical membership estimation or the
-later competition/thinning phases, and it is not a complete LesionTOADS result.
+against a selected-method Java harness. The committed RAS 9×9×9 folded label
+phantom has three seeded class fronts and formula-generated float32
+memberships, lesion/black-hole maps, orderings, and class volumes. Two Java
+method-excerpt runs exhaust the source min-heap with additive and max lesion
+scores (446 and 442 events). Python matches the full per-event traces,
+including every pop priority and payload, topology result, and scheduled
+neighbor, plus final segmentation, skeleton, availability, ordering and
+class-volume bits, and empty residual queue. The harness uses the selected
+18/6 LUT, source `Numerics.max`, and `BinaryHeap4D`; it is not a full
+`LesionToadSegmentation` instantiation. The focused test passes; the full suite
+reports 426 passed with two expected RAS warnings in 63.53 seconds on
+implementation commit `46f1ef7ba47ee39f456c18d9a9bb6f9ecfac9dc8`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-growing-pass.md`](reports/full-pytest-2026-09-29-lesion-growing-pass.md)
+and [`tests/data/synthetic/lesion_growing_pass/README.md`](../tests/data/synthetic/lesion_growing_pass/README.md).
+Statistical membership estimation, competition/thinning, and final
+LesionTOADS segmentation remain unvalidated.
