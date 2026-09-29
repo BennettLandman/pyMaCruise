@@ -24,6 +24,12 @@ REGISTRATION_HARNESS = (
     Path(__file__).parent / "java_reference" / "LesionRegistrationVoxelReferenceHarness.java"
 )
 REGISTRATION_HARNESS_SHA256 = "68f983a51b6ab834bcc5fcdcf9787170e32a20ac426584d0ae1aeaebc45dbb5e"
+SCALED_FIXTURE_DIR = Path(__file__).parent / "data" / "synthetic" / "lesion_scaled_shape_sampling"
+SCALED_HARNESS = (
+    Path(__file__).parent / "java_reference" / "LesionScaledShapeSamplingReferenceHarness.java"
+)
+SCALED_HARNESS_SHA256 = "379964d519202675bd51fa5a50d561fed22e1e22a9848345f02fb9acde5cc639"
+SCALED_FIXTURE_SHA256 = "3c48d9c7cdc57bd652f10b5bdf5c48021ca562877eaaf164b94abb04f49c5b32"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -316,4 +322,76 @@ def test_lesion_registration_voxel_rejects_class_count_mismatches() -> None:
             template_resolutions_mm=(1.0, 1.0, 1.0),
             transform=(0, 0, 0, 0, 0, 0),
             class_bounds_xyz=(((0, 0, 0), (4, 4, 4)),),
+        )
+
+
+def test_lesion_shape_sampler_matches_java_registration_pyramid_scales() -> None:
+    assert hashlib.sha256(SCALED_HARNESS.read_bytes()).hexdigest() == (
+        SCALED_HARNESS_SHA256
+    )
+    reference_path = SCALED_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == SCALED_FIXTURE_SHA256
+    reference = json.loads(reference_path.read_text())
+    for case in reference["cases"]:
+        dimensions = tuple(case["template_dims"])
+        shape = np.empty(dimensions, dtype=np.float32)
+        for x in range(dimensions[0]):
+            for y in range(dimensions[1]):
+                for z in range(dimensions[2]):
+                    value = np.float32(0.1)
+                    value = np.float32(value + np.float32(np.float32(0.01) * x))
+                    value = np.float32(value + np.float32(np.float32(0.02) * y))
+                    value = np.float32(value + np.float32(np.float32(0.03) * z))
+                    value = np.float32(
+                        value + np.float32(np.float32(np.float32(0.001) * x) * y)
+                    )
+                    shape[x, y, z] = value
+        sample = sample_lesion_shape_prior(
+            shape,
+            tuple(case["point"]),
+            image_dimensions_xyz=tuple(case["image_dims"]),
+            image_resolutions_mm=tuple(case["image_resolutions"]),
+            template_resolutions_mm=tuple(case["template_resolutions"]),
+            transform=tuple(case["transform"]),
+            class_index=1,
+            bbox_low_xyz=(0, 0, 0),
+            bbox_high_xyz=tuple(case["image_dims"]),
+            scale=case["scale"],
+            image_center_xyz=tuple(case["image_center"]),
+            template_center_xyz=tuple(case["template_center"]),
+        )
+        np.testing.assert_array_equal(
+            np.asarray(sample.template_xyz, dtype=np.float32),
+            np.asarray(case["mapped"], dtype=np.float32),
+            err_msg=f"{case['scale']} {case['name']} mapped coordinates",
+        )
+        assert sample.value == np.float32(case["value"]), (case["scale"], case["name"])
+        if case["value"] > 0:
+            np.testing.assert_array_equal(
+                sample.template_gradient_xyz,
+                np.asarray(case["derivative"], dtype=np.float32),
+                err_msg=f"{case['scale']} {case['name']} derivatives",
+            )
+        else:
+            assert sample.template_gradient_xyz is None
+            np.testing.assert_array_equal(
+                trilinear_prior_derivatives(shape, case["mapped"]),
+                np.asarray(case["derivative"], dtype=np.float32),
+                err_msg=f"{case['scale']} {case['name']} outside derivatives",
+            )
+
+
+def test_lesion_shape_pyramid_sampling_requires_full_resolution_centers() -> None:
+    with pytest.raises(ValueError, match="explicit full-resolution centers"):
+        sample_lesion_shape_prior(
+            np.ones((3, 3, 3), dtype=np.float32),
+            (1, 1, 1),
+            image_dimensions_xyz=(2, 2, 2),
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            transform=(0, 0, 0, 0, 0, 0),
+            class_index=1,
+            bbox_low_xyz=(0, 0, 0),
+            bbox_high_xyz=(2, 2, 2),
+            scale=2,
         )

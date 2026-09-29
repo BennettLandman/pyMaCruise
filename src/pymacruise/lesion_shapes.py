@@ -48,6 +48,7 @@ def sample_lesion_shape_prior(
     bbox_low_xyz: tuple[int, int, int],
     bbox_high_xyz: tuple[int, int, int],
     transform_mode: str = "rigid",
+    scale: float = 1.0,
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
 ) -> LesionShapeSample:
@@ -59,7 +60,11 @@ def sample_lesion_shape_prior(
     1, other classes use 0, out-of-template coordinates return that complete
     default value, and no `shapeSlope` recovery or closest-edge clamping is
     applied. `transform_mode="none"` directly indexes the map as the Java
-    method does. Multiple/deformable transforms are outside this slice.
+    method does. For registration pyramid scales greater than one, pass the
+    coarse input/map arrays and the original full-resolution image/template
+    centers; scaled coordinates follow `ParametricTransform.imageToTemplate`
+    without class-bound optimization. Multiple/deformable transforms are
+    outside this slice.
     """
     values = np.asarray(shape, dtype=np.float32)
     if values.ndim != 3 or any(size < 2 for size in values.shape):
@@ -76,11 +81,20 @@ def sample_lesion_shape_prior(
 
     mode = transform_mode.strip().lower()
     if mode == "none":
+        if np.float32(scale) != np.float32(1.0):
+            raise ValueError("untransformed shape sampling requires scale=1")
         if values.shape != image_dims:
             raise ValueError("untransformed shape dimensions must match the input grid")
         return LesionShapeSample(np.float32(values[point]), None)
     if mode != "rigid":
         raise ValueError("LesionTOADS shape sampling supports only 'none' or 'rigid' here")
+    scale_value = np.float32(scale)
+    if not np.isfinite(scale_value) or scale_value <= np.float32(0.0):
+        raise ValueError("scale must be positive and finite")
+    if scale_value != np.float32(1.0) and (
+        image_center_xyz is None or template_center_xyz is None
+    ):
+        raise ValueError("pyramid sampling requires explicit full-resolution centers")
 
     bounds = sample_toad_shape_prior(
         values,
@@ -93,7 +107,7 @@ def sample_lesion_shape_prior(
         bbox_low_xyz=bbox_low_xyz,
         bbox_high_xyz=bbox_high_xyz,
         shape_slope=1.0,
-        scale=1.0,
+        scale=float(scale_value),
         image_center_xyz=image_center_xyz,
         template_center_xyz=template_center_xyz,
     )
