@@ -104,6 +104,15 @@ class LesionToadsLesionSweepResult:
     lesion_membership: np.ndarray
 
 
+@dataclass(frozen=True)
+class LesionToadsBlackHoleSweepResult:
+    """Class, lesion, and black-hole maps after a bounded volume sweep."""
+
+    class_memberships: np.ndarray
+    lesion_membership: np.ndarray
+    black_hole_membership: np.ndarray
+
+
 def iter_lesion_toads_six_face_neighborhoods(
     class_memberships: np.ndarray,
     lesion_memberships: np.ndarray,
@@ -650,6 +659,129 @@ def run_lesion_toads_lesion_smoothing_sweep(
                 if k == lesion_class:
                     lesion[x, y, z] = np.float32(lesion[x, y, z] / denominator)
     return LesionToadsLesionSweepResult(current, lesion)
+
+
+def run_lesion_toads_blackhole_smoothing_sweep(
+    initial_class_memberships: np.ndarray,
+    initial_lesion_membership: np.ndarray,
+    initial_black_hole_membership: np.ndarray,
+    class_data_terms: np.ndarray,
+    lesion_data_terms: np.ndarray,
+    black_hole_data_terms: np.ndarray,
+    shape_values: np.ndarray,
+    smoothing_priors: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    relation_types: tuple[str, ...] | list[str],
+    *,
+    smoothing: float,
+    zero: float = 1.0e-10,
+    infinity: float = 1.0e10,
+) -> LesionToadsBlackHoleSweepResult:
+    """Sweep ordinary OBJECT classes plus one BLACKHOLE auxiliary branch.
+
+    This composes the selected BLACKHOLE six-face smoothing equations with
+    separate lesion and black-hole data terms, class/auxiliary inversion,
+    source denominator order, and per-voxel normalization. Atlas priors and
+    black-hole-specific distance modulation are separate increments.
+    """
+    current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
+    lesion = np.asarray(initial_lesion_membership, dtype=np.float32).copy()
+    black_hole = np.asarray(initial_black_hole_membership, dtype=np.float32).copy()
+    data = np.asarray(class_data_terms, dtype=np.float32)
+    lesion_data = np.asarray(lesion_data_terms, dtype=np.float32)
+    black_hole_data = np.asarray(black_hole_data_terms, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    if current.ndim != 4 or any(size < 3 for size in current.shape[:3]) or current.shape[3] == 0:
+        raise ValueError("initial_class_memberships must have shape (x, y, z, classes), with spatial sizes >= 3")
+    spatial_shape = current.shape[:3]
+    classes = current.shape[3]
+    types = tuple(class_types)
+    relations = tuple(relation_types)
+    if len(types) != classes or types.count("BLACKHOLE") != 1 or any(
+        kind not in {"OBJECT", "BLACKHOLE"} for kind in types
+    ):
+        raise ValueError("class_types must contain ordinary OBJECT classes and exactly one BLACKHOLE class")
+    if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
+        raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
+    if data.shape != current.shape or shapes.shape != current.shape:
+        raise ValueError("class_data_terms and shape_values must match initial_class_memberships shape")
+    if any(array.shape != spatial_shape for array in (lesion, black_hole, lesion_data, black_hole_data)):
+        raise ValueError("lesion/black-hole membership and data maps must match the class spatial shape")
+    priors = np.asarray(smoothing_priors, dtype=np.float32)
+    if priors.shape != (classes,) or not np.isfinite(priors).all() or np.any(priors < 0):
+        raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
+    if not all(np.isfinite(array).all() for array in (current, lesion, black_hole, data, lesion_data, black_hole_data, shapes)):
+        raise ValueError("membership, data-term, and shape arrays must be finite")
+    smoothing_value = np.float32(smoothing)
+    if not np.isfinite(smoothing_value) or smoothing_value <= 0:
+        raise ValueError("smoothing must be finite and positive")
+    zero_value = np.float32(zero)
+    infinity_value = np.float32(infinity)
+    if not np.isfinite(zero_value) or zero_value < 0:
+        raise ValueError("zero must be finite and nonnegative")
+    if not np.isfinite(infinity_value) or infinity_value < 0:
+        raise ValueError("infinity must be finite and nonnegative")
+
+    black_hole_class = types.index("BLACKHOLE")
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
+        x, y, z = neighborhood.coordinate
+        denominator = np.float32(0.0)
+        for k in range(classes):
+            if shapes[x, y, z, k] <= np.float32(0.0):
+                current[x, y, z, k] = np.float32(0.0)
+                if k == black_hole_class:
+                    lesion[x, y, z] = np.float32(0.0)
+                    black_hole[x, y, z] = np.float32(0.0)
+            else:
+                update = update_lesion_toads_smoothing_energies(
+                    neighborhood.class_memberships,
+                    neighborhood.lesion_memberships,
+                    neighborhood.black_hole_memberships,
+                    class_index=k,
+                    class_type=types[k],
+                    smoothing_prior=float(priors[k]),
+                    smoothing=float(smoothing_value),
+                    class_energy=0.0,
+                    lesion_energy=0.0,
+                    black_hole_energy=0.0,
+                    class_membership_data_term=float(data[x, y, z, k]),
+                    lesion_membership_data_term=(float(lesion_data[x, y, z]) if k == black_hole_class else 0.0),
+                    black_hole_membership_data_term=(float(black_hole_data[x, y, z]) if k == black_hole_class else 0.0),
+                    outmask_membership_data_term=0.0,
+                )
+                current[x, y, z, k] = convert_lesion_toads_class_membership(
+                    float(update.class_membership_data_term),
+                    float(shapes[x, y, z, k]),
+                    relation_type=relations[k],
+                    zero=float(zero_value),
+                    infinity=float(infinity_value),
+                )
+                if k == black_hole_class:
+                    lesion[x, y, z] = convert_lesion_toads_class_membership(
+                        float(update.lesion_membership_data_term),
+                        float(shapes[x, y, z, k]),
+                        relation_type=relations[k],
+                        zero=float(zero_value),
+                        infinity=float(infinity_value),
+                    )
+                    black_hole[x, y, z] = convert_lesion_toads_class_membership(
+                        float(update.black_hole_membership_data_term),
+                        float(shapes[x, y, z, k]),
+                        relation_type=relations[k],
+                        zero=float(zero_value),
+                        infinity=float(infinity_value),
+                    )
+            if k == black_hole_class:
+                auxiliary_sum = np.float32(lesion[x, y, z] + black_hole[x, y, z])
+                denominator = np.float32(denominator + auxiliary_sum)
+            denominator = np.float32(denominator + current[x, y, z, k])
+        if denominator > np.float32(0.0):
+            for k in range(classes):
+                current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)
+                if k == black_hole_class:
+                    lesion[x, y, z] = np.float32(lesion[x, y, z] / denominator)
+                    black_hole[x, y, z] = np.float32(black_hole[x, y, z] / denominator)
+    return LesionToadsBlackHoleSweepResult(current, lesion, black_hole)
 
 
 def convert_lesion_toads_class_membership(
