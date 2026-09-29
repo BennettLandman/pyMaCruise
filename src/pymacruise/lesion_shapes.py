@@ -17,6 +17,10 @@ from pymacruise.toads_registration import (
     trilinear_prior_derivatives,
 )
 from pymacruise.toads_shapes import sample_toad_shape_prior
+from pymacruise.toads_registration_sampling import (
+    ToadsRegistrationPyramidLevel,
+    build_toads_registration_pyramid,
+)
 
 
 @dataclass(frozen=True)
@@ -72,6 +76,25 @@ class LesionRegistrationOptimizationResult:
     lambda_value: np.float32
     iterations: tuple[LesionRegistrationOptimizationStep, ...]
     stop_reason: str
+
+
+@dataclass(frozen=True)
+class LesionRegistrationPyramidLevelResult:
+    """One source scale and its fixed-scale optimization result."""
+
+    scale: int
+    input_dimensions_xyz: tuple[int, int, int]
+    template_dimensions_xyz: tuple[int, int, int]
+    initial_transform: NDArray[np.float32]
+    optimization: LesionRegistrationOptimizationResult
+
+
+@dataclass(frozen=True)
+class LesionRegistrationPyramidResult:
+    """Coarse-to-fine LesionTOADS rigid registration result."""
+
+    transform: NDArray[np.float32]
+    levels: tuple[LesionRegistrationPyramidLevelResult, ...]
 
 
 def sample_lesion_shape_prior(
@@ -627,6 +650,106 @@ def optimize_lesion_shapes_scaled(
     return LesionRegistrationOptimizationResult(
         transform.copy(), energy, lam, tuple(history), reason
     )
+
+
+def register_lesion_shapes_pyramid(
+    shape_priors: Sequence[ArrayLike],
+    memberships: ArrayLike,
+    initial_transform: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    levels: int,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+    offset: int = 0,
+    subsample: int = 2,
+    max_iterations: int = 50,
+    min_energy_change: float = 1e-6,
+    min_lambda: float = 0.001,
+    lambda_factor: float = 1.5,
+    max_rejections: int = 10,
+) -> LesionRegistrationPyramidResult:
+    """Run selected coarse-to-fine fixed-transform LesionTOADS registration.
+
+    Memberships and atlas priors are downsampled directly from the supplied
+    full-resolution arrays with the source-checked block-mean helper. The
+    selected `registerShapesPyramid` visits scales ``2**(levels-1)`` down to
+    2 and has no scale-1 stage. Each scale resets lambda to its initial value,
+    while the transform from the coarser level is carried to the next finer
+    level. Atlas interpolation and per-level optimization are delegated to
+    the previously validated helpers.
+    """
+    if isinstance(levels, bool) or not isinstance(levels, (int, np.integer)) or levels < 1:
+        raise ValueError("levels must be a positive integer")
+    mem = np.asarray(memberships, dtype=np.float32)
+    if mem.ndim != 4 or mem.shape[-1] < 2:
+        raise ValueError("memberships must have shape (x, y, z, classes>=2)")
+    if len(shape_priors) != mem.shape[-1]:
+        raise ValueError("one atlas shape prior is required for each membership class")
+    shape_arrays = [np.asarray(shape, dtype=np.float32) for shape in shape_priors]
+    if any(shape.ndim != 3 for shape in shape_arrays):
+        raise ValueError("each atlas shape prior must be a 3D array")
+    if len({shape.shape for shape in shape_arrays}) != 1:
+        raise ValueError("all atlas shape priors must share one spatial grid")
+    atlas_stack = np.stack(shape_arrays, axis=-1)
+    pyramid: tuple[ToadsRegistrationPyramidLevel, ...] = build_toads_registration_pyramid(
+        mem, atlas_stack, levels=int(levels)
+    )
+    transform = np.asarray(initial_transform, dtype=np.float32)
+    if transform.shape != (6,) or not np.isfinite(transform).all():
+        raise ValueError("initial_transform must be a finite six-value rigid vector")
+    full_image_center = (
+        image_center_xyz
+        if image_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in mem.shape[:3])
+    )
+    full_template_center = (
+        template_center_xyz
+        if template_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in atlas_stack.shape[:3])
+    )
+    history: list[LesionRegistrationPyramidLevelResult] = []
+    for level in pyramid:
+        input_dims = tuple(int(size) for size in level.memberships.shape[:3])
+        template_dims = tuple(int(size) for size in level.atlas_shapes.shape[:3])
+        if any(size < 2 for size in template_dims):
+            raise ValueError("pyramid level leaves atlas map dimensions below two voxels")
+        coarse_shapes = tuple(
+            level.atlas_shapes[..., class_index]
+            for class_index in range(level.atlas_shapes.shape[-1])
+        )
+        stage_initial_transform = transform.copy()
+        result = optimize_lesion_shapes_scaled(
+            coarse_shapes,
+            level.memberships,
+            transform,
+            image_dimensions_xyz=input_dims,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            scale=float(level.scale),
+            image_center_xyz=full_image_center,
+            template_center_xyz=full_template_center,
+            offset=offset,
+            subsample=subsample,
+            max_iterations=max_iterations,
+            min_energy_change=min_energy_change,
+            min_lambda=min_lambda,
+            initial_lambda=1.0,
+            lambda_factor=lambda_factor,
+            max_rejections=max_rejections,
+        )
+        transform = result.transform
+        history.append(
+            LesionRegistrationPyramidLevelResult(
+                level.scale,
+                input_dims,
+                template_dims,
+                stage_initial_transform,
+                result,
+            )
+        )
+    return LesionRegistrationPyramidResult(transform.copy(), tuple(history))
 
 
 def _linear_interpolation_with_default(

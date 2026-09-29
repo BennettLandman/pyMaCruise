@@ -14,6 +14,7 @@ from pymacruise.lesion_shapes import (
     lesion_registration_volume_coefficients,
     optimize_lesion_shapes_scaled,
     register_lesion_shapes_scaled_step,
+    register_lesion_shapes_pyramid,
     sample_lesion_shape_prior,
 )
 from pymacruise.toads_registration import trilinear_prior_derivatives
@@ -82,6 +83,16 @@ SCALED_OPTIMIZER_HARNESS = (
 )
 SCALED_OPTIMIZER_HARNESS_SHA256 = "66fc71104d03f22562bffc94c9e8f947d3edf38d2d18d717467db4e76c761bd0"
 SCALED_OPTIMIZER_FIXTURE_SHA256 = "ed9fd9b190a7b6654c24e2f95d7c22052998427b4d51c3bacb0bbd1542ab0794"
+LESION_PYRAMID_FIXTURE_DIR = (
+    Path(__file__).parent / "data" / "synthetic" / "lesion_registration_pyramid"
+)
+LESION_PYRAMID_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionRegistrationPyramidReferenceHarness.java"
+)
+LESION_PYRAMID_HARNESS_SHA256 = "3efb5516161b59a6b7c74e3d5e084fb1a623c28982a6af58b231f3d2b5c6a4ec"
+LESION_PYRAMID_FIXTURE_SHA256 = "c76c98d37a33eb492601e7674927535da02728565c629f89be29ffaaf900d32f"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -869,3 +880,91 @@ def test_scaled_lesion_registration_optimizer_loop_matches_java_history() -> Non
         "iteration_limit": "iteration_limit",
         "minimum_change": "min_energy_change",
     }
+
+
+def test_lesion_registration_pyramid_matches_java_levels_and_handoffs() -> None:
+    reference_path = LESION_PYRAMID_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(LESION_PYRAMID_HARNESS.read_bytes()).hexdigest() == (
+        LESION_PYRAMID_HARNESS_SHA256
+    )
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == (
+        LESION_PYRAMID_FIXTURE_SHA256
+    )
+    reference = json.loads(reference_path.read_text())
+    dimensions = (33, 33, 33)
+    x, y, z = np.indices(dimensions, dtype=np.int32)
+    shape_bits = (3 * x + 5 * y + 7 * z + 11 * x * y + 13 * y * z) % 7
+    shape1 = np.where(shape_bits < 3, np.float32(0.95), np.float32(0.05))
+    shape0 = np.full(dimensions, np.float32(0.9), dtype=np.float32)
+    membership_bits = (7 * x + 11 * y + 5 * z + 13 * x * z + 17 * x * y) % 9
+    membership1 = np.where(
+        membership_bits < 4, np.float32(0.9), np.float32(0.1)
+    )
+    memberships = np.stack(
+        (np.full(dimensions, np.float32(0.5)), membership1), axis=-1
+    ).astype(np.float32)
+    for case in reference["cases"]:
+        result = register_lesion_shapes_pyramid(
+            (shape0, shape1),
+            memberships,
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            levels=int(case["levels"]),
+            offset=0,
+            subsample=2,
+            max_iterations=1,
+        )
+        assert len(result.levels) == len(case["stages"]), case["levels"]
+        for actual_level, expected_level in zip(
+            result.levels, case["stages"], strict=True
+        ):
+            assert actual_level.scale == expected_level["scale"]
+            assert list(actual_level.input_dimensions_xyz) == [
+                int(size) for size in expected_level["input_dims"]
+            ]
+            assert list(actual_level.template_dimensions_xyz) == [
+                int(size) for size in expected_level["template_dims"]
+            ]
+            np.testing.assert_array_equal(
+                actual_level.initial_transform,
+                np.asarray(expected_level["initial_transform"], dtype=np.float32),
+            )
+            np.testing.assert_array_equal(
+                actual_level.optimization.iterations[0].trial_transforms,
+                np.asarray(
+                    [trial["transform"] for trial in expected_level["trials"]],
+                    dtype=np.float32,
+                ),
+                err_msg=f"level scale {actual_level.scale} trial transforms",
+            )
+            expected_energies = np.asarray(
+                [np.nan if trial["energy"] is None else trial["energy"]
+                 for trial in expected_level["trials"]],
+                dtype=np.float32,
+            )
+            np.testing.assert_array_equal(
+                actual_level.optimization.iterations[0].trial_energies,
+                expected_energies,
+                err_msg=f"level scale {actual_level.scale} trial energies",
+            )
+            iteration = actual_level.optimization.iterations[0].result
+            np.testing.assert_array_equal(
+                iteration.transform,
+                np.asarray(expected_level["transform"], dtype=np.float32),
+            )
+            assert iteration.energy == np.float32(expected_level["energy"])
+            assert iteration.lambda_value == np.float32(expected_level["lambda"])
+            assert iteration.relative_change == np.float32(expected_level["relative_change"])
+            assert iteration.accepted is expected_level["accepted"]
+            assert iteration.rejected_trials == expected_level["rejected_trials"]
+            np.testing.assert_array_equal(
+                actual_level.optimization.transform,
+                np.asarray(expected_level["transform"], dtype=np.float32),
+            )
+        np.testing.assert_array_equal(
+            result.transform, np.asarray(case["final_transform"], dtype=np.float32)
+        )
+    assert [stage["scale"] for stage in reference["cases"][1]["stages"]] == [2]
+    assert [stage["scale"] for stage in reference["cases"][2]["stages"]] == [4, 2]
+    assert [stage["scale"] for stage in reference["cases"][3]["stages"]] == [8, 4, 2]
