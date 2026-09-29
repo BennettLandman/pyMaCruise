@@ -81,6 +81,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39x is complete. Nine selected-Java cases match ordinary-object `Sulcal-CSF` data energy for MPRAGE PowerTable, direct T1 square, absent-T1 generic fallback, field-corrected inputs, and exact structure-name gating. Class-energy float32 bits match exactly. The complete suite reports **435 passed in 53.56 seconds**, with two expected RAS warnings, on implementation commit `211d6286498a9065f92cb407f4e69dd621e692b7`; see the [P39x full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-sulcal-csf.md) and [formula fixture](tests/data/synthetic/lesion_toads_sulcal_csf/README.md). Invalid channel/configuration checks pass. This remains a data-term slice before smoothing, priors, inversion, and membership normalization. The roadmap counts 128/142 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39y is Started: the next conversion maps one accumulated class data energy to a direct or prior-weighted membership while preserving the source's strict `ZERO` cutoff, `INF` sentinel, and `Numerics.min` shape factor. The roadmap counts 128/143 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

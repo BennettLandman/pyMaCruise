@@ -526,3 +526,13 @@ expected RAS warnings in 53.56 seconds on implementation commit
 and [`tests/data/synthetic/lesion_toads_sulcal_csf/README.md`](../tests/data/synthetic/lesion_toads_sulcal_csf/README.md).
 This remains a data-term slice before smoothing, priors, inversion, and
 membership normalization.
+
+### Started substage: P39y class membership conversion
+
+The selected source converts an accumulated class energy with the strict
+`num > ZERO` test: accepted energies become `1/num`, and all other values
+become `INF`. A `DIRECT` relation stores this inverse unchanged; a `PRIOR`
+relation multiplies by `shapeFactor(shape) = Numerics.min(1.0f, 2.0f*shape)`.
+Validate the float32 threshold, IEEE/sentinel behavior, and saturation/tie
+semantics against the selected Java `Numerics.min` implementation. This is
+one class-level conversion only, not a full membership update.
