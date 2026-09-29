@@ -330,6 +330,110 @@ def accumulate_lesion_registration_coefficients(
     )
 
 
+def lesion_registration_volume_coefficients(
+    shape_priors: Sequence[ArrayLike],
+    memberships: ArrayLike,
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    scale: float = 1.0,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+    offset: int = 0,
+    subsample: int = 3,
+) -> LesionRegistrationVolumeCoefficients:
+    """Sample coarse LesionTOADS maps and reduce fixed-transform coefficients.
+
+    ``memberships`` is indexed ``[x, y, z, class]`` on the coarse input grid;
+    each shape map is already loaded as an XYZ array on the corresponding
+    registration-pyramid atlas grid. Pyramid centers, when provided, remain
+    in full-resolution coordinates. The selected scaled method does not use
+    optimized per-class input bounds, so each registered class uses the full
+    coarse input extent. Class 0 is not sampled or registered.
+
+    This composes fixed-transform sampling and coefficient reduction only; it
+    does not perform a line search or update the transform.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    if mem.ndim != 4 or mem.shape[-1] < 2:
+        raise ValueError("memberships must have shape (x, y, z, classes>=2)")
+    image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
+    if mem.shape[:3] != image_dims:
+        raise ValueError("membership grid must match image_dimensions_xyz")
+    if len(shape_priors) != mem.shape[-1]:
+        raise ValueError("one shape prior is required for each membership class")
+    if not np.isfinite(mem).all():
+        raise ValueError("memberships must contain only finite values")
+    maps = [np.asarray(shape, dtype=np.float32) for shape in shape_priors]
+    for values in maps:
+        if values.ndim != 3 or any(size < 2 for size in values.shape):
+            raise ValueError("each LesionTOADS shape prior must be 3D with dimensions >= 2")
+        if not np.isfinite(values).all():
+            raise ValueError("LesionTOADS shape priors must contain only finite values")
+    if (
+        isinstance(offset, bool)
+        or not isinstance(offset, (int, np.integer))
+        or offset < 0
+    ):
+        raise ValueError("offset must be a nonnegative integer")
+    if (
+        isinstance(subsample, bool)
+        or not isinstance(subsample, (int, np.integer))
+        or subsample <= 0
+    ):
+        raise ValueError("subsample must be a positive integer")
+
+    priors = np.zeros(mem.shape, dtype=np.float32)
+    gradients = np.zeros(mem.shape + (3,), dtype=np.float32)
+    jacobians = np.zeros(mem.shape[:3] + (3, 6), dtype=np.float32)
+    full_input_bounds = (tuple(0 for _ in range(3)), image_dims)
+    for x in range(int(offset), image_dims[0], int(subsample)):
+        for y in range(int(offset), image_dims[1], int(subsample)):
+            for z in range(int(offset), image_dims[2], int(subsample)):
+                point = (x, y, z)
+                for class_index in range(1, mem.shape[-1]):
+                    sample = sample_lesion_shape_prior(
+                        maps[class_index],
+                        point,
+                        image_dimensions_xyz=image_dims,
+                        image_resolutions_mm=image_resolutions_mm,
+                        template_resolutions_mm=template_resolutions_mm,
+                        transform=transform,
+                        class_index=class_index,
+                        bbox_low_xyz=full_input_bounds[0],
+                        bbox_high_xyz=full_input_bounds[1],
+                        scale=scale,
+                        image_center_xyz=image_center_xyz,
+                        template_center_xyz=template_center_xyz,
+                    )
+                    priors[x, y, z, class_index] = sample.value
+                    if sample.template_gradient_xyz is not None:
+                        gradients[x, y, z, class_index] = sample.template_gradient_xyz
+                center = (
+                    image_center_xyz
+                    if image_center_xyz is not None
+                    else tuple(np.float32(size / 2.0) for size in image_dims)
+                )
+                jacobians[x, y, z] = rigid_image_to_template_jacobian(
+                    point,
+                    transform,
+                    center,
+                    image_resolutions_mm,
+                    template_resolutions_mm,
+                    scale=scale,
+                )
+    return accumulate_lesion_registration_coefficients(
+        mem,
+        priors,
+        gradients,
+        jacobians,
+        offset=offset,
+        subsample=subsample,
+    )
+
+
 def _linear_interpolation_with_default(
     image: np.ndarray,
     point_xyz: tuple[np.float32, np.float32, np.float32],

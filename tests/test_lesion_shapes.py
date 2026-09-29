@@ -11,6 +11,7 @@ import pytest
 from pymacruise.lesion_shapes import (
     accumulate_lesion_registration_coefficients,
     lesion_registration_voxel_contributions,
+    lesion_registration_volume_coefficients,
     sample_lesion_shape_prior,
 )
 from pymacruise.toads_registration import trilinear_prior_derivatives
@@ -49,6 +50,16 @@ VOLUME_HARNESS = (
 )
 VOLUME_HARNESS_SHA256 = "a2a018ca0c82d575e4bcd195639ffacea7f5b01c6530df87737b4de68d86627c"
 VOLUME_FIXTURE_SHA256 = "1320f3f0edc560e8aeac5379708cf0ea392fe6cf3e353b1da6f873b9655f2620"
+SCALED_VOLUME_FIXTURE_DIR = (
+    Path(__file__).parent / "data" / "synthetic" / "lesion_scaled_registration_volume"
+)
+SCALED_VOLUME_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionScaledRegistrationVolumeReferenceHarness.java"
+)
+SCALED_VOLUME_HARNESS_SHA256 = "b624304ff80beafba2500df42abe1e6b5c9309ac4a6a3ef0efa5b28a0eceb187"
+SCALED_VOLUME_FIXTURE_SHA256 = "bb20b83650b7062a3c29e1f6c2c3817d01dd90e1a61cd6f0c1257c3aa26a3779"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -605,3 +616,81 @@ def test_lesion_registration_volume_accumulation_validates_grids_and_source_zero
         accumulate_lesion_registration_coefficients(
             memberships, priors, gradients, np.zeros((1, 1, 1, 3, 5), dtype=np.float32)
         )
+
+
+def test_scaled_lesion_registration_volume_coefficients_match_java_fixture() -> None:
+    reference_path = SCALED_VOLUME_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(SCALED_VOLUME_HARNESS.read_bytes()).hexdigest() == (
+        SCALED_VOLUME_HARNESS_SHA256
+    )
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == (
+        SCALED_VOLUME_FIXTURE_SHA256
+    )
+    reference = json.loads(reference_path.read_text())
+    transform = tuple(reference["transform"])
+    classes = int(reference["classes"])
+    for case in reference["cases"]:
+        input_dims = tuple(int(value) for value in case["input_dims"])
+        template_dims = tuple(int(value) for value in case["template_dims"])
+        maps = []
+        for class_index in range(classes):
+            shape = np.empty(template_dims, dtype=np.float32)
+            for x in range(template_dims[0]):
+                for y in range(template_dims[1]):
+                    for z in range(template_dims[2]):
+                        if class_index == 0:
+                            shape[x, y, z] = np.float32(0.9)
+                        else:
+                            value = np.float32(0.1)
+                            value = np.float32(
+                                value + np.float32(np.float32(0.01) * class_index)
+                            )
+                            value = np.float32(value + np.float32(np.float32(0.013) * x))
+                            value = np.float32(value + np.float32(np.float32(0.019) * y))
+                            value = np.float32(value + np.float32(np.float32(0.027) * z))
+                            shape[x, y, z] = np.float32(
+                                value + np.float32(np.float32(np.float32(0.001) * x) * y)
+                            )
+            maps.append(shape)
+        memberships = np.empty(input_dims + (classes,), dtype=np.float32)
+        for x in range(input_dims[0]):
+            for y in range(input_dims[1]):
+                for z in range(input_dims[2]):
+                    for class_index in range(classes):
+                        value = np.float32(0.23)
+                        value = np.float32(
+                            value + np.float32(np.float32(0.1) * class_index)
+                        )
+                        value = np.float32(value + np.float32(np.float32(0.017) * x))
+                        value = np.float32(value + np.float32(np.float32(0.011) * y))
+                        memberships[x, y, z, class_index] = np.float32(
+                            value + np.float32(np.float32(0.007) * z)
+                        )
+        result = lesion_registration_volume_coefficients(
+            maps,
+            memberships,
+            image_dimensions_xyz=input_dims,
+            image_resolutions_mm=tuple(reference["image_resolutions"]),
+            template_resolutions_mm=tuple(reference["template_resolutions"]),
+            transform=transform,
+            scale=case["scale"],
+            image_center_xyz=tuple(reference["image_center"]),
+            template_center_xyz=tuple(reference["template_center"]),
+            offset=0,
+            subsample=int(reference["subsample"]),
+        )
+        assert result.cost == np.float32(case["cost"]), case["scale"]
+        assert result.norm == np.float32(case["norm"]), case["scale"]
+        np.testing.assert_array_equal(result.gradient, np.asarray(case["gradient"], dtype=np.float32))
+        np.testing.assert_array_equal(result.hessian, np.asarray(case["hessian"], dtype=np.float32))
+        assert result.energy == np.float32(case["energy"]), case["scale"]
+        np.testing.assert_array_equal(
+            result.normalized_gradient,
+            np.asarray(case["normalized_gradient"], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            result.normalized_hessian,
+            np.asarray(case["normalized_hessian"], dtype=np.float32),
+        )
+        assert result.visited_voxels == case["visited_voxels"]
+        assert result.contributing_class_terms == case["contributing_class_terms"]
