@@ -239,6 +239,7 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 
 ### 2026-09-29
 
+- Completed P40i: the plus surface adapter now routes the corrected cropped level set, updated GM/WM, MaACE products, and plus GVF into nested TGDM with mapped `WMIsoLevel`. The 25³ synthetic RAS comparison matches direct TGDM outputs; full-suite result: 480 passed in 79.51 seconds on `2e9503f70cb8fe9f2169d6cd065eaac5f67c932e`. Inverse-crop orchestration remains open; see [P40i report](docs/reports/full-pytest-2026-09-29-plus-tgdm-routing.md).
 - Completed P40h: the selected plus tissue-update stage now routes six cropped atlas/TOADS images through the existing source-mapped combiner with `GMconfident=0.001`. The synthetic RAS fixture confirms confident WM priority, strict confident-GM behavior, fallback, outside-mask zeroing, output types, and grid validation. Full suite: 478 passed in 58.40 seconds on `7fa402518c8490b2390f4ff06f685f7bf75d5d85`; see [P40h report](docs/reports/full-pytest-2026-09-29-plus-tissue-update.md).
 - Completed P40g: the MaCRUISEplus boundary stage now routes configured overlooked labels through the selected 3D boundary helper and applies the TOADS-WM cleanup rule. The committed synthetic RAS fixture confirms the configured label changes the raw boundary, WM voxels above 0.01 are removed, and both products match direct helper composition. Full suite: 475 passed in 57.23 seconds on `7741bb27db7be5a3d51c9adda9c510fb0c1d452c`; see [P40g report](docs/reports/full-pytest-2026-09-29-plus-boundary-routing.md).
 

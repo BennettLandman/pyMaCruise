@@ -35,6 +35,12 @@ products to the existing source-mapped Python combiner and returns its GM, WM,
 and mask images. Synthetic routing evidence is recorded in the
 [P40h report](reports/full-pytest-2026-09-29-plus-tissue-update.md).
 
+The selected surface wrapper supplies the cropped corrected level set,
+updated WM/GM, MaACE-enhanced GM and thinned skeleton, and the plus GVF field to
+nested TGDM. `run_plus_tgdm_stage` maps WMIsoLevel into the existing nested
+image adapter and returns level sets on that cropped RAS grid. Inverse crop is
+not part of this adapter; see the [P40i report](reports/full-pytest-2026-09-29-plus-tgdm-routing.md).
+
 ## Image provenance and explicit input mask
 
 The selected MATLAB branch sends T1 and FLAIR through N4 before stripping,
