@@ -16,6 +16,7 @@ from pymacruise.lesion_membership import (
 
 REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_lesion_sweep/java_reference.json"
 PRIOR_REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_lesion_prior_sweep/java_reference.json"
+DISTANCE_REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_lesion_distance_sweep/java_reference.json"
 SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
 CLASS_TYPES = ("OBJECT", "LESION", "OBJECT")
 RELATIONS = ("direct", "prior", "direct")
@@ -225,3 +226,66 @@ def test_lesion_prior_sweep_matches_selected_java_volume_reference() -> None:
             smoothing=0.2,
             prior_coefficient=0.3,
         )
+
+
+def test_lesion_distance_sweep_matches_selected_java_distance_precedence() -> None:
+    reference = json.loads(DISTANCE_REFERENCE.read_text())
+    assert reference["source_sha256"] == SOURCE_SHA256
+    shape = tuple(reference["shape"])
+    memberships, lesion, class_data, lesion_data, shapes = _inputs(shape, reference["classes"])
+    vent = np.full(shape, -1, dtype=np.int8)
+    gm = np.full(shape, -1, dtype=np.int8)
+    brainstem = np.full(shape, -1, dtype=np.int8)
+    for x, y, z in np.ndindex(shape):
+        coordinate_sum = x + y + z
+        if coordinate_sum % 3 == 0:
+            vent[x, y, z] = (x + y) % 4
+        if coordinate_sum % 3 != 0 and (x + 2 * y + z) % 2 == 0:
+            gm[x, y, z] = coordinate_sum % 5
+        if (x + 2 * y + z) % 2 == 0:
+            brainstem[x, y, z] = coordinate_sum % 6
+    shape_priors = np.asarray([0.25, 0.375, 0.5], dtype=np.float32)
+    class_similarities = np.asarray(
+        [[0.0, 0.125, 0.25], [0.5, 0.0, 0.375], [0.25, 0.625, 0.0]],
+        dtype=np.float32,
+    )
+    lesion_similarities = np.asarray([0.25, 0.0, 0.5], dtype=np.float32)
+    results = {}
+    for expected_case in reference["cases"]:
+        gm_flag = expected_case["name"] == "gm_enabled"
+        result = run_lesion_toads_lesion_smoothing_sweep(
+            memberships,
+            lesion,
+            class_data,
+            lesion_data,
+            shapes,
+            SMOOTHING_PRIORS,
+            CLASS_TYPES,
+            RELATIONS,
+            smoothing=float(np.asarray(reference["smoothing_bits"], dtype=np.uint32).view(np.float32)),
+            shape_priors=shape_priors,
+            class_similarities=class_similarities,
+            lesion_similarities=lesion_similarities,
+            prior_coefficient=float(
+                np.asarray(reference["prior_coefficient_bits"], dtype=np.uint32).view(np.float32)
+            ),
+            ventricle_distances=vent,
+            gray_matter_distances=gm,
+            brainstem_distances=brainstem,
+            max_ventricle_distance=3,
+            max_gray_matter_distance=4,
+            max_brainstem_distance=5,
+            gm_flag=gm_flag,
+            spread=1.25,
+        )
+        results[expected_case["name"]] = result
+        for expected in expected_case["voxels"]:
+            point = tuple(expected["coordinate"])
+            assert _bits(result.class_memberships[point]) == expected["class_bits"]
+            assert int(np.asarray(result.lesion_membership[point], dtype=np.float32).view(np.uint32)) == expected["lesion_bits"]
+
+    interior = (slice(1, -1), slice(1, -1), slice(1, -1))
+    assert np.any(
+        results["gm_enabled"].lesion_membership[interior]
+        != results["gm_disabled"].lesion_membership[interior]
+    )
