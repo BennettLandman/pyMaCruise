@@ -565,7 +565,7 @@ expected RAS warnings in 69.12 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-distance-modulation.md`](reports/full-pytest-2026-09-29-lesion-toads-distance-modulation.md)
 and [`tests/data/synthetic/lesion_toads_distance_modulation/README.md`](../tests/data/synthetic/lesion_toads_distance_modulation/README.md).
 
-### Started substage: P39za black-hole distance modulation
+### Completed substage: P39za black-hole distance modulation
 
 Port the selected `BLACKHOLE` branch's distance postprocessing. Apply the
 selected ventricle-or-GM factor to `lesionMembership` and `lesionRelation`;
@@ -575,3 +575,13 @@ both auxiliary maps and `lesionRelation`. Preserve this source-specific
 asymmetry, branch precedence, zero-distance `spread`, `-1` sentinels, and Java
 float32 expression order. This reuses distances already computed elsewhere
 and does not normalize voxel memberships.
+
+Fourteen selected-Java cases match lesion membership, `blackHoleMem`, and
+`lesionRelation` float32 bits. The cases confirm the source asymmetry: the
+ventricle branch leaves `blackHoleMem` unchanged, while the GM and brainstem
+branches scale it. Zero-distance `spread`, branch precedence, `-1` sentinels,
+zero maxima, and GM control are covered. Focused suite: 4 passed; full suite:
+442 passed with two expected RAS warnings in 81.37 seconds on implementation
+commit `c5493e84aa72d03bd951194aad0a91eec0ee3e39`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md)
+and [`tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md`](../tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md).

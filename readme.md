@@ -87,6 +87,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 P39za is Started: the source `BLACKHOLE` branch applies ventricle distance to lesion membership and `lesionRelation` while leaving `blackHoleMem` unchanged; its GM and brainstem branches update both auxiliary maps. This source-specific asymmetry is included in the selected Java cases. The roadmap counts 130/145 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
 
+**Progress update (2026-09-29):** P39za is complete. Fourteen selected-Java cases match all three float32 outputs: lesion membership, black-hole membership, and `lesionRelation`. They capture the source's branch asymmetry (ventricle modulation leaves `blackHoleMem` unchanged, while GM and brainstem modulation update it), plus zero-distance `spread`, sentinels, disabled maxima, and branch precedence. The full suite reports **442 passed in 81.37 seconds**, with two expected RAS warnings, on implementation commit `c5493e84aa72d03bd951194aad0a91eec0ee3e39`; see the [P39za full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md) and [formula fixture](tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md). Distance-map construction and voxel normalization remain open. The roadmap counts 131/145 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
