@@ -9,6 +9,10 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import nibabel as nib
+
+from pymacruise.gvf import GVFImageResult, generalized_gvf_image
+
 
 @dataclass(frozen=True)
 class PlusPipelineOptions:
@@ -52,3 +56,22 @@ class PlusPipelineOptions:
         result = asdict(self)
         result["boundary_overlook_labels"] = list(self.boundary_overlook_labels)
         return result
+
+
+def run_plus_gvf_stage(
+    scalar_volume: nib.spatialimages.SpatialImage,
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> GVFImageResult:
+    """Run the existing RAS GVF adapter with selected MaCRUISEplus settings.
+
+    The source wrapper passes ``GVF_Lambda`` and fixes maximum iterations at
+    200 with output normalization disabled. Solver implementation remains in
+    :mod:`pymacruise.gvf`; this function only maps plus configuration to it.
+    """
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    return generalized_gvf_image(
+        scalar_volume,
+        lambda_value=options.gvf_lambda,
+        max_iterations=200,
+    )
