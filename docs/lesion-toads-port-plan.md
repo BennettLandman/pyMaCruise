@@ -752,10 +752,27 @@ RAS warnings in 56.82 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-auxiliary-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-auxiliary-membership-integration.md)
 and [`tests/data/synthetic/lesion_toads_auxiliary_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_auxiliary_membership_integration/README.md).
 
-### Started substage: P39zk data-energy-to-membership integration
+### Completed substage: P39zk data-energy-to-membership integration
 
 Compose selected unfielded class/lesion/black-hole residual energy
 accumulation with the validated smoothing, shape/similarity prior,
 membership conversion, distance, auxiliary-map, normalization, and local
 energy kernels for a synthetic voxel. This is a one-voxel integration with
 synthetic channel vectors and stencils; it does not run a complete volume.
+
+Two selected-Java cases match computed unfielded class/lesion/black-hole
+residual energies and final class and auxiliary memberships, denominator,
+and local energy through smoothing, shape/similarity priors, conversion,
+distance modulation, and normalization. They cover LESION and BLACKHOLE
+targets with two synthetic channels. Focused suite: 1 passed; full suite:
+456 passed with two expected RAS warnings in 64.21 seconds on implementation
+commit `990407f49bf7ca271567f032a0d7d62a0bddfb06`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-data-energy-membership.md`](reports/full-pytest-2026-09-29-lesion-toads-data-energy-membership.md)
+and [`tests/data/synthetic/lesion_toads_data_energy_membership/README.md`](../tests/data/synthetic/lesion_toads_data_energy_membership/README.md).
+
+### Started substage: P39zl field-corrected data-energy integration
+
+Repeat the one-voxel data-energy-to-membership composition with source
+`useField` enabled. Each synthetic channel sample is multiplied by its own
+field value before residuals; all later smoothing, prior, distance, and
+normalization steps stay in source order.
