@@ -62,6 +62,8 @@ P39n is complete: the fixed-scale outer iteration loop matches selected-Java tri
 
 P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java harness and Python match floor-truncated coarse dimensions, the levels 1–4 scale schedules, per-level optimizer trial histories and stop states, transform handoff, and lambda reset. The full suite reports **410 passed in 54.14 seconds**, with two expected RAS warnings, on implementation commit `a194c16c3fe97aaacdb21797d8d85f0c79d19912`; see the [P39o full-suite report](docs/reports/full-pytest-2026-09-29-lesion-registration-pyramid.md) and [fixture provenance](tests/data/synthetic/lesion_registration_pyramid/README.md). This is formula-level pyramid-registration evidence only; lesion segmentation and the full plus workflow remain open. The roadmap counts 119/133 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39p has started: isolate constructor-time LesionTOADS segmentation-state initialization and compare it with a selected-source Java harness on committed synthetic templates. This will establish only initialized arrays and statistics, before membership estimation or topology evolution. The roadmap now has 134 rows.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

@@ -316,3 +316,14 @@ RAS warnings in 54.14 seconds on implementation commit
 and [`tests/data/synthetic/lesion_registration_pyramid/README.md`](../tests/data/synthetic/lesion_registration_pyramid/README.md).
 This is formula-level pyramid registration evidence only, not a full atlas
 class comparison, lesion segmentation, or plus-workflow equivalence.
+
+### Started substage: P39p constructor-state initialization
+
+The selected `LesionToadSegmentation` constructor copies the atlas hard
+classification and initializes class-index segmentation/skeleton/relation
+maps, zero memberships and availability, class volumes and image centroids,
+lesion/outlier defaults, distance sentinels, and identity covariance fields.
+The next isolated port will capture these deterministic constructor effects
+from synthetic arrays and a small selected-source Java harness. It will not
+claim membership estimation, topology propagation, lesion evolution, or final
+segmentation behavior.
