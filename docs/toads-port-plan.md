@@ -550,9 +550,11 @@ entries, six single-seed entries, and an empty queue. See the [P18ba report](rep
 P18bb now ports and validates one topology-gated event, including accepted,
 critical, and stale queue entries against the selected 18/6 LUT and Java heap;
 see [its source-slice report](reports/toads-growing-queue-step-2026-09-29.md).
-Repeated queue-to-exhaustion growth on a synthetic folded boundary remains
-open as P18bc. Neither the event nor the planned repeated pass establishes
-full TOADS segmentation, atlas alignment, or real-data parity.
+P18bc composes initialization with queue-to-exhaustion growth on a synthetic
+folded-band phantom. Its 448 events and final arrays match the selected Java
+harness reference exactly; see [the P18bc report](reports/toads-growing-pass-2026-09-29.md).
+This remains source-slice evidence only and does not establish full TOADS
+segmentation, atlas alignment, or real-data parity.
 
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
