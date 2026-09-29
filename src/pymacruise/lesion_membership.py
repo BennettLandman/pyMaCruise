@@ -922,6 +922,9 @@ def run_lesion_toads_outmask_smoothing_sweep(
     relation_types: tuple[str, ...] | list[str],
     *,
     smoothing: float,
+    shape_priors: np.ndarray | None = None,
+    class_similarities: np.ndarray | None = None,
+    prior_coefficient: float = 0.0,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsOutmaskSweepResult:
@@ -929,8 +932,9 @@ def run_lesion_toads_outmask_smoothing_sweep(
 
     This composes selected six-face smoothing with inversion of the OUTMASK
     and outlier terms, direct/prior blending, in-place x/y/z neighborhood
-    reads, and source denominator normalization. Atlas priors and other
-    auxiliary/class branches remain separate.
+    reads, and source denominator normalization. Optional atlas similarities
+    add selected class-prior terms to both the class and OUTMASK energies.
+    Other auxiliary/class branches remain separate.
     """
     current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
     outlier = np.asarray(initial_outlier_membership, dtype=np.float32).copy()
@@ -958,6 +962,23 @@ def run_lesion_toads_outmask_smoothing_sweep(
         raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
     if not all(np.isfinite(array).all() for array in (current, outlier, data, outmask_data, shapes)):
         raise ValueError("membership, data-term, and shape arrays must be finite")
+    coefficient = np.float32(prior_coefficient)
+    if not np.isfinite(coefficient) or coefficient < np.float32(0.0):
+        raise ValueError("prior_coefficient must be finite and nonnegative")
+    if shape_priors is None and class_similarities is None:
+        if coefficient != np.float32(0.0):
+            raise ValueError("shape_priors and class_similarities are required for a nonzero prior coefficient")
+        atlas_priors = np.zeros(classes, dtype=np.float32)
+        similarity = np.zeros((classes, classes), dtype=np.float32)
+    elif shape_priors is None or class_similarities is None:
+        raise ValueError("shape_priors and class_similarities must be provided together")
+    else:
+        atlas_priors = np.asarray(shape_priors, dtype=np.float32)
+        similarity = np.asarray(class_similarities, dtype=np.float32)
+        if atlas_priors.shape != (classes,) or similarity.shape != (classes, classes):
+            raise ValueError("shape_priors and class_similarities must have shapes (classes,) and (classes, classes)")
+        if not np.isfinite(atlas_priors).all() or not np.isfinite(similarity).all():
+            raise ValueError("shape priors and class similarities must be finite")
     smoothing_value = np.float32(smoothing)
     if not np.isfinite(smoothing_value) or smoothing_value <= 0:
         raise ValueError("smoothing must be finite and positive")
@@ -969,6 +990,7 @@ def run_lesion_toads_outmask_smoothing_sweep(
         raise ValueError("infinity must be finite and nonnegative")
 
     zero_map = np.zeros(spatial_shape, dtype=np.float32)
+    zero_similarities = np.zeros(classes, dtype=np.float32)
     outmask_class = types.index("OUTMASK")
     for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, zero_map, zero_map):
         x, y, z = neighborhood.coordinate
@@ -993,8 +1015,33 @@ def run_lesion_toads_outmask_smoothing_sweep(
                     black_hole_membership_data_term=0.0,
                     outmask_membership_data_term=(float(outmask_data[x, y, z]) if k == outmask_class else 0.0),
                 )
+                class_term = np.float32(update.class_membership_data_term)
+                outmask_term = np.float32(update.outmask_membership_data_term)
+                if coefficient > np.float32(0.0):
+                    prior_update = update_lesion_toads_prior_energies(
+                        atlas_priors,
+                        similarity[k],
+                        zero_similarities,
+                        zero_similarities,
+                        shapes[x, y, z],
+                        class_index=k,
+                        class_type=types[k],
+                        prior_coefficient=float(coefficient),
+                        class_membership_data_term=float(class_term),
+                        lesion_membership_data_term=0.0,
+                        black_hole_membership_data_term=0.0,
+                        outmask_membership_data_term=float(outmask_term),
+                        class_energy=0.0,
+                        lesion_energy=0.0,
+                        black_hole_energy=0.0,
+                        has_lesion=False,
+                        lesion_class_index=0,
+                        lesion_class_type="OBJECT",
+                    )
+                    class_term = np.float32(prior_update.class_membership_data_term)
+                    outmask_term = np.float32(prior_update.outmask_membership_data_term)
                 class_membership = convert_lesion_toads_class_membership(
-                    float(update.class_membership_data_term),
+                    float(class_term),
                     float(shapes[x, y, z, k]),
                     relation_type=relations[k],
                     zero=float(zero_value),
@@ -1002,7 +1049,7 @@ def run_lesion_toads_outmask_smoothing_sweep(
                 )
                 if k == outmask_class:
                     outmask_membership = convert_lesion_toads_class_membership(
-                        float(update.outmask_membership_data_term),
+                        float(outmask_term),
                         1.0,
                         relation_type="direct",
                         zero=float(zero_value),
@@ -1010,7 +1057,7 @@ def run_lesion_toads_outmask_smoothing_sweep(
                     )
                     mixed = update_lesion_toads_outmask_membership(
                         float(convert_lesion_toads_class_membership(
-                            float(update.class_membership_data_term),
+                            float(class_term),
                             1.0,
                             relation_type="direct",
                             zero=float(zero_value),
