@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39q have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39r have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -395,3 +395,20 @@ and add eligible six-face neighbors with lesion-aware priorities. Rejected
 events restore availability at the event label. This next slice composes the
 already validated local topology predicate and priority formulas and stops
 after one queue pop; complete queue exhaustion/convergence is separate.
+
+### Completed substage: P39r one growing event
+
+`process_lesion_toads_growing_event` composes the selected 18/6 local
+topology predicate and P39q lesion-aware scoring with one
+`propagateGrowing` queue pop. Five committed 5³ reference cases match
+accepted lesion updates in additive/max modes, non-lesion updates, topology
+rejection, and stale-item handling. Comparisons include output label and
+availability maps, exact float32 ordering/volume bits, inserted neighbors,
+and the resulting min-heap pop sequence. Two focused tests pass; the full
+suite reports 425 passed with two expected RAS warnings in 54.31 seconds on
+implementation commit `b607fa74457e476da5337e4b7318a31dad2890f4`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-growing-event.md`](reports/full-pytest-2026-09-29-lesion-growing-event.md)
+and [`tests/data/synthetic/lesion_growing_event/README.md`](../tests/data/synthetic/lesion_growing_event/README.md).
+The reference composes a validated topology method body with selected
+LesionTOADS event formulas; it is not a whole-class run or full segmentation
+validation.
