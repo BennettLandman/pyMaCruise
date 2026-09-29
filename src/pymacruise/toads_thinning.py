@@ -273,6 +273,127 @@ def toads_initialize_growing_queue(
     return ToadsGrowingQueueInitialization(updated_skeleton, available, queue)
 
 
+@dataclass(frozen=True)
+class ToadsGrowingQueueStep:
+    """Image state after one selected source propagateGrowing event."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volumes: NDArray[np.float32]
+    popped_item: ToadsHeapItem
+    topology_accepted: bool | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+def toads_process_next_growing_item(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    available: ArrayLike,
+    ordering: ArrayLike,
+    class_volumes: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    *,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsGrowingQueueStep:
+    """Process one source-ordered topology-gated growing item."""
+    labels = np.asarray(segmentation)
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    avail = np.asarray(available)
+    orderings = np.asarray(ordering, dtype=np.float32)
+    volumes = np.asarray(class_volumes, dtype=np.float32)
+    if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be a 3-D integer grid")
+    if skel.shape != labels.shape or not np.issubdtype(skel.dtype, np.integer):
+        raise ValueError("skeleton must be an integer grid matching segmentation")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    classes = mems.shape[-1]
+    if avail.shape != labels.shape + (classes,) or avail.dtype != np.bool_:
+        raise ValueError("available must be a boolean grid matching segmentation and classes")
+    if orderings.shape != labels.shape or volumes.shape != (classes,):
+        raise ValueError("ordering and class volumes must match the image and class count")
+    if not np.isfinite(mems).all() or not np.isfinite(orderings).all() or not np.isfinite(volumes).all():
+        raise ValueError("memberships, ordering, and class volumes must be finite")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must be valid class indices")
+    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+        raise ValueError("skeleton labels must be valid class indices or empty_label")
+    zero = np.float32(zero_threshold)
+    if not np.isfinite(zero) or zero < np.float32(0.0):
+        raise ValueError("zero_threshold must be finite and nonnegative")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "min":
+        raise ValueError("queue must be a TOADS min heap")
+    if not queue:
+        raise ValueError("cannot process an empty TOADS growing queue")
+
+    next_item = queue.peek_first()
+    x, y, z, label = next_item.x, next_item.y, next_item.z, next_item.label
+    if not (
+        1 <= x < labels.shape[0] - 1
+        and 1 <= y < labels.shape[1] - 1
+        and 1 <= z < labels.shape[2] - 1
+        and 0 <= label < classes
+    ):
+        raise ValueError("growing queue item must have an interior coordinate and valid class")
+    popped = queue.pop_first()
+    updated_labels = labels.astype(np.int16, copy=True)
+    updated_skeleton = skel.astype(np.int16, copy=True)
+    updated_available = avail.copy()
+    updated_ordering = orderings.copy()
+    updated_volumes = volumes.copy()
+    topology_accepted: bool | None = None
+    inserted: list[ToadsHeapItem] = []
+
+    if int(updated_skeleton[x, y, z]) == empty_label:
+        neighborhood = updated_labels[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2]
+        topology_accepted = toads_homeomorphic_label_change(neighborhood, label)
+        if topology_accepted:
+            updated_skeleton[x, y, z] = np.int16(label)
+            updated_available[x, y, z, :] = False
+            updated_ordering[x, y, z] = popped.value
+            updated_volumes[label] = np.float32(volumes[label] + mems[x, y, z, label])
+            updated_labels[x, y, z] = np.int16(label)
+            for dx, dy, dz in _FACE_NEIGHBORS:
+                xi, yj, zl = x + dx, y + dy, z + dz
+                if not updated_available[xi, yj, zl, label]:
+                    continue
+                best = 0
+                maximum = np.float32(0.0)
+                for candidate in range(classes):
+                    if mems[xi, yj, zl, candidate] > maximum:
+                        best = candidate
+                        maximum = mems[xi, yj, zl, candidate]
+                if label == best:
+                    ratio = np.float32(1.0)
+                else:
+                    ratio = np.float32(
+                        np.float32(mems[xi, yj, zl, best] + zero)
+                        / np.float32(mems[xi, yj, zl, label] + zero)
+                    )
+                priority = np.float32(popped.value + ratio)
+                updated_available[xi, yj, zl, label] = False
+                queue.add(priority, xi, yj, zl, label)
+                inserted.append(ToadsHeapItem(priority, xi, yj, zl, label))
+        else:
+            updated_available[x, y, z, label] = True
+
+    return ToadsGrowingQueueStep(
+        updated_labels,
+        updated_skeleton,
+        updated_available,
+        updated_ordering,
+        updated_volumes,
+        popped,
+        topology_accepted,
+        tuple(inserted),
+    )
+
+
 def toads_initialize_thinning_queue(
     segmentation: ArrayLike,
     memberships: ArrayLike,

@@ -127,3 +127,15 @@ priority construction, availability changes, and full min-heap pop order.
 Regenerate with
 `scripts/generate_java_toads_growing_queue_initialization_reference.sh`; see
 `tests/data/synthetic/toads_growing_queue/README.md`.
+
+## TOADS topology-gated growing event
+
+`ToadsGrowingQueueStepReferenceHarness.java` transcribes one queue event from
+`MultipleToadSegmentation.propagateGrowing`, using the test-only Java
+`BinaryHeap4D`, the selected 18/6 LUT, and the same homeomorphic predicate
+harness used by the thinning references. Accepted, rejected, and stale-item
+events record updated arrays, volume/order values, scheduled neighbors, and
+the complete remaining heap. Regenerate with
+`scripts/generate_java_toads_growing_queue_step_reference.sh`; synthetic
+phantom details are in
+`tests/data/synthetic/toads_growing_queue_step/README.md`.
