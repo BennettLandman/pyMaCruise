@@ -75,6 +75,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39u is complete. Nine selected-Java formula cases match the unfielded class, lesion, and black-hole intensity-energy accumulators bit-for-bit for three object types across three synthetic multichannel samples with nonuniform channel weights. The complete suite reports **429 passed in 54.25 seconds**, with two expected RAS warnings, on implementation commit `c69df55991a468279f1e31b213cb64783f910f24`; see the [P39u full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-data-terms.md) and [formula fixture](tests/data/synthetic/lesion_toads_data_terms/README.md). This slice ends before field correction, special power weighting, smoothing, priors, inversion, and normalization. The roadmap counts 125/139 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39v is Started: the next formula slice applies source `useField` multiplication before centroid residuals for ordinary, lesion, and black-hole classes. Special Sulcal-CSF/MPRAGE and FLAIR PowerTable branches remain separate. The roadmap counts 125/140 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

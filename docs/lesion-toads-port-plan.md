@@ -478,12 +478,11 @@ This does not cover field correction, Sulcal-CSF/MPRAGE or FLAIR-specific
 PowerTable paths, smoothing, atlas priors, inversion, or normalized
 memberships.
 
-### Started substage: P39u unfielded data energies
+### Started substage: P39v field-corrected data energies
 
-Port only the source's unfielded weighted squared-residual terms for generic
-`OBJECT`, `LESION`, and `BLACKHOLE` types. Return the tissue/class energy and
-the auxiliary lesion and black-hole energies before inversion or any spatial
-or atlas term is applied. The Java source has separate FLAIR/`useLesionWeight`
-PowerTable handling, Sulcal-CSF/MPRAGE handling, and bias-field branches;
-those remain excluded from this slice. A compact multi-channel formula
-harness will compare each float32 accumulator independently.
+Extend the checked unfielded `OBJECT`, `LESION`, and `BLACKHOLE` weighted
+residual formulas to the selected `useField` branches by multiplying each
+channel image by its corresponding bias field before subtracting its
+centroid. Keep Sulcal-CSF/MPRAGE and FLAIR `useLesionWeight` PowerTable
+branches outside this slice. A selected-method Java harness will compare the
+class, lesion, and black-hole accumulators independently in float32.
