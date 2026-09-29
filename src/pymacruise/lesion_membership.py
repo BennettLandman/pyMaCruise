@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -75,6 +76,50 @@ class LesionToadsOutmaskMembership:
 
     class_membership: np.float32
     outlier_membership: np.float32
+
+
+@dataclass(frozen=True)
+class LesionToadsSixFaceNeighborhood:
+    """One interior voxel and its source-ordered six-face membership values."""
+
+    coordinate: tuple[int, int, int]
+    class_memberships: np.ndarray
+    lesion_memberships: np.ndarray
+    black_hole_memberships: np.ndarray
+
+
+def iter_lesion_toads_six_face_neighborhoods(
+    class_memberships: np.ndarray,
+    lesion_memberships: np.ndarray,
+    black_hole_memberships: np.ndarray,
+) -> Iterator[LesionToadsSixFaceNeighborhood]:
+    """Yield source-ordered six-face neighborhoods for interior voxels.
+
+    The selected VandyCRUISE update loops x, then y, then z from 1 through
+    size-2 and reads faces in X+, X-, Y+, Y-, Z+, Z- order. Boundary voxels
+    are not yielded, matching the source loop's unchanged-border behavior.
+    Inputs are treated as read-only; neighborhoods are streamed to avoid a
+    large temporary stencil tensor on full atlas-sized volumes.
+    """
+    classes = np.asarray(class_memberships, dtype=np.float32)
+    lesion = np.asarray(lesion_memberships, dtype=np.float32)
+    black_hole = np.asarray(black_hole_memberships, dtype=np.float32)
+    if classes.ndim != 4 or any(size < 3 for size in classes.shape[:3]) or classes.shape[3] == 0:
+        raise ValueError("class_memberships must have shape (x, y, z, classes), with each spatial size >= 3")
+    if lesion.shape != classes.shape[:3] or black_hole.shape != classes.shape[:3]:
+        raise ValueError("lesion and black-hole memberships must match the class spatial shape")
+
+    offsets = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+    for x in range(1, classes.shape[0] - 1):
+        for y in range(1, classes.shape[1] - 1):
+            for z in range(1, classes.shape[2] - 1):
+                faces = tuple((x + dx, y + dy, z + dz) for dx, dy, dz in offsets)
+                yield LesionToadsSixFaceNeighborhood(
+                    coordinate=(x, y, z),
+                    class_memberships=np.stack([classes[point] for point in faces]),
+                    lesion_memberships=np.asarray([lesion[point] for point in faces], dtype=np.float32),
+                    black_hole_memberships=np.asarray([black_hole[point] for point in faces], dtype=np.float32),
+                )
 
 
 def convert_lesion_toads_class_membership(
