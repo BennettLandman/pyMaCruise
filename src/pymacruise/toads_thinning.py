@@ -1,4 +1,10 @@
-"""Local selected VandyCRUISE TOADS thinning state transition."""
+"""Selected VandyCRUISE TOADS thinning operations.
+
+Behavior follows ``MultipleToadSegmentation.java`` (April 2006, author
+Pierre-Louis Bazin), especially ``initThinningLabels`` and
+``propagateThinning``. See synthetic Java-reference reports for source hashes,
+matched slices, and known limits; this module is not a complete TOADS port.
+"""
 
 from __future__ import annotations
 
@@ -37,6 +43,7 @@ def toads_thinning_voxel_transition(
     minimum_class_volumes: ArrayLike,
     *,
     available_at_center: ArrayLike | None = None,
+    processing_label: int | None = None,
     empty_label: int = -1,
 ) -> ToadsThinningTransition:
     """Apply one source-ordered ``propagateThinning`` queue-item transition.
@@ -45,8 +52,9 @@ def toads_thinning_voxel_transition(
     largest neighbor shape prior, the established 18/6 multi-label topology
     gate, and the source volume/skeleton/segmentation updates. It assumes the
     caller already performed global queue initialization and popped an item
-    for the center voxel. It does not implement queue order or whole-volume
-    thinning.
+    for the center voxel. ``processing_label`` is the popped queue's class k;
+    it defaults to the center segmentation label for direct local use. It does
+    not implement queue order or whole-volume thinning.
     """
     segmentation = np.asarray(segmentation_neighborhood)
     skeleton = np.asarray(skeleton_neighborhood)
@@ -82,10 +90,16 @@ def toads_thinning_voxel_transition(
         raise ValueError("skeleton labels must be valid class indices or empty_label")
 
     updated_volumes = volumes.copy()
-    old_label = int(segmentation[1, 1, 1])
+    segmentation_center_label = int(segmentation[1, 1, 1])
+    old_label = segmentation_center_label if processing_label is None else int(processing_label)
     skeleton_label = int(skeleton[1, 1, 1])
+    if not 0 <= old_label < classes:
+        raise ValueError("processing_label must be a valid class index")
     if skeleton_label != old_label:
-        return ToadsThinningTransition(old_label, skeleton_label, updated_volumes, available.copy(), None, None, False)
+        return ToadsThinningTransition(
+            segmentation_center_label, skeleton_label, updated_volumes,
+            available.copy(), None, None, False,
+        )
 
     # Source bestMembership uses strict greater-than, so ties stay with the
     # first class and all-nonpositive scores select class 0.
@@ -127,7 +141,7 @@ def toads_thinning_voxel_transition(
     if not eligible:
         return ToadsThinningTransition(old_label, skeleton_label, updated_volumes, available.copy(), proposed_label, topology_accepted, False)
 
-    updated_segmentation = candidate if change_boundary else old_label
+    updated_segmentation = candidate if change_boundary else segmentation_center_label
     updated_volumes[old_label] = np.float32(volumes[old_label] - membership[old_label])
     updated_available = available.copy()
     updated_available[old_label] = False
@@ -366,3 +380,122 @@ def toads_schedule_thinning_neighbors(
                     inserted.append(ToadsHeapItem(np.float32(order), xi, yj, zl, removed_label))
 
     return updated_available, tuple(inserted)
+
+
+@dataclass(frozen=True)
+class ToadsThinningQueueStep:
+    """Full arrays and local decision after processing one max-heap item."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    class_volumes: NDArray[np.float32]
+    popped_item: ToadsHeapItem
+    transition: ToadsThinningTransition | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+def toads_process_next_thinning_item(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    available: ArrayLike,
+    relation_matrix: ArrayLike,
+    transformed_shape_values: ArrayLike,
+    class_volumes: ArrayLike,
+    minimum_class_volumes: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    limit: float,
+    *,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsThinningQueueStep:
+    """Process one selected `propagateThinning` heap item and its neighbors.
+
+    This composes the independently validated queue, local topology/volume
+    transition, and post-removal six-face scheduling pieces. Inputs are copied;
+    the supplied queue is popped and receives any newly scheduled neighbors.
+    A stale item whose label no longer matches the current skeleton is
+    discarded without changing image state. As in the source, the queue label
+    selects the class volume and membership even if segmentation differs.
+    """
+    labels = np.asarray(segmentation)
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    avail = np.asarray(available)
+    relations = np.asarray(relation_matrix)
+    shapes = np.asarray(transformed_shape_values, dtype=np.float32)
+    volumes = np.asarray(class_volumes, dtype=np.float32)
+    minimums = np.asarray(minimum_class_volumes, dtype=np.float32)
+    if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be a 3-D integer grid")
+    if skel.shape != labels.shape or not np.issubdtype(skel.dtype, np.integer):
+        raise ValueError("skeleton must be an integer grid matching segmentation")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    classes = mems.shape[-1]
+    if avail.shape != labels.shape + (classes,) or avail.dtype != np.bool_:
+        raise ValueError("available must be a boolean grid matching segmentation and classes")
+    if relations.shape != (classes, classes) or relations.dtype != np.bool_:
+        raise ValueError("relation_matrix must be a boolean square matrix matching classes")
+    if shapes.shape != mems.shape or not np.isfinite(shapes).all():
+        raise ValueError("transformed_shape_values must be finite and match memberships")
+    if volumes.shape != (classes,) or minimums.shape != (classes,):
+        raise ValueError("class volume arrays must match class count")
+    if not np.isfinite(volumes).all() or not np.isfinite(minimums).all() or not np.isfinite(mems).all():
+        raise ValueError("memberships and class volumes must be finite")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    if not queue:
+        raise ValueError("cannot process an empty TOADS thinning queue")
+
+    updated_labels = labels.astype(np.int16, copy=True)
+    updated_skeleton = skel.astype(np.int16, copy=True)
+    updated_available = avail.copy()
+    updated_volumes = volumes.copy()
+    popped = queue.pop_first()
+    x, y, z, label = popped.x, popped.y, popped.z, popped.label
+    transition: ToadsThinningTransition | None = None
+    inserted: tuple[ToadsHeapItem, ...] = ()
+    if (
+        1 <= x < labels.shape[0] - 1
+        and 1 <= y < labels.shape[1] - 1
+        and 1 <= z < labels.shape[2] - 1
+        and 0 <= label < classes
+        and int(updated_skeleton[x, y, z]) == label
+        and updated_volumes[label] > minimums[label]
+    ):
+        transition = toads_thinning_voxel_transition(
+            updated_labels[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2],
+            updated_skeleton[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2],
+            mems[x, y, z, :],
+            relations,
+            shapes[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2, :],
+            updated_volumes,
+            minimums,
+            available_at_center=updated_available[x, y, z, :],
+            processing_label=label,
+            empty_label=empty_label,
+        )
+        updated_labels[x, y, z] = transition.segmentation_label
+        updated_skeleton[x, y, z] = transition.skeleton_label
+        updated_available[x, y, z, :] = transition.available_at_center
+        updated_volumes = transition.class_volumes.copy()
+        if transition.eligible:
+            updated_available, inserted = toads_schedule_thinning_neighbors(
+                updated_labels,
+                mems,
+                updated_available,
+                queue,
+                (x, y, z),
+                label,
+                popped.value,
+                updated_volumes[label],
+                minimums[label],
+                limit,
+                zero_threshold=zero_threshold,
+            )
+    return ToadsThinningQueueStep(
+        updated_labels, updated_skeleton, updated_available, updated_volumes,
+        popped, transition, inserted,
+    )

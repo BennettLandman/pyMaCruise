@@ -50,6 +50,18 @@ committed cases, those checkpoint arrays match the original JIST class
 exactly. Detailed numerical metrics and the known voxel-level differences
 between Python and Java are in `docs/toads-port-plan.md`.
 
+## TOADS queue-step reference
+
+`ToadsThinningQueueStepReferenceHarness.java` composes exactly one selected
+`MultipleToadSegmentation.propagateThinning` event, using the actual copied
+`CriticalPointLUT` and `BinaryHeap4D` classes. Seven synthetic 5³ cases compare
+topology accepted/rejected and no-change paths, relation fallback, volume and
+skeleton gates, output arrays, float32 class volumes, and the next heap order.
+Regenerate with
+`scripts/generate_java_toads_thinning_queue_step_reference.sh`. It is an event
+slice only, not repeated thinning or complete TOADS validation. See the
+fixture README and `docs/reports/toads-thinning-queue-step-2026-09-29.md`.
+
 ## Source used
 
 `upstream/` contains source copies from the supplied checkouts, with their
