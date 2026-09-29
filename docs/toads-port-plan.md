@@ -479,9 +479,12 @@ optimized-tissue iteration against Java references; see
 [the P18as report](reports/toads-optimized-iteration-2026-09-29.md). P18at
 matches one topology-aware thinning queue-item transition against the Java
 18/6 LUT on nine cases; see [the P18at report](reports/toads-thinning-transition-2026-09-29.md).
-Full evolution still requires queue initialization/scheduling, repeated
-thinning and growing, both wrapper topology-correction stages, deformable
-atlas registration, convergence, and dura orchestration. These validated
+P18au now also ports the selected `BinaryHeap4D` ordering semantics and compares
+min/max ties, growth, mode changes, and reset against the source class; see
+[the P18au report](reports/toads-binary-heap-2026-09-29.md). Full evolution
+still requires queue initialization/scheduling, repeated thinning and growing,
+both wrapper topology-correction stages, deformable atlas registration,
+convergence, and dura orchestration. These validated
 slices do not replace or establish the full segmentation.
 
 The latest isolated update slices now include optimized-tissue damped
