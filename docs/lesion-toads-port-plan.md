@@ -624,7 +624,7 @@ two expected RAS warnings in 61.93 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-membership-integration.md)
 and [`tests/data/synthetic/lesion_toads_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_membership_integration/README.md).
 
-### Started substage: P39zd six-face smoothing-energy update
+### Completed substage: P39zd six-face smoothing-energy update
 
 Port one source-ordered voxel update from the `smoothing > 0` branch of
 `computeMemberships`. Sum, in the Java face/class order, all other classes'
@@ -632,3 +632,22 @@ neighbor membership squares and the lesion/black-hole auxiliary squares;
 then apply the class-specific current-label self term and lesion/black-hole/
 outmask energy cross terms. Preserve separate full and half-energy updates.
 This does not iterate smoothing over a volume or update memberships.
+
+Four selected-Java cases match full updates to the class, lesion,
+black-hole, and outmask membership data terms, half-weighted class/lesion/
+black-hole energy updates, and intermediate neighbor-square sums for
+`OBJECT`, `LESION`, `BLACKHOLE`, and `OUTMASK`. The cases preserve face/class
+loop order, current-class exclusion, lesion/black-hole cross-coupling, and
+the distinct self-neighbor order. Focused suite: 1 passed; full suite: 449
+passed with two expected RAS warnings in 52.76 seconds on implementation
+commit `bba409dc9c892262067f8ceaeca06c5582d58e7b`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-energy.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-energy.md)
+and [`tests/data/synthetic/lesion_toads_smoothing_energy/README.md`](../tests/data/synthetic/lesion_toads_smoothing_energy/README.md).
+
+### Started substage: P39ze smoothing-to-membership integration
+
+Compose the P39zd full smoothing additions used for class/auxiliary
+membership conversion and the separate half additions used for local energy
+with the checked direct/prior conversions, distance branches, denominator,
+and normalization. Keep the input a synthetic one-voxel stencil and keep
+atlas-prior energy construction outside this slice.
