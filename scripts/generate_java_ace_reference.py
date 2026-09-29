@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -17,7 +18,6 @@ ROOT = Path(__file__).parents[1]
 INPUTS = ROOT / "tests/data/synthetic/ace"
 OUTPUT = INPUTS / "java_reference"
 BUILD = ROOT / "build/java-reference/ace"
-CLASSES = BUILD / "classes"
 SOURCE_ROOT = ROOT / "tests/java_reference"
 
 
@@ -64,17 +64,26 @@ def read_intermediate(path: Path, shape: tuple[int, int, int]) -> np.ndarray:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--place-to-add-csf", type=int, choices=(0, 1, 2, 3), default=2)
+    parser.add_argument("--output-dir", type=Path, default=OUTPUT)
+    args = parser.parse_args()
     javac, java = shutil.which("javac"), shutil.which("java")
     if not javac or not java:
         raise RuntimeError("A JDK with javac and java is required to generate ACE references")
-    BUILD.mkdir(parents=True, exist_ok=True)
-    CLASSES.mkdir(parents=True, exist_ok=True)
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+    build = BUILD / f"place-{args.place_to_add_csf}"
+    classes = build / "classes"
+    intermediate = build / "intermediate"
+    output = args.output_dir.resolve()
+    build.mkdir(parents=True, exist_ok=True)
+    classes.mkdir(parents=True, exist_ok=True)
+    intermediate.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
             javac,
             "-d",
-            str(CLASSES),
+            str(classes),
             "-sourcepath",
             f"{SOURCE_ROOT / 'stubs'}:{SOURCE_ROOT / 'upstream'}",
             str(ROOT / "tests/java_reference/ACEReferenceHarness.java"),
@@ -84,40 +93,41 @@ def main() -> None:
     )
     names = ("gray_matter.nii.gz", "white_matter.nii.gz", "multi_atlas_csf.nii.gz")
     images = [nib.load(INPUTS / name) for name in names]
-    shape = write_inputs(BUILD / "ace_input.bin", images)
+    shape = write_inputs(build / "ace_input.bin", images)
     subprocess.run(
         [
             java,
             "-cp",
-            str(CLASSES),
+            str(classes),
             "ACEReferenceHarness",
-            str(BUILD / "ace_input.bin"),
-            str(BUILD / "ace_output.bin"),
-            str(BUILD / "intermediate"),
+            str(build / "ace_input.bin"),
+            str(build / "ace_output.bin"),
+            str(intermediate),
+            str(args.place_to_add_csf),
         ],
         check=True,
         cwd=ROOT,
     )
-    enhanced, skeleton, thinned = read_output(BUILD / "ace_output.bin", shape)
+    enhanced, skeleton, thinned = read_output(build / "ace_output.bin", shape)
     reference_paths = {
-        "enhanced_gray_matter": OUTPUT / "enhanced_gm_java.nii.gz",
-        "cleaned_skeleton": OUTPUT / "csf_skeleton_java.nii.gz",
-        "thinned_skeleton": OUTPUT / "thinned_skeleton_java.nii.gz",
+        "enhanced_gray_matter": output / "enhanced_gm_java.nii.gz",
+        "cleaned_skeleton": output / "csf_skeleton_java.nii.gz",
+        "thinned_skeleton": output / "thinned_skeleton_java.nii.gz",
     }
     arrays = {"enhanced_gray_matter": enhanced, "cleaned_skeleton": skeleton, "thinned_skeleton": thinned}
     for key, path in reference_paths.items():
         dtype = np.int32 if key != "enhanced_gray_matter" else np.float32
         nib.save(nib.Nifti1Image(arrays[key].astype(dtype), images[0].affine), path)
 
-    stage_output = OUTPUT / "stages"
+    stage_output = output / "stages"
     stage_output.mkdir(parents=True, exist_ok=True)
     stage_names = []
-    for binary_path in sorted((BUILD / "intermediate").glob("*.bin")):
+    for binary_path in sorted(intermediate.glob("*.bin")):
         stage = read_intermediate(binary_path, shape)
         stage_name = binary_path.stem
         stage_path = stage_output / f"{stage_name}_java.nii.gz"
         nib.save(nib.Nifti1Image(stage, images[0].affine), stage_path)
-        stage_names.append(stage_path.relative_to(OUTPUT).as_posix())
+        stage_names.append(stage_path.relative_to(output).as_posix())
 
     metadata = {
         "purpose": "selected MaCRUISE ACE wrapper Java synthetic reference",
@@ -131,18 +141,23 @@ def main() -> None:
             "gaussian_alpha": 1.8,
             "tensor_alpha": 1.6,
             "diffusion_iterations": 25,
-            "multi_atlas_csf_place": "AfterDiffuse",
+            "multi_atlas_csf_place": {
+                0: "None",
+                1: "BeforeDiffuse",
+                2: "AfterDiffuse",
+                3: "AfterGaussian",
+            }[args.place_to_add_csf],
             "multi_atlas_csf_merge": "Merge",
             "narrow_band": {"delta_t": 0.1, "outer_iterations": 1, "inner_updates": 10, "curvature_threshold": 5.0},
         },
         "outputs": {key: path.name for key, path in reference_paths.items()},
         "java_intermediate_stages": stage_names,
     }
-    (OUTPUT / "spec.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-    files = sorted(path for path in OUTPUT.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
-    (OUTPUT / "SHA256SUMS").write_text(
+    (output / "spec.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    files = sorted(path for path in output.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
+    (output / "SHA256SUMS").write_text(
         "\n".join(
-            f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(OUTPUT).as_posix()}"
+            f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(output).as_posix()}"
             for path in files
         )
         + "\n",

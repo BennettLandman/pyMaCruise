@@ -38,8 +38,10 @@ public final class ACEReferenceHarness {
                     for (int z = 0; z < slices; z++) atlas.set(x, y, z, input.readFloat());
         }
         MaAnatomicallyConsistentEnhance ace = new MaAnatomicallyConsistentEnhance();
-        // placeToAddCSF=2 selects the MaCRUISE after-diffusion merge; 0 is Merge.
-        ace.solve(white, gray, 126.9, new File(args[2]), atlas, 2, 0, 1.8, true);
+        // The optional fourth argument selects the source wrapper's CSF merge
+        // placement: 2 after diffusion (base) or 3 after speed Gaussian (plus).
+        int placeToAddCSF = args.length > 3 ? Integer.parseInt(args[3]) : 2;
+        ace.solve(white, gray, 126.9, new File(args[2]), atlas, placeToAddCSF, 0, 1.8, true);
         try (DataOutputStream output = new DataOutputStream(new FileOutputStream(args[1]))) {
             write(output, ace.getEnhancedGM());
             write(output, ace.getSkeleton());

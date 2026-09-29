@@ -174,30 +174,50 @@ def ace_update_speed(
     *,
     multi_atlas_csf: np.ndarray | None = None,
     gaussian_alpha: float = 1.8,
+    place_to_add_csf: int = 2,
+    merge_method: str = "Merge",
 ) -> np.ndarray:
-    """Apply the selected V3 CSF merge, then form ACE's weighted-distance speed.
+    """Apply the selected CSF merge placement and form ACE's speed field.
 
     The ``1 - 0.9 * csf`` speed is the conventional ACE rule in Tosun et al.
-    (2004), Eq. (3), and Huo et al. (2016), Eq. (6). The selected V3 wrapper
-    first promotes positive multi-atlas CSF values to speed seed value 1 after
-    diffusion. This input is atlas-CSF data, not Huo et al.'s distinct
-    multi-atlas cortical-boundary prior ``mu_boundary`` from Eq. (7).
+    (2004), Eq. (3), and Huo et al. (2016), Eq. (6). Base MaCRUISE merges
+    positive atlas CSF to one after diffusion and before speed mapping; plus
+    MaCRUISEplus merges positive atlas CSF to 0.1 after speed mapping and its
+    Gaussian blur. Atlas CSF is not Huo et al.'s distinct cortical-boundary
+    prior ``mu_boundary`` from Eq. (7).
     """
     csf = np.asarray(diffused_csf, dtype=np.float32).copy()
     if csf.ndim != 3 or not np.isfinite(csf).all():
         raise ValueError("diffused_csf must be a finite 3D array")
+    if place_to_add_csf not in (0, 2, 3):
+        raise ValueError("place_to_add_csf must be 0, 2, or 3 after diffusion")
+    if merge_method not in ("Merge", "Replace"):
+        raise ValueError("merge_method must be 'Merge' or 'Replace'")
+    atlas = None
     if multi_atlas_csf is not None:
-        updated = np.asarray(multi_atlas_csf)
-        if updated.shape != csf.shape:
+        atlas = np.asarray(multi_atlas_csf, dtype=np.float32)
+        if atlas.shape != csf.shape:
             raise ValueError("multi-atlas CSF must share the diffused CSF grid")
-        if not np.isfinite(updated).all():
+        if not np.isfinite(atlas).all():
             raise ValueError("multi-atlas CSF must be finite")
-        # Selected MaACE adapter behavior: Merge (option 0) after diffusion
-        # promotes any positive atlas-CSF voxel to one. This is not the
-        # separate cortical-label-boundary prior in Huo et al. (2016), Eq. (7).
-        csf[updated > 0] = 1.0
-    speed = 1.0 - 0.9 * csf
-    return ace_gaussian_blur(speed, gaussian_alpha)
+    if atlas is not None and place_to_add_csf == 2:
+        csf = _merge_updated_csf(csf, atlas, merge_method, merge_value=1.0)
+    speed = np.asarray(1.0 - 0.9 * csf, dtype=np.float32)
+    speed = ace_gaussian_blur(speed, gaussian_alpha)
+    if atlas is not None and place_to_add_csf == 3:
+        # MaACE MergeSpeedFunction mode 2 writes 0.1 after the second Gaussian.
+        speed = _merge_updated_csf(speed, atlas, merge_method, merge_value=0.1)
+    return speed
+
+
+def _merge_updated_csf(
+    target: np.ndarray, atlas: np.ndarray, merge_method: str, *, merge_value: float
+) -> np.ndarray:
+    if merge_method == "Replace":
+        return atlas.copy()
+    result = target.copy()
+    result[atlas > 0] = np.float32(merge_value)
+    return result
 
 
 def ace_gaussian_blur(image: np.ndarray, alpha: float) -> np.ndarray:
@@ -320,13 +340,16 @@ def ace_enhance_arrays(
     tensor_alpha: float = 1.6,
     gaussian_alpha: float = 1.8,
     diffusion_iterations: int = 25,
+    use_updated_csf_in_ace: int = 2,
+    merge_method: str = "Merge",
 ) -> ACEArrayResult:
     """Run the selected V3 ACE/MaACE enhancement path on aligned 3D arrays.
 
     Inputs must already use the same RAS voxel grid; the NIfTI-facing wrapper
     performs orientation normalization and emits output images in a later API
-    layer. Updated multi-atlas CSF follows the selected V3 after-diffusion
-    merge setting. The conceptual ACE operation follows the weighted-distance
+    layer. Updated multi-atlas CSF placement follows ``use_updated_csf_in_ace``:
+    2 merges after diffusion; 3 merges after the Gaussian speed blur (the plus
+    workflow's selection). The conceptual ACE operation follows the weighted-distance
     skeleton and GM-separation method of Tosun et al. (2004), while Huo et al.'s
     separate multi-atlas boundary-prior term is not an input to this adapter;
     see ``docs/papers/ace-maace.md``.
@@ -347,6 +370,10 @@ def ace_enhance_arrays(
         raise ValueError("gaussian_alpha must be finite and positive")
     if diffusion_iterations < 0:
         raise ValueError("diffusion_iterations must be non-negative")
+    if use_updated_csf_in_ace not in (0, 1, 2, 3):
+        raise ValueError("use_updated_csf_in_ace must be one of 0, 1, 2, or 3")
+    if merge_method not in ("Merge", "Replace"):
+        raise ValueError("merge_method must be 'Merge' or 'Replace'")
     if multi_atlas_csf is not None:
         atlas_csf = np.asarray(multi_atlas_csf)
         if atlas_csf.shape != gray.shape or not np.isfinite(atlas_csf).all():
@@ -361,8 +388,13 @@ def ace_enhance_arrays(
     initial_phi = _signed_distance_fmm(intensity_threshold - white, 1000.0)
     seeds = ace_seed_fields(gray, white, initial_phi, intensity_threshold=intensity_threshold)
     guide = ace_gaussian_blur(initial_phi, gaussian_alpha)
+    initial_csf = seeds.initial_csf_speed
+    if atlas_csf is not None and use_updated_csf_in_ace == 1:
+        initial_csf = _merge_updated_csf(
+            initial_csf, np.asarray(atlas_csf, dtype=np.float32), merge_method, merge_value=1.0
+        )
     diffused_csf = ace_anisotropic_diffusion(
-        seeds.initial_csf_speed,
+        initial_csf,
         guide,
         tensor_alpha=tensor_alpha,
         iterations=diffusion_iterations,
@@ -371,6 +403,8 @@ def ace_enhance_arrays(
         diffused_csf,
         multi_atlas_csf=atlas_csf,
         gaussian_alpha=gaussian_alpha,
+        place_to_add_csf=0 if use_updated_csf_in_ace == 1 else use_updated_csf_in_ace,
+        merge_method=merge_method,
     )
     evolved_phi = narrow_band_ace(
         initial_phi,
@@ -425,6 +459,8 @@ def ace_enhance(
     tensor_alpha: float = 1.6,
     gaussian_alpha: float = 1.8,
     diffusion_iterations: int = 25,
+    use_updated_csf_in_ace: int = 2,
+    merge_method: str = "Merge",
 ) -> ACEImageResult:
     """Run ACE on NIfTI inputs, reorienting to RAS and warning when needed."""
     gray_image = _as_ras_3d(gray_matter, "ACE gray matter")
@@ -443,6 +479,8 @@ def ace_enhance(
         tensor_alpha=tensor_alpha,
         gaussian_alpha=gaussian_alpha,
         diffusion_iterations=diffusion_iterations,
+        use_updated_csf_in_ace=use_updated_csf_in_ace,
+        merge_method=merge_method,
     )
     return ACEImageResult(
         _make_output(arrays.enhanced_gray_matter, gray_image),
