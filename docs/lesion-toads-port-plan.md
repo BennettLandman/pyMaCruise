@@ -213,3 +213,19 @@ The fixture is documented in
 single source-shaped voxel only: it does not implement scan-order volume
 accumulation, energy normalization, transform optimization, atlas bounds
 optimization, or lesion segmentation.
+
+### Completed substage: P39i scaled registration-pyramid prior sampling
+
+The LesionTOADS sampler now accepts registration pyramid scales and requires
+explicit full-resolution input/template centers above scale 1. It reuses the
+selected rigid coordinate map while sampling the caller-supplied coarse atlas
+array with the lesion registration's constant-zero value and derivative
+rules. On committed synthetic coarse maps, scales 2, 4, and 8 match the
+selected-Java `ParametricTransform.imageToTemplate(..., scale)` and
+`ImageFunctions` value/derivative formulas exactly, including anisotropic
+resolutions, odd-dimension floor truncation, fractional samples, and both
+constant-zero exterior directions. Full suite: 403 passed in 61.34 seconds
+on implementation commit `bb35469f4849346bdf3e03fd466e7edcee7e5e9d`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-pyramid-scales.md`](reports/full-pytest-2026-09-29-lesion-pyramid-scales.md).
+This is sampling support, not a complete atlas registration optimizer or
+LesionTOADS segmentation port.
