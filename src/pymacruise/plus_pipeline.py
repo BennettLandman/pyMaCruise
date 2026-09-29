@@ -25,6 +25,7 @@ from pymacruise.tgdm import (
     TGDMMaCRUISEImageResult,
     tgdm_nested_images,
 )
+from pymacruise.surfaces import SurfaceMesh, extract_levelset_surface
 from pymacruise.topology import TopologyCorrectionResult, topology_correct
 
 
@@ -99,6 +100,15 @@ class PlusUncroppedTGDMResult:
     inner: nib.spatialimages.SpatialImage
     central: nib.spatialimages.SpatialImage
     outer: nib.spatialimages.SpatialImage
+
+
+@dataclass(frozen=True)
+class PlusSurfaceResult:
+    """RAS+ millimetre meshes for the three nested cortical surfaces."""
+
+    inner: SurfaceMesh
+    central: SurfaceMesh
+    outer: SurfaceMesh
 
 
 def run_plus_gvf_stage(
@@ -299,3 +309,21 @@ def uncrop_plus_tgdm_outputs(
             legacy_exclusive_max=True,
         )
     return PlusUncroppedTGDMResult(**restored)
+
+
+def extract_plus_surfaces(
+    result: PlusUncroppedTGDMResult,
+) -> PlusSurfaceResult:
+    """Extract nested meshes from full-grid TGDM level sets.
+
+    This reuses scikit-image Lewiner marching cubes and the complete-affine
+    RAS conversion. Exact mesh equivalence to JIST ``IsoSurfaceOnGrid`` is an
+    explicit, still-open comparison risk.
+    """
+    if not isinstance(result, PlusUncroppedTGDMResult):
+        raise ValueError("result must be PlusUncroppedTGDMResult")
+    return PlusSurfaceResult(
+        inner=extract_levelset_surface(result.inner, level=0.0),
+        central=extract_levelset_surface(result.central, level=0.0),
+        outer=extract_levelset_surface(result.outer, level=0.0),
+    )
