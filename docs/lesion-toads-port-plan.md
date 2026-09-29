@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39n have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39o have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -298,3 +298,21 @@ seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-registration-optimizer.md`](reports/full-pytest-2026-09-29-lesion-registration-optimizer.md).
 This is a fixed-scale iteration slice, not pyramid orchestration or lesion
 segmentation.
+
+### Completed substage: P39o coarse-to-fine registration pyramid
+
+`register_lesion_shapes_pyramid` composes the source-validated block-mean
+subsampler and scale schedule with the P39n fixed-scale optimizer. A committed
+odd 33³ multi-class phantom compares selected Java and Python outputs for
+levels 1–4, including floor-truncated dimensions, per-level trial histories
+and stop states, transform handoff, and the source lambda reset. The selected
+method omits scale 1; levels 1 and 4 therefore have no optimization stage,
+while level 4 runs scales 8→4→2. Zero-norm trial energies preserve Java NaN
+behavior and serialize as JSON `null` in the fixture; those trials are
+rejected by strict-increase logic. Full suite: 410 passed with two expected
+RAS warnings in 54.14 seconds on implementation commit
+`a194c16c3fe97aaacdb21797d8d85f0c79d19912`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-registration-pyramid.md`](reports/full-pytest-2026-09-29-lesion-registration-pyramid.md)
+and [`tests/data/synthetic/lesion_registration_pyramid/README.md`](../tests/data/synthetic/lesion_registration_pyramid/README.md).
+This is formula-level pyramid registration evidence only, not a full atlas
+class comparison, lesion segmentation, or plus-workflow equivalence.
