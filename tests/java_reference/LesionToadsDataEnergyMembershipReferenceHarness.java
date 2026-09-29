@@ -1,5 +1,6 @@
 /** Selected one-voxel image residuals through smoothing/prior membership normalization. */
 public final class LesionToadsDataEnergyMembershipReferenceHarness {
+    private static boolean USE_FIELD=false;
     private static final float[][] NEIGHBORS={{0.10f,0.25f},{0.15f,0.30f},{0.20f,0.35f},{0.22f,0.37f},{0.12f,0.27f},{0.18f,0.33f}};
     private static final float[] NLESION={0.10f,0.20f,0.30f,0.40f,0.50f,0.60f};
     private static final float[] NBH={0.05f,0.15f,0.25f,0.35f,0.45f,0.55f};
@@ -9,6 +10,7 @@ public final class LesionToadsDataEnergyMembershipReferenceHarness {
     private static final float[][] BH_SIM={{0.6f,0.1f},{0.9f,0.2f}};
     private static final float[][] SHAPES={{0.45f,0.3f},{0.4f,0.2f}};
     private static final float[][] IMAGES={{0.35f,0.75f},{0.65f,0.25f}};
+    private static final float[][] FIELDS={{1.25f,0.70f},{0.80f,1.40f}};
     private static final float[][][] CENTROIDS={{{0.1f,0.3f},{0.6f,0.2f}},{{0.2f,0.5f},{0.7f,0.15f}}};
     private static final float[][] LESION_CENTROIDS={{0.5f,0.45f},{0.3f,0.4f}};
     private static final float[][] BH_CENTROIDS={{0.8f,0.4f},{0.9f,0.6f}};
@@ -27,12 +29,13 @@ public final class LesionToadsDataEnergyMembershipReferenceHarness {
     private static float[] data(int scenario,int k){
         float ce=0,le=0,be=0;String type=k==0?"OBJECT":TARGETS[scenario];
         for(int c=0;c<2;c++){
-            float d=IMAGES[scenario][c]-CENTROIDS[scenario][k][c];float wd=WEIGHTS[scenario][c]*d;ce+=wd*d;
+            float image=USE_FIELD?IMAGES[scenario][c]*FIELDS[scenario][c]:IMAGES[scenario][c];
+            float d=image-CENTROIDS[scenario][k][c];float wd=WEIGHTS[scenario][c]*d;ce+=wd*d;
             if(type.equals("LESION")||type.equals("BLACKHOLE")){
-                float dl=IMAGES[scenario][c]-LESION_CENTROIDS[scenario][c];float wl=WEIGHTS[scenario][c]*dl;le+=wl*dl;
+                float dl=image-LESION_CENTROIDS[scenario][c];float wl=WEIGHTS[scenario][c]*dl;le+=wl*dl;
             }
             if(type.equals("BLACKHOLE")){
-                float db=IMAGES[scenario][c]-BH_CENTROIDS[scenario][c];float wb=WEIGHTS[scenario][c]*db;be+=wb*db;
+                float db=image-BH_CENTROIDS[scenario][c];float wb=WEIGHTS[scenario][c]*db;be+=wb*db;
             }
         }
         return new float[]{ce,le,be};
@@ -91,12 +94,14 @@ public final class LesionToadsDataEnergyMembershipReferenceHarness {
             +",\"brainstem_distance\":"+BSTEM[s]+",\"max_ventricle_distance\":"+MAX_VENT[s]+",\"max_gray_matter_distance\":"+MAX_GM[s]
             +",\"max_brainstem_distance\":"+MAX_BSTEM[s]+",\"spread_bits\":"+bits(SPREAD[s])+",\"neighbor_class_bits\":"+matrix(NEIGHBORS)
             +",\"neighbor_lesion_bits\":"+vec(NLESION)+",\"neighbor_black_hole_bits\":"+vec(NBH)
+            +(USE_FIELD?",\"field_bits\":"+vec(FIELDS[s]):"")
             +",\"class_data_bits\":"+matrix(rawData)+",\"class_memberships_bits\":"+vec(mem)+",\"class_energies_bits\":"+vec(energy)
             +",\"lesion_energy_bits\":"+bits(le)+",\"black_hole_energy_bits\":"+bits(be)+",\"lesion_membership_bits\":"+bits(lesion)
             +",\"black_hole_membership_bits\":"+bits(bh)+",\"lesion_relation_bits\":"+bits(relation)+",\"denominator_bits\":"+bits(den)
             +",\"local_energy_bits\":"+bits(dist)+"}");
     }
     public static void main(String[] args){
+        USE_FIELD=args.length>0&&args[0].equals("field");
         System.out.print("{\"source\":\"VandyCRUISE LesionToadSegmentation.computeMemberships selected data-energy composition\",\"source_sha256\":\"545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99\",\"cases\":[");
         run(0,true);run(1,false);System.out.println("]}");
     }
