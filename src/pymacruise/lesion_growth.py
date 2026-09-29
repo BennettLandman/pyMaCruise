@@ -1,10 +1,10 @@
-"""LesionTOADS growing-frontier initialization.
+"""Selected LesionTOADS growing-frontier operations.
 
 This ports the selected VandyCRUISE ``LesionToadSegmentation`` methods
 ``initGrowingLabels``, ``bestMembership``, and ``maxMembershipRatio`` through
-queue seeding only. It reuses the already source-validated ``BinaryHeap4D``
-port in :mod:`pymacruise.toads_heap`; it does not implement queue events,
-topology checks, or lesion segmentation.
+queue exhaustion. It reuses the already source-validated ``BinaryHeap4D``
+port in :mod:`pymacruise.toads_heap`; it does not estimate lesion memberships
+or run later competition/thinning stages.
 """
 
 from __future__ import annotations
@@ -43,6 +43,19 @@ class LesionToadsGrowingEvent:
     popped_item: ToadsHeapItem
     topology_accepted: bool | None
     inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+@dataclass(frozen=True)
+class LesionToadsGrowingPass:
+    """Final state and selected-source event trace after queue exhaustion."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volume: NDArray[np.float32]
+    events: tuple[LesionToadsGrowingEvent, ...]
+    remaining_queue: tuple[ToadsHeapItem, ...]
 
 
 def _lesion_score(
@@ -434,4 +447,86 @@ def process_lesion_toads_growing_event(
         popped_item=popped,
         topology_accepted=topology_accepted,
         inserted_neighbors=tuple(inserted),
+    )
+
+
+def propagate_lesion_toads_growing(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    ordering: ArrayLike,
+    class_volume: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    *,
+    lesion_class: int,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+    zero: float = 1.0e-10,
+) -> LesionToadsGrowingPass:
+    """Run the selected lesion-aware growing pass until its min-heap empties.
+
+    This composes the separately checked ``initGrowingLabels`` and one-pop
+    ``propagateGrowing`` operations. Returned arrays do not alias the caller's
+    arrays. The event trace is useful for source comparison and provenance.
+    No lesion-membership estimation, competition, or thinning is performed.
+    """
+    labels = np.asarray(segmentation)
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    orderings = np.asarray(ordering, dtype=np.float32)
+    volumes = np.asarray(class_volume, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
+    black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
+    types = tuple(object_types)
+    initialized = initialize_lesion_toads_growing_frontier(
+        skel,
+        mems,
+        orderings,
+        types,
+        lesion_mems,
+        black_hole_mems,
+        use_lesion_max=use_lesion_max,
+        empty_label=empty_label,
+        zero=zero,
+    )
+    current_labels = labels.astype(np.int16, copy=True)
+    current_skeleton = skel.astype(np.int16, copy=True)
+    current_available = initialized.available
+    current_ordering = orderings.copy()
+    current_volume = volumes.copy()
+    events: list[LesionToadsGrowingEvent] = []
+    while initialized.queue:
+        event = process_lesion_toads_growing_event(
+            current_labels,
+            current_skeleton,
+            mems,
+            current_available,
+            current_ordering,
+            current_volume,
+            types,
+            lesion_mems,
+            black_hole_mems,
+            initialized.queue,
+            lesion_class=lesion_class,
+            use_lesion_max=use_lesion_max,
+            empty_label=empty_label,
+            zero=zero,
+        )
+        events.append(event)
+        current_labels = event.segmentation
+        current_skeleton = event.skeleton
+        current_available = event.available
+        current_ordering = event.ordering
+        current_volume = event.class_volume
+
+    return LesionToadsGrowingPass(
+        segmentation=current_labels,
+        skeleton=current_skeleton,
+        available=current_available,
+        ordering=current_ordering,
+        class_volume=current_volume,
+        events=tuple(events),
+        remaining_queue=tuple(),
     )
