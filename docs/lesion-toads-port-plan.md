@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zv have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION and BLACKHOLE prior/distance handling,
+**Status:** P39 is Started. P39a–P39zw have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and OBJECT+OUTMASK smoothing/blending/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -956,3 +956,32 @@ tests: 4 passed. Full suite: 502 passed with two expected RAS warnings in
 `c606d9c6c253b114d25581829d59dbec1e202a69`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-sweep.md)
 and [`tests/data/synthetic/lesion_toads_blackhole_distance_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_distance_sweep/README.md).
+
+
+### Completed substage: P39zw OUTMASK/outlier volume sweep
+
+`run_lesion_toads_outmask_smoothing_sweep` updates ordinary OBJECT classes
+plus one OUTMASK class in source x/y/z order. It preserves six-face
+smoothing, per-class smoothing coefficients, direct/prior shape behavior,
+outlier-weighted blending, outlier-map updates, shape gating, and shared
+per-voxel normalization. The committed synthetic `5×4×6` Java formula
+fixture covers zero, interior, and unit outlier weights; every interior class
+and outlier-membership float32 bit matches. The harness preserves the Java
+left-to-right `shapeFactor * outlier * numO` evaluation order. Focused tests:
+5 passed. Full suite: 504 passed with two expected RAS warnings in 78.06
+seconds on implementation commit `6895cf32d9af1ba989af2bd069997ca4bc62092f`;
+see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_outmask_sweep/README.md`](../tests/data/synthetic/lesion_toads_outmask_sweep/README.md).
+This is the selected OBJECT+OUTMASK formula branch, not a full
+LesionTOADS-equivalence claim. Atlas similarity priors remain separate.
+
+
+### Started substage: P39zx OUTMASK atlas-prior volume sweep
+
+Add source-ordered ordinary class and OUTMASK atlas similarity prior sums to
+P39zw. The selected Java branch adds the same class prior to `numO` for an
+OUTMASK class before inversion. Preserve the existing smoothing, relation,
+and normalization order. LESION/BLACKHOLE auxiliary priors are outside this
+substage.
