@@ -14,6 +14,8 @@ SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a9
 CLASS_ORDERS = {
     "blackhole-last": ("OBJECT", "LESION", "BLACKHOLE", "OUTMASK", "OBJECT"),
     "lesion-last": ("OBJECT", "BLACKHOLE", "OUTMASK", "LESION", "OBJECT"),
+    "optimized-blackhole-last": ("OBJECT", "OPTIMIZED_LESION", "BLACKHOLE", "OUTMASK", "OBJECT"),
+    "optimized-lesion-last": ("OBJECT", "BLACKHOLE", "OUTMASK", "OPTIMIZED_LESION", "OBJECT"),
 }
 RELATIONS = ("direct", "prior", "prior", "prior", "direct")
 SMOOTHING_PRIORS = np.asarray([0.25, 0.5, 0.75, 0.375, 0.625], dtype=np.float32)
@@ -53,7 +55,8 @@ def _inputs(shape: tuple[int, int, int], class_types):
         outlier[3, 2, 4] = 0.0
     shapes[2, 2, 2, class_types.index("BLACKHOLE")] = 0.0
     if shape[2] > 3:
-        shapes[1, 2, 3, class_types.index("LESION")] = 0.0
+        lesion_type = "OPTIMIZED_LESION" if "OPTIMIZED_LESION" in class_types else "LESION"
+        shapes[1, 2, 3, class_types.index(lesion_type)] = 0.0
     ventricle = np.where(x == 1, 0, np.where(x == 2, 3, -1)).astype(np.int8)
     gray_matter = np.where(y == 1, 0, 4).astype(np.int8)
     brainstem = np.where(z == 2, 0, 2).astype(np.int8)
@@ -92,13 +95,20 @@ def _bits(values: np.ndarray) -> list[int]:
 
 @pytest.mark.parametrize(
     ("reference_name", "order_name"),
-    (("java_reference_blackhole_last.json", "blackhole-last"), ("java_reference_lesion_last.json", "lesion-last")),
+    (
+        ("java_reference_blackhole_last.json", "blackhole-last"),
+        ("java_reference_lesion_last.json", "lesion-last"),
+        ("java_reference_optimized_blackhole_last.json", "optimized-blackhole-last"),
+        ("java_reference_optimized_lesion_last.json", "optimized-lesion-last"),
+    ),
 )
 def test_three_auxiliary_sweep_matches_java_for_both_lesion_class_choices(reference_name, order_name) -> None:
     reference = json.loads((REFERENCE_ROOT / reference_name).read_text())
     assert reference["source_sha256"] == SOURCE_SHA256
-    assert reference["class_order"] == order_name
+    assert reference["class_order"] == order_name.removeprefix("optimized-")
     class_types = CLASS_ORDERS[order_name]
+    optimized = order_name.startswith("optimized-")
+    assert reference["optimized_lesion"] is optimized
     inputs = _inputs(tuple(reference["shape"]), class_types)
     originals = tuple(array.copy() for array in inputs[:4])
     result = _run(inputs, class_types)
@@ -120,6 +130,15 @@ def test_three_auxiliary_sweep_rejects_duplicate_special_classes() -> None:
     class_types = ("OBJECT", "LESION", "BLACKHOLE", "OUTMASK", "OUTMASK")
     inputs = _inputs((3, 3, 3), class_types)
     with pytest.raises(ValueError, match="exactly one BLACKHOLE and one OUTMASK"):
+        run_lesion_toads_blackhole_outmask_smoothing_sweep(
+            *inputs[:9], SMOOTHING_PRIORS, class_types, RELATIONS, smoothing=0.2,
+        )
+
+
+def test_three_auxiliary_sweep_rejects_both_lesion_class_aliases() -> None:
+    class_types = ("OBJECT", "LESION", "OPTIMIZED_LESION", "BLACKHOLE", "OUTMASK")
+    inputs = _inputs((3, 3, 3), class_types)
+    with pytest.raises(ValueError, match="at most one LESION or OPTIMIZED_LESION"):
         run_lesion_toads_blackhole_outmask_smoothing_sweep(
             *inputs[:9], SMOOTHING_PRIORS, class_types, RELATIONS, smoothing=0.2,
         )

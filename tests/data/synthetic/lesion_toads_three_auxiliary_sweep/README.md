@@ -1,14 +1,16 @@
 # LesionTOADS three-auxiliary volume fixture
 
-Two synthetic `5×4×6` float32 Java formula fixtures exercise one each of
-LESION, BLACKHOLE, and OUTMASK, with the selected `lesionClass` being BLACKHOLE
-or LESION according to which special class appears last in atlas class order.
-They cover separate lesion/black-hole terms and maps, class/lesion/black-hole
-similarity priors, both distance-modulation branches, OUTMASK-specific
-neighbor energy and outlier blending, direct/prior relations, zero shape
-support, and source normalization of the shared lesion map at both special
-classes. All interior class, lesion, black-hole, and outlier membership bits
-are stored.
+Four synthetic `5×4×6` float32 Java formula fixtures exercise one each of
+LESION or OPTIMIZED_LESION, BLACKHOLE, and OUTMASK, with the selected
+`lesionClass` being BLACKHOLE or the lesion class according to which appears
+last in atlas class order. The OPTIMIZED_LESION cases verify the selected
+source routes its smoothing, prior, conversion, and distance behavior through
+the lesion branches. Fixtures cover separate lesion/black-hole terms and
+maps, class/lesion/black-hole similarity priors, both distance-modulation
+branches, OUTMASK-specific neighbor energy and outlier blending, direct/prior
+relations, zero shape support, and source normalization of the shared lesion
+map at both special classes. All interior class, lesion, black-hole, and
+outlier membership bits are stored.
 
 This validates the selected multi-class formula branch, not full LesionTOADS
 equivalence. Both atlas orders are necessary because class updates are

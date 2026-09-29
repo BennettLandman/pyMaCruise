@@ -13,3 +13,5 @@ trap 'rm -rf "${classes}"' EXIT
 javac -d "${classes}" "${repo_root}/tests/java_reference/LesionToadsThreeAuxiliarySweepReferenceHarness.java"
 java -cp "${classes}" LesionToadsThreeAuxiliarySweepReferenceHarness > "${repo_root}/tests/data/synthetic/lesion_toads_three_auxiliary_sweep/java_reference_blackhole_last.json"
 java -cp "${classes}" LesionToadsThreeAuxiliarySweepReferenceHarness lesion-last > "${repo_root}/tests/data/synthetic/lesion_toads_three_auxiliary_sweep/java_reference_lesion_last.json"
+java -cp "${classes}" LesionToadsThreeAuxiliarySweepReferenceHarness optimized-blackhole-last > "${repo_root}/tests/data/synthetic/lesion_toads_three_auxiliary_sweep/java_reference_optimized_blackhole_last.json"
+java -cp "${classes}" LesionToadsThreeAuxiliarySweepReferenceHarness optimized-lesion-last > "${repo_root}/tests/data/synthetic/lesion_toads_three_auxiliary_sweep/java_reference_optimized_lesion_last.json"
