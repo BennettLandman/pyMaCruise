@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+reference_root="$repo_root/tests/java_reference"
+upstream="$reference_root/upstream/edu/jhmi/rad/medic"
+classes="$repo_root/build/java-reference/lesion-growing-event-classes"
+output="$repo_root/tests/data/synthetic/lesion_growing_event/java_reference.json"
+mkdir -p "$classes" "$(dirname -- "$output")"
+javac -d "$classes" \
+  "$upstream/utilities/Numerics.java" \
+  "$upstream/structures/BinaryHeap4D.java" \
+  "$upstream/structures/CriticalPointLUT.java" \
+  "$reference_root/ToadsHomeomorphicChangeReferenceHarness.java" \
+  "$reference_root/LesionGrowingEventReferenceHarness.java"
+cp "$repo_root/src/pymacruise/data/critical186LUT.raw.gz" "$classes/critical186LUT.raw.gz"
+java -cp "$classes" LesionGrowingEventReferenceHarness > "$output"

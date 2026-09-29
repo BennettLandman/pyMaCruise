@@ -14,7 +14,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pymacruise.toads_heap import ToadsPriorityHeap4D
+from pymacruise.toads_heap import ToadsHeapItem, ToadsPriorityHeap4D
+from pymacruise.toads_topology import toads_homeomorphic_label_change
 
 
 _FACE_NEIGHBORS = ((-1, 0, 0), (0, -1, 0), (0, 0, -1), (0, 0, 1), (0, 1, 0), (1, 0, 0))
@@ -28,6 +29,20 @@ class LesionToadsGrowingInitialization:
 
     available: NDArray[np.bool_]
     queue: ToadsPriorityHeap4D
+
+
+@dataclass(frozen=True)
+class LesionToadsGrowingEvent:
+    """Image state after processing one selected source queue item."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volume: NDArray[np.float32]
+    popped_item: ToadsHeapItem
+    topology_accepted: bool | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
 
 
 def _lesion_score(
@@ -46,6 +61,76 @@ def _lesion_score(
     return np.float32(
         np.float32(ordinary_membership + lesion_membership) + black_hole_membership
     )
+
+
+def _best_membership_at(
+    x: int,
+    y: int,
+    z: int,
+    memberships: NDArray[np.float32],
+    object_types: tuple[str, ...],
+    lesion_membership: NDArray[np.float32],
+    black_hole_membership: NDArray[np.float32],
+    *,
+    use_lesion_max: bool,
+) -> int:
+    best = 0
+    running_value = np.float32(0.0)
+    for candidate, object_type in enumerate(object_types):
+        if object_type in _LESION_OBJECT_TYPES:
+            score = _lesion_score(
+                memberships[x, y, z, candidate],
+                lesion_membership[x, y, z],
+                black_hole_membership[x, y, z],
+                use_lesion_max=use_lesion_max,
+            )
+        else:
+            score = memberships[x, y, z, candidate]
+        if score > running_value:
+            best = candidate
+            # Source quirk: compare the combined lesion score but store only
+            # the ordinary membership as the next running maximum.
+            running_value = memberships[x, y, z, candidate]
+    return best
+
+
+def _membership_ratio_at(
+    x: int,
+    y: int,
+    z: int,
+    label: int,
+    best: int,
+    memberships: NDArray[np.float32],
+    object_types: tuple[str, ...],
+    lesion_membership: NDArray[np.float32],
+    black_hole_membership: NDArray[np.float32],
+    *,
+    use_lesion_max: bool,
+    zero: np.float32,
+) -> np.float32:
+    if label == best:
+        return np.float32(1.0)
+    if object_types[label] in _LESION_OBJECT_TYPES:
+        current = _lesion_score(
+            memberships[x, y, z, label],
+            lesion_membership[x, y, z],
+            black_hole_membership[x, y, z],
+            use_lesion_max=use_lesion_max,
+        )
+    else:
+        current = memberships[x, y, z, label]
+    if object_types[best] in _LESION_OBJECT_TYPES:
+        maximum = _lesion_score(
+            memberships[x, y, z, best],
+            lesion_membership[x, y, z],
+            black_hole_membership[x, y, z],
+            use_lesion_max=use_lesion_max,
+        )
+    else:
+        maximum = memberships[x, y, z, best]
+    numerator = np.float32(maximum + zero)
+    denominator = np.float32(current + zero)
+    return np.float32(numerator / denominator)
 
 
 def initialize_lesion_toads_growing_frontier(
@@ -152,49 +237,201 @@ def initialize_lesion_toads_growing_frontier(
                         continue
                     available[x, y, z, label] = False
 
-                    best = 0
-                    best_running_value = np.float32(0.0)
-                    for candidate in range(classes):
-                        if types[candidate] in _LESION_OBJECT_TYPES:
-                            candidate_score = _lesion_score(
-                                mems[x, y, z, candidate],
-                                lesion_mems[x, y, z],
-                                black_hole_mems[x, y, z],
-                                use_lesion_max=use_lesion_max,
-                            )
-                        else:
-                            candidate_score = mems[x, y, z, candidate]
-                        if candidate_score > best_running_value:
-                            best = candidate
-                            # Deliberately mirrors source: do not assign
-                            # candidate_score here; Java stores mems[...,m].
-                            best_running_value = mems[x, y, z, candidate]
-
-                    if label == best:
-                        ratio = np.float32(1.0)
-                    else:
-                        if types[label] in _LESION_OBJECT_TYPES:
-                            current = _lesion_score(
-                                mems[x, y, z, label],
-                                lesion_mems[x, y, z],
-                                black_hole_mems[x, y, z],
-                                use_lesion_max=use_lesion_max,
-                            )
-                        else:
-                            current = mems[x, y, z, label]
-                        if types[best] in _LESION_OBJECT_TYPES:
-                            maximum = _lesion_score(
-                                mems[x, y, z, best],
-                                lesion_mems[x, y, z],
-                                black_hole_mems[x, y, z],
-                                use_lesion_max=use_lesion_max,
-                            )
-                        else:
-                            maximum = mems[x, y, z, best]
-                        numerator = np.float32(maximum + zero_value)
-                        denominator = np.float32(current + zero_value)
-                        ratio = np.float32(numerator / denominator)
+                    best = _best_membership_at(
+                        x,
+                        y,
+                        z,
+                        mems,
+                        types,
+                        lesion_mems,
+                        black_hole_mems,
+                        use_lesion_max=use_lesion_max,
+                    )
+                    ratio = _membership_ratio_at(
+                        x,
+                        y,
+                        z,
+                        label,
+                        best,
+                        mems,
+                        types,
+                        lesion_mems,
+                        black_hole_mems,
+                        use_lesion_max=use_lesion_max,
+                        zero=zero_value,
+                    )
                     priority = np.float32(orderings[x, y, z] + ratio)
                     queue.add(priority, x, y, z, label)
 
     return LesionToadsGrowingInitialization(available=available, queue=queue)
+
+
+def process_lesion_toads_growing_event(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    available: ArrayLike,
+    ordering: ArrayLike,
+    class_volume: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    *,
+    lesion_class: int,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+    zero: float = 1.0e-10,
+) -> LesionToadsGrowingEvent:
+    """Apply one selected ``LesionToadSegmentation.propagateGrowing`` pop.
+
+    The event composes the already checked 18/6 local topology predicate and
+    P39q lesion-aware scoring with the source center updates and six-face
+    neighbor scheduling. It stops after one pop. A rejected topology event
+    re-enables that center/class availability; a stale event whose skeleton
+    is already occupied is ignored without invoking topology.
+    """
+    labels = np.asarray(segmentation)
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    avail = np.asarray(available)
+    orderings = np.asarray(ordering, dtype=np.float32)
+    volumes = np.asarray(class_volume, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
+    black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
+    types = tuple(object_types)
+    if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be a 3-D integer grid")
+    if any(size < 3 for size in labels.shape):
+        raise ValueError("segmentation dimensions must each be at least 3")
+    if skel.shape != labels.shape or not np.issubdtype(skel.dtype, np.integer):
+        raise ValueError("skeleton must be an integer grid matching segmentation")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    classes = int(mems.shape[-1])
+    if classes > 127:
+        raise ValueError("class indices must fit the Java signed-byte loop")
+    if len(types) != classes or not all(isinstance(value, str) and value for value in types):
+        raise ValueError("one nonempty object type is required for every class")
+    if avail.shape != labels.shape + (classes,) or avail.dtype != np.bool_:
+        raise ValueError("available must be boolean and match segmentation and classes")
+    if orderings.shape != labels.shape or volumes.shape != (classes,):
+        raise ValueError("ordering and class volumes must match the image and classes")
+    if lesion_mems.shape != labels.shape or black_hole_mems.shape != labels.shape:
+        raise ValueError("lesion and black-hole memberships must match segmentation")
+    for name, values in (
+        ("memberships", mems),
+        ("ordering", orderings),
+        ("class_volume", volumes),
+        ("lesion_membership", lesion_mems),
+        ("black_hole_membership", black_hole_mems),
+    ):
+        if not np.isfinite(values).all():
+            raise ValueError(f"{name} must contain only finite values")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must be valid class indices")
+    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+        raise ValueError("skeleton labels must be valid class indices or empty_label")
+    if not isinstance(lesion_class, (int, np.integer)) or not -1 <= lesion_class < classes:
+        raise ValueError("lesion_class must be -1 or a valid class index")
+    zero_value = np.float32(zero)
+    if not np.isfinite(zero_value) or zero_value < np.float32(0.0):
+        raise ValueError("zero must be finite and nonnegative")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "min":
+        raise ValueError("queue must be a TOADS min heap")
+    if not queue:
+        raise ValueError("cannot process an empty LesionTOADS growing queue")
+
+    item = queue.peek_first()
+    x, y, z, label = item.x, item.y, item.z, item.label
+    if not (
+        1 <= x < labels.shape[0] - 1
+        and 1 <= y < labels.shape[1] - 1
+        and 1 <= z < labels.shape[2] - 1
+        and 0 <= label < classes
+    ):
+        raise ValueError("queue item must have an interior coordinate and valid class")
+    border = np.zeros(labels.shape, dtype=np.bool_)
+    for axis in range(3):
+        edge = [slice(None)] * 3
+        edge[axis] = 0
+        border[tuple(edge)] = True
+        edge[axis] = -1
+        border[tuple(edge)] = True
+    if np.any(avail[border]):
+        raise ValueError("border availability must be false for safe source neighbor updates")
+
+    popped = queue.pop_first()
+    updated_labels = labels.astype(np.int16, copy=True)
+    updated_skeleton = skel.astype(np.int16, copy=True)
+    updated_available = avail.copy()
+    updated_ordering = orderings.copy()
+    updated_volumes = volumes.copy()
+    topology_accepted: bool | None = None
+    inserted: list[ToadsHeapItem] = []
+
+    if int(updated_skeleton[x, y, z]) == empty_label:
+        neighborhood = updated_labels[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2]
+        topology_accepted = toads_homeomorphic_label_change(neighborhood, label)
+        if topology_accepted:
+            updated_skeleton[x, y, z] = np.int16(label)
+            updated_available[x, y, z, :] = False
+            updated_ordering[x, y, z] = popped.value
+            if label == lesion_class:
+                membership_increment = _lesion_score(
+                    mems[x, y, z, label],
+                    lesion_mems[x, y, z],
+                    black_hole_mems[x, y, z],
+                    use_lesion_max=use_lesion_max,
+                )
+            else:
+                membership_increment = mems[x, y, z, label]
+            updated_volumes[label] = np.float32(
+                updated_volumes[label] + membership_increment
+            )
+            updated_labels[x, y, z] = np.int16(label)
+
+            for dx, dy, dz in _FACE_NEIGHBORS:
+                xi, yj, zl = x + dx, y + dy, z + dz
+                if not updated_available[xi, yj, zl, label]:
+                    continue
+                best = _best_membership_at(
+                    xi,
+                    yj,
+                    zl,
+                    mems,
+                    types,
+                    lesion_mems,
+                    black_hole_mems,
+                    use_lesion_max=use_lesion_max,
+                )
+                ratio = _membership_ratio_at(
+                    xi,
+                    yj,
+                    zl,
+                    label,
+                    best,
+                    mems,
+                    types,
+                    lesion_mems,
+                    black_hole_mems,
+                    use_lesion_max=use_lesion_max,
+                    zero=zero_value,
+                )
+                priority = np.float32(popped.value + ratio)
+                updated_available[xi, yj, zl, label] = False
+                queue.add(priority, xi, yj, zl, label)
+                inserted.append(ToadsHeapItem(priority, xi, yj, zl, label))
+        else:
+            updated_available[x, y, z, label] = True
+
+    return LesionToadsGrowingEvent(
+        segmentation=updated_labels,
+        skeleton=updated_skeleton,
+        available=updated_available,
+        ordering=updated_ordering,
+        class_volume=updated_volumes,
+        popped_item=popped,
+        topology_accepted=topology_accepted,
+        inserted_neighbors=tuple(inserted),
+    )
