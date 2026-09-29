@@ -64,8 +64,8 @@ def dura_correct_white_matter_topology(
 
     The returned image is the first corrected field (``wmTC``). This function
     deliberately does not construct ``wmTC + raw GM`` or perform the separate
-    second ``tcGM`` call. The first 9³ selected-Java fixture matches voxelwise
-    exactly; broader source-comparison coverage remains open under P25. See
+    second ``tcGM`` call. Five selected-Java synthetic fixtures match
+    voxelwise exactly; see
     ``docs/reports/topology-correction-java-comparison-2026-09-29.md``.
     """
     return topology_correct(
@@ -91,10 +91,10 @@ def dura_correct_gray_matter_topology(
     NIfTI addition and physical-grid checks reuse ``calculate_volume``; the
     Dura-specific 6/18, object-to-background settings and regularization are
     applied by ``topology_correct``. The returned image is ``gmTC``. The
-    shared topology routine matches one 9³ selected-Java fixture exactly, but
-    this composition has not itself been compared against a Java Dura wrapper
-    run. It also does not yet evolve TGDM or assemble the complete
-    dura-removal workflow.
+    selected algorithm-pair call sequence and float32 union now match one
+    deterministic selected-Java harness fixture exactly; the harness follows
+    the wrapper sequence but does not instantiate the full JIST wrapper. This
+    slice does not evolve TGDM or assemble the complete dura-removal workflow.
     """
     union = calculate_volume(
         topologically_corrected_white_matter,

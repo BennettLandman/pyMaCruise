@@ -21,7 +21,8 @@ javac -d "$classes" \
   "$case_dir/upstream/edu/jhmi/rad/medic/libraries/NeighborConnectivity.java" \
   "$case_dir/upstream/edu/jhmi/rad/medic/libraries/TopologyPropagation.java" \
   "$case_dir/upstream/edu/jhmi/rad/medic/algorithms/AlgorithmTopologyCorrection.java" \
-  "$case_dir/TopologyCorrectionReferenceHarness.java"
+  "$case_dir/TopologyCorrectionReferenceHarness.java" \
+  "$case_dir/DuraTopologyTwoPassReferenceHarness.java"
 
 if [ "${TOPOLOGY_TRACE:-0}" = 1 ]; then
   fixture=${TOPOLOGY_TRACE_CASE:-spatial_hash}
@@ -32,4 +33,6 @@ else
     java -cp "$classes" TopologyCorrectionReferenceHarness "$fixture" > "$output"
     "$repo_root/.venv/bin/python" "$case_dir/convert_output.py" "$fixture" "$output"
   done
+  java -cp "$classes" DuraTopologyTwoPassReferenceHarness > "$output"
+  "$repo_root/.venv/bin/python" "$case_dir/convert_dura_two_pass.py" "$output"
 fi

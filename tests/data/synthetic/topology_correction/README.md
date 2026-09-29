@@ -55,5 +55,9 @@ The Java `ModelImage` linear index has x as its fastest axis. The converter
 reshapes flat Java values in Fortran order so the committed NIfTI coordinate
 axes preserve the original x/y/z locations.
 
+The same generator also writes the Dura two-call composition fixture under
+`tests/data/synthetic/dura_topology_two_pass/`; its source and limits are
+documented in that directory's README.
+
 The shims provide only the in-memory image and progress APIs used by this run;
 they do not reproduce MIPAV display, metadata, or file-I/O behavior.

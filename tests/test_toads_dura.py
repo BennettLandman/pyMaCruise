@@ -53,6 +53,9 @@ DURA_INITIAL_LEVELSETS_FIXTURE = (
 TOPOLOGY_CORRECTION_FIXTURE = (
     Path(__file__).parent / "data" / "synthetic" / "topology_correction"
 )
+DURA_TWO_PASS_TOPOLOGY_FIXTURE = (
+    Path(__file__).parent / "data" / "synthetic" / "dura_topology_two_pass"
+)
 
 
 def test_dura_initial_level_sets_match_original_jist_jar() -> None:
@@ -99,6 +102,28 @@ def test_dura_first_wm_topology_call_matches_selected_java_harness(
     np.testing.assert_array_equal(actual.dataobj, expected.dataobj)
     np.testing.assert_array_equal(actual.affine, wm.affine)
     assert actual.get_data_dtype() == np.dtype(np.float32)
+
+
+def test_dura_two_pass_topology_and_float32_union_match_selected_java_harness() -> None:
+    fixture = DURA_TWO_PASS_TOPOLOGY_FIXTURE
+    wm = nib.load(str(fixture / "wm_input.nii.gz"))
+    paint = nib.load(str(fixture / "paint_mask.nii.gz"))
+    raw_gm = nib.load(str(fixture / "raw_gm.nii.gz"))
+
+    wm_tc = dura_correct_white_matter_topology(wm, paint)
+    union = calculate_volume(wm_tc, raw_gm, "ADD")
+    gm_tc = dura_correct_gray_matter_topology(wm_tc, raw_gm, paint)
+
+    for actual, expected_name in (
+        (wm_tc, "java_wm_tc.nii.gz"),
+        (union, "java_union.nii.gz"),
+        (gm_tc, "java_gm_tc.nii.gz"),
+    ):
+        expected = nib.load(str(fixture / expected_name))
+        np.testing.assert_array_equal(actual.dataobj, expected.dataobj)
+        np.testing.assert_array_equal(actual.affine, expected.affine)
+        assert actual.shape == expected.shape == (9, 9, 9)
+        assert actual.get_data_dtype() == np.dtype(np.float32)
 
 
 def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> None:

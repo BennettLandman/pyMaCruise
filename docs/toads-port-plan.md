@@ -428,7 +428,7 @@ This substage does not build `wmTC + raw GM`, call the second `tcGM` correction
 (which reuses the original WM mask), initialize/evolve Dura TGDM, or establish
 complete Dura or TOADS equivalence.
 
-### Started substage: Dura WM-plus-GM union and second topology correction
+### Completed substage: Dura WM-plus-GM union and second topology correction
 
 `dura_correct_gray_matter_topology` reuses the generic geometry-checked
 `calculate_volume(..., "ADD")` operation to form the wrapper's float32 union
@@ -438,7 +438,11 @@ Dura-specific 6/18 parameters, returning `gmTC`. The source does not feed
 corrected GM into the union or create a separate GM paint mask. Synthetic
 tests check float32 addition, the reused mask and settings through the
 composition, RAS geometry, and mismatched-grid rejection. Direct Java output
-comparison remains open, as do TGDM evolution and the full dura workflow.
+comparison now checks the WM correction, float32 union, and GM correction
+against a headless harness that follows the selected wrapper's two-call
+sequence; all three arrays match exactly on the committed 9³ fixture. The
+harness does not instantiate the full JIST wrapper. TGDM evolution and the
+full dura workflow remain open.
 
 ### Completed geometry slice: TOADS crop and topology resampling
 
