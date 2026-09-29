@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
-from pymacruise.plus_pipeline import PlusPipelineOptions
+from pymacruise.plus_pipeline import PlusPipelineOptions, plus_tgdm_parameters
+from pymacruise.tgdm import TGDMBaselineParameters
 
 
 def test_plus_pipeline_options_match_selected_matlab_entrypoint() -> None:
@@ -26,6 +28,17 @@ def test_plus_pipeline_options_match_selected_matlab_entrypoint() -> None:
 def test_plus_pipeline_options_serialize_as_json_provenance() -> None:
     options = PlusPipelineOptions()
     assert json.loads(json.dumps(options.as_dict())) == options.as_dict()
+
+
+def test_plus_wm_isolevel_routes_to_tgdm_without_changing_other_defaults() -> None:
+    source_selected = plus_tgdm_parameters()
+    assert source_selected.white_matter_iso == 0.5
+    assert source_selected == TGDMBaselineParameters()
+
+    custom_options = PlusPipelineOptions(wm_iso_level=0.43)
+    custom = plus_tgdm_parameters(custom_options)
+    expected = replace(TGDMBaselineParameters(), white_matter_iso=0.43)
+    assert custom == expected
 
 
 @pytest.mark.parametrize(

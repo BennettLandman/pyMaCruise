@@ -12,6 +12,7 @@ from typing import Any
 import nibabel as nib
 
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
+from pymacruise.tgdm import TGDMBaselineParameters
 
 
 @dataclass(frozen=True)
@@ -74,4 +75,20 @@ def run_plus_gvf_stage(
         scalar_volume,
         lambda_value=options.gvf_lambda,
         max_iterations=200,
+    )
+
+
+def plus_tgdm_parameters(
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> TGDMBaselineParameters:
+    """Map the plus white-matter isolevel into the existing TGDM settings.
+
+    The MATLAB plus runner overrides `WMIsoLevel` to 0.5 before calling its
+    surface pipeline. All other selected TGDM values retain the baseline
+    Python defaults; this adapter does not implement surface evolution.
+    """
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    return TGDMBaselineParameters(
+        white_matter_iso=options.wm_iso_level,
     )
