@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39k have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39l have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -255,3 +255,19 @@ suite passed 406 tests in 60.56 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-registration-volume.md`](reports/full-pytest-2026-09-29-lesion-registration-volume.md).
 This isolates reduction semantics and does not sample the atlas or optimize
 the transform.
+
+### Completed substage: P39l fixed-transform scaled volume coefficients
+
+`lesion_registration_volume_coefficients` samples each registered class map
+and source spatial derivative at the selected coarse input voxels, computes
+the scaled rigid coordinate Jacobian, and passes those terms through the P39k
+source-order reducer. The scale-2 and scale-4 synthetic cases use odd
+full-resolution image dimensions, anisotropic resolutions, a nonzero rigid
+transform, four class maps, and step-two traversal. Raw and normalized
+cost/norm/gradient/diagonal Hessian outputs match a harness using the selected
+`ParametricTransform` and `ImageFunctions` methods exactly. The full suite
+passed 407 tests in 52.44 seconds on implementation commit
+`590bf3c4004fd7013ce6ae540bf8cddd4bf4be3f`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-scaled-registration-volume.md`](reports/full-pytest-2026-09-29-lesion-scaled-registration-volume.md).
+This validates fixed-transform coefficient composition only, not transform
+optimization or segmentation.
