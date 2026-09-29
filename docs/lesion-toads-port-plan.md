@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39l have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39m have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -271,3 +271,16 @@ passed 407 tests in 52.44 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-scaled-registration-volume.md`](reports/full-pytest-2026-09-29-lesion-scaled-registration-volume.md).
 This validates fixed-transform coefficient composition only, not transform
 optimization or segmentation.
+
+### Completed substage: P39m one scaled rigid-registration update
+
+`register_lesion_shapes_scaled_step` uses the normalized P39l coefficient
+vectors and delegates the diagonal update and strict-improvement lambda
+search to the existing source-compared registration helper. It reevaluates
+the scaled sampled-volume energy for each trial transform. Selected-Java
+formula fixtures match all trial transforms/energies and final update fields
+at pyramid scales 1 and 2; the latter backtracks eight times before accepting.
+Full suite: 408 passed in 52.49 seconds on implementation commit
+`f2216f08ee75a861eba86e6c4e7d5f6103a64c95`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-registration-step.md`](reports/full-pytest-2026-09-29-lesion-registration-step.md).
+This validates one update, not repeated optimization or segmentation.

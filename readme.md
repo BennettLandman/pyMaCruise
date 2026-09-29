@@ -56,7 +56,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 
 **Roadmap update (2026-09-29):** P39k validated source-order reduction of pre-sampled terms; P39l now composes scaled map sampling, rigid Jacobians, and coefficient reduction at fixed transforms for scales 2 and 4. The full suite reports **407 passed in 52.44 seconds**, with two expected RAS warnings, on implementation commit `590bf3c4004fd7013ce6ae540bf8cddd4bf4be3f`; see the [P39l report](docs/reports/full-pytest-2026-09-29-lesion-scaled-registration-volume.md). This remains formula-level fixed-transform validation, not a full LesionTOADS run or optimizer. The roadmap counts 116/130 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
-P39m is now Started to test one scaled LesionTOADS rigid update by reusing the validated line-search helper and recalculating fixed-map energy for each candidate transform. The plan has 131 rows; this step will be compared with a selected-Java synthetic harness.
+P39m is complete: one fixed-scale rigid update matches selected-Java trial transforms and energies at scales 1 and 2; the second case backtracks eight times before acceptance. The full suite reports **408 passed in 52.49 seconds**, with two expected RAS warnings, on implementation commit `f2216f08ee75a861eba86e6c4e7d5f6103a64c95`; see the [P39m report](docs/reports/full-pytest-2026-09-29-lesion-registration-step.md). This validates one update only, not the outer optimizer loop or segmentation. The roadmap counts 117/131 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
 The currently implemented CLI entry point supports the implemented stages:
 
