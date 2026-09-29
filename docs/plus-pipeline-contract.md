@@ -28,6 +28,13 @@ the boundary generation/cleaning step, and the GM/WM update. The Python
 products remain explicit stage inputs so their raw, corrected, dura-processed,
 and cropped provenance can be represented by the eventual runner.
 
+For the GM/WM update, the selected wrapper calls the Java
+`CombineMAandTOADS` class with `ErodeMethod=3D` and `GMconfident=0.001`.
+`run_plus_tissue_update_stage` routes the six aligned cropped atlas/TOADS
+products to the existing source-mapped Python combiner and returns its GM, WM,
+and mask images. Synthetic routing evidence is recorded in the
+[P40h report](reports/full-pytest-2026-09-29-plus-tissue-update.md).
+
 ## Image provenance and explicit input mask
 
 The selected MATLAB branch sends T1 and FLAIR through N4 before stripping,
