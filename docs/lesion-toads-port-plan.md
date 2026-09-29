@@ -701,10 +701,25 @@ with two expected RAS warnings in 57.47 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-prior-membership.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-prior-membership.md)
 and [`tests/data/synthetic/lesion_toads_smoothing_prior_membership/README.md`](../tests/data/synthetic/lesion_toads_smoothing_prior_membership/README.md).
 
-### Started substage: P39zh OUTMASK mixture membership
+### Completed substage: P39zh OUTMASK mixture membership
 
 Port the selected output assignment after the OUTMASK data and class terms
 have been inverted. Direct relations blend class and outmask memberships by
 the current outlier membership and update that outlier map; prior relations
 apply the class shape factor to the mixed value and updated outlier map.
 Keep later denominator normalization separate.
+
+Twelve selected-Java scalar cases match class and outlier float32 output
+bits across direct/prior relations, shape-factor range, outlier weights from
+zero to one, and float32-sensitive inputs. Focused suite: 1 passed; full
+suite: 453 passed with two expected RAS warnings in 57.68 seconds on
+implementation commit `94a919564650fddd882e3cb30ba3dc6763e1a690`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-membership.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-membership.md)
+and [`tests/data/synthetic/lesion_toads_outmask_membership/README.md`](../tests/data/synthetic/lesion_toads_outmask_membership/README.md).
+
+### Started substage: P39zi OUTMASK normalization integration
+
+Compose the selected direct/prior class/outlier mixture with the shared
+denominator and local-energy loop. Ensure the OUTMASK-written outlier map is
+what normalization consumes; cover one and repeated OUTMASK class visits.
+This uses already converted class/outmask terms and does not compute energies.
