@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pymacruise.toads_heap import ToadsPriorityHeap4D
+from pymacruise.toads_heap import ToadsHeapItem, ToadsPriorityHeap4D
 from pymacruise.toads_topology import toads_homeomorphic_label_change
 
 
@@ -271,3 +271,98 @@ def toads_initialize_thinning_queue(
                     boundaries[candidate] += 1
 
     return ToadsThinningQueueInitialization(skeleton, available, volumes, boundaries, queue)
+
+
+def toads_schedule_thinning_neighbors(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    available: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    removed_voxel: tuple[int, int, int],
+    removed_label: int,
+    popped_priority: float,
+    class_volume: float,
+    minimum_class_volume: float,
+    limit: float,
+    *,
+    zero_threshold: float = 1e-10,
+) -> tuple[NDArray[np.bool_], tuple[ToadsHeapItem, ...]]:
+    """Enqueue source-eligible face neighbors after a thinning removal.
+
+    This is the post-removal neighbor loop in ``propagateThinning``. Callers
+    supply the already-updated segmentation, heap, and class volume. The
+    source code's inner neighbor count tests the *outer* face-offset norm,
+    which is always nonzero here; that literal behavior is intentionally
+    retained for reference matching.
+    """
+    labels = np.asarray(segmentation)
+    mems = np.asarray(memberships, dtype=np.float32)
+    state = np.asarray(available)
+    if labels.ndim != 3 or any(length < 3 for length in labels.shape):
+        raise ValueError("segmentation must be a 3-D grid with every dimension at least 3")
+    if not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation labels must be integers")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    classes = mems.shape[-1]
+    if state.shape != labels.shape + (classes,) or state.dtype != np.bool_:
+        raise ValueError("available must be a boolean grid matching segmentation and classes")
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    if not isinstance(removed_label, (int, np.integer)) or not 0 <= removed_label < classes:
+        raise ValueError("removed_label must be a valid class index")
+    x, y, z = removed_voxel
+    if not (1 <= x < labels.shape[0] - 1 and 1 <= y < labels.shape[1] - 1 and 1 <= z < labels.shape[2] - 1):
+        raise ValueError("removed_voxel must be interior")
+    zero = np.float32(zero_threshold)
+    value = np.float32(popped_priority)
+    volume = np.float32(class_volume)
+    minimum = np.float32(minimum_class_volume)
+    limit32 = np.float32(limit)
+    if not all(np.isfinite(v) for v in (zero, value, volume, minimum, limit32)) or zero < 0.0 or limit32 < 0.0:
+        raise ValueError("priority, volume, limit, and ZERO must be finite; ZERO/limit nonnegative")
+
+    updated_available = state.copy()
+    inserted = []
+    # Same nested i/j/l order as BinaryHeap4D's selected caller.
+    for i in (-1, 0, 1):
+        for j in (-1, 0, 1):
+            for k in (-1, 0, 1):
+                if i * i + j * j + k * k != 1:
+                    continue
+                xi, yj, zl = x + i, y + j, z + k
+                if not updated_available[xi, yj, zl, removed_label]:
+                    continue
+                neighbor_count = 0
+                for ni in (-1, 0, 1):
+                    for nj in (-1, 0, 1):
+                        for nl in (-1, 0, 1):
+                            # Source quirk: this condition refers to outer
+                            # i/j/k, not inner ni/nj/nl, so it is always true.
+                            if i * i + j * j + k * k > 0 and labels[xi + ni, yj + nj, zl + nl] == removed_label:
+                                neighbor_count += 1
+                if neighbor_count == 1:
+                    order = value
+                else:
+                    best = 0
+                    maximum = np.float32(0.0)
+                    for candidate in range(classes):
+                        if mems[xi, yj, zl, candidate] > maximum:
+                            best = candidate
+                            maximum = mems[xi, yj, zl, candidate]
+                    if removed_label == best:
+                        ratio = np.float32(1.0)
+                    else:
+                        ratio = np.float32(
+                            np.float32(mems[xi, yj, zl, best] + zero)
+                            / np.float32(mems[xi, yj, zl, removed_label] + zero)
+                        )
+                    order = np.float32(value - np.float32(np.float32(1.0) / ratio))
+                if volume > minimum and order > np.float32(-limit32):
+                    updated_available[xi, yj, zl, removed_label] = False
+                    queue.add(order, xi, yj, zl, removed_label)
+                    inserted.append(ToadsHeapItem(np.float32(order), xi, yj, zl, removed_label))
+
+    return updated_available, tuple(inserted)
