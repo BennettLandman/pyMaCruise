@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zo have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and direct OBJECT sweep slices,
+**Status:** P39 is Started. P39a–P39zp have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and direct OBJECT sweep slices including pairwise shape priors,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -842,3 +842,20 @@ implementation commit `5af89244adf65ffab25503e245c82184ee222d8c`; see
 and [`tests/data/synthetic/lesion_toads_object_sweep/README.md`](../tests/data/synthetic/lesion_toads_object_sweep/README.md). Scope is limited
 to positive shape support, direct relations, ordinary OBJECT classes, fixed
 data terms, and smoothing; atlas priors and lesion/auxiliary types remain open.
+
+
+### Completed substage: P39zp OBJECT shape-prior volume sweep
+
+`run_lesion_toads_object_prior_membership_sweep` adds the selected pairwise
+shape-prior energy to the ordinary OBJECT in-place sweep. It uses fixed class
+priors and class-similarity coefficients plus per-voxel transformed shape
+values, then follows the source direct/prior relation, shape gate, inversion,
+and voxel normalization. The committed 5×4×6 Java formula fixture covers
+mixed relations, coordinate-varying class shapes, and one zero-shape class;
+all interior output membership bits match. Setting `priorCoefficient=0` and
+all relations direct matches P39zo. Focused tests: 2 passed. Full suite: 494
+passed with two expected RAS warnings in 79.30 seconds on implementation
+commit `7b05f5c1da239cdfd0553e21e617da4b0d65441c`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-object-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-object-prior-sweep.md)
+and [`tests/data/synthetic/lesion_toads_object_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_object_prior_sweep/README.md). This
+remains ordinary OBJECT-only evidence; lesion and auxiliary classes are open.
