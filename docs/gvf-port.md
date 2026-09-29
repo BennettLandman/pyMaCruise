@@ -1,9 +1,12 @@
 # GVF port progress
 
 The selected workflow is MaCRUISE `run_GVF_jist.m` → JIST
-`MedicAlgorithmGradVecFlow` → VandyCRUISE `GradVecFlowGeneralized`. The wrapper
-selects `Generalized`, lambda 1.0 unless `GVF_Lambda` is configured, 200 maximum
-iterations, and `normalize=false`.
+`MedicAlgorithmGradVecFlow` → VandyCRUISE `GradVecFlowGeneralized`. The base
+wrapper defaults to `Generalized`, lambda 1.0, 200 maximum iterations, and
+`normalize=false`. MaCRUISEplus overrides lambda to 0.2 while retaining 200
+iterations and no output normalization. `run_plus_gvf_stage` in
+`src/pymacruise/plus_pipeline.py` forwards those plus settings to the existing
+Python GVF adapter; it does not implement another solver.
 
 ## Source behavior and Python implementation
 
