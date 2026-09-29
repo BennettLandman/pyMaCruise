@@ -77,3 +77,22 @@ green for the exact code/documentation commit. The P48 report links the paper,
 maps §2.4 to the selected V3 helper, and records source/paper differences.
 
 Subsequent plan, report, and README edits do not modify implementation or tests.
+
+## P49–P57: published-paper code annotations
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/python -m pytest -q` from the `pymacruise/` repository root |
+| Result | **365 passed in 89.50 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested implementation commit | `d936ef52e4c2744ea1a9a0227b89aa53b8a58b96` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run includes the P49–P57 paper citations and code crosswalks. It confirms
+the source/docstring and documentation additions leave the full suite green.
+The row-specific paper, mapped code, and scope boundaries are listed in
+[`paper-annotations-2026-09-29.md`](paper-annotations-2026-09-29.md).
+
+Subsequent plan, report, and README edits do not modify implementation or tests.
