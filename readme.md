@@ -73,6 +73,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39t is complete. Four selected-Java formula cases match class-to-class and lesion-to-class similarity coefficients bit-for-bit, covering weighted multi-channel terms, T1-only Sulcal-CSF comparisons, no-T1 behavior, lesion-class exclusions, and zero-standard-deviation NaNs. The source's constructor-initialized black-hole similarity remains unchanged, matching the commented-out source update. The full suite reports **427 passed in 63.35 seconds**, with two expected RAS warnings, on implementation commit `91fc287a4b1dffc1f4acc701e0c44beca2816d61`; see the [P39t full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-similarity.md) and [formula fixture](tests/data/synthetic/lesion_toads_similarity/README.md). This is coefficient setup only; voxelwise membership estimation and segmentation are still open. The roadmap counts 124/138 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39u is Started: source-weighted unfielded data energies for ordinary, lesion, and black-hole classes will be isolated before bias-field correction, FLAIR PowerTable weighting, smoothing, priors, and membership normalization. The roadmap counts 124/139 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

@@ -461,3 +461,13 @@ with two expected RAS warnings in 63.35 seconds on implementation commit
 and [`tests/data/synthetic/lesion_toads_similarity/README.md`](../tests/data/synthetic/lesion_toads_similarity/README.md).
 This validates coefficient setup only; voxelwise membership estimation and
 lesion segmentation remain open.
+
+### Started substage: P39u unfielded data energies
+
+Port only the source's unfielded weighted squared-residual terms for generic
+`OBJECT`, `LESION`, and `BLACKHOLE` types. Return the tissue/class energy and
+the auxiliary lesion and black-hole energies before inversion or any spatial
+or atlas term is applied. The Java source has separate FLAIR/`useLesionWeight`
+PowerTable handling, Sulcal-CSF/MPRAGE handling, and bias-field branches;
+those remain excluded from this slice. A compact multi-channel formula
+harness will compare each float32 accumulator independently.
