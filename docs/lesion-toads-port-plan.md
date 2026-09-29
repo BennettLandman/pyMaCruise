@@ -438,3 +438,16 @@ implementation commit `46f1ef7ba47ee39f456c18d9a9bb6f9ecfac9dc8`. See
 and [`tests/data/synthetic/lesion_growing_pass/README.md`](../tests/data/synthetic/lesion_growing_pass/README.md).
 Statistical membership estimation, competition/thinning, and final
 LesionTOADS segmentation remain unvalidated.
+
+### Started substage: P39t centroid-similarity setup
+
+The selected `computeMemberships` method first builds class-to-class and
+lesion-to-class similarity coefficients from the current centroids, standard
+deviations, channel weights, and `priorScale`. When T1 is available, a pair
+involving `Sulcal-CSF` uses only the T1 channel; lesion similarity otherwise
+uses all channels and excludes lesion, black-hole, and optimized-lesion
+classes. The source's black-hole similarity calculation is commented out, so
+this slice must preserve its existing state rather than invent a formula.
+Validation will compare each coefficient's float32 bits with a small Java
+formula harness. This is preparation for membership estimation only; it does
+not compute per-voxel memberships or lesion segmentation.

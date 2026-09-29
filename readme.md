@@ -71,6 +71,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39s is complete. Two synthetic selected-method Java reference runs exhaust the lesion-aware growing queue on a RAS 9³ folded, multi-class label phantom: 446 events in additive mode and 442 in max mode. Python matches every event priority/payload, topology result, neighbor insertion, final label/skeleton/availability arrays, ordering and volume float32 bits, and empty queue. The complete suite reports **426 passed in 63.53 seconds**, with two expected RAS warnings, on implementation commit `46f1ef7ba47ee39f456c18d9a9bb6f9ecfac9dc8`; see the [P39s full-suite report](docs/reports/full-pytest-2026-09-29-lesion-growing-pass.md) and [fixture provenance](tests/data/synthetic/lesion_growing_pass/README.md). This validates the selected growing pass with supplied memberships; membership estimation and later competition/thinning remain open. The roadmap counts 123/137 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started. MaACE is the project spelling.
 
+P39t is Started: the next source slice is the centroid-similarity setup that precedes per-voxel membership estimation in `LesionToadSegmentation.computeMemberships`. It will be validated independently against Java float32 results, including Sulcal-CSF and lesion-type branches. The roadmap counts 123/138 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
