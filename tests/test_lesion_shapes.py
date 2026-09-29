@@ -12,6 +12,7 @@ from pymacruise.lesion_shapes import (
     accumulate_lesion_registration_coefficients,
     lesion_registration_voxel_contributions,
     lesion_registration_volume_coefficients,
+    register_lesion_shapes_scaled_step,
     sample_lesion_shape_prior,
 )
 from pymacruise.toads_registration import trilinear_prior_derivatives
@@ -60,6 +61,16 @@ SCALED_VOLUME_HARNESS = (
 )
 SCALED_VOLUME_HARNESS_SHA256 = "b624304ff80beafba2500df42abe1e6b5c9309ac4a6a3ef0efa5b28a0eceb187"
 SCALED_VOLUME_FIXTURE_SHA256 = "bb20b83650b7062a3c29e1f6c2c3817d01dd90e1a61cd6f0c1257c3aa26a3779"
+SCALED_STEP_FIXTURE_DIR = (
+    Path(__file__).parent / "data" / "synthetic" / "lesion_scaled_registration_step"
+)
+SCALED_STEP_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionScaledRegistrationStepReferenceHarness.java"
+)
+SCALED_STEP_HARNESS_SHA256 = "07b00ea6032b30a1311547123b282de2f84e61ddbf53a67c9a9311f9ab7514b5"
+SCALED_STEP_FIXTURE_SHA256 = "8028db4ea1939167b8c572e30eb22b6f2cdac472ab495b188a27bddf48853038"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -694,3 +705,76 @@ def test_scaled_lesion_registration_volume_coefficients_match_java_fixture() -> 
         )
         assert result.visited_voxels == case["visited_voxels"]
         assert result.contributing_class_terms == case["contributing_class_terms"]
+
+
+def test_scaled_lesion_registration_step_matches_java_trial_trace() -> None:
+    reference_path = SCALED_STEP_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(SCALED_STEP_HARNESS.read_bytes()).hexdigest() == (
+        SCALED_STEP_HARNESS_SHA256
+    )
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == (
+        SCALED_STEP_FIXTURE_SHA256
+    )
+    reference = json.loads(reference_path.read_text())
+    expected_final_outcomes = {1: (True, 0), 2: (True, 8)}
+    for case in reference["cases"]:
+        scale = int(case["scale"])
+        dimensions = tuple(int(size) // scale for size in (12, 12, 12))
+        shape = np.empty(dimensions, dtype=np.float32)
+        for x in range(dimensions[0]):
+            for y in range(dimensions[1]):
+                for z in range(dimensions[2]):
+                    remainder = (
+                        15 * x + 4 * y + 10 * z + 5 * x * y + 8 * y * z + 3 * x * z + 3
+                    ) % 17
+                    shape[x, y, z] = np.float32(
+                        np.float32(0.05)
+                        + np.float32(np.float32(remainder) / np.float32(20.0))
+                    )
+        class0 = np.full(dimensions, np.float32(0.9), dtype=np.float32)
+        memberships = np.empty(dimensions + (2,), dtype=np.float32)
+        a, b, c, d = (23, 15, 8, 14) if scale == 1 else (13, 7, 5, 3)
+        for x in range(dimensions[0]):
+            for y in range(dimensions[1]):
+                for z in range(dimensions[2]):
+                    memberships[x, y, z, 0] = np.float32(0.5)
+                    remainder = (a * x + b * y + c * z + d) % 23
+                    memberships[x, y, z, 1] = np.float32(
+                        np.float32(0.04)
+                        + np.float32(np.float32(remainder) / np.float32(25.0))
+                    )
+        step = register_lesion_shapes_scaled_step(
+            (class0, shape),
+            memberships,
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            image_dimensions_xyz=dimensions,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            scale=scale,
+            image_center_xyz=(6.0, 6.0, 6.0),
+            template_center_xyz=(6.0, 6.0, 6.0),
+            offset=0,
+            subsample=2,
+            initial_lambda=case["initial_lambda"],
+        )
+        expected_trials = case["trials"]
+        np.testing.assert_array_equal(
+            step.trial_transforms,
+            np.asarray([trial["transform"] for trial in expected_trials], dtype=np.float32),
+            err_msg=f"scale {scale} trial transforms",
+        )
+        np.testing.assert_array_equal(
+            step.trial_energies,
+            np.asarray([trial["energy"] for trial in expected_trials], dtype=np.float32),
+            err_msg=f"scale {scale} trial energies",
+        )
+        assert step.result.energy == np.float32(case["energy"])
+        np.testing.assert_array_equal(
+            step.result.transform,
+            np.asarray(case["transform"], dtype=np.float32),
+        )
+        assert step.result.lambda_value == np.float32(case["lambda"])
+        assert step.result.relative_change == np.float32(case["relative_change"])
+        assert step.result.accepted is case["accepted"]
+        assert step.result.rejected_trials == case["rejected_trials"]
+        assert (step.result.accepted, step.result.rejected_trials) == expected_final_outcomes[scale]

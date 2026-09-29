@@ -10,6 +10,8 @@ from numpy.typing import ArrayLike, NDArray
 
 from pymacruise.toads_registration import (
     RegistrationCoefficientSums,
+    RegistrationLineSearchResult,
+    exact_registration_gradient_descent_step,
     exact_registration_coefficient_contributions,
     rigid_image_to_template_jacobian,
     trilinear_prior_derivatives,
@@ -50,6 +52,15 @@ class LesionRegistrationVolumeCoefficients:
     normalized_hessian: NDArray[np.float32]
     visited_voxels: int
     contributing_class_terms: int
+
+
+@dataclass(frozen=True)
+class LesionRegistrationOptimizationStep:
+    """One fixed-scale LesionTOADS registration step and its trial trace."""
+
+    result: RegistrationLineSearchResult
+    trial_transforms: NDArray[np.float32]
+    trial_energies: NDArray[np.float32]
 
 
 def sample_lesion_shape_prior(
@@ -432,6 +443,84 @@ def lesion_registration_volume_coefficients(
         offset=offset,
         subsample=subsample,
     )
+
+
+def register_lesion_shapes_scaled_step(
+    shape_priors: Sequence[ArrayLike],
+    memberships: ArrayLike,
+    transform: ArrayLike,
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    scale: float = 1.0,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+    offset: int = 0,
+    subsample: int = 3,
+    initial_lambda: float = 1.0,
+    lambda_factor: float = 1.5,
+    max_rejections: int = 10,
+) -> LesionRegistrationOptimizationStep:
+    """Take one scaled rigid-registration step for the fixed atlas fields.
+
+    Coefficients come from :func:`lesion_registration_volume_coefficients`;
+    each line-search trial recomputes the sampled volume energy at that
+    candidate transform. The source-compatible diagonal update, strict
+    maximization rule, lambda adaptation, and rejection limit are delegated to
+    the existing checked registration helper. No outer iteration is run.
+    """
+    current = np.asarray(transform, dtype=np.float32)
+    if current.shape != (6,) or not np.isfinite(current).all():
+        raise ValueError("transform must be a finite six-value rigid parameter vector")
+    coefficients = lesion_registration_volume_coefficients(
+        shape_priors,
+        memberships,
+        image_dimensions_xyz=image_dimensions_xyz,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolutions_mm,
+        transform=tuple(current),
+        scale=scale,
+        image_center_xyz=image_center_xyz,
+        template_center_xyz=template_center_xyz,
+        offset=offset,
+        subsample=subsample,
+    )
+    trials: list[NDArray[np.float32]] = []
+    energies: list[np.float32] = []
+
+    def evaluate(candidate: NDArray[np.float32]) -> np.float32:
+        trial = candidate.copy()
+        energy = lesion_registration_volume_coefficients(
+            shape_priors,
+            memberships,
+            image_dimensions_xyz=image_dimensions_xyz,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            transform=tuple(trial),
+            scale=scale,
+            image_center_xyz=image_center_xyz,
+            template_center_xyz=template_center_xyz,
+            offset=offset,
+            subsample=subsample,
+        ).energy
+        trials.append(trial)
+        energies.append(energy)
+        return energy
+
+    result = exact_registration_gradient_descent_step(
+        current,
+        coefficients.normalized_gradient,
+        coefficients.normalized_hessian,
+        coefficients.energy,
+        evaluate,
+        initial_lambda=initial_lambda,
+        lambda_factor=lambda_factor,
+        max_rejections=max_rejections,
+    )
+    trial_array = np.asarray(trials, dtype=np.float32).reshape((-1, 6))
+    energy_array = np.asarray(energies, dtype=np.float32)
+    return LesionRegistrationOptimizationStep(result, trial_array, energy_array)
 
 
 def _linear_interpolation_with_default(
