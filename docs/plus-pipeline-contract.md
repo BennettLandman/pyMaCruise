@@ -38,8 +38,12 @@ and mask images. Synthetic routing evidence is recorded in the
 The selected surface wrapper supplies the cropped corrected level set,
 updated WM/GM, MaACE-enhanced GM and thinned skeleton, and the plus GVF field to
 nested TGDM. `run_plus_tgdm_stage` maps WMIsoLevel into the existing nested
-image adapter and returns level sets on that cropped RAS grid. Inverse crop is
-not part of this adapter; see the [P40i report](reports/full-pytest-2026-09-29-plus-tgdm-routing.md).
+image adapter and returns level sets on that cropped RAS grid; see the
+[P40i report](reports/full-pytest-2026-09-29-plus-tgdm-routing.md).
+`uncrop_plus_tgdm_outputs` restores its six scalar volume products using the
+same GM-derived crop bounds and selected JIST exclusive-maximum convention;
+this does not convert mesh vertices. See the
+[P40j report](reports/full-pytest-2026-09-29-plus-tgdm-uncrop.md).
 
 ## Image provenance and explicit input mask
 
