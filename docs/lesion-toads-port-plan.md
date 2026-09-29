@@ -776,3 +776,16 @@ Repeat the one-voxel data-energy-to-membership composition with source
 `useField` enabled. Each synthetic channel sample is multiplied by its own
 field value before residuals; all later smoothing, prior, distance, and
 normalization steps stay in source order.
+
+### Completed substage: P39zl field-corrected data-energy integration
+
+Two selected-Java one-voxel cases compare field-corrected residual energies
+and the resulting normalized memberships, denominator, and local energy for
+LESION and BLACKHOLE branches. The synthetic fields have different nonunit
+values per channel, and are applied before residual accumulation. All
+compared float32 values match. The full suite reports 457 passed with two
+expected RAS warnings in 56.82 seconds on implementation commit
+`499de268c1ca4c1625d46d8b840e29ad673017c7`; see the
+[full-suite report](reports/full-pytest-2026-09-29-lesion-toads-fielded-data-energy-membership.md)
+and [fixture provenance](../tests/data/synthetic/lesion_toads_fielded_data_energy_membership/README.md).
+This remains scalar integration using precomputed spatial/prior inputs.
