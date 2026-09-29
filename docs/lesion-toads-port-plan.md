@@ -162,7 +162,7 @@ alias, and orientation cases are covered. This intentionally does not
 implement the selected Java raw-float reader, atlas registration, or
 transformed-prior interpolation; those remain separate steps.
 
-### Started substage: P39f transformed shape-prior sampling
+### Completed substage: P39f transformed shape-prior sampling
 
 `sample_lesion_shape_prior` follows the selected rigid branch of
 `LesionToadAtlas.getRegularTransformedShape`. It reuses the source-compared
@@ -173,7 +173,10 @@ other classes use 0. This path deliberately skips TOADS's closest-edge
 interpolation and `shapeSlope` recovery. A headless selected-Java formula
 harness covers identity/rigid mapping, anisotropic grid resolution, fractional
 coordinates, per-class bounds, and low/high template out-of-range behavior.
-The focused tests pass; the next check is the full suite and plan evidence.
+The focused tests and full configured suite pass: 398 passed in 55.53 seconds
+on tested implementation commit
+`9a71937c62edb34c082f09c883624307d0236e9b`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-shape-sampling.md`](reports/full-pytest-2026-09-29-lesion-shape-sampling.md).
 The harness does not instantiate the complete atlas class and this slice does
 not perform registration, transformed-bound optimization, or lesion
 segmentation. Provenance and fixture are in
