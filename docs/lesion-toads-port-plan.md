@@ -493,13 +493,19 @@ and [`tests/data/synthetic/lesion_toads_field_data_terms/README.md`](../tests/da
 This excludes special PowerTable handling, smoothing, atlas priors, inversion,
 and membership normalization.
 
-### Started substage: P39w FLAIR lesion PowerTable energy
+### Completed substage: P39w FLAIR lesion PowerTable energy
 
 The selected lesion branch uses a special single-channel FLAIR residual when
 `useLesionWeight` is enabled: square the float32 residual, pass it to the
 cached lesion `PowerTable`, and add the returned double to the float32 lesion
-energy accumulator (narrowing after addition). The implementation will reuse
-the existing Python source-compatible table lookup and validate cached-grid,
-out-of-range, and field-corrected cases against the real Java `PowerTable`.
-Other modalities, black-hole energies, spatial terms, and membership update
-are not part of this slice.
+energy accumulator (narrowing after addition). Six committed Java cases
+cover cached-grid and out-of-range values with and without field correction;
+class-energy and post-narrowing lesion-energy bits match exactly (maximum
+absolute error 0.0). Two focused tests also check absent-FLAIR fallback and
+the required exponent. The full suite reports 433 passed with two expected
+RAS warnings in 54.03 seconds on implementation commit
+`7ee767ca6c2c498115561ba5f57721e2ef3047e4`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-flair-weight.md`](reports/full-pytest-2026-09-29-lesion-toads-flair-weight.md)
+and [`tests/data/synthetic/lesion_toads_flair_weight/README.md`](../tests/data/synthetic/lesion_toads_flair_weight/README.md).
+This remains a data-term slice before smoothing, atlas priors, inversion, and
+membership normalization.
