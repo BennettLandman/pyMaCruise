@@ -511,5 +511,15 @@ The optimized CSF/GM/WM per-image terms have now also been connected from
 image inputs through the final ordered membership update. Four Java
 source-formula cases compare field/PSF configurations, with intermediate and
 final outputs meeting the recorded float32 errors; see the [P18ar report](reports/toads-optimized-membership-pass-2026-09-29.md).
+P18as also composes one selected optimized-tissue centroid-then-membership
+iteration against a Java formula harness; see [the P18as report](reports/toads-optimized-iteration-2026-09-29.md).
+P18at validates the local topology-aware thinning transition using the selected
+18/6 LUT, P18au validates the Java four-dimensional heap order, and P18av
+composes source thinning initialization and boundary-queue seeding. P18aw
+validates the post-removal face-neighbor scheduling loop and its source
+priority/volume guards. These queue slices preserve two source counter quirks,
+recorded in the respective P18av/P18aw reports, and are not repeated global
+thinning or segmentation validation.
+
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
