@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.lesion_shapes import (
+    accumulate_lesion_registration_coefficients,
     lesion_registration_voxel_contributions,
     sample_lesion_shape_prior,
 )
@@ -40,6 +41,14 @@ SCALED_REGISTRATION_HARNESS = (
 )
 SCALED_REGISTRATION_HARNESS_SHA256 = "0fc4d37c5e11fee5a1ef0c491c7a46e1caab5d0e2e64fcdc6e02bbe658de552f"
 SCALED_REGISTRATION_FIXTURE_SHA256 = "b00b3abdb5845f829e1cfd22d6590e9c47ea4e10ffa78f3f39745bd97b5a1d2b"
+VOLUME_FIXTURE_DIR = Path(__file__).parent / "data" / "synthetic" / "lesion_registration_volume"
+VOLUME_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionRegistrationVolumeAccumulationReferenceHarness.java"
+)
+VOLUME_HARNESS_SHA256 = "a2a018ca0c82d575e4bcd195639ffacea7f5b01c6530df87737b4de68d86627c"
+VOLUME_FIXTURE_SHA256 = "1320f3f0edc560e8aeac5379708cf0ea392fe6cf3e353b1da6f873b9655f2620"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -485,4 +494,114 @@ def test_lesion_scaled_registration_voxel_matches_java_formula_fixture() -> None
         np.testing.assert_array_equal(
             result.coefficients.hessian,
             np.asarray(case["hessian"], dtype=np.float32),
+        )
+
+
+def test_lesion_registration_volume_accumulation_matches_java_loop_fixture() -> None:
+    reference_path = VOLUME_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(VOLUME_HARNESS.read_bytes()).hexdigest() == VOLUME_HARNESS_SHA256
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == VOLUME_FIXTURE_SHA256
+    reference = json.loads(reference_path.read_text())
+    nx, ny, nz = (int(value) for value in reference["dimensions_xyz"])
+    classes = int(reference["classes"])
+    memberships = np.empty((nx, ny, nz, classes), dtype=np.float32)
+    priors = np.empty_like(memberships)
+    gradients = np.empty(memberships.shape + (3,), dtype=np.float32)
+    jacobians = np.empty((nx, ny, nz, 3, 6), dtype=np.float32)
+    for x in range(nx):
+        for y in range(ny):
+            for z in range(nz):
+                for k in range(classes):
+                    value = np.float32(0.21)
+                    value = np.float32(value + np.float32(np.float32(0.09) * k))
+                    value = np.float32(value + np.float32(np.float32(0.017) * x))
+                    value = np.float32(value + np.float32(np.float32(0.011) * y))
+                    memberships[x, y, z, k] = np.float32(
+                        value + np.float32(np.float32(0.007) * z)
+                    )
+                    if k == 0:
+                        priors[x, y, z, k] = np.float32(0.88)
+                    elif (x + 2 * y + z + k) % 5 == 0:
+                        priors[x, y, z, k] = np.float32(0.0)
+                    else:
+                        value = np.float32(0.11)
+                        value = np.float32(value + np.float32(np.float32(0.04) * k))
+                        value = np.float32(value + np.float32(np.float32(0.003) * x))
+                        value = np.float32(value - np.float32(np.float32(0.002) * y))
+                        priors[x, y, z, k] = np.float32(
+                            value + np.float32(np.float32(0.001) * z)
+                        )
+                    gradients[x, y, z, k] = (
+                        np.float32(np.float32(0.001) * (k + x + 1)),
+                        np.float32(np.float32(0.0013) * (k + y + 2)),
+                        np.float32(np.float32(0.0007) * (k + z + 3)),
+                    )
+                for axis in range(3):
+                    for parameter in range(6):
+                        value = np.float32(
+                            np.float32(np.float32(0.012) * (axis + 1)) * (parameter + 1)
+                        )
+                        value = np.float32(value + np.float32(np.float32(0.0001) * x))
+                        value = np.float32(value - np.float32(np.float32(0.0002) * y))
+                        jacobians[x, y, z, axis, parameter] = np.float32(
+                            value + np.float32(np.float32(0.0003) * z)
+                        )
+
+    results = {}
+    for case in reference["cases"]:
+        if case["reverse"]:
+            continue
+        result = accumulate_lesion_registration_coefficients(
+            memberships,
+            priors,
+            gradients,
+            jacobians,
+            offset=int(case["offset"]),
+            subsample=int(case["subsample"]),
+        )
+        results[case["name"]] = result
+        assert result.cost == np.float32(case["cost"]), case["name"]
+        assert result.norm == np.float32(case["norm"]), case["name"]
+        np.testing.assert_array_equal(result.gradient, np.asarray(case["gradient"], dtype=np.float32))
+        np.testing.assert_array_equal(result.hessian, np.asarray(case["hessian"], dtype=np.float32))
+        assert result.energy == np.float32(case["energy"]), case["name"]
+        np.testing.assert_array_equal(
+            result.normalized_gradient,
+            np.asarray(case["normalized_gradient"], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            result.normalized_hessian,
+            np.asarray(case["normalized_hessian"], dtype=np.float32),
+        )
+        assert result.visited_voxels == case["visited_voxels"]
+        assert result.contributing_class_terms == case["contributing_class_terms"]
+
+    # The reference includes a reverse-order control to demonstrate that this
+    # nonlinear float32 reduction is sensitive to preserving the source order.
+    dense = results["dense"]
+    reverse = next(case for case in reference["cases"] if case["name"] == "reverse_control")
+    assert dense.cost != np.float32(reverse["cost"])
+    assert dense.gradient[3] != np.float32(reverse["gradient"][3])
+
+
+def test_lesion_registration_volume_accumulation_validates_grids_and_source_zero_norm() -> None:
+    memberships = np.ones((1, 1, 1, 2), dtype=np.float32)
+    priors = np.zeros_like(memberships)
+    gradients = np.zeros(memberships.shape + (3,), dtype=np.float32)
+    jacobians = np.zeros((1, 1, 1, 3, 6), dtype=np.float32)
+    empty = accumulate_lesion_registration_coefficients(
+        memberships, priors, gradients, jacobians
+    )
+    assert empty.cost == empty.norm == np.float32(0.0)
+    assert np.isnan(empty.energy)
+    assert np.isnan(empty.normalized_gradient).all()
+    assert empty.visited_voxels == 1
+    assert empty.contributing_class_terms == 0
+    with pytest.raises(ValueError, match="positive integer"):
+        accumulate_lesion_registration_coefficients(
+            memberships, priors, gradients, jacobians, subsample=0
+        )
+    with pytest.raises(ValueError, match="coordinate_jacobians"):
+        accumulate_lesion_registration_coefficients(
+            memberships, priors, gradients, np.zeros((1, 1, 1, 3, 5), dtype=np.float32)
         )

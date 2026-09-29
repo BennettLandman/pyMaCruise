@@ -37,6 +37,21 @@ class LesionRegistrationVoxelContributions:
     coefficients: RegistrationCoefficientSums
 
 
+@dataclass(frozen=True)
+class LesionRegistrationVolumeCoefficients:
+    """Source-ordered selected LesionTOADS coefficient reduction."""
+
+    cost: np.float32
+    norm: np.float32
+    gradient: NDArray[np.float32]
+    hessian: NDArray[np.float32]
+    energy: np.float32
+    normalized_gradient: NDArray[np.float32]
+    normalized_hessian: NDArray[np.float32]
+    visited_voxels: int
+    contributing_class_terms: int
+
+
 def sample_lesion_shape_prior(
     shape: np.ndarray,
     image_point_xyz: tuple[int, int, int],
@@ -210,6 +225,108 @@ def lesion_registration_voxel_contributions(
     )
     return LesionRegistrationVoxelContributions(
         sampled_priors, sampled_gradients, mapped_coordinates, jacobian, coefficients
+    )
+
+
+def accumulate_lesion_registration_coefficients(
+    memberships: ArrayLike,
+    shape_priors: ArrayLike,
+    prior_gradients_xyz: ArrayLike,
+    coordinate_jacobians: ArrayLike,
+    *,
+    registered_classes: ArrayLike | None = None,
+    offset: int = 0,
+    subsample: int = 3,
+) -> LesionRegistrationVolumeCoefficients:
+    """Reduce pre-sampled LesionTOADS terms in selected Java loop order.
+
+    Inputs are indexed ``[x, y, z, class]``; prior gradients add a trailing
+    XYZ axis and rigid coordinate Jacobians add trailing ``(3, 6)`` axes.
+    The selected ``computeScaledRegistrationCoefficients`` traversal is
+    x-major, then y, z, and registered class, starting at ``offset`` and
+    advancing by ``subsample``. Each class term is rounded into the running
+    float32 volume sums before the next class/voxel, preserving source
+    accumulation order rather than summing per-voxel aggregates.
+
+    This reducer receives already sampled arrays so its acceptance tests can
+    isolate scan/reduction semantics from atlas interpolation. Source
+    normalization divides cost, gradient, and diagonal Hessian by the
+    prior-square norm. As in Java, zero norm produces IEEE NaN/Inf outputs.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    prior = np.asarray(shape_priors, dtype=np.float32)
+    prior_grad = np.asarray(prior_gradients_xyz, dtype=np.float32)
+    jacobian = np.asarray(coordinate_jacobians, dtype=np.float32)
+    if mem.ndim != 4 or mem.shape[-1] < 2:
+        raise ValueError("memberships must have shape (x, y, z, classes>=2)")
+    if prior.shape != mem.shape:
+        raise ValueError("shape_priors must match the membership grid and classes")
+    if prior_grad.shape != mem.shape + (3,):
+        raise ValueError("prior_gradients_xyz must have shape (x, y, z, classes, 3)")
+    if jacobian.shape != mem.shape[:3] + (3, 6):
+        raise ValueError("coordinate_jacobians must have shape (x, y, z, 3, 6)")
+    if not all(np.isfinite(values).all() for values in (mem, prior, prior_grad, jacobian)):
+        raise ValueError("registration volume terms must contain only finite values")
+    if registered_classes is None:
+        registered = np.ones(mem.shape[-1], dtype=bool)
+    else:
+        registered = np.asarray(registered_classes, dtype=bool)
+        if registered.shape != (mem.shape[-1],):
+            raise ValueError("registered_classes must have one value per class")
+    if isinstance(offset, bool) or not isinstance(offset, (int, np.integer)) or offset < 0:
+        raise ValueError("offset must be a nonnegative integer")
+    if (
+        isinstance(subsample, bool)
+        or not isinstance(subsample, (int, np.integer))
+        or subsample <= 0
+    ):
+        raise ValueError("subsample must be a positive integer")
+
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    visited = 0
+    terms = 0
+    for x in range(int(offset), mem.shape[0], int(subsample)):
+        for y in range(int(offset), mem.shape[1], int(subsample)):
+            for z in range(int(offset), mem.shape[2], int(subsample)):
+                visited += 1
+                for class_index in range(1, mem.shape[-1]):
+                    if not registered[class_index] or prior[x, y, z, class_index] <= np.float32(0.0):
+                        continue
+                    selected = np.zeros(mem.shape[-1], dtype=bool)
+                    selected[class_index] = True
+                    class_priors = np.zeros(mem.shape[-1], dtype=np.float32)
+                    class_priors[class_index] = prior[x, y, z, class_index]
+                    class_gradients = np.zeros((mem.shape[-1], 3), dtype=np.float32)
+                    class_gradients[class_index] = prior_grad[x, y, z, class_index]
+                    one_term = exact_registration_coefficient_contributions(
+                        mem[x, y, z],
+                        class_priors,
+                        class_gradients,
+                        jacobian[x, y, z],
+                        registered_classes=selected,
+                    )
+                    cost = np.float32(cost + one_term.cost)
+                    norm = np.float32(norm + one_term.norm)
+                    gradient = np.asarray(gradient + one_term.gradient, dtype=np.float32)
+                    hessian = np.asarray(hessian + one_term.hessian, dtype=np.float32)
+                    terms += 1
+    with np.errstate(divide="ignore", invalid="ignore"):
+        energy = np.divide(cost, norm, dtype=np.float32)
+        normalized_gradient = np.divide(gradient, norm, dtype=np.float32)
+        normalized_hessian = np.divide(hessian, norm, dtype=np.float32)
+    return LesionRegistrationVolumeCoefficients(
+        cost,
+        norm,
+        gradient,
+        hessian,
+        energy,
+        normalized_gradient,
+        normalized_hessian,
+        visited,
+        terms,
     )
 
 
