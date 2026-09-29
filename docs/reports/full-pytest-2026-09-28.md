@@ -441,6 +441,7 @@ complete TOADS membership update; P18ad cites this run.
 | P18ao — Port optimized-tissue centroid similarity coefficients | `tests/test_toads_optimized_similarity.py` compares the class-pair similarity matrix against the source-formula Java harness using committed P18am/P18an reference values; it checks the source default scale, zero diagonal, pair symmetry, and zero-deviation IEEE behavior. | `334 passed`; commit `6f0a984c62f11c3b7bdfca57e154d7ff56215a9f` |
 | P18ap — Port TOADS voxelwise inverse shape-prior energy | `tests/test_toads_inverse_shape_prior.py` compares every voxel/class inverse-energy and objective contribution against the selected source-formula Java harness, including class exclusion, source interior-only scan, zero coefficient, and malformed-input cases. | `340 passed`; commit `1c70252edbb22adf544dac3df101d1e7df7fb98f` |
 | P18aq — Compose atlas prior energy into ordered TOADS membership sweep | `tests/test_toads_ordered_prior_sweep.py` composes prior-energy outputs with the existing in-place smoothing/relation update and compares every membership plus objective to a Java formula sweep; verifies suppressed classes, borders, and zero-prior backward compatibility. | `343 passed`; commit `0a53263aa8f70e8a5938ba53333f16f71af15299` |
+| P18ar — Compose optimized-tissue image terms into one TOADS membership pass | `tests/test_toads_optimized_membership_pass.py` compares source-derived variance weights, deviations, similarities, PSF bias, data energies, memberships, and objective with a Java harness using actual `PowerTable`; exercises field and PSF on/off. | `348 passed`; commit `a7365b92891f6a7dce1a01e03d709e2e89be6097` |
 | P19 — Integrate ANTsPy N4 bias correction | `tests/test_n4.py` checks synthetic bias reduction, geometry, and repeatability. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P20 — Port crop and inverse-crop transforms | `tests/test_cropping.py` validates synthetic crop bounds and inverse geometry. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
 | P21 — Port TOADS outputs back to source space | `tests/test_spatial_transfer.py` and the Java/Python comparison artifacts cited in `plan.md`. | `212 passed`; commit `0852b56c4dbf94dbd973c31a819110426316652b` |
@@ -656,6 +657,21 @@ Subsequent plan/report/README edits do not modify implementation or tests.
 | Run scope | Complete configured suite; all collected tests passed |
 
 This run validates the P18aq implementation and committed synthetic reference.
+Subsequent plan/report/README edits do not modify implementation or tests.
+
+## Additional full-suite run for P18ar
+
+| Field | Value |
+|---|---|
+| Command | `./.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **348 passed in 62.10 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `a7365b92891f6a7dce1a01e03d709e2e89be6097` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18ar implementation and committed synthetic references.
 Subsequent plan/report/README edits do not modify implementation or tests.
 
 ## Future rows

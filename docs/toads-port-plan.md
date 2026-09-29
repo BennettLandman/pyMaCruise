@@ -496,5 +496,9 @@ scan and untouched borders; see the [P18ap report](reports/toads-inverse-shape-p
 That contribution is now composed into the ordered in-place, six-face
 membership sweep and compared end-to-end at formula level on a small synthetic
 grid; see the [P18aq report](reports/toads-ordered-prior-sweep-2026-09-29.md).
+The optimized CSF/GM/WM per-image terms have now also been connected from
+image inputs through the final ordered membership update. Four Java
+source-formula cases compare field/PSF configurations, with intermediate and
+final outputs meeting the recorded float32 errors; see the [P18ar report](reports/toads-optimized-membership-pass-2026-09-29.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
