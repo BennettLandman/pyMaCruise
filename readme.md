@@ -60,6 +60,8 @@ P39m is complete: one fixed-scale rigid update matches selected-Java trial trans
 
 P39n is complete: the fixed-scale outer iteration loop matches selected-Java trial histories and verifies lambda-floor, iteration-count, and relative-change stops. The full suite reports **409 passed in 53.07 seconds**, with two expected RAS warnings, on implementation commit `76e6ec46a3940a3e5a584e725a9c751962e9e32e`; see the [P39n report](docs/reports/full-pytest-2026-09-29-lesion-registration-optimizer.md). This does not construct or transition the pyramid or segment lesions. The roadmap counts 118/132 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39o is now Started to reuse the checked block-mean subsampler and fixed-scale optimizer in the LesionTOADS pyramid. It will verify direct coarse-array construction, transform handoff, and the source lambda reset at each scale; the plan has 133 rows.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
