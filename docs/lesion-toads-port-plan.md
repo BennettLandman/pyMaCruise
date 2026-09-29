@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zw have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and OBJECT+OUTMASK smoothing/blending/normalization,
+**Status:** P39 is Started. P39a–P39zx have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and OBJECT+OUTMASK smoothing/blending/prior/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -978,10 +978,28 @@ This is the selected OBJECT+OUTMASK formula branch, not a full
 LesionTOADS-equivalence claim. Atlas similarity priors remain separate.
 
 
-### Started substage: P39zx OUTMASK atlas-prior volume sweep
+### Completed substage: P39zx OUTMASK atlas-prior volume sweep
 
-Add source-ordered ordinary class and OUTMASK atlas similarity prior sums to
-P39zw. The selected Java branch adds the same class prior to `numO` for an
-OUTMASK class before inversion. Preserve the existing smoothing, relation,
-and normalization order. LESION/BLACKHOLE auxiliary priors are outside this
-substage.
+The selected OBJECT+OUTMASK sweep now adds source-ordered class similarity
+prior sums to the ordinary class energy and, for the OUTMASK class, to `numO`
+before inversion. An asymmetric committed Java formula fixture matches every
+interior class and outlier-membership float32 bit. A zero prior coefficient
+reproduces P39zw exactly, and boundary voxels remain unchanged. Focused tests:
+7 passed. Full suite: 506 passed with two expected RAS warnings in 77.67
+seconds on implementation commit `ab80898125b2640f6f4bb118e4a6981448285ea5`;
+see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-prior-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_outmask_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_outmask_prior_sweep/README.md).
+This validates the selected formula branch, not the full iterative
+LesionTOADS engine.
+
+
+### Started substage: P39zy LESION+OUTMASK volume composition
+
+Compose the independently validated OBJECT+LESION and OBJECT+OUTMASK in-place
+volume updates. Preserve source ordering when the LESION auxiliary map is
+added to the denominator before the class term, then the OUTMASK update
+blends and replaces the outlier map before normalization. Add source-selected
+distance modulation and atlas priors only as they become covered by the
+committed fixture and explicit criteria.
