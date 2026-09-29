@@ -26,6 +26,12 @@ from pymacruise.tgdm import (
     tgdm_nested_images,
 )
 from pymacruise.surfaces import SurfaceMesh, extract_levelset_surface
+from pymacruise.thickness import (
+    SurfaceThicknessResult,
+    ThicknessVolumeResult,
+    closest_point_thickness,
+    levelset_subtraction_thickness,
+)
 from pymacruise.topology import TopologyCorrectionResult, topology_correct
 
 
@@ -109,6 +115,14 @@ class PlusSurfaceResult:
     inner: SurfaceMesh
     central: SurfaceMesh
     outer: SurfaceMesh
+
+
+@dataclass(frozen=True)
+class PlusThicknessResult:
+    """Level-set and closest-point thickness products for plus outputs."""
+
+    volume: ThicknessVolumeResult
+    surface: SurfaceThicknessResult
 
 
 def run_plus_gvf_stage(
@@ -327,3 +341,24 @@ def extract_plus_surfaces(
         central=extract_levelset_surface(result.central, level=0.0),
         outer=extract_levelset_surface(result.outer, level=0.0),
     )
+
+
+def run_plus_thickness_stage(
+    level_sets: PlusUncroppedTGDMResult,
+    surfaces: PlusSurfaceResult,
+) -> PlusThicknessResult:
+    """Run selected MaCRUISEplus volume and closest-point thickness methods."""
+    if not isinstance(level_sets, PlusUncroppedTGDMResult):
+        raise ValueError("level_sets must be PlusUncroppedTGDMResult")
+    if not isinstance(surfaces, PlusSurfaceResult):
+        raise ValueError("surfaces must be PlusSurfaceResult")
+    volume = levelset_subtraction_thickness(
+        level_sets.inner,
+        level_sets.outer,
+        iso_level=0.0,
+    )
+    surface = closest_point_thickness(
+        surfaces.inner,
+        surfaces.outer,
+    )
+    return PlusThicknessResult(volume=volume, surface=surface)
