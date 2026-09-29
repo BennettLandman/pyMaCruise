@@ -1,13 +1,12 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a (numeric intensity initialization), P39b
-(atlas-prior parsing), P39c (capped six-neighbor distance support), P39d
-(topology NIfTI loading), and P39e (shape-prior NIfTI loading) are validated
-on synthetic/reference data. The atlas-loader rows validate bundled
-compressed-NIfTI handling only, not the Java raw-byte loader, registration,
-transformed-prior sampling, or lesion algorithm. This document tracks
-algorithm scope and source contracts; it does not claim a full LesionTOADS
-port.
+**Status:** P39 is Started. P39a–P39k have validated discrete preparation,
+atlas loading/sampling, registration derivatives, and selected registration
+coefficient slices on synthetic/reference data. P39d/e validate bundled
+compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
+include atlas sampling, transform optimization, or segmentation. This
+document tracks algorithm scope and source contracts; it does not claim a
+full LesionTOADS port.
 
 ## Selected workflow and source
 
@@ -229,3 +228,30 @@ on implementation commit `bb35469f4849346bdf3e03fd466e7edcee7e5e9d`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-pyramid-scales.md`](reports/full-pytest-2026-09-29-lesion-pyramid-scales.md).
 This is sampling support, not a complete atlas registration optimizer or
 LesionTOADS segmentation port.
+
+### Completed substage: P39j scaled single-voxel registration coefficients
+
+`lesion_registration_voxel_contributions` now propagates pyramid scale through
+prior interpolation and the selected rigid coordinate Jacobian before
+composing the class-gated coefficient formula. The selected-Java harness
+matches coordinates, priors, derivatives, Jacobians, cost/norm, gradient, and
+diagonal Hessian exactly for scales 2/4/8, including class-0 exclusion,
+multiple positive classes, zero prior, and out-of-template samples. The full
+suite passed 404 tests in 52.36 seconds on implementation commit
+`38db63cdc9ad85e0cb1b3097c4aec6c0af244842`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-scaled-registration-voxel.md`](reports/full-pytest-2026-09-29-lesion-scaled-registration-voxel.md).
+This is a selected-formula single-voxel comparison only.
+
+### Completed substage: P39k source-ordered coefficient accumulation
+
+`accumulate_lesion_registration_coefficients` accepts pre-sampled
+membership, prior, derivative, and Jacobian arrays, then reduces them in the
+selected Java x/y/z/class order using float32 updates. Dense and offset-zero
+step-two scans match the selected-method Java formula harness exactly for raw
+cost/norm/gradient/Hessian and normalized measures. The reverse-order control
+differs at float32 precision; zero norm preserves Java NaN division. The full
+suite passed 406 tests in 60.56 seconds on implementation commit
+`0740ef256011c30b225ca1d26ac72251b830d2bc`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-registration-volume.md`](reports/full-pytest-2026-09-29-lesion-registration-volume.md).
+This isolates reduction semantics and does not sample the atlas or optimize
+the transform.
