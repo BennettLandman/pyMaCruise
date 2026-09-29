@@ -585,3 +585,13 @@ zero maxima, and GM control are covered. Focused suite: 4 passed; full suite:
 commit `c5493e84aa72d03bd951194aad0a91eec0ee3e39`. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md)
 and [`tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md`](../tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md).
+
+### Started substage: P39zb per-voxel membership normalization
+
+Recreate the final one-voxel portion of `computeMemberships`: add lesion and
+black-hole auxiliary membership values to the denominator in their source
+branches, add each class membership in class order, normalize all class and
+selected auxiliary values only when `den > 0`, and accumulate the local
+energy from normalized class and auxiliary memberships. This slice begins
+with assigned memberships and energies; it does not estimate their data
+terms or spatial priors.
