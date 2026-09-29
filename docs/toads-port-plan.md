@@ -547,8 +547,12 @@ P18ba ports the separate initGrowingLabels boundary queue: empty-skeleton
 availability, six-face class seeds, source float32 priority construction, and
 min-heap ordering. Three synthetic cases match exactly with 24 mixed-label
 entries, six single-seed entries, and an empty queue. See the [P18ba report](reports/toads-growing-queue-initialization-2026-09-29.md).
-This is initialization evidence only; the topology-gated growth event and
-repeated growing loop remain open.
+P18bb now ports and validates one topology-gated event, including accepted,
+critical, and stale queue entries against the selected 18/6 LUT and Java heap;
+see [its source-slice report](reports/toads-growing-queue-step-2026-09-29.md).
+Repeated queue-to-exhaustion growth on a synthetic folded boundary remains
+open as P18bc. Neither the event nor the planned repeated pass establishes
+full TOADS segmentation, atlas alignment, or real-data parity.
 
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
