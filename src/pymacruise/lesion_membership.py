@@ -53,6 +53,22 @@ class LesionToadsSmoothingEnergyUpdate:
     current_class_neighbor_squares: np.float32
 
 
+@dataclass(frozen=True)
+class LesionToadsPriorEnergyUpdate:
+    """One voxel's pairwise, lesion, and black-hole prior contributions."""
+
+    class_prior: np.float32
+    lesion_prior: np.float32
+    black_hole_prior: np.float32
+    class_membership_data_term: np.float32
+    lesion_membership_data_term: np.float32
+    black_hole_membership_data_term: np.float32
+    outmask_membership_data_term: np.float32
+    class_energy: np.float32
+    lesion_energy: np.float32
+    black_hole_energy: np.float32
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
@@ -440,4 +456,129 @@ def update_lesion_toads_smoothing_energies(
         lesion_neighbor_squares=lesion_sum,
         black_hole_neighbor_squares=black_hole_sum,
         current_class_neighbor_squares=current_sum,
+    )
+
+
+def update_lesion_toads_prior_energies(
+    shape_priors: np.ndarray,
+    class_similarities: np.ndarray,
+    lesion_similarities: np.ndarray,
+    black_hole_similarities: np.ndarray,
+    shape_values: np.ndarray,
+    *,
+    class_index: int,
+    class_type: str,
+    prior_coefficient: float,
+    class_membership_data_term: float,
+    lesion_membership_data_term: float,
+    black_hole_membership_data_term: float,
+    outmask_membership_data_term: float,
+    class_energy: float,
+    lesion_energy: float,
+    black_hole_energy: float,
+    has_lesion: bool,
+    lesion_class_index: int,
+    lesion_class_type: str,
+) -> LesionToadsPriorEnergyUpdate:
+    """Apply one selected prior-coefficient update at one voxel.
+
+    Similarity vectors are the selected row similarity[k][m],
+    lesionSimilarity[m], and blackHoleSimilarity[m]. Products and sums
+    follow the Java loop order and float32 left-associative arithmetic.
+    """
+    priors = np.asarray(shape_priors, dtype=np.float32)
+    similarities = np.asarray(class_similarities, dtype=np.float32)
+    lesion_sim = np.asarray(lesion_similarities, dtype=np.float32)
+    black_hole_sim = np.asarray(black_hole_similarities, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    arrays = (priors, similarities, lesion_sim, black_hole_sim, shapes)
+    if any(array.ndim != 1 for array in arrays):
+        raise ValueError("prior and similarity inputs must be vectors")
+    if not priors.size or any(array.size != priors.size for array in arrays[1:]):
+        raise ValueError("prior and similarity vectors must have equal nonzero length")
+    if isinstance(class_index, (bool, np.bool_)) or not isinstance(class_index, (int, np.integer)):
+        raise ValueError("class_index must be an integer")
+    if not 0 <= int(class_index) < priors.size:
+        raise ValueError("class_index must identify an input class")
+    if not isinstance(has_lesion, (bool, np.bool_)):
+        raise ValueError("has_lesion must be boolean")
+    if has_lesion and (
+        isinstance(lesion_class_index, (bool, np.bool_))
+        or not isinstance(lesion_class_index, (int, np.integer))
+        or not 0 <= int(lesion_class_index) < priors.size
+    ):
+        raise ValueError("lesion_class_index must identify a class when has_lesion is true")
+    if class_type not in {"OBJECT", "LESION", "OPTIMIZED_LESION", "BLACKHOLE", "OUTMASK", "OUTLIER", "MASK"}:
+        raise ValueError("unsupported LesionTOADS class_type")
+
+    k = int(class_index)
+    class_prior = np.float32(0.0)
+    lesion_prior = np.float32(0.0)
+    black_hole_prior = np.float32(0.0)
+    for m in range(priors.size):
+        shape = shapes[m]
+        if m != k:
+            product = np.float32(priors[m] * similarities[m])
+            product = np.float32(product * shape)
+            product = np.float32(product * shape)
+            class_prior = np.float32(class_prior + product)
+        if class_type in {"LESION", "OPTIMIZED_LESION", "BLACKHOLE"}:
+            product = np.float32(priors[m] * lesion_sim[m])
+            product = np.float32(product * shape)
+            product = np.float32(product * shape)
+            lesion_prior = np.float32(lesion_prior + product)
+        if class_type == "BLACKHOLE":
+            product = np.float32(priors[m] * black_hole_sim[m])
+            product = np.float32(product * shape)
+            product = np.float32(product * shape)
+            black_hole_prior = np.float32(black_hole_prior + product)
+
+    if has_lesion:
+        lesion_index = int(lesion_class_index)
+        shape = shapes[lesion_index]
+        product = np.float32(priors[lesion_index] * lesion_sim[k])
+        product = np.float32(product * shape)
+        product = np.float32(product * shape)
+        class_prior = np.float32(class_prior + product)
+        if lesion_class_type == "BLACKHOLE":
+            product = np.float32(priors[lesion_index] * black_hole_sim[k])
+            product = np.float32(product * shape)
+            product = np.float32(product * shape)
+            class_prior = np.float32(class_prior + product)
+
+    coefficient = np.float32(prior_coefficient)
+    class_term = np.float32(class_membership_data_term)
+    lesion_term = np.float32(lesion_membership_data_term)
+    black_hole_term = np.float32(black_hole_membership_data_term)
+    outmask_term = np.float32(outmask_membership_data_term)
+    class_term = np.float32(class_term + np.float32(coefficient * class_prior))
+    if class_type == "OUTMASK":
+        outmask_term = np.float32(outmask_term + np.float32(coefficient * class_prior))
+    class_energy_value = np.float32(class_energy)
+    class_half = np.float32(np.float32(np.float32(0.5) * coefficient) * class_prior)
+    class_energy_value = np.float32(class_energy_value + class_half)
+
+    lesion_energy_value = np.float32(lesion_energy)
+    if class_type in {"LESION", "OPTIMIZED_LESION", "BLACKHOLE"}:
+        lesion_term = np.float32(lesion_term + np.float32(coefficient * lesion_prior))
+        half = np.float32(np.float32(np.float32(0.5) * coefficient) * lesion_prior)
+        lesion_energy_value = np.float32(lesion_energy_value + half)
+
+    black_hole_energy_value = np.float32(black_hole_energy)
+    if class_type == "BLACKHOLE":
+        black_hole_term = np.float32(black_hole_term + np.float32(coefficient * black_hole_prior))
+        half = np.float32(np.float32(np.float32(0.5) * coefficient) * black_hole_prior)
+        black_hole_energy_value = np.float32(black_hole_energy_value + half)
+
+    return LesionToadsPriorEnergyUpdate(
+        class_prior=class_prior,
+        lesion_prior=lesion_prior,
+        black_hole_prior=black_hole_prior,
+        class_membership_data_term=class_term,
+        lesion_membership_data_term=lesion_term,
+        black_hole_membership_data_term=black_hole_term,
+        outmask_membership_data_term=outmask_term,
+        class_energy=class_energy_value,
+        lesion_energy=lesion_energy_value,
+        black_hole_energy=black_hole_energy_value,
     )
