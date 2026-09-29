@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zm have validated bounded preparation, registration, membership-formula, and spatial-neighborhood slices,
+**Status:** P39 is Started. P39a–P39zn have validated bounded preparation, registration, membership-formula, spatial-neighborhood, and fixed-input smoothing-composition slices,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -808,3 +808,20 @@ commit `58a3d757e3a8eebb15d7f44cb72f44df416f27d`; see
 and [`tests/data/synthetic/lesion_toads_six_face_neighborhood/README.md`](../tests/data/synthetic/lesion_toads_six_face_neighborhood/README.md).
 This validates neighborhood extraction only, not the volume-wide membership
 update or segmentation.
+
+
+### Completed substage: P39zn streamed smoothing-energy composition
+
+`iter_lesion_toads_volume_smoothing_updates` streams each six-face
+neighborhood from P39zm through the source-compared scalar smoothing kernel
+for every class, retaining the source interior x/y/z order and per-class
+float32 operation order. The committed 5×4×6 coordinate-distinct Java
+formula harness covers OBJECT, LESION, and BLACKHOLE terms with per-voxel
+initial energy maps. Every output term at every interior coordinate matches
+float32 bits; input volumes are unchanged. Focused suite: 2 passed. Full
+suite: 488 passed with two expected RAS warnings in 86.61 seconds on
+implementation commit `856e07b2246642b3dad298e43df52cdaa02eeb7b`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-volume-smoothing.md`](reports/full-pytest-2026-09-29-lesion-toads-volume-smoothing.md)
+and [`tests/data/synthetic/lesion_toads_volume_smoothing/README.md`](../tests/data/synthetic/lesion_toads_volume_smoothing/README.md). This step
+uses fixed memberships and does not implement in-place membership writes,
+atlas priors, inversion, normalization, or segmentation equivalence.
