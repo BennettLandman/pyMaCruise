@@ -644,10 +644,29 @@ commit `bba409dc9c892262067f8ceaeca06c5582d58e7b`. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-energy.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-energy.md)
 and [`tests/data/synthetic/lesion_toads_smoothing_energy/README.md`](../tests/data/synthetic/lesion_toads_smoothing_energy/README.md).
 
-### Started substage: P39ze smoothing-to-membership integration
+### Completed substage: P39ze smoothing-to-membership integration
 
 Compose the P39zd full smoothing additions used for class/auxiliary
 membership conversion and the separate half additions used for local energy
 with the checked direct/prior conversions, distance branches, denominator,
 and normalization. Keep the input a synthetic one-voxel stencil and keep
 atlas-prior energy construction outside this slice.
+
+Two selected-Java cases match normalized class and auxiliary membership
+float32 bits, `lesionRelation`, denominator, and local energy after smoothing,
+conversion, distance modulation, and normalization. The cases cover a
+LESION/direct/ventricle/brainstem path and a BLACKHOLE/prior/GM-zero/brainstem
+path. Focused suite: 1 passed; full suite: 450 passed with two expected RAS
+warnings in 57.57 seconds on implementation commit
+`eb0b7cc5d13a959608ad7acabc63675a494874cd`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-membership-integration.md)
+and [`tests/data/synthetic/lesion_toads_smoothing_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_smoothing_membership_integration/README.md).
+
+### Started substage: P39zf atlas-prior energy terms
+
+Port the selected one-voxel `priorCoefficient` accumulation into class,
+lesion, and black-hole membership data terms and their separate half-weighted
+energy accumulators. Preserve source class-index exclusion and loop order,
+lesion-class additions, and the special extra black-hole contribution when
+the lesion class itself is a black-hole class. Inputs are already computed
+shape/similarity vectors; building those fields and maps remains separate.
