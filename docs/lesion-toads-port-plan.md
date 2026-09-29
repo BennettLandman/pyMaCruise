@@ -1096,3 +1096,12 @@ and the updated
 [`tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md`](../tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md).
 This validates the selected combined formula branch, not whole-engine
 equivalence.
+
+
+### Started substage: P39zzd OPTIMIZED_LESION in LESION+OUTMASK sweep
+
+The dedicated LESION+OUTMASK adapter predates the three-auxiliary adapter and
+still accepts only `LESION`. Extend this selected source path to accept
+`OPTIMIZED_LESION`, while preserving source-order class selection, lesion-map
+updates, OUTMASK blending, distance handling, and normalization. Validate both
+class orders against Java synthetic references.
