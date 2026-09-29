@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pymacruise.toads_math import toads_powertable_lookup
+
 
 @dataclass(frozen=True)
 class LesionToadsDataEnergies:
@@ -27,6 +29,10 @@ def compute_lesion_toads_unfielded_data_energies(
     object_type: str,
     use_field: bool = False,
     intensity_field: ArrayLike | None = None,
+    flair_channel: int = -1,
+    use_lesion_weight: bool = False,
+    lesion_power_exponent: float | None = None,
+    cached_lesion_power_exponent: float | None = None,
 ) -> LesionToadsDataEnergies:
     """Compute one selected unfielded class's weighted squared residuals.
 
@@ -72,6 +78,25 @@ def compute_lesion_toads_unfielded_data_energies(
         raise ValueError("image_values must contain only finite values")
     if object_type not in {"obj", "object", "lesion", "blackhole"}:
         raise ValueError("object_type must be obj/object, lesion, or blackhole")
+    if not isinstance(use_lesion_weight, (bool, np.bool_)):
+        raise ValueError("use_lesion_weight must be boolean")
+    if not isinstance(flair_channel, (int, np.integer)) or not -1 <= flair_channel < image.size:
+        raise ValueError("flair_channel must be -1 or a valid channel index")
+    weighted_lesion_energy = bool(
+        object_type == "lesion" and use_lesion_weight and flair_channel != -1
+    )
+    if weighted_lesion_energy:
+        if lesion_power_exponent is None or not np.isfinite(lesion_power_exponent):
+            raise ValueError("a finite lesion_power_exponent is required for FLAIR lesion weighting")
+        cached_exponent = (
+            lesion_power_exponent
+            if cached_lesion_power_exponent is None
+            else cached_lesion_power_exponent
+        )
+        if not np.isfinite(cached_exponent):
+            raise ValueError("cached_lesion_power_exponent must be finite")
+    else:
+        cached_exponent = None
 
     class_energy = np.float32(0.0)
     lesion_energy = np.float32(0.0)
@@ -81,7 +106,7 @@ def compute_lesion_toads_unfielded_data_energies(
         weighted_difference = np.float32(weights[channel] * difference)
         contribution = np.float32(weighted_difference * difference)
         class_energy = np.float32(class_energy + contribution)
-        if object_type == "lesion":
+        if object_type == "lesion" and not weighted_lesion_energy:
             lesion_difference = np.float32(values[channel] - lesion[channel])
             lesion_weighted_difference = np.float32(weights[channel] * lesion_difference)
             lesion_contribution = np.float32(lesion_weighted_difference * lesion_difference)
@@ -95,5 +120,20 @@ def compute_lesion_toads_unfielded_data_energies(
             black_hole_weighted_difference = np.float32(weights[channel] * black_hole_difference)
             black_hole_contribution = np.float32(black_hole_weighted_difference * black_hole_difference)
             black_hole_energy = np.float32(black_hole_energy + black_hole_contribution)
+
+    if weighted_lesion_energy:
+        lesion_difference = np.float32(values[flair_channel] - lesion[flair_channel])
+        squared_difference = np.float32(lesion_difference * lesion_difference)
+        lookup = toads_powertable_lookup(
+            float(squared_difference),
+            float(lesion_power_exponent),
+            cached_exponent=float(cached_exponent),
+            minimum=0.0,
+            maximum=4.0,
+            step=float(np.float32(1.0e-6)),
+        ).item()
+        # Java's float += double lookup promotes the accumulator, adds in
+        # double precision, then narrows the assigned result back to float.
+        lesion_energy = np.float32(float(lesion_energy) + lookup)
 
     return LesionToadsDataEnergies(class_energy, lesion_energy, black_hole_energy)
