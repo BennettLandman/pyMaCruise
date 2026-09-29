@@ -50,6 +50,9 @@ DURA_INITIAL_LEVELSETS_FIXTURE = (
     / "dura_initial_levelsets"
     / "java_reference.json"
 )
+TOPOLOGY_CORRECTION_FIXTURE = (
+    Path(__file__).parent / "data" / "synthetic" / "topology_correction"
+)
 
 
 def test_dura_initial_level_sets_match_original_jist_jar() -> None:
@@ -73,6 +76,18 @@ def test_dura_initial_level_sets_match_original_jist_jar() -> None:
     ):
         expected = np.asarray(reference[field_name], dtype=np.float32).reshape(shape)
         np.testing.assert_array_equal(actual_field, expected)
+
+
+def test_dura_first_wm_topology_call_matches_selected_java_harness() -> None:
+    wm = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "input.nii.gz"))
+    paint = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "paint_mask.nii.gz"))
+    expected = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "java_reference.nii.gz"))
+
+    actual = dura_correct_white_matter_topology(wm, paint)
+
+    np.testing.assert_array_equal(actual.dataobj, expected.dataobj)
+    np.testing.assert_array_equal(actual.affine, wm.affine)
+    assert actual.get_data_dtype() == np.dtype(np.float32)
 
 
 def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> None:

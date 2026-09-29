@@ -52,7 +52,7 @@ def dura_correct_white_matter_topology(
     white_matter: nib.spatialimages.SpatialImage,
     original_white_matter_mask: nib.spatialimages.SpatialImage,
 ) -> nib.Nifti1Image:
-    """Apply the first ``tcWM`` call from ``MedicAlgorithmRemoveDura09``.
+    """Apply the first Dura topology adapter call in the current Python port.
 
     The selected Java wrapper passes its source WM membership field and the
     original WM mask to ``MedicAlgorithmTopologyCorrection`` with foreground/
@@ -64,7 +64,9 @@ def dura_correct_white_matter_topology(
 
     The returned image is the first corrected field (``wmTC``). This function
     deliberately does not construct ``wmTC + raw GM`` or perform the separate
-    second ``tcGM`` call.
+    second ``tcGM`` call. The first 9³ selected-Java fixture matches voxelwise
+    exactly; broader source-comparison coverage remains open under P25. See
+    ``docs/reports/topology-correction-java-comparison-2026-09-29.md``.
     """
     return topology_correct(
         white_matter,
@@ -81,15 +83,18 @@ def dura_correct_gray_matter_topology(
     raw_gray_matter: nib.spatialimages.SpatialImage,
     original_white_matter_mask: nib.spatialimages.SpatialImage,
 ) -> nib.Nifti1Image:
-    """Build the source WM+raw-GM union and apply its second ``tcGM`` call.
+    """Build the Dura WM+raw-GM union and run the second topology adapter.
 
     ``MedicAlgorithmRemoveDura09.execute()`` adds the already corrected WM
     field to the original, uncorrected GM field in float32, then passes that
     union and the same original WM mask to a second topology adapter. Generic
     NIfTI addition and physical-grid checks reuse ``calculate_volume``; the
     Dura-specific 6/18, object-to-background settings and regularization are
-    applied by ``topology_correct``. The returned image is ``gmTC``. This does
-    not yet evolve TGDM or assemble the complete dura-removal workflow.
+    applied by ``topology_correct``. The returned image is ``gmTC``. The
+    shared topology routine matches one 9³ selected-Java fixture exactly, but
+    this composition has not itself been compared against a Java Dura wrapper
+    run. It also does not yet evolve TGDM or assemble the complete
+    dura-removal workflow.
     """
     union = calculate_volume(
         topologically_corrected_white_matter,

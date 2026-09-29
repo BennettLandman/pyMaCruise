@@ -54,6 +54,15 @@ class LesionAtlasTopology:
     image: nib.spatialimages.SpatialImage
 
 
+@dataclass(frozen=True)
+class LesionAtlasShapePriors:
+    """Descriptor-ordered shape maps as RAS float32 voxel arrays."""
+
+    structures: tuple[LesionAtlasStructure, ...]
+    shape_maps: dict[str, np.ndarray]
+    files: dict[str, Path]
+
+
 _MODALITY_ALIASES = {
     "T1": "T1_SPGR",
     "T1_SPGR": "T1_SPGR",
@@ -214,6 +223,72 @@ def load_lesion_atlas_topology(
     return LesionAtlasTopology(atlas_path, image)
 
 
+def load_lesion_atlas_shape_priors(
+    descriptor_path: str | Path,
+) -> LesionAtlasShapePriors:
+    """Load all shape maps from the bundled descriptor's NIfTI mapping.
+
+    Arrays follow the main Structures section order and are normalized using
+    shared RAS-aware NIfTI I/O. Loading is intentionally separate from affine
+    registration and transformed-prior sampling. This handles the bundled
+    converted NIfTI schema, not the selected Java loader's raw float format.
+    """
+    descriptor = Path(descriptor_path).resolve()
+    lines = _read_descriptor(descriptor)
+    structures = _parse_structures(lines)
+    dimensions = _parse_shape_dimensions(lines)
+    mapping = _parse_shape_files(lines, structures)
+    arrays: dict[str, np.ndarray] = {}
+    paths: dict[str, Path] = {}
+    loaded: dict[Path, np.ndarray] = {}
+    for structure in structures:
+        reference = mapping[structure.name]
+        relative = Path(reference)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise LesionAtlasDescriptorError(
+                f"Unsafe shape atlas path for {structure.name}: {reference}"
+            )
+        if relative.suffixes[-2:] != [".nii", ".gz"]:
+            raise LesionAtlasDescriptorError(
+                f"Shape atlas must use compressed .nii.gz for {structure.name}: {reference}"
+            )
+        atlas_path = (descriptor.parent / relative).resolve()
+        if not atlas_path.is_relative_to(descriptor.parent):
+            raise LesionAtlasDescriptorError(
+                f"Shape atlas path escapes descriptor directory for {structure.name}: {reference}"
+            )
+        if atlas_path in loaded:
+            array = loaded[atlas_path]
+        else:
+            try:
+                image = load_nifti_ras(atlas_path)
+            except (OSError, ValueError) as exc:
+                raise LesionAtlasDescriptorError(
+                    f"Cannot load LesionTOADS shape atlas for {structure.name} "
+                    f"({atlas_path}): {exc}"
+                ) from exc
+            if len(image.shape) != 3:
+                raise LesionAtlasDescriptorError(
+                    f"LesionTOADS shape atlas for {structure.name} must be 3D, "
+                    f"got {image.shape}: {atlas_path}"
+                )
+            if tuple(image.shape) != dimensions:
+                raise LesionAtlasDescriptorError(
+                    f"LesionTOADS shape atlas for {structure.name} has RAS shape "
+                    f"{image.shape}; descriptor declares {dimensions}: {atlas_path}"
+                )
+            array = np.asarray(image.dataobj, dtype=np.float32)
+            if not np.isfinite(array).all():
+                raise LesionAtlasDescriptorError(
+                    f"LesionTOADS shape atlas for {structure.name} contains non-finite values"
+                )
+            array.setflags(write=False)
+            loaded[atlas_path] = array
+        arrays[structure.name] = array
+        paths[structure.name] = atlas_path
+    return LesionAtlasShapePriors(structures, arrays, paths)
+
+
 def _canonical_modality(name: str) -> str:
     try:
         return _MODALITY_ALIASES[name]
@@ -221,6 +296,17 @@ def _canonical_modality(name: str) -> str:
         raise LesionAtlasDescriptorError(
             f"Unsupported LesionTOADS modality {name!r}"
         ) from exc
+
+
+def _read_descriptor(path: Path) -> list[str]:
+    if not path.is_file():
+        raise LesionAtlasDescriptorError(
+            f"Missing LesionTOADS atlas descriptor: {path}"
+        )
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "Structure Atlas File (edit at your own risks)":
+        raise LesionAtlasDescriptorError(f"Not a LesionTOADS atlas descriptor: {path}")
+    return lines
 
 
 def _parse_structures(lines: list[str]) -> tuple[LesionAtlasStructure, ...]:
@@ -256,6 +342,96 @@ def _parse_structures(lines: list[str]) -> tuple[LesionAtlasStructure, ...]:
     if len({row.name for row in rows}) != expected or len({row.label for row in rows}) != expected:
         raise LesionAtlasDescriptorError("Structure names and labels must be unique")
     return tuple(rows)
+
+
+def _parse_shape_files(
+    lines: list[str], structures: tuple[LesionAtlasStructure, ...]
+) -> dict[str, str]:
+    """Read the supplied NIfTI descriptor's Structure/File pairs."""
+    header_index = _find_section(lines, "Shape Atlas")
+    files: dict[str, str] = {}
+    current: str | None = None
+    structure_names = {row.name for row in structures}
+    for line in lines[header_index + 1 :]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _starts_section(stripped):
+            break
+        key, separator, value = stripped.partition(":")
+        if not separator:
+            raise LesionAtlasDescriptorError(f"Malformed Shape Atlas row: {line!r}")
+        key, value = key.strip(), value.strip()
+        if key in {"Dimensions", "Resolutions", "Orientations"}:
+            # These describe the original atlas grid; this loader preserves
+            # each NIfTI's own RAS geometry and does not resample to it.
+            continue
+        if key == "Structure":
+            if current is not None:
+                raise LesionAtlasDescriptorError(
+                    f"Shape Atlas has no File reference for {current}"
+                )
+            if not value or value not in structure_names:
+                raise LesionAtlasDescriptorError(
+                    f"Shape Atlas references invalid structure {value!r}"
+                )
+            if value in files:
+                raise LesionAtlasDescriptorError(
+                    f"Duplicate Shape Atlas structure {value!r}"
+                )
+            current = value
+        elif key == "File":
+            if current is None:
+                raise LesionAtlasDescriptorError(
+                    "Shape Atlas File reference has no preceding Structure"
+                )
+            if not value:
+                raise LesionAtlasDescriptorError(
+                    f"Shape Atlas has an empty File reference for {current}"
+                )
+            files[current] = value
+            current = None
+        else:
+            raise LesionAtlasDescriptorError(f"Unexpected Shape Atlas field {key!r}")
+    if current is not None:
+        raise LesionAtlasDescriptorError(f"Shape Atlas has no File reference for {current}")
+    missing = sorted(row.name for row in structures if row.name not in files)
+    if missing:
+        raise LesionAtlasDescriptorError(
+            f"Shape Atlas is missing File mappings for: {', '.join(missing)}"
+        )
+    return files
+
+
+def _parse_shape_dimensions(lines: list[str]) -> tuple[int, int, int]:
+    """Read the global voxel dimensions declared by the Shape Atlas section."""
+    header_index = _find_section(lines, "Shape Atlas")
+    dimensions: tuple[int, int, int] | None = None
+    for line in lines[header_index + 1 :]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _starts_section(stripped):
+            break
+        key, separator, value = stripped.partition(":")
+        if not separator or key.strip() != "Dimensions":
+            continue
+        if dimensions is not None:
+            raise LesionAtlasDescriptorError("Duplicate Shape Atlas Dimensions declaration")
+        try:
+            parsed = tuple(int(token) for token in value.split())
+        except ValueError as exc:
+            raise LesionAtlasDescriptorError(
+                "Shape Atlas Dimensions must contain three positive integers"
+            ) from exc
+        if len(parsed) != 3 or any(size <= 0 for size in parsed):
+            raise LesionAtlasDescriptorError(
+                "Shape Atlas Dimensions must contain three positive integers"
+            )
+        dimensions = parsed
+    if dimensions is None:
+        raise LesionAtlasDescriptorError("Shape Atlas has no Dimensions declaration")
+    return dimensions
 
 
 def _parse_intensity_rows(

@@ -12,13 +12,18 @@ Blake Lucas in VandyCRUISE's `TopologyCorrection`, `TopologyPropagation`, and
 `NeighborConnectivity`, plus the Vanderbilt MaCRUISE adapters. Their supplied
 notices and attribution inventory are preserved under `licenses/upstream/` and
 `license_info.md`.
+
+Validation scope: the first direct harness comparison to selected Java
+`AlgorithmTopologyCorrection` now matches all 729 voxels exactly, including
+source max-tree tie order, threshold-stop fill, and float32 arithmetic. P25
+remains in progress until a broader synthetic matrix exercises boundary,
+plateau/tie, mask, and critical-point cases. See
+`docs/topology-correction.md` for comparison evidence and limits.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-import heapq
-from itertools import count
 
 import nibabel as nib
 import numpy as np
@@ -41,6 +46,72 @@ _BACKGROUND_18 = ndimage.generate_binary_structure(3, 2)
 # configuration reproduced here, not a fixed parameter of every application.
 
 
+class _SourceMaxTree:
+    """Max-priority tree matching VandyCRUISE ``BinaryTree`` tie ordering."""
+
+    def __init__(self) -> None:
+        self._values = [np.float32(0.0)]
+        self._points: list[tuple[int, int, int] | None] = [None]
+
+    def __bool__(self) -> bool:
+        return len(self._values) > 1
+
+    def add(self, value: float, point: tuple[int, int, int]) -> None:
+        node = len(self._values)
+        parent = node // 2
+        source_value = np.float32(value)
+        self._values.append(np.float32(0.0))
+        self._points.append(None)
+        while parent > 0 and source_value > self._values[parent]:
+            self._values[node] = self._values[parent]
+            self._points[node] = self._points[parent]
+            node = parent
+            parent = node // 2
+        self._values[node] = source_value
+        self._points[node] = point
+
+    def pop(self) -> tuple[np.float32, tuple[int, int, int]]:
+        if not self:
+            raise IndexError("pop from empty source max tree")
+        first_value = self._values[1]
+        first_point = self._points[1]
+        assert first_point is not None
+        last_value = self._values.pop()
+        last_point = self._points.pop()
+        size = len(self._values) - 1
+        if size == 0:
+            return first_value, first_point
+
+        node = 1
+        child = 2
+        # BinaryTree.removeFirst uses strict comparisons and only considers
+        # children before the final node being sifted down. Equal children
+        # choose the left branch.
+        while child <= size:
+            if child + 1 <= size:
+                if last_value < self._values[child] or last_value < self._values[child + 1]:
+                    if self._values[child] < self._values[child + 1]:
+                        promoted = child + 1
+                    else:
+                        promoted = child
+                    self._values[node] = self._values[promoted]
+                    self._points[node] = self._points[promoted]
+                    node = promoted
+                    child = node * 2
+                else:
+                    break
+            else:
+                if last_value < self._values[child]:
+                    self._values[node] = self._values[child]
+                    self._points[node] = self._points[child]
+                    node = child
+                    break
+                break
+        self._values[node] = last_value
+        self._points[node] = last_point
+        return first_value, first_point
+
+
 @dataclass(frozen=True)
 class TopologyCorrectionResult:
     """Topology-corrected scalar field and optional atlas-refined product."""
@@ -50,13 +121,15 @@ class TopologyCorrectionResult:
 
 
 def topology_numbers_618(neighborhood: np.ndarray) -> tuple[int, int]:
-    """Return local foreground-6 and background-18 component counts.
+    """Return VandyCRUISE's local foreground-6 and background-18 counts.
 
     ``neighborhood`` is a boolean 3x3x3 block around a candidate voxel. Its
     center is excluded from both counts, as in VandyCRUISE's
-    `NeighborConnectivity` implementation. These local component counts are
-    the discrete regularity test used by the fast-marching propagation. They
-    are not Han et al.'s graph-based GTCA criterion.
+    `NeighborConnectivity` implementation. Foreground components count only
+    when they touch a face-neighbor of the center; isolated edge components
+    are excluded by the source's `connected618Neighborhood3D`. These local
+    counts are the discrete regularity test used by propagation. They are not
+    Han et al.'s graph-based GTCA criterion.
     """
     values = np.asarray(neighborhood, dtype=bool)
     if values.shape != (3, 3, 3):
@@ -73,8 +146,21 @@ def topology_numbers_618(neighborhood: np.ndarray) -> tuple[int, int]:
     foreground[2, 0, 2] = False
     foreground[2, 2, 0] = False
     foreground[2, 2, 2] = False
+    foreground_labels, _ = ndimage.label(foreground, structure=_FOREGROUND_6)
+    face_component_labels = {
+        int(foreground_labels[point])
+        for point in (
+            (0, 1, 1),
+            (2, 1, 1),
+            (1, 0, 1),
+            (1, 2, 1),
+            (1, 1, 0),
+            (1, 1, 2),
+        )
+        if foreground_labels[point] > 0
+    }
     return (
-        _count_components(foreground, _FOREGROUND_6),
+        len(face_component_labels),
         _count_components(background, _BACKGROUND_18),
     )
 
@@ -89,7 +175,7 @@ def topology_correct(
     regularize: float = 1e-4,
     multi_atlas_wm: nib.spatialimages.SpatialImage | None = None,
 ) -> TopologyCorrectionResult:
-    """Apply the VandyCRUISE fast-marching (6,18) scalar correction.
+    """Apply the current Python (6,18) scalar correction implementation.
 
     The supplied paint mask initializes the object; every positive paint voxel
     is set to the normalized highest level. Propagation proceeds downward in
@@ -103,6 +189,10 @@ def topology_correct(
     constants prescribed by Bazin & Pham. The optional multi-atlas WM
     refinement below is a separate V3 wrapper post-processing operation, not
     part of that paper's fast-marching method.
+
+    One selected-source 9-cubed fixture now matches exactly, including every
+    queue event. P25's broader boundary, mask, plateau, branch, and critical
+    point comparison matrix remains open; see the P25 report for scope.
 
     If ``multi_atlas_wm`` is supplied, also reproduce V3's subsequent
     `Refine_Topo_by_MA` operation: first apply the source's one-pass 3D
@@ -143,16 +233,26 @@ def topology_correct(
         # The legacy min/max-scaled regularization is zero for a constant image.
         corrected_data = image.copy()
     else:
-        scaled_low = minimum + lowest_level * (maximum - minimum)
-        scaled_high = maximum - (1.0 - highest_level) * (maximum - minimum)
+        source_minimum = np.float32(minimum)
+        source_maximum = np.float32(maximum)
+        source_range = np.float32(source_maximum - source_minimum)
+        source_low_level = np.float32(lowest_level)
+        source_high_level = np.float32(highest_level)
+        scaled_low = np.float32(
+            source_minimum + source_low_level * source_range
+        )
+        scaled_high = np.float32(
+            source_maximum
+            - (np.float32(1.0) - source_high_level) * source_range
+        )
         image = image.copy()
         image[mask] = scaled_high
         image[(image > scaled_high) | (image < scaled_low)] = scaled_low
         corrected_data = _downward_topology_propagation(
             image,
             mask,
-            min_distance=regularize * (maximum - minimum),
-            lowest_level=scaled_low,
+            min_distance=float(np.float32(np.float32(regularize) * source_range)),
+            lowest_level=float(scaled_low),
         )
 
     corrected = _make_output(corrected_data, source)
@@ -198,8 +298,7 @@ def _downward_topology_propagation(
     labels[~object_mask] = _FRONTIER
     paint_padded &= object_mask
 
-    heap: list[tuple[float, int, tuple[int, int, int]]] = []
-    tie = count()
+    heap = _SourceMaxTree()
     labels[~object_mask] = _FRONTIER
     labels[object_mask & ~paint_padded] = _BACKGROUND
     labels[paint_padded] = _OBJECT
@@ -212,17 +311,15 @@ def _downward_topology_propagation(
     distance[candidates] = padded[candidates]
     for xyz in np.argwhere(candidates):
         point = tuple(int(v) for v in xyz)
-        heapq.heappush(heap, (-float(distance[point]), next(tie), point))
+        heap.add(float(distance[point]), point)
 
-    last_value = 0.0
     while heap:
-        neg_value, _, point = heapq.heappop(heap)
-        value = -neg_value
-        last_value = value
+        source_value, point = heap.pop()
+        value = float(source_value)
         x, y, z = point
         lower = _lowest_object_neighbor(distance, labels, point, value)
         if lower < value:
-            heapq.heappush(heap, (-lower, next(tie), point))
+            heap.add(lower, point)
             continue
 
         # The source adapter enables threshold stopping: downward propagation
@@ -234,21 +331,25 @@ def _downward_topology_propagation(
         if _is_regular_object_addition(labels, point):
             labels[point] = _OBJECT
             distance[point] = value
-            last_value = value
             for dx, dy, dz in _NEIGHBORS_18:
                 neighbor = (x + dx, y + dy, z + dz)
                 if labels[neighbor] == _CRITICAL:
                     labels[neighbor] = _BOUNDARY
-                    heapq.heappush(heap, (-value, next(tie), neighbor))
+                    heap.add(value, neighbor)
                 if (dx, dy, dz) in _FACE_OFFSETS and labels[neighbor] == _BACKGROUND:
                     labels[neighbor] = _BOUNDARY
-                    proposed = min(float(padded[neighbor]), value - min_distance)
-                    heapq.heappush(heap, (-proposed, next(tie), neighbor))
+                    proposed = np.float32(
+                        min(float(padded[neighbor]), float(np.float32(value - min_distance)))
+                    )
+                    heap.add(float(proposed), neighbor)
         else:
             labels[point] = _CRITICAL
 
     internal = (labels == _BACKGROUND) | (labels == _CRITICAL)
-    distance[internal] = last_value
+    # The adapter enables TopologyPropagation.thresholdStop. Its final pass
+    # fills unprocessed background and critical voxels with upLevel (the
+    # selected normalized lowest level), not the last queue priority.
+    distance[internal] = np.float32(lowest_level)
     return distance[1:-1, 1:-1, 1:-1].copy()
 
 

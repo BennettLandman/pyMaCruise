@@ -26,6 +26,13 @@ def test_618_topology_numbers_cover_regular_and_critical_neighborhoods() -> None
     assert topology_numbers_618(surrounded) == (1, 0)
 
 
+def test_618_foreground_ignores_components_not_touching_a_face_neighbor() -> None:
+    neighborhood = np.zeros((3, 3, 3), dtype=bool)
+    neighborhood[0, 1, 0] = True  # isolated edge-adjacent component
+
+    assert topology_numbers_618(neighborhood) == (0, 1)
+
+
 def test_fast_marching_keeps_separate_painted_objects_separate_and_is_repeatable() -> None:
     shape = (15, 15, 15)
     affine = np.diag([0.9, 1.1, 1.7, 1.0])

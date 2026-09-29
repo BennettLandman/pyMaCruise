@@ -1,6 +1,6 @@
 # Topology Correction
 
-**Status:** P25 implementation and synthetic topology gates validated on 2026-09-27. Source-output numerical equivalence still requires a later approved reference comparison.
+**Status:** P25 remains in progress. Its original topology-invariant and I/O tests did not establish source-output matching. A later direct comparison against the selected Java classes now matches one committed 9×9×9 synthetic fixture exactly; the broader P25 validation matrix is still required.
 
 ## Selected MaCRUISE behavior
 
@@ -26,4 +26,4 @@ The connectivity counts follow the supplied VandyCRUISE `NeighborConnectivity` i
 - Non-RAS image/paint inputs warn and reorient; empty masks, non-finite image values, and mismatched grids fail clearly.
 - Repeated runs are deterministic on the synthetic cases.
 
-These tests establish the selected topology invariants and stage I/O contract, but do not establish voxelwise equivalence to JIST on a clinical image. Java's priority-queue tie ordering may differ from Python's heap ordering for equal values; any resulting numerical or tie-dependent differences remain subject to the final reference comparison and the project's agreed segmentation/surface tolerances.
+The first headless Java run exposed an initial implementation mismatch of 621/729 voxels. Source-level follow-up corrected face-connected foreground counting, strict tie ordering in VandyCRUISE's custom `BinaryTree`, threshold-stop fill behavior, and float32 operation order. The current comparison now matches all 729 voxels exactly (maximum absolute difference 0; both sums 126.464972). This is one deterministic fixture, not broad equivalence evidence. The committed fixture, isolated selected-source harness, regeneration command, hashes, and limits are recorded in [the P25 comparison report](reports/topology-correction-java-comparison-2026-09-29.md). P25 remains open for boundary-touching masks, distinct levels, plateaus and tie priorities, thin branches, critical points, and repeatable whole-algorithm comparisons.
