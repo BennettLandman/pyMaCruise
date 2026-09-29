@@ -10,6 +10,7 @@ from pymacruise.lesion_membership import run_lesion_toads_blackhole_smoothing_sw
 
 
 REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_blackhole_sweep/java_reference.json"
+PRIOR_REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_blackhole_prior_sweep/java_reference.json"
 SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
 CLASS_TYPES = ("OBJECT", "BLACKHOLE", "OBJECT")
 RELATIONS = ("direct", "prior", "direct")
@@ -73,4 +74,65 @@ def test_blackhole_sweep_rejects_multiple_blackhole_classes() -> None:
             ("OBJECT", "BLACKHOLE", "BLACKHOLE"),
             RELATIONS,
             smoothing=0.2,
+        )
+
+
+def test_blackhole_prior_sweep_matches_selected_java_volume_reference() -> None:
+    reference = json.loads(PRIOR_REFERENCE.read_text())
+    assert reference["source_sha256"] == SOURCE_SHA256
+    inputs = _inputs(tuple(reference["shape"]), reference["classes"])
+    shape_priors = np.asarray([0.25, 0.375, 0.5], dtype=np.float32)
+    class_similarities = np.asarray(
+        [[0.0, 0.125, 0.25], [0.5, 0.0, 0.375], [0.25, 0.625, 0.0]],
+        dtype=np.float32,
+    )
+    lesion_similarities = np.asarray([0.25, 0.0, 0.5], dtype=np.float32)
+    black_hole_similarities = np.asarray([0.125, 0.0, 0.625], dtype=np.float32)
+    result = run_lesion_toads_blackhole_smoothing_sweep(
+        *inputs,
+        SMOOTHING_PRIORS,
+        CLASS_TYPES,
+        RELATIONS,
+        smoothing=float(np.asarray(reference["smoothing_bits"], dtype=np.uint32).view(np.float32)),
+        shape_priors=shape_priors,
+        class_similarities=class_similarities,
+        lesion_similarities=lesion_similarities,
+        black_hole_similarities=black_hole_similarities,
+        prior_coefficient=float(
+            np.asarray(reference["prior_coefficient_bits"], dtype=np.uint32).view(np.float32)
+        ),
+    )
+    for expected in reference["voxels"]:
+        point = tuple(expected["coordinate"])
+        assert _bits(result.class_memberships[point]) == expected["class_bits"]
+        assert int(np.asarray(result.lesion_membership[point], dtype=np.float32).view(np.uint32)) == expected["lesion_bits"]
+        assert int(np.asarray(result.black_hole_membership[point], dtype=np.float32).view(np.uint32)) == expected["black_hole_bits"]
+
+    no_prior = run_lesion_toads_blackhole_smoothing_sweep(
+        *inputs, SMOOTHING_PRIORS, CLASS_TYPES, RELATIONS, smoothing=0.2
+    )
+    explicit_zero_prior = run_lesion_toads_blackhole_smoothing_sweep(
+        *inputs,
+        SMOOTHING_PRIORS,
+        CLASS_TYPES,
+        RELATIONS,
+        smoothing=0.2,
+        shape_priors=shape_priors,
+        class_similarities=class_similarities,
+        lesion_similarities=lesion_similarities,
+        black_hole_similarities=black_hole_similarities,
+        prior_coefficient=0.0,
+    )
+    np.testing.assert_array_equal(no_prior.class_memberships, explicit_zero_prior.class_memberships)
+    np.testing.assert_array_equal(no_prior.lesion_membership, explicit_zero_prior.lesion_membership)
+    np.testing.assert_array_equal(no_prior.black_hole_membership, explicit_zero_prior.black_hole_membership)
+
+    with pytest.raises(ValueError, match="required for a positive prior_coefficient"):
+        run_lesion_toads_blackhole_smoothing_sweep(
+            *inputs,
+            SMOOTHING_PRIORS,
+            CLASS_TYPES,
+            RELATIONS,
+            smoothing=0.2,
+            prior_coefficient=0.3,
         )

@@ -674,6 +674,11 @@ def run_lesion_toads_blackhole_smoothing_sweep(
     relation_types: tuple[str, ...] | list[str],
     *,
     smoothing: float,
+    shape_priors: np.ndarray | None = None,
+    class_similarities: np.ndarray | None = None,
+    lesion_similarities: np.ndarray | None = None,
+    black_hole_similarities: np.ndarray | None = None,
+    prior_coefficient: float = 0.0,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsBlackHoleSweepResult:
@@ -681,8 +686,9 @@ def run_lesion_toads_blackhole_smoothing_sweep(
 
     This composes the selected BLACKHOLE six-face smoothing equations with
     separate lesion and black-hole data terms, class/auxiliary inversion,
-    source denominator order, and per-voxel normalization. Atlas priors and
-    black-hole-specific distance modulation are separate increments.
+    source denominator order, and per-voxel normalization. Optional
+    class/lesion/black-hole atlas priors reuse the selected voxel kernel;
+    black-hole-specific distance modulation remains separate.
     """
     current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
     lesion = np.asarray(initial_lesion_membership, dtype=np.float32).copy()
@@ -712,6 +718,25 @@ def run_lesion_toads_blackhole_smoothing_sweep(
         raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
     if not all(np.isfinite(array).all() for array in (current, lesion, black_hole, data, lesion_data, black_hole_data, shapes)):
         raise ValueError("membership, data-term, and shape arrays must be finite")
+    coefficient = np.float32(prior_coefficient)
+    if not np.isfinite(coefficient) or coefficient < np.float32(0.0):
+        raise ValueError("prior_coefficient must be finite and nonnegative")
+    atlas_priors = class_similarity = lesion_similarity = black_hole_similarity = None
+    if coefficient > np.float32(0.0):
+        if any(value is None for value in (shape_priors, class_similarities, lesion_similarities, black_hole_similarities)):
+            raise ValueError("shape priors and class/lesion/black-hole similarities are required for a positive prior_coefficient")
+        atlas_priors = np.asarray(shape_priors, dtype=np.float32)
+        class_similarity = np.asarray(class_similarities, dtype=np.float32)
+        lesion_similarity = np.asarray(lesion_similarities, dtype=np.float32)
+        black_hole_similarity = np.asarray(black_hole_similarities, dtype=np.float32)
+        if atlas_priors.shape != (classes,) or lesion_similarity.shape != (classes,) or black_hole_similarity.shape != (classes,):
+            raise ValueError("shape priors and lesion/black-hole similarities must have one value per class")
+        if class_similarity.shape != (classes, classes):
+            raise ValueError("class_similarities must have shape (classes, classes)")
+        if not all(np.isfinite(array).all() for array in (atlas_priors, class_similarity, lesion_similarity, black_hole_similarity)):
+            raise ValueError("atlas prior and similarity inputs must be finite")
+        if np.any(atlas_priors < np.float32(0.0)):
+            raise ValueError("shape_priors must be nonnegative")
     smoothing_value = np.float32(smoothing)
     if not np.isfinite(smoothing_value) or smoothing_value <= 0:
         raise ValueError("smoothing must be finite and positive")
@@ -723,6 +748,7 @@ def run_lesion_toads_blackhole_smoothing_sweep(
         raise ValueError("infinity must be finite and nonnegative")
 
     black_hole_class = types.index("BLACKHOLE")
+    zero_similarity = np.zeros(classes, dtype=np.float32)
     for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
         x, y, z = neighborhood.coordinate
         denominator = np.float32(0.0)
@@ -749,8 +775,35 @@ def run_lesion_toads_blackhole_smoothing_sweep(
                     black_hole_membership_data_term=(float(black_hole_data[x, y, z]) if k == black_hole_class else 0.0),
                     outmask_membership_data_term=0.0,
                 )
+                class_term = np.float32(update.class_membership_data_term)
+                lesion_term = np.float32(update.lesion_membership_data_term)
+                black_hole_term = np.float32(update.black_hole_membership_data_term)
+                if coefficient > np.float32(0.0):
+                    prior_update = update_lesion_toads_prior_energies(
+                        atlas_priors,
+                        class_similarity[k],
+                        lesion_similarity,
+                        black_hole_similarity,
+                        shapes[x, y, z],
+                        class_index=k,
+                        class_type=types[k],
+                        prior_coefficient=float(coefficient),
+                        class_membership_data_term=float(class_term),
+                        lesion_membership_data_term=float(lesion_term),
+                        black_hole_membership_data_term=float(black_hole_term),
+                        outmask_membership_data_term=0.0,
+                        class_energy=0.0,
+                        lesion_energy=0.0,
+                        black_hole_energy=0.0,
+                        has_lesion=True,
+                        lesion_class_index=black_hole_class,
+                        lesion_class_type="BLACKHOLE",
+                    )
+                    class_term = np.float32(prior_update.class_membership_data_term)
+                    lesion_term = np.float32(prior_update.lesion_membership_data_term)
+                    black_hole_term = np.float32(prior_update.black_hole_membership_data_term)
                 current[x, y, z, k] = convert_lesion_toads_class_membership(
-                    float(update.class_membership_data_term),
+                    float(class_term),
                     float(shapes[x, y, z, k]),
                     relation_type=relations[k],
                     zero=float(zero_value),
@@ -758,14 +811,14 @@ def run_lesion_toads_blackhole_smoothing_sweep(
                 )
                 if k == black_hole_class:
                     lesion[x, y, z] = convert_lesion_toads_class_membership(
-                        float(update.lesion_membership_data_term),
+                        float(lesion_term),
                         float(shapes[x, y, z, k]),
                         relation_type=relations[k],
                         zero=float(zero_value),
                         infinity=float(infinity_value),
                     )
                     black_hole[x, y, z] = convert_lesion_toads_class_membership(
-                        float(update.black_hole_membership_data_term),
+                        float(black_hole_term),
                         float(shapes[x, y, z, k]),
                         relation_type=relations[k],
                         zero=float(zero_value),
