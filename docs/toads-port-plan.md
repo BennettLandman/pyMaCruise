@@ -403,6 +403,25 @@ tests, including the nested and larger folded-cortex TGDM comparisons.
 This validates initial arithmetic/distance construction only, not the two
 topology-correction algorithms or the complete dura workflow.
 
+### Started substage: first Dura WM topology correction
+
+The next implementation slice is only the first topology-correction call in
+`MedicAlgorithmRemoveDura09.execute()`: it passes the white-matter membership
+field and the original WM mask to `tcWM`, returning `wmTC`. The selected
+adapter uses foreground/background connectivities `(6,18)`, object-to-
+background propagation, normalized levels 0–1, paint threshold 0.5, and
+regularization 0.05. Python should call the existing source-compared
+`topology_correct` engine with those explicit settings; its general-purpose
+regularization default is different and must not be inherited.
+
+This substage does not yet build `wmTC + raw GM`, call the second `tcGM`
+correction (which reuses the original WM mask), initialize/evolve Dura TGDM,
+or establish complete Dura or TOADS equivalence. Its Java comparison must
+include a deterministic asymmetric field with distinct scalar ranks, a thin
+branch/neck, out-of-range values, and boundary-touching support. Flat plateaus
+are a separate queue tie-order case because Java and Python priority queues
+may resolve equal values differently.
+
 ### Completed geometry slice: TOADS crop and topology resampling
 
 `src/pymacruise/toads_crop.py` ports the selected source's inclusive crop-bound
