@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39m have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39n have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -284,3 +284,17 @@ Full suite: 408 passed in 52.49 seconds on implementation commit
 `f2216f08ee75a861eba86e6c4e7d5f6103a64c95`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-registration-step.md`](reports/full-pytest-2026-09-29-lesion-registration-step.md).
 This validates one update, not repeated optimization or segmentation.
+
+### Completed substage: P39n fixed-scale optimizer iteration loop
+
+`optimize_lesion_shapes_scaled` carries the accepted transform and adaptive
+lambda through repeated P39m steps while applying the selected `itMax`,
+`minEdiff`, and `minLambda` loop conditions. The selected-Java synthetic
+fixture matches every per-iteration line-search trace and final state. It
+checks stop by lambda floor after six steps, an explicit three-step limit, and
+a minimum-change threshold after one step. Full suite: 409 passed in 53.07
+seconds on implementation commit
+`76e6ec46a3940a3e5a584e725a9c751962e9e32e`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-registration-optimizer.md`](reports/full-pytest-2026-09-29-lesion-registration-optimizer.md).
+This is a fixed-scale iteration slice, not pyramid orchestration or lesion
+segmentation.

@@ -58,7 +58,7 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 
 P39m is complete: one fixed-scale rigid update matches selected-Java trial transforms and energies at scales 1 and 2; the second case backtracks eight times before acceptance. The full suite reports **408 passed in 52.49 seconds**, with two expected RAS warnings, on implementation commit `f2216f08ee75a861eba86e6c4e7d5f6103a64c95`; see the [P39m report](docs/reports/full-pytest-2026-09-29-lesion-registration-step.md). This validates one update only, not the outer optimizer loop or segmentation. The roadmap counts 117/131 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
-P39n is now Started to validate the fixed-scale iteration loop and its iteration-count, relative-change, and lambda-floor stops. The plan has 132 rows; this step will use a multi-iteration synthetic Java reference.
+P39n is complete: the fixed-scale outer iteration loop matches selected-Java trial histories and verifies lambda-floor, iteration-count, and relative-change stops. The full suite reports **409 passed in 53.07 seconds**, with two expected RAS warnings, on implementation commit `76e6ec46a3940a3e5a584e725a9c751962e9e32e`; see the [P39n report](docs/reports/full-pytest-2026-09-29-lesion-registration-optimizer.md). This does not construct or transition the pyramid or segment lesions. The roadmap counts 118/132 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
 The currently implemented CLI entry point supports the implemented stages:
 
