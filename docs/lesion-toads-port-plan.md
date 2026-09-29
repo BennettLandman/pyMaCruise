@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zzb have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zzc have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1081,11 +1081,18 @@ and
 This is selected formula validation, not whole-engine equivalence.
 
 
-### Started substage: P39zzc OPTIMIZED_LESION in three-auxiliary sweep
+### Completed substage: P39zzc OPTIMIZED_LESION in three-auxiliary sweep
 
 VandyCRUISE routes `OPTIMIZED_LESION` through the lesion membership, smoothing,
-prior, inversion, and distance branches. Extend the combined
-LESION/BLACKHOLE/OUTMASK volume validation to this source class, preserving
-last-lesion-related-class selection and class iteration order. Compare against
-selected-Java synthetic references before treating the Python class alias as
-source-equivalent.
+prior, inversion, and distance branches. Two selected-Java fixtures now test
+this class before and after BLACKHOLE in the combined volume sweep, preserving
+last-lesion-related-class selection and class iteration order. Both references
+match all checked interior class and auxiliary float32 bits; duplicate LESION
+and OPTIMIZED_LESION labels reject. Focused suite: 16 passed. Full suite: 521
+passed with two expected RAS warnings in 84.10 seconds on implementation
+commit `6c0835ede94ec411b0d22a82cbcc2c0045d6754d`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-sweep.md)
+and the updated
+[`tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md`](../tests/data/synthetic/lesion_toads_three_auxiliary_sweep/README.md).
+This validates the selected combined formula branch, not whole-engine
+equivalence.
