@@ -682,10 +682,29 @@ warnings in 57.63 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-prior-energy.md`](reports/full-pytest-2026-09-29-lesion-toads-prior-energy.md)
 and [`tests/data/synthetic/lesion_toads_prior_energy/README.md`](../tests/data/synthetic/lesion_toads_prior_energy/README.md).
 
-### Started substage: P39zg smoothing/prior membership integration
+### Completed substage: P39zg smoothing/prior membership integration
 
 Compose selected smoothing and prior additions to class and auxiliary data
 terms and energy values before inverse/prior conversion, distance modulation,
 denominator normalization, and local energy evaluation. Use committed
 synthetic neighbor stencils and shape/similarity vectors; do not claim
 similarity-field construction or volume-wide updates.
+
+Two selected-Java cases match class and auxiliary membership float32 bits,
+class energy, `lesionRelation`, denominator, and local energy through
+smoothing, shape/similarity priors, conversion, distance modulation, and
+normalization. They cover LESION/direct with ventricle/brainstem distances
+and BLACKHOLE/prior with its extra black-hole lesion-class prior and
+GM-zero/brainstem distances. Focused suite: 1 passed; full suite: 452 passed
+with two expected RAS warnings in 57.47 seconds on implementation commit
+`eb7e045a8927e3394a49e2f08c9352eae1f5cde0`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-smoothing-prior-membership.md`](reports/full-pytest-2026-09-29-lesion-toads-smoothing-prior-membership.md)
+and [`tests/data/synthetic/lesion_toads_smoothing_prior_membership/README.md`](../tests/data/synthetic/lesion_toads_smoothing_prior_membership/README.md).
+
+### Started substage: P39zh OUTMASK mixture membership
+
+Port the selected output assignment after the OUTMASK data and class terms
+have been inverted. Direct relations blend class and outmask memberships by
+the current outlier membership and update that outlier map; prior relations
+apply the class shape factor to the mixed value and updated outlier map.
+Keep later denominator normalization separate.
