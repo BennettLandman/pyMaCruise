@@ -14,6 +14,7 @@ import nibabel as nib
 from pymacruise.ace import ACEImageResult, ace_enhance
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
 from pymacruise.tgdm import TGDMBaselineParameters
+from pymacruise.topology import TopologyCorrectionResult, topology_correct
 
 
 @dataclass(frozen=True)
@@ -119,4 +120,22 @@ def run_plus_ace_stage(
         multi_atlas_csf=multi_atlas_csf,
         use_updated_csf_in_ace=options.use_updated_csf_in_ace,
         merge_method="Merge",
+    )
+
+
+def run_plus_topology_stage(
+    volume: nib.spatialimages.SpatialImage,
+    paint_mask: nib.spatialimages.SpatialImage,
+    ma_wm: nib.spatialimages.SpatialImage | None,
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> TopologyCorrectionResult:
+    """Run selected plus topology correction and optional MaWM refinement."""
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    if options.refine_topology_by_maseg and ma_wm is None:
+        raise ValueError("plus topology refinement requires the selected MaWM input")
+    return topology_correct(
+        volume,
+        paint_mask,
+        multi_atlas_wm=ma_wm if options.refine_topology_by_maseg else None,
     )
