@@ -11,6 +11,7 @@ from typing import Any
 
 import nibabel as nib
 
+from pymacruise.ace import ACEImageResult, ace_enhance
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
 from pymacruise.tgdm import TGDMBaselineParameters
 
@@ -91,4 +92,31 @@ def plus_tgdm_parameters(
         raise ValueError("options must be PlusPipelineOptions")
     return TGDMBaselineParameters(
         white_matter_iso=options.wm_iso_level,
+    )
+
+
+def run_plus_ace_stage(
+    gray_matter: nib.spatialimages.SpatialImage,
+    white_matter: nib.spatialimages.SpatialImage,
+    multi_atlas_csf: nib.spatialimages.SpatialImage,
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> ACEImageResult:
+    """Run the selected MaCRUISEplus ACE mode from typed plus settings.
+
+    The selected entry point uses a positive-CSF merge after the speed
+    Gaussian (`UseUpdatedCSFinACE=3`) and disables the later enhanced-GM /
+    skeleton update branch. The boundary input is supplied on the shared grid.
+    """
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    if options.update_enhance != 0:
+        raise ValueError("plus ACE currently supports only update_enhance=0")
+    if options.use_updated_csf_in_ace != 3:
+        raise ValueError("selected plus ACE requires use_updated_csf_in_ace=3")
+    return ace_enhance(
+        gray_matter,
+        white_matter,
+        multi_atlas_csf=multi_atlas_csf,
+        use_updated_csf_in_ace=options.use_updated_csf_in_ace,
+        merge_method="Merge",
     )
