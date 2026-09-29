@@ -1,4 +1,4 @@
-"""Convert the selected Java topology source's stdout into local NIfTI fixtures."""
+"""Convert selected Java source stdout into RAS NIfTI reference fixtures."""
 
 from __future__ import annotations
 
@@ -9,32 +9,42 @@ import nibabel as nib
 import numpy as np
 
 CASE_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = CASE_DIR.parents[1] / "data" / "synthetic" / "topology_correction"
-SHAPE = (9, 9, 9)
+DATA_DIR = CASE_DIR.parents[1] / "data" / "synthetic" / "topology_correction"
+SHAPES = {
+    "spatial_hash": (9, 9, 9),
+    "plateau": (9, 9, 9),
+    "boundary": (9, 9, 9),
+    "narrow_branch": (11, 9, 9),
+    "disconnected_seeds": (9, 9, 9),
+}
+SECTIONS = ("INPUT_BEGIN", "PAINT_BEGIN", "OUTPUT_BEGIN")
 
 
 def main() -> None:
-    lines = Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
-    values = np.asarray([float(line) for line in lines[lines.index("OUTPUT_BEGIN") + 1 :]], dtype=np.float32)
-    if values.size != int(np.prod(SHAPE)):
-        raise ValueError(f"Java output has {values.size} values; expected {np.prod(SHAPE)}")
+    fixture_name = sys.argv[1]
+    output_path = Path(sys.argv[2])
+    shape = SHAPES[fixture_name]
+    lines = output_path.read_text(encoding="utf-8").splitlines()
+    sections: dict[str, np.ndarray] = {}
+    for index, heading in enumerate(SECTIONS):
+        start = lines.index(heading) + 1
+        next_heading = next(
+            (lines.index(candidate) for candidate in SECTIONS[index + 1 :]), len(lines)
+        )
+        values = np.asarray([float(line) for line in lines[start:next_heading]], dtype=np.float32)
+        if values.size != int(np.prod(shape)):
+            raise ValueError(
+                f"{fixture_name} {heading}: got {values.size} values, expected {np.prod(shape)}"
+            )
+        # Java ModelImage's x coordinate is the fastest varying index. Restore
+        # that x/y/z array order rather than NumPy's default C-order reshape.
+        sections[heading] = values.reshape(shape, order="F")
 
-    x, y, z = np.indices(SHAPE, dtype=np.int64)
-    hash_values = ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) & 0xFFFFFFFF
-    intensity = ((hash_values & 0x7FFFFFFF) % 100000).astype(np.float32) / 100000.0
-    intensity[0, 0, 0] = 0.0
-    paint = np.zeros(SHAPE, dtype=np.float32)
-    paint[4, 4, 4] = 1.0
-    paint[4, 4, 5] = 0.5
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    destination = DATA_DIR if fixture_name == "spatial_hash" else DATA_DIR / fixture_name
+    destination.mkdir(parents=True, exist_ok=True)
     affine = np.eye(4, dtype=np.float64)
-    for name, data in (
-        ("input.nii.gz", intensity),
-        ("paint_mask.nii.gz", paint),
-        ("java_reference.nii.gz", values.reshape(SHAPE)),
-    ):
-        nib.save(nib.Nifti1Image(data, affine), OUTPUT_DIR / name)
+    for heading, filename in zip(SECTIONS, ("input.nii.gz", "paint_mask.nii.gz", "java_reference.nii.gz"), strict=True):
+        nib.save(nib.Nifti1Image(sections[heading], affine), destination / filename)
 
 
 if __name__ == "__main__":

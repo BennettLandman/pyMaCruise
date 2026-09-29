@@ -78,10 +78,21 @@ def test_dura_initial_level_sets_match_original_jist_jar() -> None:
         np.testing.assert_array_equal(actual_field, expected)
 
 
-def test_dura_first_wm_topology_call_matches_selected_java_harness() -> None:
-    wm = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "input.nii.gz"))
-    paint = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "paint_mask.nii.gz"))
-    expected = nib.load(str(TOPOLOGY_CORRECTION_FIXTURE / "java_reference.nii.gz"))
+@pytest.mark.parametrize(
+    "fixture_name",
+    ("spatial_hash", "plateau", "boundary", "narrow_branch", "disconnected_seeds"),
+)
+def test_dura_first_wm_topology_call_matches_selected_java_harness(
+    fixture_name: str,
+) -> None:
+    fixture_dir = (
+        TOPOLOGY_CORRECTION_FIXTURE
+        if fixture_name == "spatial_hash"
+        else TOPOLOGY_CORRECTION_FIXTURE / fixture_name
+    )
+    wm = nib.load(str(fixture_dir / "input.nii.gz"))
+    paint = nib.load(str(fixture_dir / "paint_mask.nii.gz"))
+    expected = nib.load(str(fixture_dir / "java_reference.nii.gz"))
 
     actual = dura_correct_white_matter_topology(wm, paint)
 

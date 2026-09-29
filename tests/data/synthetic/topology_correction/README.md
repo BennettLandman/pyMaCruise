@@ -1,18 +1,25 @@
 # AlgorithmTopologyCorrection Java reference phantom
 
-This deterministic 9×9×9 synthetic case runs the selected VandyCRUISE
-`AlgorithmTopologyCorrection` source in a headless harness. The source image is
-a deterministic spatial-hash intensity field with a zero corner. The paint
-image has one 1.0 seed and an adjacent 0.5 voxel to exercise the JIST adapter's
-strict `value > 0.5` rule. It uses scalar-image mode, 3-D 6/18 connectivity,
-levels 0 and 1, min/max normalization, minimum distance 0.05, and downward
-`object->background` propagation.
+These committed synthetic cases run the selected VandyCRUISE
+`AlgorithmTopologyCorrection` source in a headless harness. All use scalar-image
+mode, 3-D 6/18 connectivity, levels 0 and 1, min/max normalization, minimum
+distance 0.05, and downward `object->background` propagation.
 
-`java_reference.nii.gz` is the output from the original Java algorithm. The
-current Python output matches it exactly on this fixture (0 of 729 differing
-voxels; maximum absolute difference 0). In trace mode, all 1,085 popped queue
-coordinates and float32 priorities also match. This is a small harness
-comparison, not a claim of whole-pipeline equivalence.
+| Fixture | Shape | Coverage |
+|---|---:|---|
+| Root fixture (`spatial_hash`) | 9×9×9 | Many distinct intensity ranks, zero corner, one 1.0 seed and adjacent 0.5 paint value to exercise the strict `value > 0.5` adapter threshold. |
+| `plateau/` | 9×9×9 | Broad repeated levels plus input values below 0 and above 1, testing plateau ties and normalization/clamping. |
+| `boundary/` | 9×9×9 | Painted seed touches the image boundary. |
+| `narrow_branch/` | 11×9×9 | Thin multi-voxel painted branch and adjacent threshold-edge paint value. |
+| `disconnected_seeds/` | 9×9×9 | Two disconnected painted seeds, including a threshold-edge neighbor. |
+
+Each `java_reference.nii.gz` is written by the original Java algorithm. Python
+matches all five output arrays exactly: 3,807 voxels total, zero differing
+values. Trace mode also matches all queue-pop coordinates and float32
+priorities, including the number of topology-critical rejected candidates.
+Across the five cases, event counts are 1,085, 909, 1,059, 373, and 1,222.
+These are small harness comparisons, not a claim of whole-pipeline or clinical
+equivalence.
 
 Source copies, minimal headless MIPAV shims, and the harness are isolated under
 `tests/java_reference/topology_correction/`. The source-copy hashes are:
@@ -32,14 +39,21 @@ branches. The exercised `paint_mask` path calls the copied
 `AlgorithmTopologyCorrection`, `TopologyPropagation`, `NeighborConnectivity`,
 and `BinaryTree` implementations.
 
-Regenerate all three NIfTI files from the repository root with
+Regenerate all fixture NIfTIs from the repository root with
 `scripts/generate_java_topology_correction_reference.sh`, then report the
-Python comparison with
+per-case Python comparison with
 `PYTHONPATH=src .venv/bin/python tests/java_reference/topology_correction/compare.py`.
-Add `TOPOLOGY_TRACE=1` to the generation command, then run
+Trace a particular case by setting `TOPOLOGY_TRACE=1` and
+`TOPOLOGY_TRACE_CASE=spatial_hash|plateau|boundary|narrow_branch|disconnected_seeds`
+on the generation command, then pass the same case name to
 `PYTHONPATH=src .venv/bin/python tests/java_reference/topology_correction/trace_compare.py`
-to inspect initialization and queue decisions. Trace files are generated
-under ignored `build/java-reference/`.
+to summarize queue events; add `--verbose` to inspect initialization and the
+first queue decisions. Trace files are generated under ignored
+`build/java-reference/`.
+
+The Java `ModelImage` linear index has x as its fastest axis. The converter
+reshapes flat Java values in Fortran order so the committed NIfTI coordinate
+axes preserve the original x/y/z locations.
 
 The shims provide only the in-memory image and progress APIs used by this run;
 they do not reproduce MIPAV display, metadata, or file-I/O behavior.

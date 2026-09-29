@@ -1,6 +1,6 @@
 # Topology Correction
 
-**Status:** P25 remains in progress. Its original topology-invariant and I/O tests did not establish source-output matching. A later direct comparison against the selected Java classes now matches one committed 9×9×9 synthetic fixture exactly; the broader P25 validation matrix is still required.
+**Status:** The selected Java-class output now matches five committed synthetic fixtures (3,807 voxels total) exactly, and trace mode matches 4,648 queue pops including critical-candidate counts. This validates the selected low-level paint-mask algorithm cases; it does not validate whole-workflow or clinical-data equivalence.
 
 ## Selected MaCRUISE behavior
 
@@ -26,4 +26,4 @@ The connectivity counts follow the supplied VandyCRUISE `NeighborConnectivity` i
 - Non-RAS image/paint inputs warn and reorient; empty masks, non-finite image values, and mismatched grids fail clearly.
 - Repeated runs are deterministic on the synthetic cases.
 
-The first headless Java run exposed an initial implementation mismatch of 621/729 voxels. Source-level follow-up corrected face-connected foreground counting, strict tie ordering in VandyCRUISE's custom `BinaryTree`, threshold-stop fill behavior, and float32 operation order. The current comparison now matches all 729 voxels exactly (maximum absolute difference 0; both sums 126.464972). This is one deterministic fixture, not broad equivalence evidence. The committed fixture, isolated selected-source harness, regeneration command, hashes, and limits are recorded in [the P25 comparison report](reports/topology-correction-java-comparison-2026-09-29.md). P25 remains open for boundary-touching masks, distinct levels, plateaus and tie priorities, thin branches, critical points, and repeatable whole-algorithm comparisons.
+The first headless Java run exposed an initial implementation mismatch of 621/729 voxels. Source-level follow-up corrected face-connected foreground counting, strict tie ordering in VandyCRUISE's custom `BinaryTree`, threshold-stop fill behavior, and float32 operation order. The five-case comparison now matches 3,807/3,807 voxels exactly. Cases exercise spatial-hash distinct ranks, broad plateaus and input values outside 0–1, boundary-touching paint, a narrow painted branch, and disconnected seeds; trace mode also matches all 4,648 queue events and critical rejection counts exactly. The committed fixtures, isolated selected-source harness, regeneration command, hashes, and limits are recorded in [the P25 comparison report](reports/topology-correction-java-comparison-2026-09-29.md). The V3 atlas refinement is separately tested; neither result establishes full-workflow or clinical-data equivalence.

@@ -2,23 +2,26 @@
 
 ## Result
 
-The committed 9×9×9 Dura-settings phantom now matches the selected
-VandyCRUISE Java `AlgorithmTopologyCorrection` output exactly:
+Five committed Dura-settings synthetic phantoms match the selected VandyCRUISE
+Java `AlgorithmTopologyCorrection` outputs exactly:
 
-| Measure | Result |
-|---|---:|
-| Voxels compared | 729 |
-| Different output voxels | 0 |
-| Maximum absolute difference | 0 |
-| Java / Python float64 sum | 126.464972 / 126.464972 |
-| Java / Python queue pops | 1,085 / 1,085 |
-| Queue coordinates and float32 priorities | Exact for all 1,085 pops |
+| Fixture | Shape | Voxels | Differing | Queue pops | Rejected as critical |
+|---|---:|---:|---:|---:|---:|
+| spatial_hash | 9×9×9 | 729 | 0 | 1,085 | 361 |
+| plateau | 9×9×9 | 729 | 0 | 909 | 187 |
+| boundary | 9×9×9 | 729 | 0 | 1,059 | 377 |
+| narrow_branch | 11×9×9 | 891 | 0 | 373 | 0 |
+| disconnected_seeds | 9×9×9 | 729 | 0 | 1,222 | 586 |
+| **Total** | — | **3,807** | **0** | **4,648** | **1,511** |
 
-The phantom uses scalar-image mode, 3-D `(6,18)` connectivity, downward
+For each fixture, trace mode also matches every queue-pop coordinate and
+float32 priority in order, along with the count of candidates rejected as
+critical. The phantoms use scalar-image mode, 3-D `(6,18)` connectivity, downward
 `object->background` propagation, normalized levels 0–1, min/max normalization,
-paint threshold `>0.5`, and regularization `0.05`. It contains a deterministic
-spatial-hash intensity field with a zero corner, one 1.0 seed, and one adjacent
-0.5 paint voxel. Inputs and the Java result are under
+paint threshold `>0.5`, and regularization `0.05`. The cases cover many
+distinct ranks, broad intensity plateaus, input values below 0 and above 1,
+boundary-touching support, a thin painted branch, and disconnected painted
+seeds. Inputs and Java results are under
 `tests/data/synthetic/topology_correction/`.
 
 ## Source and debugging trail
@@ -47,7 +50,7 @@ implementation details required for this fixture:
    source's float32 operation points.
 
 After applying these source-derived rules, all queue events and final values
-match on this fixture. The initial mismatch is retained here as debugging
+match on all five fixtures. The initial mismatch is retained here as debugging
 history, not as the current result.
 
 ## Reproduction
@@ -59,8 +62,16 @@ scripts/generate_java_topology_correction_reference.sh
 PYTHONPATH=src .venv/bin/python tests/java_reference/topology_correction/compare.py
 ```
 
-The first command needs a JDK (`javac`/`java`) and regenerates the small
-reference fixtures. The second prints the five image metrics above. Selected
+The first command needs a JDK (`javac`/`java`) and regenerates all small
+reference fixtures. The second prints per-case metrics. To validate the full
+queue trace for a case, run:
+
+```sh
+TOPOLOGY_TRACE=1 TOPOLOGY_TRACE_CASE=boundary scripts/generate_java_topology_correction_reference.sh
+TOPOLOGY_TRACE_CASE=boundary PYTHONPATH=src .venv/bin/python tests/java_reference/topology_correction/trace_compare.py
+```
+
+Selected
 checkout and isolated harness-copy SHA-256 values:
 
 | File | SHA-256 |
@@ -74,12 +85,12 @@ The `TopologyPropagation.java` copy adds conditional diagnostic tracing for
 queue events and decisions; ordinary generation disables trace mode. The
 instrumentation and provenance are described in the fixture README.
 
-## Scope and remaining P25 cases
+## Scope and remaining limits
 
-This is a selected Java-class harness match on one compact phantom, not full
-MaCRUISE, Dura workflow, or clinical equivalence. P25 remains Started. Add
-independent synthetic fixtures for boundary-touching support, masked regions,
-multiple distinct intensity levels, broad plateaus/tie priorities, narrow
-branches, and critical-point decisions; compare both image outputs and queue
-events where applicable. Then run and record the full pytest suite on the
-committed implementation before marking any broader source-matching row Done.
+This is a selected Java-class harness match on compact synthetic cases, not
+full MaCRUISE, the complete Dura workflow, or clinical-data equivalence. It
+validates the low-level scalar paint-mask path and selected settings. The V3
+atlas refinement remains a separately implemented wrapper stage with its own
+tests. The Python numerical source match still needs integration against the
+full algorithm call chain and real-data acceptance only after all synthetic
+gates pass.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import os
 
 import nibabel as nib
 import numpy as np
@@ -14,21 +15,26 @@ import pymacruise.topology as topology
 CASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = CASE_DIR.parents[1] / "data" / "synthetic" / "topology_correction"
 TRACE_FILE = CASE_DIR.parents[2] / "build" / "java-reference" / "topology-correction-trace.txt"
+ARGUMENTS = [argument for argument in sys.argv[1:] if argument != "--verbose"]
+FIXTURE = ARGUMENTS[1] if len(ARGUMENTS) > 1 else os.environ.get("TOPOLOGY_TRACE_CASE", "spatial_hash")
 
 
 def main() -> None:
-    java_text = Path(sys.argv[1]).read_text(encoding="utf-8") if len(sys.argv) > 1 else TRACE_FILE.read_text(encoding="utf-8")
+    verbose = "--verbose" in sys.argv
+    java_text = Path(ARGUMENTS[0]).read_text(encoding="utf-8") if ARGUMENTS else TRACE_FILE.read_text(encoding="utf-8")
     java_events = [line for line in java_text.splitlines() if line.startswith("TRACE_EVENT ")]
     java_tests = [line for line in java_text.splitlines() if line.startswith("TRACE_TEST")]
     java_decisions = [line for line in java_text.splitlines() if line.startswith("TRACE_DECISION")]
     java_total = next((line.split()[-1] for line in java_text.splitlines() if line.startswith("TRACE_EVENT_TOTAL")), "unknown")
-    print("JAVA INITIALIZATION")
-    for line in java_text.splitlines():
-        if line.startswith(("TRACE_INIT", "TRACE_LABEL", "TRACE_QUEUE_HEAD")):
-            print(line)
+    if verbose:
+        print("JAVA INITIALIZATION")
+        for line in java_text.splitlines():
+            if line.startswith(("TRACE_INIT", "TRACE_LABEL", "TRACE_QUEUE_HEAD")):
+                print(line)
 
-    source = nib.load(str(DATA_DIR / "input.nii.gz"))
-    paint = nib.load(str(DATA_DIR / "paint_mask.nii.gz"))
+    fixture_dir = DATA_DIR if FIXTURE == "spatial_hash" else DATA_DIR / FIXTURE
+    source = nib.load(str(fixture_dir / "input.nii.gz"))
+    paint = nib.load(str(fixture_dir / "paint_mask.nii.gz"))
     python_events: list[dict[str, object]] = []
     current: dict[str, object] | None = None
     original_lower = topology._lowest_object_neighbor
@@ -85,55 +91,41 @@ def main() -> None:
         topology._lowest_object_neighbor = original_lower
         topology._is_regular_object_addition = original_regular
 
-    print("\nFIRST 24 QUEUE EVENTS")
-    print("Java event format: event point value lower; then foreground/background/regular decision when tested")
-    for index in range(min(24, len(python_events))):
-        event = python_events[index]
-        print(
-            f"PY_EVENT {index} point={event['point']} value={event['value']:.9g} "
-            f"lower={event['lower']:.9g} label={event['label']} "
-            f"fg={event.get('foreground','-')} java-style-fg={event.get('source_foreground','-')} "
-            f"bg={event.get('background','-')} "
-            f"regular={event.get('regular','not-tested')}"
-        )
-        if index < len(java_events):
-            print("  " + java_events[index])
-            matching = next((line for line in java_tests if line.split()[1] == str(index)), None)
-            if matching:
-                print("  " + matching)
-            decision = next((line for line in java_decisions if line.split()[1] == str(index)), None)
-            if decision:
-                print("  " + decision)
+    if verbose:
+        print("\nFIRST 24 QUEUE EVENTS")
+        print("Java event format: event point value lower; then foreground/background/regular decision when tested")
+        for index in range(min(24, len(python_events))):
+            event = python_events[index]
+            print(
+                f"PY_EVENT {index} point={event['point']} value={event['value']:.9g} "
+                f"lower={event['lower']:.9g} label={event['label']} "
+                f"fg={event.get('foreground','-')} java-style-fg={event.get('source_foreground','-')} "
+                f"bg={event.get('background','-')} "
+                f"regular={event.get('regular','not-tested')}"
+            )
+            if index < len(java_events):
+                print("  " + java_events[index])
+                matching = next((line for line in java_tests if line.split()[1] == str(index)), None)
+                if matching:
+                    print("  " + matching)
+                decision = next((line for line in java_decisions if line.split()[1] == str(index)), None)
+                if decision:
+                    print("  " + decision)
     print(f"complete queue pops: Java={java_total}, Python={len(python_events)}")
+    rejected = sum(event.get("regular") is False for event in python_events)
+    print(f"candidate rejected as critical: Java={sum('status=20' in line for line in java_decisions)}, Python={rejected}")
 
-    java_event_records: list[tuple[tuple[int, int, int], np.float32]] = []
-    for line in java_events:
-        fields = line.split()
-        point = tuple(int(value) for value in fields[2].split("=")[1].split(","))
-        value = np.float32(fields[3].split("=")[1])
-        java_event_records.append((point, value))
-    first_divergence = None
-    for index, (java_record, python_record) in enumerate(zip(java_event_records, python_events)):
-        java_point, java_value = java_record
-        python_point = python_record["point"]
-        python_value = np.float32(python_record["value"])
-        if java_point != python_point:
-            kind = "priority/tie ordering" if java_value == python_value else "queue ordering after different float32 priorities"
-            first_divergence = (index, kind, java_point, float(java_value), python_point, float(python_value))
-            break
-        if java_value != python_value:
-            first_divergence = (index, "float32 candidate arithmetic", java_point, float(java_value), python_point, float(python_value))
-            break
-    if first_divergence:
-        index, kind, java_point, java_value, python_point, python_value = first_divergence
-        print(
-            f"first divergence: event {index}, {kind}; Java={java_point} @ {java_value:.9g}, "
-            f"Python={python_point} @ {python_value:.9g}"
-        )
-    elif len(java_event_records) != len(python_events):
-        print(f"first divergence: queue exhaustion length Java={len(java_event_records)}, Python={len(python_events)}")
-    else:
-        print("event trace: all popped points and float32 priorities match")
+    all_events_match = len(java_events) == len(python_events)
+    if all_events_match:
+        for java_line, python_event in zip(java_events, python_events, strict=True):
+            fields = dict(item.split("=", 1) for item in java_line.split()[2:])
+            java_point = tuple(int(value) for value in fields["point"].split(","))
+            java_value = float(fields["value"])
+            python_value = float(python_event["value"])
+            if java_point != python_event["point"] or np.float32(java_value) != np.float32(python_value):
+                all_events_match = False
+                break
+    print(f"event trace: {'all' if all_events_match else 'NOT all'} popped points and float32 priorities match")
 
 
 if __name__ == "__main__":

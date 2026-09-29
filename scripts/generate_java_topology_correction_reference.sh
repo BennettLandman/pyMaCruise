@@ -24,8 +24,12 @@ javac -d "$classes" \
   "$case_dir/TopologyCorrectionReferenceHarness.java"
 
 if [ "${TOPOLOGY_TRACE:-0}" = 1 ]; then
-  java -Dmacruise.topology.trace=true -cp "$classes" TopologyCorrectionReferenceHarness > "$output" 2> "$trace"
+  fixture=${TOPOLOGY_TRACE_CASE:-spatial_hash}
+  java -Dmacruise.topology.trace=true -cp "$classes" TopologyCorrectionReferenceHarness "$fixture" > "$output" 2> "$trace"
+  "$repo_root/.venv/bin/python" "$case_dir/convert_output.py" "$fixture" "$output"
 else
-  java -cp "$classes" TopologyCorrectionReferenceHarness > "$output"
+  for fixture in spatial_hash plateau boundary narrow_branch disconnected_seeds; do
+    java -cp "$classes" TopologyCorrectionReferenceHarness "$fixture" > "$output"
+    "$repo_root/.venv/bin/python" "$case_dir/convert_output.py" "$fixture" "$output"
+  done
 fi
-"$repo_root/.venv/bin/python" "$case_dir/convert_output.py" "$output"

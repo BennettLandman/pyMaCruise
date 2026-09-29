@@ -403,7 +403,7 @@ tests, including the nested and larger folded-cortex TGDM comparisons.
 This validates initial arithmetic/distance construction only, not the two
 topology-correction algorithms or the complete dura workflow.
 
-### Started substage: first Dura WM topology correction
+### Completed substage: first Dura WM topology correction
 
 The next implementation slice is only the first topology-correction call in
 `MedicAlgorithmRemoveDura09.execute()`: it passes the white-matter membership
@@ -414,13 +414,18 @@ regularization 0.05. Python should call the existing source-compared
 `topology_correct` engine with those explicit settings; its general-purpose
 regularization default is different and must not be inherited.
 
-This substage does not yet build `wmTC + raw GM`, call the second `tcGM`
-correction (which reuses the original WM mask), initialize/evolve Dura TGDM,
-or establish complete Dura or TOADS equivalence. Its Java comparison must
-include a deterministic asymmetric field with distinct scalar ranks, a thin
-branch/neck, out-of-range values, and boundary-touching support. Flat plateaus
-are a separate queue tie-order case because Java and Python priority queues
-may resolve equal values differently.
+The selected Java classes and Python adapter now match five committed
+synthetic fields exactly: spatial-hash distinct ranks; plateaus with values
+below 0 and above 1; boundary-touching paint; a thin painted branch; and two
+disconnected seeds. All 3,807 output voxels match. Full event tracing on each
+case matches 4,648 queue pops and the 1,511 critical-candidate decisions,
+including Java's custom priority-tie order. The focused topology and Dura test
+modules pass 36 tests. Harness provenance and regeneration are recorded in
+`docs/reports/topology-correction-java-comparison-2026-09-29.md`.
+
+This substage does not build `wmTC + raw GM`, call the second `tcGM` correction
+(which reuses the original WM mask), initialize/evolve Dura TGDM, or establish
+complete Dura or TOADS equivalence.
 
 ### Started substage: Dura WM-plus-GM union and second topology correction
 

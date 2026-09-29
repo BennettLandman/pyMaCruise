@@ -1,11 +1,39 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 import pytest
 from scipy import ndimage
 
 from pymacruise.topology import topology_correct, topology_numbers_618
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ("spatial_hash", "plateau", "boundary", "narrow_branch", "disconnected_seeds"),
+)
+def test_topology_matches_selected_java_synthetic_fixtures(fixture_name: str) -> None:
+    fixture_root = Path(__file__).parent / "data" / "synthetic" / "topology_correction"
+    fixture_dir = fixture_root if fixture_name == "spatial_hash" else fixture_root / fixture_name
+    source = nib.load(str(fixture_dir / "input.nii.gz"))
+    paint = nib.load(str(fixture_dir / "paint_mask.nii.gz"))
+    java_reference = nib.load(str(fixture_dir / "java_reference.nii.gz"))
+
+    actual = topology_correct(
+        source,
+        paint,
+        paint_threshold=0.5,
+        lowest_level=0.0,
+        highest_level=1.0,
+        regularize=0.05,
+    ).corrected
+
+    np.testing.assert_array_equal(actual.dataobj, java_reference.dataobj)
+    assert actual.get_data_dtype() == np.dtype(np.float32)
+    assert actual.shape == java_reference.shape
+    np.testing.assert_array_equal(actual.affine, java_reference.affine)
 
 
 def test_618_topology_numbers_cover_regular_and_critical_neighborhoods() -> None:

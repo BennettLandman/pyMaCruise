@@ -190,9 +190,10 @@ def topology_correct(
     refinement below is a separate V3 wrapper post-processing operation, not
     part of that paper's fast-marching method.
 
-    One selected-source 9-cubed fixture now matches exactly, including every
-    queue event. P25's broader boundary, mask, plateau, branch, and critical
-    point comparison matrix remains open; see the P25 report for scope.
+    Five selected-source synthetic fixtures now match exactly, including
+    every queue event and critical-candidate count. This validates the tested
+    scalar paint-mask cases, not whole-workflow or clinical equivalence; see
+    the P25 report for scope.
 
     If ``multi_atlas_wm`` is supplied, also reproduce V3's subsequent
     `Refine_Topo_by_MA` operation: first apply the source's one-pass 3D
