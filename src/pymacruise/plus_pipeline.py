@@ -12,7 +12,11 @@ from typing import Any
 import nibabel as nib
 
 from pymacruise.ace import ACEImageResult, ace_enhance
-from pymacruise.boundary import clean_csf_boundary_image, multi_atlas_csf_boundary_image
+from pymacruise.boundary import (
+    clean_csf_boundary_image,
+    combine_multi_atlas_toads_images,
+    multi_atlas_csf_boundary_image,
+)
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
 from pymacruise.tgdm import TGDMBaselineParameters
 from pymacruise.topology import TopologyCorrectionResult, topology_correct
@@ -68,6 +72,15 @@ class PlusBoundaryResult:
 
     raw_boundary: nib.spatialimages.SpatialImage
     cleaned_boundary: nib.spatialimages.SpatialImage
+
+
+@dataclass(frozen=True)
+class PlusTissueUpdateResult:
+    """MaCRUISEplus atlas/TOADS-combined tissue products on the RAS grid."""
+
+    gm: nib.spatialimages.SpatialImage
+    wm: nib.spatialimages.SpatialImage
+    mask: nib.spatialimages.SpatialImage
 
 
 def run_plus_gvf_stage(
@@ -166,3 +179,30 @@ def run_plus_boundary_stage(
     )
     cleaned = clean_csf_boundary_image(raw, toads_wm_mask, mode="toads_wm")
     return PlusBoundaryResult(raw_boundary=raw, cleaned_boundary=cleaned)
+
+
+def run_plus_tissue_update_stage(
+    multi_atlas_gm: nib.spatialimages.SpatialImage,
+    multi_atlas_wm: nib.spatialimages.SpatialImage,
+    multi_atlas_brain_mask: nib.spatialimages.SpatialImage,
+    toads_gm: nib.spatialimages.SpatialImage,
+    toads_wm: nib.spatialimages.SpatialImage,
+    toads_mask: nib.spatialimages.SpatialImage,
+) -> PlusTissueUpdateResult:
+    """Combine cropped atlas and TOADS tissue maps as selected by MaCRUISEplus.
+
+    The selected wrapper calls ``CombineMAandTOADS`` with 3D erosion and
+    ``GMconfident=0.001``. The source-checked image helper owns the six-face
+    erosion, confident-WM priority, strict GM threshold, fallback, and
+    outside-brain behavior; this adapter only routes the six stage products.
+    """
+    gm, wm, mask = combine_multi_atlas_toads_images(
+        multi_atlas_gm,
+        multi_atlas_wm,
+        multi_atlas_brain_mask,
+        toads_gm,
+        toads_wm,
+        toads_mask,
+        gm_confident_level=0.001,
+    )
+    return PlusTissueUpdateResult(gm=gm, wm=wm, mask=mask)
