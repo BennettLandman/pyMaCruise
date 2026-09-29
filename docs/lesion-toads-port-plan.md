@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zn have validated bounded preparation, registration, membership-formula, spatial-neighborhood, and fixed-input smoothing-composition slices,
+**Status:** P39 is Started. P39a–P39zo have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and direct OBJECT sweep slices,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -825,3 +825,20 @@ implementation commit `856e07b2246642b3dad298e43df52cdaa02eeb7b`; see
 and [`tests/data/synthetic/lesion_toads_volume_smoothing/README.md`](../tests/data/synthetic/lesion_toads_volume_smoothing/README.md). This step
 uses fixed memberships and does not implement in-place membership writes,
 atlas priors, inversion, normalization, or segmentation equivalence.
+
+
+### Completed substage: P39zo direct OBJECT in-place membership sweep
+
+`run_lesion_toads_object_membership_sweep` applies source-ordered smoothing
+terms from the current mutable six-face neighborhood, converts each ordinary
+class with a direct relation, and normalizes all class values before moving
+to the next interior voxel. A selected-Java formula harness matches every
+interior post-normalization value bit-for-bit on a committed asymmetric
+5×4×6, three-class fixture; the boundary planes remain unchanged and a
+reverse-order scan produces a different result. Focused tests: 5 passed. Full
+suite: 492 passed with two expected RAS warnings in 80.64 seconds on
+implementation commit `5af89244adf65ffab25503e245c82184ee222d8c`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-object-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-object-sweep.md)
+and [`tests/data/synthetic/lesion_toads_object_sweep/README.md`](../tests/data/synthetic/lesion_toads_object_sweep/README.md). Scope is limited
+to positive shape support, direct relations, ordinary OBJECT classes, fixed
+data terms, and smoothing; atlas priors and lesion/auxiliary types remain open.
