@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zt have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION distance handling and the BLACKHOLE smoothing branch,
+**Status:** P39 is Started. P39a–P39zu have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION distance handling and BLACKHOLE shape-prior handling,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -925,3 +925,19 @@ two expected RAS warnings in 81.54 seconds on implementation commit
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-sweep.md)
 and [`tests/data/synthetic/lesion_toads_blackhole_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_sweep/README.md). Black-hole
 atlas priors and distance modulation remain open.
+
+
+### Completed substage: P39zu BLACKHOLE shape-prior sweep
+
+The BLACKHOLE volume sweep now optionally adds selected pairwise class,
+lesion, and black-hole prior terms. It preserves the BLACKHOLE class's extra
+lesion-class contribution to ordinary class priors, the separate lesion and
+black-hole prior sums, float32 operation order, in-place traversal, relation
+factors, shape gating, and denominator normalization. All class and auxiliary
+membership bits match the selected-Java formula harness across the committed
+5×4×6 volume; a zero coefficient matches P39zt. Focused tests: 3 passed. Full
+suite: 501 passed with two expected RAS warnings in 80.53 seconds on
+implementation commit `9fe0402f83748b3bd134fbfeee918f9ef4665f38`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-prior-sweep.md)
+and [`tests/data/synthetic/lesion_toads_blackhole_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_prior_sweep/README.md). Distance
+modulation remains open.
