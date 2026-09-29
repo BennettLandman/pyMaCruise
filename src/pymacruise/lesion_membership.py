@@ -15,6 +15,15 @@ class LesionDistanceModulation:
     relation: np.float32
 
 
+@dataclass(frozen=True)
+class LesionBlackHoleDistanceModulation:
+    """Auxiliary lesion maps and relation after BLACKHOLE distance rules."""
+
+    lesion_membership: np.float32
+    black_hole_membership: np.float32
+    relation: np.float32
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
@@ -134,3 +143,77 @@ def modulate_lesion_toads_membership_by_distances(
         relation = np.float32(relation * factor)
 
     return LesionDistanceModulation(membership=membership, relation=relation)
+
+
+def modulate_lesion_toads_blackhole_memberships_by_distances(
+    lesion_membership: float,
+    black_hole_membership: float,
+    lesion_relation: float,
+    *,
+    ventricle_distance: int,
+    gray_matter_distance: int,
+    brainstem_distance: int,
+    max_ventricle_distance: int,
+    max_gray_matter_distance: int,
+    max_brainstem_distance: int,
+    gm_flag: bool,
+    spread: float,
+) -> LesionBlackHoleDistanceModulation:
+    """Apply the selected BLACKHOLE auxiliary-map distance rules.
+
+    VandyCRUISE's ventricle branch scales ``lesionMembership`` and
+    ``lesionRelation`` but leaves ``blackHoleMem`` unchanged. Its GM branch
+    scales both auxiliary memberships, and a valid brainstem distance scales
+    both independently. The lesion/relation calculations reuse the source-
+    checked lesion-only kernel so the selected branch precedence and float32
+    order stay aligned with P39z.
+    """
+    black_hole = np.float32(black_hole_membership)
+    if not np.isfinite(black_hole):
+        raise ValueError("black_hole_membership must be finite")
+
+    lesion_result = modulate_lesion_toads_membership_by_distances(
+        lesion_membership,
+        lesion_relation,
+        ventricle_distance=ventricle_distance,
+        gray_matter_distance=gray_matter_distance,
+        brainstem_distance=brainstem_distance,
+        max_ventricle_distance=max_ventricle_distance,
+        max_gray_matter_distance=max_gray_matter_distance,
+        max_brainstem_distance=max_brainstem_distance,
+        gm_flag=gm_flag,
+        spread=spread,
+    )
+
+    # Source BLACKHOLE branch is `if (valid ventricle) ... else if (valid GM)`.
+    vent_branch = (
+        max_ventricle_distance != 0 and ventricle_distance != -1
+    )
+    gm_branch = (
+        not vent_branch
+        and gm_flag
+        and max_gray_matter_distance != 0
+        and gray_matter_distance != -1
+    )
+    if gm_branch:
+        numerator = (
+            np.float32(spread)
+            if gray_matter_distance == 0
+            else np.float32(gray_matter_distance)
+        )
+        black_hole = np.float32(
+            np.float32(numerator * black_hole)
+            / np.float32(max_gray_matter_distance)
+        )
+
+    if max_brainstem_distance != 0 and brainstem_distance != -1:
+        black_hole = np.float32(
+            np.float32(np.float32(brainstem_distance) * black_hole)
+            / np.float32(max_brainstem_distance)
+        )
+
+    return LesionBlackHoleDistanceModulation(
+        lesion_membership=lesion_result.membership,
+        black_hole_membership=black_hole,
+        relation=lesion_result.relation,
+    )
