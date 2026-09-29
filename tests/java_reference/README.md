@@ -139,3 +139,12 @@ the complete remaining heap. Regenerate with
 `scripts/generate_java_toads_growing_queue_step_reference.sh`; synthetic
 phantom details are in
 `tests/data/synthetic/toads_growing_queue_step/README.md`.
+
+## TOADS initialized growing pass
+
+`ToadsGrowingPassReferenceHarness.java` composes source
+`initGrowingLabels` with `propagateGrowing` until the Java min-heap is empty.
+Its synthetic folded-band case records the full event trace and final arrays,
+using the actual 18/6 LUT and `BinaryHeap4D`. Regenerate with
+`scripts/generate_java_toads_growing_pass_reference.sh`; see
+`tests/data/synthetic/toads_growing_pass/README.md` for the phantom and limits.

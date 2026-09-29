@@ -29,6 +29,8 @@ The project owner states that they are an author on all existing source code sup
 
 | VandyCRUISE TOADS growing-event harness | The selected source behavior follows `MultipleToadSegmentation.propagateGrowing` (April 2006; Pierre-Louis Bazin) and test-only `BinaryHeap4D`, `CriticalPointLUT`, and homeomorphic-predicate harness. | Java harness and synthetic fixture provenance are recorded in `tests/java_reference/README.md` and `tests/data/synthetic/toads_growing_queue_step/README.md`; test-only, not a runtime dependency. Include in tech-transfer source and notice review. |
 
+| VandyCRUISE TOADS growing-pass harness | The selected source behavior composes `MultipleToadSegmentation.initGrowingLabels` and `propagateGrowing` (April 2006; Pierre-Louis Bazin) with test-only `BinaryHeap4D` and `CriticalPointLUT`. | Java harness and synthetic fixture provenance are recorded in `tests/java_reference/README.md` and `tests/data/synthetic/toads_growing_pass/README.md`; test-only, not a runtime dependency. Include in tech-transfer source and notice review. |
+
 ## Comment and notice practice during the port
 
 For algorithm modules derived from a supplied source behavior, preserve a short attribution comment in the Python file. For example:

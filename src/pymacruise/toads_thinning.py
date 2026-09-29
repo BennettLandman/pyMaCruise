@@ -287,6 +287,19 @@ class ToadsGrowingQueueStep:
     inserted_neighbors: tuple[ToadsHeapItem, ...]
 
 
+@dataclass(frozen=True)
+class ToadsGrowingPass:
+    """Final state and event trace from one source growing queue pass."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volumes: NDArray[np.float32]
+    events: tuple[ToadsGrowingQueueStep, ...]
+    remaining_queue: tuple[ToadsHeapItem, ...]
+
+
 def toads_process_next_growing_item(
     segmentation: ArrayLike,
     skeleton: ArrayLike,
@@ -391,6 +404,86 @@ def toads_process_next_growing_item(
         popped,
         topology_accepted,
         tuple(inserted),
+    )
+
+
+def toads_propagate_growing(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    ordering: ArrayLike,
+    class_volumes: ArrayLike,
+    *,
+    initial_available: ArrayLike | None = None,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsGrowingPass:
+    """Initialize and exhaust the selected ``propagateGrowing`` min-heap.
+
+    This composes ``initGrowingLabels`` and one-event growing transitions until
+    the source ``while (isNotEmpty())`` loop terminates. It returns the full
+    event trace for deterministic source comparison; it is not full TOADS
+    segmentation or atlas registration.
+    """
+    labels = np.asarray(segmentation)
+    source_skeleton = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    orderings = np.asarray(ordering, dtype=np.float32)
+    volumes = np.asarray(class_volumes, dtype=np.float32)
+    if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be a 3-D integer grid")
+    if source_skeleton.shape != labels.shape:
+        raise ValueError("skeleton must match segmentation")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    if np.any(labels < 0) or np.any(labels >= mems.shape[-1]):
+        raise ValueError("segmentation labels must be valid membership class indices")
+    if volumes.shape != (mems.shape[-1],) or not np.isfinite(volumes).all():
+        raise ValueError("class_volumes must be finite and match membership classes")
+    initialized = toads_initialize_growing_queue(
+        source_skeleton,
+        memberships,
+        ordering,
+        initial_available=initial_available,
+        empty_label=empty_label,
+        zero_threshold=zero_threshold,
+    )
+    current_segmentation = labels.astype(np.int16, copy=True)
+    current_skeleton = initialized.skeleton
+    current_available = initialized.available
+    current_ordering = orderings.copy()
+    current_volumes = volumes.copy()
+    events: list[ToadsGrowingQueueStep] = []
+    while initialized.queue:
+        event = toads_process_next_growing_item(
+            current_segmentation,
+            current_skeleton,
+            memberships,
+            current_available,
+            current_ordering,
+            current_volumes,
+            initialized.queue,
+            empty_label=empty_label,
+            zero_threshold=zero_threshold,
+        )
+        events.append(event)
+        current_segmentation = event.segmentation
+        current_skeleton = event.skeleton
+        current_available = event.available
+        current_ordering = event.ordering
+        current_volumes = event.class_volumes
+
+    remaining: list[ToadsHeapItem] = []
+    while initialized.queue:
+        remaining.append(initialized.queue.pop_first())
+    return ToadsGrowingPass(
+        current_segmentation,
+        current_skeleton,
+        current_available,
+        current_ordering,
+        current_volumes,
+        tuple(events),
+        tuple(remaining),
     )
 
 
