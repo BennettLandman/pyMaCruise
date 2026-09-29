@@ -121,6 +121,15 @@ class LesionToadsOutmaskSweepResult:
     outlier_membership: np.ndarray
 
 
+@dataclass(frozen=True)
+class LesionToadsLesionOutmaskSweepResult:
+    """Class, lesion, and outlier maps after a bounded combined sweep."""
+
+    class_memberships: np.ndarray
+    lesion_membership: np.ndarray
+    outlier_membership: np.ndarray
+
+
 def iter_lesion_toads_six_face_neighborhoods(
     class_memberships: np.ndarray,
     lesion_memberships: np.ndarray,
@@ -523,6 +532,8 @@ def run_lesion_toads_lesion_smoothing_sweep(
             raise ValueError("class_similarities must have shape (classes, classes)")
         if not all(np.isfinite(array).all() for array in (atlas_priors, class_similarity, lesion_similarity)):
             raise ValueError("atlas prior and similarity inputs must be finite")
+        if np.any(atlas_priors < np.float32(0.0)):
+            raise ValueError("shape_priors must be nonnegative")
         if np.any(atlas_priors < np.float32(0.0)):
             raise ValueError("shape_priors must be nonnegative")
     smoothing_value = np.float32(smoothing)
@@ -1079,6 +1090,203 @@ def run_lesion_toads_outmask_smoothing_sweep(
                 if k == outmask_class:
                     outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
     return LesionToadsOutmaskSweepResult(current, outlier)
+
+
+def run_lesion_toads_lesion_outmask_smoothing_sweep(
+    initial_class_memberships: np.ndarray,
+    initial_lesion_membership: np.ndarray,
+    initial_outlier_membership: np.ndarray,
+    class_data_terms: np.ndarray,
+    lesion_data_terms: np.ndarray,
+    outmask_data_terms: np.ndarray,
+    shape_values: np.ndarray,
+    smoothing_priors: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    relation_types: tuple[str, ...] | list[str],
+    *,
+    smoothing: float,
+    shape_priors: np.ndarray | None = None,
+    class_similarities: np.ndarray | None = None,
+    lesion_similarities: np.ndarray | None = None,
+    prior_coefficient: float = 0.0,
+    zero: float = 1.0e-10,
+    infinity: float = 1.0e10,
+) -> LesionToadsLesionOutmaskSweepResult:
+    """Sweep OBJECT, LESION, and OUTMASK classes with shared auxiliaries.
+
+    The function composes the selected lesion and outmask smoothing/prior
+    terms in one source-ordered x/y/z pass. It updates the lesion and outlier
+    maps in place during each voxel's class loop, then normalizes class and
+    auxiliary memberships by the shared voxel denominator.
+    """
+    current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
+    lesion = np.asarray(initial_lesion_membership, dtype=np.float32).copy()
+    outlier = np.asarray(initial_outlier_membership, dtype=np.float32).copy()
+    data = np.asarray(class_data_terms, dtype=np.float32)
+    lesion_data = np.asarray(lesion_data_terms, dtype=np.float32)
+    outmask_data = np.asarray(outmask_data_terms, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    if current.ndim != 4 or any(size < 3 for size in current.shape[:3]) or current.shape[3] == 0:
+        raise ValueError("initial_class_memberships must have shape (x, y, z, classes), with spatial sizes >= 3")
+    spatial_shape = current.shape[:3]
+    classes = current.shape[3]
+    types = tuple(class_types)
+    relations = tuple(relation_types)
+    if len(types) != classes or types.count("LESION") != 1 or types.count("OUTMASK") != 1 or any(
+        kind not in {"OBJECT", "LESION", "OUTMASK"} for kind in types
+    ):
+        raise ValueError("class_types must contain OBJECT classes and exactly one LESION and one OUTMASK class")
+    if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
+        raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
+    if data.shape != current.shape or shapes.shape != current.shape:
+        raise ValueError("class_data_terms and shape_values must match initial_class_memberships shape")
+    if any(array.shape != spatial_shape for array in (lesion, outlier, lesion_data, outmask_data)):
+        raise ValueError("lesion/outlier memberships and auxiliary data maps must match class spatial shape")
+    smoothing_priors_value = np.asarray(smoothing_priors, dtype=np.float32)
+    if (
+        smoothing_priors_value.shape != (classes,)
+        or not np.isfinite(smoothing_priors_value).all()
+        or np.any(smoothing_priors_value < 0)
+    ):
+        raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
+    if not all(np.isfinite(array).all() for array in (current, lesion, outlier, data, lesion_data, outmask_data, shapes)):
+        raise ValueError("membership, data-term, and shape arrays must be finite")
+    coefficient = np.float32(prior_coefficient)
+    if not np.isfinite(coefficient) or coefficient < np.float32(0.0):
+        raise ValueError("prior_coefficient must be finite and nonnegative")
+    atlas_priors = class_similarity = lesion_similarity = None
+    if coefficient > np.float32(0.0):
+        if any(value is None for value in (shape_priors, class_similarities, lesion_similarities)):
+            raise ValueError("shape priors and class/lesion similarities are required for a positive prior_coefficient")
+        atlas_priors = np.asarray(shape_priors, dtype=np.float32)
+        class_similarity = np.asarray(class_similarities, dtype=np.float32)
+        lesion_similarity = np.asarray(lesion_similarities, dtype=np.float32)
+        if atlas_priors.shape != (classes,) or lesion_similarity.shape != (classes,):
+            raise ValueError("shape_priors and lesion_similarities must have one value per class")
+        if class_similarity.shape != (classes, classes):
+            raise ValueError("class_similarities must have shape (classes, classes)")
+        if not all(np.isfinite(array).all() for array in (atlas_priors, class_similarity, lesion_similarity)):
+            raise ValueError("atlas prior and similarity inputs must be finite")
+        if np.any(atlas_priors < np.float32(0.0)):
+            raise ValueError("shape_priors must be nonnegative")
+    elif any(value is not None for value in (shape_priors, class_similarities, lesion_similarities)):
+        if any(value is None for value in (shape_priors, class_similarities, lesion_similarities)):
+            raise ValueError("shape_priors and class/lesion similarities must be provided together")
+        atlas_priors = np.asarray(shape_priors, dtype=np.float32)
+        class_similarity = np.asarray(class_similarities, dtype=np.float32)
+        lesion_similarity = np.asarray(lesion_similarities, dtype=np.float32)
+        if atlas_priors.shape != (classes,) or lesion_similarity.shape != (classes,):
+            raise ValueError("shape_priors and lesion_similarities must have one value per class")
+        if class_similarity.shape != (classes, classes):
+            raise ValueError("class_similarities must have shape (classes, classes)")
+        if not all(np.isfinite(array).all() for array in (atlas_priors, class_similarity, lesion_similarity)):
+            raise ValueError("atlas prior and similarity inputs must be finite")
+        if np.any(atlas_priors < np.float32(0.0)):
+            raise ValueError("shape_priors must be nonnegative")
+    smoothing_value = np.float32(smoothing)
+    if not np.isfinite(smoothing_value) or smoothing_value <= 0:
+        raise ValueError("smoothing must be finite and positive")
+    zero_value = np.float32(zero)
+    infinity_value = np.float32(infinity)
+    if not np.isfinite(zero_value) or zero_value < 0:
+        raise ValueError("zero must be finite and nonnegative")
+    if not np.isfinite(infinity_value) or infinity_value < 0:
+        raise ValueError("infinity must be finite and nonnegative")
+
+    zero_map = np.zeros(spatial_shape, dtype=np.float32)
+    zero_similarity = np.zeros(classes, dtype=np.float32)
+    lesion_class = types.index("LESION")
+    outmask_class = types.index("OUTMASK")
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, zero_map):
+        x, y, z = neighborhood.coordinate
+        denominator = np.float32(0.0)
+        for k in range(classes):
+            if shapes[x, y, z, k] <= np.float32(0.0):
+                current[x, y, z, k] = np.float32(0.0)
+                if k == lesion_class:
+                    lesion[x, y, z] = np.float32(0.0)
+            else:
+                update = update_lesion_toads_smoothing_energies(
+                    neighborhood.class_memberships,
+                    neighborhood.lesion_memberships,
+                    neighborhood.black_hole_memberships,
+                    class_index=k,
+                    class_type=types[k],
+                    smoothing_prior=float(smoothing_priors_value[k]),
+                    smoothing=float(smoothing_value),
+                    class_energy=0.0,
+                    lesion_energy=0.0,
+                    black_hole_energy=0.0,
+                    class_membership_data_term=float(data[x, y, z, k]),
+                    lesion_membership_data_term=(float(lesion_data[x, y, z]) if k == lesion_class else 0.0),
+                    black_hole_membership_data_term=0.0,
+                    outmask_membership_data_term=(float(outmask_data[x, y, z]) if k == outmask_class else 0.0),
+                )
+                class_term = np.float32(update.class_membership_data_term)
+                lesion_term = np.float32(update.lesion_membership_data_term)
+                outmask_term = np.float32(update.outmask_membership_data_term)
+                if coefficient > np.float32(0.0):
+                    prior_update = update_lesion_toads_prior_energies(
+                        atlas_priors,
+                        class_similarity[k],
+                        lesion_similarity,
+                        zero_similarity,
+                        shapes[x, y, z],
+                        class_index=k,
+                        class_type=types[k],
+                        prior_coefficient=float(coefficient),
+                        class_membership_data_term=float(class_term),
+                        lesion_membership_data_term=float(lesion_term),
+                        black_hole_membership_data_term=0.0,
+                        outmask_membership_data_term=float(outmask_term),
+                        class_energy=0.0,
+                        lesion_energy=0.0,
+                        black_hole_energy=0.0,
+                        has_lesion=True,
+                        lesion_class_index=lesion_class,
+                        lesion_class_type="LESION",
+                    )
+                    class_term = np.float32(prior_update.class_membership_data_term)
+                    lesion_term = np.float32(prior_update.lesion_membership_data_term)
+                    outmask_term = np.float32(prior_update.outmask_membership_data_term)
+                class_membership = convert_lesion_toads_class_membership(
+                    float(class_term), float(shapes[x, y, z, k]), relation_type=relations[k],
+                    zero=float(zero_value), infinity=float(infinity_value),
+                )
+                if k == lesion_class:
+                    lesion_membership = convert_lesion_toads_class_membership(
+                        float(lesion_term), float(shapes[x, y, z, k]), relation_type=relations[k],
+                        zero=float(zero_value), infinity=float(infinity_value),
+                    )
+                    lesion[x, y, z] = lesion_membership
+                if k == outmask_class:
+                    outmask_membership = convert_lesion_toads_class_membership(
+                        float(outmask_term), 1.0, relation_type="direct",
+                        zero=float(zero_value), infinity=float(infinity_value),
+                    )
+                    mixed = update_lesion_toads_outmask_membership(
+                        float(convert_lesion_toads_class_membership(
+                            float(class_term), 1.0, relation_type="direct",
+                            zero=float(zero_value), infinity=float(infinity_value),
+                        )),
+                        float(outmask_membership), float(outlier[x, y, z]),
+                        relation_type=relations[k], shape_prior=float(shapes[x, y, z, k]),
+                    )
+                    current[x, y, z, k] = mixed.class_membership
+                    outlier[x, y, z] = mixed.outlier_membership
+                else:
+                    current[x, y, z, k] = class_membership
+            if k == lesion_class:
+                denominator = np.float32(denominator + lesion[x, y, z])
+            denominator = np.float32(denominator + current[x, y, z, k])
+        if denominator > np.float32(0.0):
+            for k in range(classes):
+                current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)
+                if k == lesion_class:
+                    lesion[x, y, z] = np.float32(lesion[x, y, z] / denominator)
+                elif k == outmask_class:
+                    outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
+    return LesionToadsLesionOutmaskSweepResult(current, lesion, outlier)
 
 
 def convert_lesion_toads_class_membership(
