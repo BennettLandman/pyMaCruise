@@ -478,11 +478,17 @@ This does not cover field correction, Sulcal-CSF/MPRAGE or FLAIR-specific
 PowerTable paths, smoothing, atlas priors, inversion, or normalized
 memberships.
 
-### Started substage: P39v field-corrected data energies
+### Completed substage: P39v field-corrected data energies
 
 Extend the checked unfielded `OBJECT`, `LESION`, and `BLACKHOLE` weighted
 residual formulas to the selected `useField` branches by multiplying each
 channel image by its corresponding bias field before subtracting its
-centroid. Keep Sulcal-CSF/MPRAGE and FLAIR `useLesionWeight` PowerTable
-branches outside this slice. A selected-method Java harness will compare the
-class, lesion, and black-hole accumulators independently in float32.
+centroid. Nine selected-Java cases match class, lesion, and black-hole energy
+accumulator bits across three object types and three synthetic image/field
+vectors. The focused tests report 2 passed; the full suite reports 431 passed
+with two expected RAS warnings in 54.22 seconds on implementation commit
+`c43ba3aaf7f38582dbd087bdb971f0d91bef2ebf`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-field-data-terms.md`](reports/full-pytest-2026-09-29-lesion-toads-field-data-terms.md)
+and [`tests/data/synthetic/lesion_toads_field_data_terms/README.md`](../tests/data/synthetic/lesion_toads_field_data_terms/README.md).
+This excludes special PowerTable handling, smoothing, atlas priors, inversion,
+and membership normalization.
