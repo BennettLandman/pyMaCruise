@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zq have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through the one-LESION-class smoothing branch,
+**Status:** P39 is Started. P39a–P39zr have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION shape-prior handling,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -877,3 +877,19 @@ tests: 3 passed. Full suite: 496 passed with two expected RAS warnings in
 and [`tests/data/synthetic/lesion_toads_lesion_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_sweep/README.md). Atlas priors,
 distance modulation, black-hole and OUTMASK classes, and full segmentation
 remain open.
+
+
+### Completed substage: P39zr OBJECT+LESION shape-prior sweep
+
+The P39zq volume sweep now optionally adds the selected pairwise class-prior
+terms and lesion prior for one LESION class. It preserves the extra lesion
+class contribution to ordinary class priors, lesionSimilarity accumulation,
+source float32 order, shape gating, relation factors, in-place traversal,
+and per-voxel normalization. On the committed 5×4×6 selected-Java formula
+fixture, every interior class and lesion membership bit matches. The
+zero-coefficient path matches P39zq. Focused tests: 4 passed. Full suite: 497
+passed with two expected RAS warnings in 80.45 seconds on implementation
+commit `e6eb60e8a962786343f498fb17e9b95f66673e43`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-prior-sweep.md)
+and [`tests/data/synthetic/lesion_toads_lesion_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_prior_sweep/README.md). Distance
+modulation and other auxiliary class types remain open.
