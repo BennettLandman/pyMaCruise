@@ -335,6 +335,20 @@ The harness is an excerpt of selected constructor formulas and does not
 instantiate the full source class. No membership evolution, topology
 propagation, final lesion segmentation, or plus workflow is validated.
 
+### Started substage: P39q growing-frontier initialization
+
+The selected `initGrowingLabels` resets interior availability according to
+skeleton emptiness, then seeds the min-heap with empty voxels that touch a
+class on one of the six faces. Priorities compose `bestMembership` and
+`maxMembershipRatio` with the voxel's existing ordering value. The lesion and
+black-hole object types fold their separate membership maps into those scores
+unless the optional max mode is enabled. The source's `bestMembership` code
+compares the combined lesion score to its running maximum but stores the
+ordinary membership as the next maximum; preserve this behavior when
+reproducing the selected source. This slice stops at initialized queue and
+availability state; queue events, topology checks, and the iterative
+segmentation remain separate.
+
 ### Started substage: P39p constructor-state initialization
 
 The selected `LesionToadSegmentation` constructor copies the atlas hard

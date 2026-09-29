@@ -66,6 +66,8 @@ P39p has started: isolate constructor-time LesionTOADS segmentation-state initia
 
 **Progress update (2026-09-29):** P39p is complete. The selected-constructor formula harness matches Python's class-index maps, source-order float32 class volumes and centroids, initial zero/one buffers, lesion/no-lesion defaults, distance sentinels, and the Java NaN centroid for an absent class. The focused checks pass (6 tests); the complete suite reports **416 passed in 54.01 seconds**, with two expected RAS warnings, on implementation commit `c2b14be265412e7d011c02402a4f0f3bf4a78131`; see the [P39p full-suite report](docs/reports/full-pytest-2026-09-29-lesion-segmentation-state.md) and [fixture provenance](tests/data/synthetic/lesion_segmentation_state/README.md). This harness covers selected constructor formulas only; it does not validate lesion evolution or segmentation. The roadmap counts 120/134 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39q has started: port the selected LesionTOADS growing-frontier initialization, composing the source min-heap with lesion-specific membership ratios and validating queue contents against a Java formula harness.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
