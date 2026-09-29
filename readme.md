@@ -101,7 +101,9 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39zh is complete. Twelve selected-Java cases match class and outlier membership bits for the direct/prior OUTMASK mixture, including shape-factor saturation and outlier weights from zero through one. The full suite reports **453 passed in 57.68 seconds**, with two expected RAS warnings, on implementation commit `94a919564650fddd882e3cb30ba3dc6763e1a690`; see the [P39zh full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-membership.md) and [formula fixture](tests/data/synthetic/lesion_toads_outmask_membership/README.md). Input energies are already inverted; shared denominator normalization follows in a separate composition step. The roadmap counts 138/153 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
 
-P39zi is Started: integrate direct/prior OUTMASK mixing and outlier-map updates with shared voxel denominator normalization and local energy accumulation.
+**Progress update (2026-09-29):** P39zi is complete. Three selected-Java cases match OUTMASK class membership, outlier-map state, denominator, normalized class memberships, and local energy after direct/prior mixing. They include zero and unit initial outlier weights and repeated updates/divisions from two OUTMASK classes. The full suite reports **454 passed in 56.88 seconds**, with two expected RAS warnings, on implementation commit `899493c1c3999871b5c57f88a5df9a033f8701d9`; see the [P39zi full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-normalization.md) and [formula fixture](tests/data/synthetic/lesion_toads_outmask_normalization/README.md). Input values are preconverted. The roadmap counts 139/154 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
+P39zj is Started: compose lesion or black-hole distance modulation and OUTMASK/outlier mixing with the same voxel's shared denominator and local energy calculation.
 
 The currently implemented CLI entry point supports the implemented stages:
 

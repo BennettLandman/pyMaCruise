@@ -717,9 +717,26 @@ implementation commit `94a919564650fddd882e3cb30ba3dc6763e1a690`. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-membership.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-membership.md)
 and [`tests/data/synthetic/lesion_toads_outmask_membership/README.md`](../tests/data/synthetic/lesion_toads_outmask_membership/README.md).
 
-### Started substage: P39zi OUTMASK normalization integration
+### Completed substage: P39zi OUTMASK normalization integration
 
 Compose the selected direct/prior class/outlier mixture with the shared
 denominator and local-energy loop. Ensure the OUTMASK-written outlier map is
 what normalization consumes; cover one and repeated OUTMASK class visits.
 This uses already converted class/outmask terms and does not compute energies.
+
+Three selected-Java cases match OUTMASK class values, outlier-map state,
+denominator, normalized memberships, and local energy through direct/prior
+mixture and shared normalization. They include zero and unit initial outlier
+weights and two sequential OUTMASK classes. Focused suite: 1 passed; full
+suite: 454 passed with two expected RAS warnings in 56.88 seconds on
+implementation commit `899493c1c3999871b5c57f88a5df9a033f8701d9`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-normalization.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-normalization.md)
+and [`tests/data/synthetic/lesion_toads_outmask_normalization/README.md`](../tests/data/synthetic/lesion_toads_outmask_normalization/README.md).
+
+### Started substage: P39zj lesion/black-hole plus OUTMASK voxel integration
+
+Compose a lesion or black-hole auxiliary map and an OUTMASK/outlier map in
+the same one-voxel denominator and normalization pass. Validate the
+interactions with selected Java cases and preserve class ordering and
+source-specific black-hole ventricle behavior. Memberships/energies begin as
+preconverted scalar inputs.
