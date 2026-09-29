@@ -15,6 +15,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.contracts import ValidatedInputs, WorkflowProfile
+from pymacruise.plus_pipeline import PlusPipelineOptions
 
 LOGGER = logging.getLogger("pymacruise")
 
@@ -30,6 +31,7 @@ class WorkflowConfig:
     output_dir: Path | str
     flair_path: Path | str | None = None
     bias_correction: str = "N4"
+    plus_options: PlusPipelineOptions | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -37,6 +39,13 @@ class WorkflowConfig:
         except ValueError as exc:
             raise ValueError(f"Unsupported workflow profile: {self.profile!r}") from exc
         object.__setattr__(self, "profile", profile)
+        if profile is WorkflowProfile.PLUS:
+            options = self.plus_options or PlusPipelineOptions()
+            if not isinstance(options, PlusPipelineOptions):
+                raise ValueError("plus_options must be PlusPipelineOptions")
+            object.__setattr__(self, "plus_options", options)
+        elif self.plus_options is not None:
+            raise ValueError("plus_options are only valid for the plus profile")
         for name in ("t1_path", "maseg_path", "brain_mask_path", "output_dir"):
             object.__setattr__(self, name, Path(getattr(self, name)))
         if self.flair_path is not None:
@@ -54,6 +63,11 @@ class WorkflowConfig:
 
     def as_dict(self) -> dict[str, Any]:
         result = asdict(self)
+        if self.plus_options is None:
+            # Keep the established base manifest/config schema unchanged.
+            result.pop("plus_options")
+        else:
+            result["plus_options"] = self.plus_options.as_dict()
         return {
             key: (str(value) if isinstance(value, Path) else value.value if isinstance(value, WorkflowProfile) else value)
             for key, value in result.items()

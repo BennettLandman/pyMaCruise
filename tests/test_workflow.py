@@ -51,6 +51,7 @@ def test_noop_workflow_manifest_captures_inputs_config_and_stage_state(tmp_path)
     saved = json.loads(path.read_text())
 
     assert saved["workflow_profile"] == "base"
+    assert "plus_options" not in saved["config"]
     assert saved["source_revision"] == "synthetic-test"
     assert saved["stages"] == {"input_validation": "passed", "pipeline": "not_started"}
     assert saved["inputs"]["t1"]["output_axis_codes"] == ["R", "A", "S"]
@@ -79,6 +80,18 @@ def test_plus_manifest_records_flair_and_signature_changes_with_input(tmp_path) 
     )
     first = create_initial_manifest(config, validated)
     assert set(first["inputs"]) == {"t1", "maseg", "brain_mask", "flair"}
+    assert first["config"]["plus_options"] == {
+        "lesion_toads_output": "dura removal inputs",
+        "lesion_toads_correct": False,
+        "wm_iso_level": 0.5,
+        "gvf_lambda": 0.2,
+        "update_enhance": 0,
+        "generate_intermediate": True,
+        "use_updated_csf_in_ace": 3,
+        "boundary_erosion_method": "3D",
+        "boundary_overlook_labels": [120, 121, 202, 203, 156, 157],
+        "refine_topology_by_maseg": True,
+    }
     changed = nib.Nifti1Image(np.full((4, 4, 4), 3, dtype=np.float32), affine)
     nib.save(changed, paths[0])
     second = create_initial_manifest(config, validated)
