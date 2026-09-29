@@ -11,6 +11,7 @@ from pymacruise.lesion_membership import run_lesion_toads_blackhole_smoothing_sw
 
 REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_blackhole_sweep/java_reference.json"
 PRIOR_REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_blackhole_prior_sweep/java_reference.json"
+DISTANCE_REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_blackhole_distance_sweep/java_reference.json"
 SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
 CLASS_TYPES = ("OBJECT", "BLACKHOLE", "OBJECT")
 RELATIONS = ("direct", "prior", "direct")
@@ -136,3 +137,64 @@ def test_blackhole_prior_sweep_matches_selected_java_volume_reference() -> None:
             smoothing=0.2,
             prior_coefficient=0.3,
         )
+
+
+def test_blackhole_distance_sweep_matches_selected_java_asymmetry() -> None:
+    reference = json.loads(DISTANCE_REFERENCE.read_text())
+    assert reference["source_sha256"] == SOURCE_SHA256
+    shape = tuple(reference["shape"])
+    inputs = _inputs(shape, reference["classes"])
+    memberships, lesion, black_hole, class_data, lesion_data, black_hole_data, shapes = inputs
+    vent = np.full(shape, -1, dtype=np.int8)
+    gm = np.full(shape, -1, dtype=np.int8)
+    brainstem = np.full(shape, -1, dtype=np.int8)
+    for x, y, z in np.ndindex(shape):
+        coordinate_sum = x + y + z
+        if coordinate_sum % 3 == 0:
+            vent[x, y, z] = (x + y) % 4
+        if coordinate_sum % 3 != 0 and (x + 2 * y + z) % 2 == 0:
+            gm[x, y, z] = coordinate_sum % 5
+        if (x + 2 * y + z) % 2 == 0:
+            brainstem[x, y, z] = coordinate_sum % 6
+    before = tuple(value.copy() for value in inputs[:3])
+    results = {}
+    for expected_case in reference["cases"]:
+        gm_flag = expected_case["name"] == "gm_enabled"
+        result = run_lesion_toads_blackhole_smoothing_sweep(
+            *inputs,
+            SMOOTHING_PRIORS,
+            CLASS_TYPES,
+            RELATIONS,
+            smoothing=float(np.asarray(reference["smoothing_bits"], dtype=np.uint32).view(np.float32)),
+            ventricle_distances=vent,
+            gray_matter_distances=gm,
+            brainstem_distances=brainstem,
+            max_ventricle_distance=3,
+            max_gray_matter_distance=4,
+            max_brainstem_distance=5,
+            gm_flag=gm_flag,
+            spread=1.25,
+        )
+        results[expected_case["name"]] = result
+        for expected in expected_case["voxels"]:
+            point = tuple(expected["coordinate"])
+            assert _bits(result.class_memberships[point]) == expected["class_bits"]
+            assert int(np.asarray(result.lesion_membership[point], dtype=np.float32).view(np.uint32)) == expected["lesion_bits"]
+            assert int(np.asarray(result.black_hole_membership[point], dtype=np.float32).view(np.uint32)) == expected["black_hole_bits"]
+
+    no_distance = run_lesion_toads_blackhole_smoothing_sweep(
+        *inputs, SMOOTHING_PRIORS, CLASS_TYPES, RELATIONS, smoothing=0.2
+    )
+    baseline = json.loads(REFERENCE.read_text())
+    for expected in baseline["voxels"]:
+        point = tuple(expected["coordinate"])
+        assert _bits(no_distance.class_memberships[point]) == expected["class_bits"]
+        assert int(np.asarray(no_distance.lesion_membership[point], dtype=np.float32).view(np.uint32)) == expected["lesion_bits"]
+        assert int(np.asarray(no_distance.black_hole_membership[point], dtype=np.float32).view(np.uint32)) == expected["black_hole_bits"]
+    interior = (slice(1, -1), slice(1, -1), slice(1, -1))
+    assert np.any(
+        results["gm_enabled"].black_hole_membership[interior]
+        != results["gm_disabled"].black_hole_membership[interior]
+    )
+    for original, after in zip(before, inputs[:3], strict=True):
+        np.testing.assert_array_equal(original, after)

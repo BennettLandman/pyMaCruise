@@ -679,6 +679,14 @@ def run_lesion_toads_blackhole_smoothing_sweep(
     lesion_similarities: np.ndarray | None = None,
     black_hole_similarities: np.ndarray | None = None,
     prior_coefficient: float = 0.0,
+    ventricle_distances: np.ndarray | None = None,
+    gray_matter_distances: np.ndarray | None = None,
+    brainstem_distances: np.ndarray | None = None,
+    max_ventricle_distance: int = 0,
+    max_gray_matter_distance: int = 0,
+    max_brainstem_distance: int = 0,
+    gm_flag: bool = False,
+    spread: float = 0.0,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsBlackHoleSweepResult:
@@ -688,7 +696,8 @@ def run_lesion_toads_blackhole_smoothing_sweep(
     separate lesion and black-hole data terms, class/auxiliary inversion,
     source denominator order, and per-voxel normalization. Optional
     class/lesion/black-hole atlas priors reuse the selected voxel kernel;
-    black-hole-specific distance modulation remains separate.
+    optional black-hole-specific distance modulation uses the source's
+    ventricle/GM/brainstem asymmetry.
     """
     current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
     lesion = np.asarray(initial_lesion_membership, dtype=np.float32).copy()
@@ -746,6 +755,39 @@ def run_lesion_toads_blackhole_smoothing_sweep(
         raise ValueError("zero must be finite and nonnegative")
     if not np.isfinite(infinity_value) or infinity_value < 0:
         raise ValueError("infinity must be finite and nonnegative")
+
+    maxima = (
+        ("max_ventricle_distance", max_ventricle_distance),
+        ("max_gray_matter_distance", max_gray_matter_distance),
+        ("max_brainstem_distance", max_brainstem_distance),
+    )
+    for name, value in maxima:
+        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)) or not -128 <= int(value) <= 127:
+            raise ValueError(f"{name} must fit a signed byte")
+    if not isinstance(gm_flag, (bool, np.bool_)):
+        raise ValueError("gm_flag must be boolean")
+    spread_value = np.float32(spread)
+    if not np.isfinite(spread_value):
+        raise ValueError("spread must be finite")
+    distance_inputs = (
+        ("ventricle_distances", ventricle_distances, max_ventricle_distance),
+        ("gray_matter_distances", gray_matter_distances, max_gray_matter_distance),
+        ("brainstem_distances", brainstem_distances, max_brainstem_distance),
+    )
+    distance_maps: dict[str, np.ndarray] = {}
+    for name, source, maximum in distance_inputs:
+        if source is None:
+            if maximum != 0:
+                raise ValueError(f"{name} is required when its maximum distance is nonzero")
+            distance_maps[name] = np.full(spatial_shape, -1, dtype=np.int8)
+            continue
+        raw = np.asarray(source)
+        if not np.issubdtype(raw.dtype, np.integer) or raw.shape != spatial_shape:
+            raise ValueError(f"{name} must be an integer map matching the class spatial shape")
+        if np.any(raw < -1) or np.any(raw > 127):
+            raise ValueError(f"{name} values must fit the source -1..127 distance range")
+        distance_maps[name] = np.asarray(raw, dtype=np.int8)
+    use_distances = any(value != 0 for _, value in maxima)
 
     black_hole_class = types.index("BLACKHOLE")
     zero_similarity = np.zeros(classes, dtype=np.float32)
@@ -824,6 +866,30 @@ def run_lesion_toads_blackhole_smoothing_sweep(
                         zero=float(zero_value),
                         infinity=float(infinity_value),
                     )
+                    if use_distances:
+                        shape = np.float32(shapes[x, y, z, k])
+                        lesion_relation = (
+                            np.float32(1.0)
+                            if relations[k] == "direct"
+                            else np.float32(1.0)
+                            if np.float32(1.0) < np.float32(np.float32(2.0) * shape)
+                            else np.float32(np.float32(2.0) * shape)
+                        )
+                        modulated = modulate_lesion_toads_blackhole_memberships_by_distances(
+                            float(lesion[x, y, z]),
+                            float(black_hole[x, y, z]),
+                            float(lesion_relation),
+                            ventricle_distance=int(distance_maps["ventricle_distances"][x, y, z]),
+                            gray_matter_distance=int(distance_maps["gray_matter_distances"][x, y, z]),
+                            brainstem_distance=int(distance_maps["brainstem_distances"][x, y, z]),
+                            max_ventricle_distance=int(max_ventricle_distance),
+                            max_gray_matter_distance=int(max_gray_matter_distance),
+                            max_brainstem_distance=int(max_brainstem_distance),
+                            gm_flag=gm_flag,
+                            spread=float(spread_value),
+                        )
+                        lesion[x, y, z] = modulated.lesion_membership
+                        black_hole[x, y, z] = modulated.black_hole_membership
             if k == black_hole_class:
                 auxiliary_sum = np.float32(lesion[x, y, z] + black_hole[x, y, z])
                 denominator = np.float32(denominator + auxiliary_sum)
