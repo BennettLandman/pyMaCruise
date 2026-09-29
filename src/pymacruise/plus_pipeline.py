@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 import nibabel as nib
+import numpy as np
 
 from pymacruise.ace import ACEImageResult, ace_enhance
 from pymacruise.boundary import (
@@ -17,6 +18,7 @@ from pymacruise.boundary import (
     combine_multi_atlas_toads_images,
     multi_atlas_csf_boundary_image,
 )
+from pymacruise.cropping import CropParameters, uncrop_image
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
 from pymacruise.tgdm import (
     TGDMBaselineParameters,
@@ -85,6 +87,18 @@ class PlusTissueUpdateResult:
     gm: nib.spatialimages.SpatialImage
     wm: nib.spatialimages.SpatialImage
     mask: nib.spatialimages.SpatialImage
+
+
+@dataclass(frozen=True)
+class PlusUncroppedTGDMResult:
+    """Nested TGDM scalar products restored to the full RAS reference grid."""
+
+    initial_level_set: nib.spatialimages.SpatialImage
+    tissue_sign: nib.spatialimages.SpatialImage
+    initial_inner: nib.spatialimages.SpatialImage
+    inner: nib.spatialimages.SpatialImage
+    central: nib.spatialimages.SpatialImage
+    outer: nib.spatialimages.SpatialImage
 
 
 def run_plus_gvf_stage(
@@ -239,3 +253,49 @@ def run_plus_tgdm_stage(
         gvf=gvf,
         parameters=plus_tgdm_parameters(options),
     )
+
+
+def uncrop_plus_tgdm_outputs(
+    result: TGDMMaCRUISEImageResult,
+    crop_parameters: CropParameters,
+) -> PlusUncroppedTGDMResult:
+    """Restore nested TGDM scalar volumes using the selected JIST crop rule.
+
+    ``MaTGDMcrop`` uncrops inner, central, outer, and tissue-sign volumes to
+    the original GM reference grid. The Python adapter also restores the
+    computed initial level set for consistent intermediate provenance. The
+    crop helper preserves the selected compiled-JIST exclusive-maximum behavior.
+    """
+    if not isinstance(result, TGDMMaCRUISEImageResult):
+        raise ValueError("result must be TGDMMaCRUISEImageResult")
+    if not isinstance(crop_parameters, CropParameters):
+        raise ValueError("crop_parameters must be CropParameters")
+    if nib.aff2axcodes(crop_parameters.original_affine) != ("R", "A", "S"):
+        raise ValueError("plus TGDM crop parameters must describe an RAS reference grid")
+
+    expected_crop_affine = np.asarray(crop_parameters.original_affine, dtype=np.float64).copy()
+    translation = np.eye(4)
+    translation[:3, 3] = crop_parameters.offset
+    expected_crop_affine = expected_crop_affine @ translation
+    restored = {}
+    for name in (
+        "initial_level_set",
+        "tissue_sign",
+        "initial_inner",
+        "inner",
+        "central",
+        "outer",
+    ):
+        image = getattr(result, name)
+        if image.shape != crop_parameters.cropped_shape or not np.allclose(
+            image.affine, expected_crop_affine, rtol=0.0, atol=1e-4
+        ):
+            raise ValueError(
+                f"{name} must match the cropped RAS grid described by crop_parameters"
+            )
+        restored[name] = uncrop_image(
+            image,
+            crop_parameters,
+            legacy_exclusive_max=True,
+        )
+    return PlusUncroppedTGDMResult(**restored)
