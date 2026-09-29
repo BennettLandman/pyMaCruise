@@ -263,3 +263,7 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Added minimal package metadata and a geometry-checked generic NIfTI volume operator in `src/pymacruise/volume_ops.py`.
 - The volume operator supports add, subtract, multiply, divide, minimum, and maximum; it rejects mismatched grids rather than implicitly resampling.
 - No output-equivalence validation has been completed yet.
+
+## Recent progress
+
+- Completed P39zm: a streaming adapter extracts source-ordered six-face class/lesion/black-hole memberships for every interior voxel; committed asymmetric synthetic arrays match all Java harness stencil values and preserve unchanged boundary planes. This is neighborhood extraction only, not a volume membership update or segmentation claim. Full suite: 486 passed with 2 expected RAS warnings in 80.05 seconds on `58a3d757e3a8eebb15d7f44cb72f44df416f27d`; see [P39zm report](docs/reports/full-pytest-2026-09-29-lesion-toads-six-face-neighborhood.md).

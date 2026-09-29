@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39s have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39zm have validated bounded preparation, registration, membership-formula, and spatial-neighborhood slices,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -789,3 +789,20 @@ expected RAS warnings in 56.82 seconds on implementation commit
 [full-suite report](reports/full-pytest-2026-09-29-lesion-toads-fielded-data-energy-membership.md)
 and [fixture provenance](../tests/data/synthetic/lesion_toads_fielded_data_energy_membership/README.md).
 This remains scalar integration using precomputed spatial/prior inputs.
+
+
+### Completed substage: P39zm source-ordered six-face neighborhoods
+
+`iter_lesion_toads_six_face_neighborhoods` streams class, lesion, and
+black-hole face values for each interior voxel in the selected VandyCRUISE
+`computeMemberships` x/y/z traversal. Each stencil is ordered X+, X-, Y+,
+Y-, Z+, Z-. Voxels on the outer planes are not yielded, matching the Java
+loop bounds; inputs remain read-only. A Java formula harness and committed
+5×4×6 coordinate-distinct float32 fixture compare every interior coordinate
+and face value exactly. Focused tests: 2 passed. Full suite: 486 passed with
+two expected RAS reorientation warnings in 80.05 seconds on implementation
+commit `58a3d757e3a8eebb15d7f44cb72f44df416f27d`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-six-face-neighborhood.md`](reports/full-pytest-2026-09-29-lesion-toads-six-face-neighborhood.md)
+and [`tests/data/synthetic/lesion_toads_six_face_neighborhood/README.md`](../tests/data/synthetic/lesion_toads_six_face_neighborhood/README.md).
+This validates neighborhood extraction only, not the volume-wide membership
+update or segmentation.
