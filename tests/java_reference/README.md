@@ -69,6 +69,18 @@ outer condition; a separate limit-100 case exercises dynamic rescheduling to
 queue exhaustion. Its output is the synthetic fixture under
 `tests/data/synthetic/toads_thinning_queue_run/`.
 
+
+## Initialized TOADS thinning pass
+
+`ToadsInitializedThinningPassReferenceHarness.java` composes source queue
+initialization, minimum-volume calculation, the Java 18/6 LUT gate, dynamic
+neighbor insertion, and outer-loop evolution on a 12³ synthetic phantom. It
+matches all 1,000 seeded/popped items and final arrays to the Python pass.
+Regenerate with
+`scripts/generate_java_toads_initialized_thinning_pass_reference.sh`; the
+fixture provenance and limits are in
+`tests/data/synthetic/toads_initialized_thinning_pass/README.md`.
+
 ## Source used
 
 `upstream/` contains source copies from the supplied checkouts, with their

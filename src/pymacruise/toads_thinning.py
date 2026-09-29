@@ -407,6 +407,76 @@ class ToadsThinningQueueRun:
     queue: ToadsPriorityHeap4D
 
 
+@dataclass(frozen=True)
+class ToadsThinningPass:
+    """Initialized source thinning state after one complete queue pass."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    class_volumes: NDArray[np.float32]
+    boundary_counts: NDArray[np.int32]
+    minimum_class_volumes: NDArray[np.float32]
+    processed_items: tuple[ToadsHeapItem, ...]
+    queue: ToadsPriorityHeap4D
+
+
+def toads_propagate_thinning(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    relation_matrix: ArrayLike,
+    transformed_shape_values: ArrayLike,
+    volume_ratio: float,
+    limit: float,
+    *,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsThinningPass:
+    """Run source ``initThinningLabels`` and one complete thinning pass.
+
+    The source fixes its absolute minimum class volume at 100 and combines it
+    with ``volume_ratio * initial_volume`` using Java float32 arithmetic.
+    This composes only the exact-membership thinning path; growing and the
+    larger TOADS iteration remain separate.
+    """
+    ratio32 = np.float32(volume_ratio)
+    if not np.isfinite(ratio32):
+        raise ValueError("volume_ratio must be finite and representable as float32")
+    initialized = toads_initialize_thinning_queue(
+        segmentation,
+        memberships,
+        empty_label=empty_label,
+        zero_threshold=zero_threshold,
+    )
+    minimums = np.maximum(
+        np.float32(100.0), np.float32(ratio32 * initialized.class_volumes)
+    ).astype(np.float32, copy=False)
+    run = toads_run_thinning_queue(
+        segmentation,
+        initialized.skeleton,
+        memberships,
+        initialized.available,
+        relation_matrix,
+        transformed_shape_values,
+        initialized.class_volumes,
+        minimums,
+        initialized.queue,
+        limit,
+        empty_label=empty_label,
+        zero_threshold=zero_threshold,
+    )
+    return ToadsThinningPass(
+        run.segmentation,
+        run.skeleton,
+        run.available,
+        run.class_volumes,
+        initialized.boundary_counts,
+        minimums,
+        run.processed_items,
+        run.queue,
+    )
+
+
 def toads_run_thinning_queue(
     segmentation: ArrayLike,
     skeleton: ArrayLike,
