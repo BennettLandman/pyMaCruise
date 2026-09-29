@@ -37,15 +37,21 @@ def test_six_face_smoothing_energy_matches_selected_java_float32() -> None:
             class_type=case["class_type"],
             smoothing_prior=float(_from_bits(case["smoothing_prior_bits"])),
             smoothing=float(_from_bits(case["smoothing_bits"])),
+            class_membership_data_term=float(_from_bits(case["initial_class_data_term_bits"])),
+            lesion_membership_data_term=float(_from_bits(case["initial_lesion_data_term_bits"])),
+            black_hole_membership_data_term=float(_from_bits(case["initial_black_hole_data_term_bits"])),
+            outmask_membership_data_term=float(_from_bits(case["initial_outmask_data_term_bits"])),
             class_energy=float(_from_bits(case["initial_class_energy_bits"])),
             lesion_energy=float(_from_bits(case["initial_lesion_energy_bits"])),
             black_hole_energy=float(_from_bits(case["initial_black_hole_energy_bits"])),
-            outmask_membership_energy=float(_from_bits(case["initial_outmask_energy_bits"])),
         )
+        assert _bits(result.class_membership_data_term) == case["class_data_term_bits"], case
+        assert _bits(result.lesion_membership_data_term) == case["lesion_data_term_bits"], case
+        assert _bits(result.black_hole_membership_data_term) == case["black_hole_data_term_bits"], case
+        assert _bits(result.outmask_membership_data_term) == case["outmask_data_term_bits"], case
         assert _bits(result.class_energy) == case["class_energy_bits"], case
         assert _bits(result.lesion_energy) == case["lesion_energy_bits"], case
         assert _bits(result.black_hole_energy) == case["black_hole_energy_bits"], case
-        assert _bits(result.outmask_membership_energy) == case["outmask_energy_bits"], case
         assert _bits(result.other_class_neighbor_squares) == case["other_class_neighbor_squares_bits"], case
         assert _bits(result.lesion_neighbor_squares) == case["lesion_neighbor_squares_bits"], case
         assert _bits(result.black_hole_neighbor_squares) == case["black_hole_neighbor_squares_bits"], case

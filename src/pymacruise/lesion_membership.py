@@ -40,10 +40,13 @@ class LesionVoxelMembershipNormalization:
 class LesionToadsSmoothingEnergyUpdate:
     """One class/auxiliary energy update from the selected six-face stencil."""
 
+    class_membership_data_term: np.float32
+    lesion_membership_data_term: np.float32
+    black_hole_membership_data_term: np.float32
+    outmask_membership_data_term: np.float32
     class_energy: np.float32
     lesion_energy: np.float32
     black_hole_energy: np.float32
-    outmask_membership_energy: np.float32
     other_class_neighbor_squares: np.float32
     lesion_neighbor_squares: np.float32
     black_hole_neighbor_squares: np.float32
@@ -337,7 +340,10 @@ def update_lesion_toads_smoothing_energies(
     class_energy: float,
     lesion_energy: float,
     black_hole_energy: float,
-    outmask_membership_energy: float,
+    class_membership_data_term: float,
+    lesion_membership_data_term: float,
+    black_hole_membership_data_term: float,
+    outmask_membership_data_term: float,
 ) -> LesionToadsSmoothingEnergyUpdate:
     """Apply one source-ordered six-face smoothing update at a voxel.
 
@@ -384,41 +390,52 @@ def update_lesion_toads_smoothing_energies(
 
     p = np.float32(smoothing_prior)
     smooth = np.float32(smoothing)
+    cls_membership_term = np.float32(class_membership_data_term)
+    lesion_membership_term = np.float32(lesion_membership_data_term)
+    black_hole_membership_term = np.float32(black_hole_membership_data_term)
+    outmask_membership_term = np.float32(outmask_membership_data_term)
     cls_energy = np.float32(class_energy)
     lesion_e = np.float32(lesion_energy)
     black_hole_e = np.float32(black_hole_energy)
-    outmask_e = np.float32(outmask_membership_energy)
 
     all_neighbor_sum = np.float32(other + lesion_sum)
     all_neighbor_sum = np.float32(all_neighbor_sum + black_hole_sum)
     class_full = np.float32(np.float32(p * smooth) * all_neighbor_sum)
     class_half = np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * all_neighbor_sum)
+    cls_membership_term = np.float32(cls_membership_term + class_full)
     cls_energy = np.float32(cls_energy + class_half)
 
     if class_type in {"LESION", "OPTIMIZED_LESION", "BLACKHOLE"}:
         lesion_sum_for_update = np.float32(other + current_sum)
         lesion_sum_for_update = np.float32(lesion_sum_for_update + black_hole_sum)
+        lesion_full = np.float32(np.float32(p * smooth) * lesion_sum_for_update)
         lesion_half = np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * lesion_sum_for_update)
+        lesion_membership_term = np.float32(lesion_membership_term + lesion_full)
         lesion_e = np.float32(lesion_e + lesion_half)
 
     if class_type == "BLACKHOLE":
         black_hole_sum_for_update = np.float32(other + current_sum)
         black_hole_sum_for_update = np.float32(black_hole_sum_for_update + lesion_sum)
+        black_hole_full = np.float32(np.float32(p * smooth) * black_hole_sum_for_update)
         black_hole_half = np.float32(
             np.float32(np.float32(np.float32(np.float32(0.5) * p) * smooth) * black_hole_sum_for_update)
         )
+        black_hole_membership_term = np.float32(black_hole_membership_term + black_hole_full)
         black_hole_e = np.float32(black_hole_e + black_hole_half)
 
     if class_type == "OUTMASK":
         outmask_sum = np.float32(other + lesion_sum)
         outmask_full = np.float32(np.float32(p * smooth) * outmask_sum)
-        outmask_e = np.float32(outmask_e + outmask_full)
+        outmask_membership_term = np.float32(outmask_membership_term + outmask_full)
 
     return LesionToadsSmoothingEnergyUpdate(
+        class_membership_data_term=cls_membership_term,
+        lesion_membership_data_term=lesion_membership_term,
+        black_hole_membership_data_term=black_hole_membership_term,
+        outmask_membership_data_term=outmask_membership_term,
         class_energy=cls_energy,
         lesion_energy=lesion_e,
         black_hole_energy=black_hole_e,
-        outmask_membership_energy=outmask_e,
         other_class_neighbor_squares=other,
         lesion_neighbor_squares=lesion_sum,
         black_hole_neighbor_squares=black_hole_sum,
