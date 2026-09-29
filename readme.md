@@ -79,6 +79,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39w is complete. Six Java `PowerTable` cases match class-energy and narrowed lesion-energy float32 bits exactly, including cached-range and out-of-range powers and both raw and field-corrected FLAIR values. The focused suite also verifies absent-FLAIR fallback and required exponent configuration. The complete suite reports **433 passed in 54.03 seconds**, with two expected RAS warnings, on implementation commit `7ee767ca6c2c498115561ba5f57721e2ef3047e4`; see the [P39w full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-flair-weight.md) and [formula fixture](tests/data/synthetic/lesion_toads_flair_weight/README.md). This remains a data-term slice, before smoothing, priors, inversion, and normalization. The roadmap counts 127/141 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39x is Started: the next source branch handles ordinary `Sulcal-CSF` data energy with MPRAGE PowerTable weighting, direct T1 squared residuals without MPRAGE, and generic channel weighting when T1 is absent. The roadmap counts 127/142 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
