@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39p have validated discrete preparation,
+**Status:** P39 is Started. P39a–P39q have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
@@ -335,6 +335,24 @@ The harness is an excerpt of selected constructor formulas and does not
 instantiate the full source class. No membership evolution, topology
 propagation, final lesion segmentation, or plus workflow is validated.
 
+### Completed substage: P39p constructor-state initialization
+
+`initialize_lesion_toads_segmentation_state` reproduces the selected
+`LesionToadSegmentation` constructor's deterministic template-to-class maps,
+source-order float32 class volumes and image centroids, and initial model
+buffers. A committed 3×2×2 RAS NIfTI fixture compares a selected-constructor
+formula harness for multi-class lesion and no-lesion cases. It checks absent
+class `0/0` centroid NaNs, lesion-class selection, class similarity defaults,
+signed-byte distance sentinels, membership/availability buffers, and identity
+covariances. Six focused tests pass; the full configured suite reports 416
+passed with two expected RAS warnings in 54.01 seconds on implementation
+commit `c2b14be265412e7d011c02402a4f0f3bf4a78131`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-segmentation-state.md`](reports/full-pytest-2026-09-29-lesion-segmentation-state.md)
+and [`tests/data/synthetic/lesion_segmentation_state/README.md`](../tests/data/synthetic/lesion_segmentation_state/README.md).
+The harness is an excerpt of selected constructor formulas and does not
+instantiate the full source class. No membership evolution, topology
+propagation, final lesion segmentation, or plus workflow is validated.
+
 ### Started substage: P39q growing-frontier initialization
 
 The selected `initGrowingLabels` resets interior availability according to
@@ -349,13 +367,19 @@ reproducing the selected source. This slice stops at initialized queue and
 availability state; queue events, topology checks, and the iterative
 segmentation remain separate.
 
-### Started substage: P39p constructor-state initialization
+### Completed substage: P39q growing-frontier initialization
 
-The selected `LesionToadSegmentation` constructor copies the atlas hard
-classification and initializes class-index segmentation/skeleton/relation
-maps, zero memberships and availability, class volumes and image centroids,
-lesion/outlier defaults, distance sentinels, and identity covariance fields.
-The next isolated port will capture these deterministic constructor effects
-from synthetic arrays and a small selected-source Java harness. It will not
-claim membership estimation, topology propagation, lesion evolution, or final
-segmentation behavior.
+`initialize_lesion_toads_growing_frontier` reuses the source-compatible
+min-heap and implements the selected `initGrowingLabels`, `bestMembership`,
+and `maxMembershipRatio` behavior up to queue initialization. Four committed
+7³ Java formula-reference cases match all availability bits and every popped
+queue tuple for additive/max lesion scores, zero ties, and optimized-type
+exclusions. The implementation preserves the source quirk that compares a
+combined lesion score but stores ordinary membership in the running maximum.
+Seven focused tests pass; the full suite reports 423 passed with two expected
+RAS warnings in 53.99 seconds on implementation commit
+`aee53ea15220aade46b83c546a2151f3fcb134e2`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-growing-frontier.md`](reports/full-pytest-2026-09-29-lesion-growing-frontier.md)
+and [`tests/data/synthetic/lesion_growing_frontier/README.md`](../tests/data/synthetic/lesion_growing_frontier/README.md).
+This does not validate queue transitions, topology evolution, or lesion
+segmentation.
