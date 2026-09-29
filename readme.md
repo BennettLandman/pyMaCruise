@@ -56,6 +56,8 @@ Current progress: `run_maCRUISE_v3` at MaCRUISE SVN revision 9360 is selected as
 
 **Roadmap update (2026-09-29):** P39k is complete: the source-order LesionTOADS coefficient reducer matches the selected-Java formula harness for dense and subsampled synthetic scans. The full suite now reports **406 passed in 60.56 seconds** with two expected RAS warnings on implementation commit `0740ef256011c30b225ca1d26ac72251b830d2bc`; see the [P39k report](docs/reports/full-pytest-2026-09-29-lesion-registration-volume.md). The roadmap counts 115/129 rows (~89%) Done, 2 Started, 1 Blocked, and 11 Not started. P39k consumes pre-sampled terms; atlas sampling across the volume and transform optimization remain open.
 
+P39l is now Started to compose the scaled shape sampler with source-ordered volume reduction at fixed transforms and pyramid scales. The roadmap has 130 rows; progress counts will be updated when the step validates.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
