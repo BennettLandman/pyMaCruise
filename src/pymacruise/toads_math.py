@@ -430,6 +430,8 @@ def toads_ordered_membership_sweep(
     smoothing: float,
     prior_factor: float,
     *,
+    prior_inverse_energy: ArrayLike | None = None,
+    prior_objective_energy: ArrayLike | None = None,
     zero_threshold: float = 1e-10,
     infinite_reciprocal: float = 1e10,
 ) -> tuple[NDArray[np.float32], np.float32]:
@@ -440,8 +442,9 @@ def toads_ordered_membership_sweep(
     reads six-face smoothing from the current in-place membership volume,
     adds the half smoothing term to objective energy, applies shape relation
     factors and the source reciprocal/normalization update, and accumulates
-    the objective in source order. It omits topology-admissibility checks and
-    does not generate data, PSF, or atlas-prior energy terms.
+    the objective in source order. Optional atlas inverse-prior and objective
+    terms are added after smoothing and before reciprocal conversion. It
+    omits topology-admissibility checks and does not generate data or PSF terms.
     """
     energies = np.asarray(data_energy, dtype=np.float32)
     initial = np.asarray(initial_memberships, dtype=np.float32)
@@ -462,6 +465,18 @@ def toads_ordered_membership_sweep(
     factors, suppressed = toads_shape_relation_factors(shape_priors, closest_labels, prior_factor)
     if factors.shape != energies.shape:
         raise ValueError("shape_priors must match data_energy grid and class count")
+    if (prior_inverse_energy is None) != (prior_objective_energy is None):
+        raise ValueError("prior inverse and objective energy must be provided together")
+    if prior_inverse_energy is None:
+        prior_num = None
+        prior_objective = None
+    else:
+        prior_num = np.asarray(prior_inverse_energy, dtype=np.float32)
+        prior_objective = np.asarray(prior_objective_energy, dtype=np.float32)
+        if prior_num.shape != energies.shape or not np.isfinite(prior_num).all():
+            raise ValueError("prior_inverse_energy must be finite and match data_energy")
+        if prior_objective.shape != energies.shape or not np.isfinite(prior_objective).all():
+            raise ValueError("prior_objective_energy must be finite and match data_energy")
 
     updated = initial.copy()
     total_objective = np.float32(0.0)
@@ -498,6 +513,11 @@ def toads_ordered_membership_sweep(
                     if suppressed[x, y, z, class_index]:
                         value = np.float32(0.0)
                     else:
+                        if prior_num is not None:
+                            num = np.float32(num + prior_num[x, y, z, class_index])
+                            objective_value = np.float32(
+                                objective_value + prior_objective[x, y, z, class_index]
+                            )
                         reciprocal = (
                             np.float32(np.float32(1.0) / num)
                             if num > threshold
