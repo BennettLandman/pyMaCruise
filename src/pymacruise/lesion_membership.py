@@ -130,6 +130,16 @@ class LesionToadsLesionOutmaskSweepResult:
     outlier_membership: np.ndarray
 
 
+@dataclass(frozen=True)
+class LesionToadsBlackHoleOutmaskSweepResult:
+    """Class, lesion, black-hole, and outlier maps after a combined sweep."""
+
+    class_memberships: np.ndarray
+    lesion_membership: np.ndarray
+    black_hole_membership: np.ndarray
+    outlier_membership: np.ndarray
+
+
 def iter_lesion_toads_six_face_neighborhoods(
     class_memberships: np.ndarray,
     lesion_memberships: np.ndarray,
@@ -1350,6 +1360,258 @@ def run_lesion_toads_lesion_outmask_smoothing_sweep(
                 elif k == outmask_class:
                     outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
     return LesionToadsLesionOutmaskSweepResult(current, lesion, outlier)
+
+
+def run_lesion_toads_blackhole_outmask_smoothing_sweep(
+    initial_class_memberships: np.ndarray,
+    initial_lesion_membership: np.ndarray,
+    initial_black_hole_membership: np.ndarray,
+    initial_outlier_membership: np.ndarray,
+    class_data_terms: np.ndarray,
+    lesion_data_terms: np.ndarray,
+    black_hole_data_terms: np.ndarray,
+    outmask_data_terms: np.ndarray,
+    shape_values: np.ndarray,
+    smoothing_priors: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    relation_types: tuple[str, ...] | list[str],
+    *,
+    smoothing: float,
+    shape_priors: np.ndarray | None = None,
+    class_similarities: np.ndarray | None = None,
+    lesion_similarities: np.ndarray | None = None,
+    black_hole_similarities: np.ndarray | None = None,
+    prior_coefficient: float = 0.0,
+    ventricle_distances: np.ndarray | None = None,
+    gray_matter_distances: np.ndarray | None = None,
+    brainstem_distances: np.ndarray | None = None,
+    max_ventricle_distance: int = 0,
+    max_gray_matter_distance: int = 0,
+    max_brainstem_distance: int = 0,
+    gm_flag: bool = False,
+    spread: float = 0.0,
+    zero: float = 1.0e-10,
+    infinity: float = 1.0e10,
+) -> LesionToadsBlackHoleOutmaskSweepResult:
+    """Sweep OBJECT, BLACKHOLE, and OUTMASK classes with shared auxiliaries.
+
+    This composes the selected class, lesion, black-hole, and OUTMASK energy
+    updates in source order, applies BLACKHOLE distance rules after inversion,
+    then normalizes all memberships by the shared voxel denominator.
+    """
+    current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
+    lesion = np.asarray(initial_lesion_membership, dtype=np.float32).copy()
+    black_hole = np.asarray(initial_black_hole_membership, dtype=np.float32).copy()
+    outlier = np.asarray(initial_outlier_membership, dtype=np.float32).copy()
+    data = np.asarray(class_data_terms, dtype=np.float32)
+    lesion_data = np.asarray(lesion_data_terms, dtype=np.float32)
+    black_hole_data = np.asarray(black_hole_data_terms, dtype=np.float32)
+    outmask_data = np.asarray(outmask_data_terms, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    if current.ndim != 4 or any(size < 3 for size in current.shape[:3]) or current.shape[3] == 0:
+        raise ValueError("initial_class_memberships must have shape (x, y, z, classes), with spatial sizes >= 3")
+    spatial_shape = current.shape[:3]
+    classes = current.shape[3]
+    types = tuple(class_types)
+    relations = tuple(relation_types)
+    if len(types) != classes or types.count("BLACKHOLE") != 1 or types.count("OUTMASK") != 1 or any(
+        kind not in {"OBJECT", "BLACKHOLE", "OUTMASK"} for kind in types
+    ):
+        raise ValueError("class_types must contain OBJECT classes and exactly one BLACKHOLE and one OUTMASK class")
+    if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
+        raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
+    if data.shape != current.shape or shapes.shape != current.shape:
+        raise ValueError("class_data_terms and shape_values must match initial_class_memberships shape")
+    if any(array.shape != spatial_shape for array in (lesion, black_hole, outlier, lesion_data, black_hole_data, outmask_data)):
+        raise ValueError("auxiliary membership and data maps must match the class spatial shape")
+    smooth_prior = np.asarray(smoothing_priors, dtype=np.float32)
+    if smooth_prior.shape != (classes,) or not np.isfinite(smooth_prior).all() or np.any(smooth_prior < 0):
+        raise ValueError("smoothing_priors must be finite nonnegative values, one per class")
+    if not all(np.isfinite(array).all() for array in (current, lesion, black_hole, outlier, data, lesion_data, black_hole_data, outmask_data, shapes)):
+        raise ValueError("membership, data-term, and shape arrays must be finite")
+    coefficient = np.float32(prior_coefficient)
+    if not np.isfinite(coefficient) or coefficient < np.float32(0.0):
+        raise ValueError("prior_coefficient must be finite and nonnegative")
+    atlas_priors = class_similarity = lesion_similarity = black_hole_similarity = None
+    prior_inputs = (shape_priors, class_similarities, lesion_similarities, black_hole_similarities)
+    if coefficient > np.float32(0.0) and any(value is None for value in prior_inputs):
+        raise ValueError("shape priors and all class/auxiliary similarities are required for a positive prior_coefficient")
+    if any(value is not None for value in prior_inputs):
+        if any(value is None for value in prior_inputs):
+            raise ValueError("shape priors and all class/auxiliary similarities must be provided together")
+        atlas_priors = np.asarray(shape_priors, dtype=np.float32)
+        class_similarity = np.asarray(class_similarities, dtype=np.float32)
+        lesion_similarity = np.asarray(lesion_similarities, dtype=np.float32)
+        black_hole_similarity = np.asarray(black_hole_similarities, dtype=np.float32)
+        if atlas_priors.shape != (classes,) or lesion_similarity.shape != (classes,) or black_hole_similarity.shape != (classes,):
+            raise ValueError("shape priors and auxiliary similarities must have one value per class")
+        if class_similarity.shape != (classes, classes):
+            raise ValueError("class_similarities must have shape (classes, classes)")
+        if not all(np.isfinite(array).all() for array in (atlas_priors, class_similarity, lesion_similarity, black_hole_similarity)):
+            raise ValueError("atlas prior and similarity inputs must be finite")
+        if np.any(atlas_priors < np.float32(0.0)):
+            raise ValueError("shape_priors must be nonnegative")
+    smoothing_value = np.float32(smoothing)
+    if not np.isfinite(smoothing_value) or smoothing_value <= 0:
+        raise ValueError("smoothing must be finite and positive")
+    zero_value = np.float32(zero)
+    infinity_value = np.float32(infinity)
+    if not np.isfinite(zero_value) or zero_value < 0:
+        raise ValueError("zero must be finite and nonnegative")
+    if not np.isfinite(infinity_value) or infinity_value < 0:
+        raise ValueError("infinity must be finite and nonnegative")
+
+    maxima = (
+        ("max_ventricle_distance", max_ventricle_distance),
+        ("max_gray_matter_distance", max_gray_matter_distance),
+        ("max_brainstem_distance", max_brainstem_distance),
+    )
+    for name, value in maxima:
+        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)) or not -128 <= int(value) <= 127:
+            raise ValueError(f"{name} must fit a signed byte")
+    if not isinstance(gm_flag, (bool, np.bool_)):
+        raise ValueError("gm_flag must be boolean")
+    spread_value = np.float32(spread)
+    if not np.isfinite(spread_value):
+        raise ValueError("spread must be finite")
+    distance_inputs = (
+        ("ventricle_distances", ventricle_distances, max_ventricle_distance),
+        ("gray_matter_distances", gray_matter_distances, max_gray_matter_distance),
+        ("brainstem_distances", brainstem_distances, max_brainstem_distance),
+    )
+    distance_maps: dict[str, np.ndarray] = {}
+    for name, source, maximum in distance_inputs:
+        if source is None:
+            if maximum != 0:
+                raise ValueError(f"{name} is required when its maximum distance is nonzero")
+            distance_maps[name] = np.full(spatial_shape, -1, dtype=np.int8)
+            continue
+        raw = np.asarray(source)
+        if not np.issubdtype(raw.dtype, np.integer) or raw.shape != spatial_shape:
+            raise ValueError(f"{name} must be an integer map matching the class spatial shape")
+        if np.any(raw < -1) or np.any(raw > 127):
+            raise ValueError(f"{name} values must fit the source -1..127 distance range")
+        distance_maps[name] = np.asarray(raw, dtype=np.int8)
+    use_distances = any(value != 0 for _, value in maxima)
+
+    black_hole_class = types.index("BLACKHOLE")
+    outmask_class = types.index("OUTMASK")
+    zero_similarity = np.zeros(classes, dtype=np.float32)
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
+        x, y, z = neighborhood.coordinate
+        denominator = np.float32(0.0)
+        for k in range(classes):
+            if shapes[x, y, z, k] <= np.float32(0.0):
+                current[x, y, z, k] = np.float32(0.0)
+                if k == black_hole_class:
+                    lesion[x, y, z] = np.float32(0.0)
+                    black_hole[x, y, z] = np.float32(0.0)
+            else:
+                update = update_lesion_toads_smoothing_energies(
+                    neighborhood.class_memberships,
+                    neighborhood.lesion_memberships,
+                    neighborhood.black_hole_memberships,
+                    class_index=k,
+                    class_type=types[k],
+                    smoothing_prior=float(smooth_prior[k]),
+                    smoothing=float(smoothing_value),
+                    class_energy=0.0,
+                    lesion_energy=0.0,
+                    black_hole_energy=0.0,
+                    class_membership_data_term=float(data[x, y, z, k]),
+                    lesion_membership_data_term=(float(lesion_data[x, y, z]) if k == black_hole_class else 0.0),
+                    black_hole_membership_data_term=(float(black_hole_data[x, y, z]) if k == black_hole_class else 0.0),
+                    outmask_membership_data_term=(float(outmask_data[x, y, z]) if k == outmask_class else 0.0),
+                )
+                class_term = np.float32(update.class_membership_data_term)
+                lesion_term = np.float32(update.lesion_membership_data_term)
+                black_hole_term = np.float32(update.black_hole_membership_data_term)
+                outmask_term = np.float32(update.outmask_membership_data_term)
+                if coefficient > np.float32(0.0):
+                    prior_update = update_lesion_toads_prior_energies(
+                        atlas_priors,
+                        class_similarity[k],
+                        lesion_similarity,
+                        black_hole_similarity,
+                        shapes[x, y, z],
+                        class_index=k,
+                        class_type=types[k],
+                        prior_coefficient=float(coefficient),
+                        class_membership_data_term=float(class_term),
+                        lesion_membership_data_term=float(lesion_term),
+                        black_hole_membership_data_term=float(black_hole_term),
+                        outmask_membership_data_term=float(outmask_term),
+                        class_energy=0.0,
+                        lesion_energy=0.0,
+                        black_hole_energy=0.0,
+                        has_lesion=True,
+                        lesion_class_index=black_hole_class,
+                        lesion_class_type="BLACKHOLE",
+                    )
+                    class_term = np.float32(prior_update.class_membership_data_term)
+                    lesion_term = np.float32(prior_update.lesion_membership_data_term)
+                    black_hole_term = np.float32(prior_update.black_hole_membership_data_term)
+                    outmask_term = np.float32(prior_update.outmask_membership_data_term)
+                current[x, y, z, k] = convert_lesion_toads_class_membership(
+                    float(class_term), float(shapes[x, y, z, k]), relation_type=relations[k],
+                    zero=float(zero_value), infinity=float(infinity_value),
+                )
+                if k == black_hole_class:
+                    lesion[x, y, z] = convert_lesion_toads_class_membership(
+                        float(lesion_term), float(shapes[x, y, z, k]), relation_type=relations[k],
+                        zero=float(zero_value), infinity=float(infinity_value),
+                    )
+                    black_hole[x, y, z] = convert_lesion_toads_class_membership(
+                        float(black_hole_term), float(shapes[x, y, z, k]), relation_type=relations[k],
+                        zero=float(zero_value), infinity=float(infinity_value),
+                    )
+                    if use_distances:
+                        shape = np.float32(shapes[x, y, z, k])
+                        lesion_relation = (
+                            np.float32(1.0) if relations[k] == "direct"
+                            else np.float32(1.0) if np.float32(1.0) < np.float32(np.float32(2.0) * shape)
+                            else np.float32(np.float32(2.0) * shape)
+                        )
+                        modulated = modulate_lesion_toads_blackhole_memberships_by_distances(
+                            float(lesion[x, y, z]), float(black_hole[x, y, z]), float(lesion_relation),
+                            ventricle_distance=int(distance_maps["ventricle_distances"][x, y, z]),
+                            gray_matter_distance=int(distance_maps["gray_matter_distances"][x, y, z]),
+                            brainstem_distance=int(distance_maps["brainstem_distances"][x, y, z]),
+                            max_ventricle_distance=int(max_ventricle_distance),
+                            max_gray_matter_distance=int(max_gray_matter_distance),
+                            max_brainstem_distance=int(max_brainstem_distance),
+                            gm_flag=gm_flag, spread=float(spread_value),
+                        )
+                        lesion[x, y, z] = modulated.lesion_membership
+                        black_hole[x, y, z] = modulated.black_hole_membership
+                if k == outmask_class:
+                    outmask_membership = convert_lesion_toads_class_membership(
+                        float(outmask_term), 1.0, relation_type="direct",
+                        zero=float(zero_value), infinity=float(infinity_value),
+                    )
+                    mixed = update_lesion_toads_outmask_membership(
+                        float(convert_lesion_toads_class_membership(
+                            float(class_term), 1.0, relation_type="direct",
+                            zero=float(zero_value), infinity=float(infinity_value),
+                        )),
+                        float(outmask_membership), float(outlier[x, y, z]),
+                        relation_type=relations[k], shape_prior=float(shapes[x, y, z, k]),
+                    )
+                    current[x, y, z, k] = mixed.class_membership
+                    outlier[x, y, z] = mixed.outlier_membership
+            if k == black_hole_class:
+                auxiliary_sum = np.float32(lesion[x, y, z] + black_hole[x, y, z])
+                denominator = np.float32(denominator + auxiliary_sum)
+            denominator = np.float32(denominator + current[x, y, z, k])
+        if denominator > np.float32(0.0):
+            for k in range(classes):
+                current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)
+                if k == black_hole_class:
+                    lesion[x, y, z] = np.float32(lesion[x, y, z] / denominator)
+                    black_hole[x, y, z] = np.float32(black_hole[x, y, z] / denominator)
+                elif k == outmask_class:
+                    outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
+    return LesionToadsBlackHoleOutmaskSweepResult(current, lesion, black_hole, outlier)
 
 
 def convert_lesion_toads_class_membership(
