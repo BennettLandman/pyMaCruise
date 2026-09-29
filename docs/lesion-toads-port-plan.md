@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zz have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zza have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK and BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1043,10 +1043,25 @@ and
 This validates selected routing, not full LesionTOADS equivalence.
 
 
-### Started substage: P39zza BLACKHOLE+OUTMASK volume composition
+### Completed substage: P39zza BLACKHOLE+OUTMASK volume composition
 
-Compose the validated BLACKHOLE and OUTMASK class updates in one
-source-ordered pass. Preserve lesion and black-hole auxiliary updates,
-OUTMASK blending, atlas priors, distance behavior, and shared voxel
-normalization. Compare all four memberships to a selected Java harness on a
-committed synthetic volume.
+The combined BLACKHOLE+OUTMASK volume adapter reproduces source-ordered
+updates for either class ordering. Separate lesion/black-hole smoothing,
+class and auxiliary atlas priors, the OUTMASK-only neighbor term, asymmetric
+BLACKHOLE distance modulation, outlier blending, and shared normalization all
+match two committed Java formula fixtures bit-for-bit for every interior
+membership. Focused suite: 11 passed. Full suite: 515 passed with two
+expected RAS warnings in 77.35 seconds on implementation commit
+`1c89071df616d47135f2ee5c1690e36259815309`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-outmask-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-outmask-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_blackhole_outmask_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_outmask_sweep/README.md).
+This remains selected formula validation, not whole-engine equivalence.
+
+
+### Started substage: P39zzb three-auxiliary volume composition
+
+Compose LESION, BLACKHOLE, and OUTMASK classes in one source-ordered volume
+sweep. Preserve distinct LESION and BLACKHOLE smoothing/prior equations,
+distance-map behavior, OUTMASK blending, shared map updates, and denominator
+normalization under multiple atlas class orders.
