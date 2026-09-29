@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zx have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and OBJECT+OUTMASK smoothing/blending/prior/normalization,
+**Status:** P39 is Started. P39a–P39zy have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK smoothing/blending/prior/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1003,3 +1003,31 @@ Preserve source ordering when the LESION auxiliary map is added to the
 denominator before the class term, then the OUTMASK update blends and replaces
 the outlier map before normalization. Distance modulation remains a separate
 follow-on slice.
+
+
+### Completed substage: P39zy combined LESION+OUTMASK volume sweep
+
+The new `run_lesion_toads_lesion_outmask_smoothing_sweep` composes ordinary
+OBJECT classes, one LESION class and its auxiliary map, and one OUTMASK class
+with its outlier map in a single source-ordered pass. It combines six-face
+smoothing, class and lesion atlas priors, direct/prior relations, OUTMASK
+blending, shape gating, and shared denominator normalization. The committed
+synthetic Java formula fixture matches every interior class, lesion, and
+outlier float32 membership bit; boundaries are preserved, caller inputs remain
+unchanged, and a zero prior coefficient reproduces the combined control.
+Focused tests: 11 passed. Full suite: 509 passed with two expected RAS
+warnings in 76.82 seconds on implementation commit
+`c712c2ab983aa406d1983619b7c08ea4e446ba19`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-outmask-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-outmask-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md).
+This validates one selected composed membership branch, not the full
+iterative LesionTOADS engine. Distance modulation remains a separate step.
+
+
+### Started substage: P39zz combined lesion-distance routing
+
+Route the selected ventricle-first, optional GM fallback, and independent
+brainstem distance rules through the combined LESION+OUTMASK update, keeping
+the outlier blend and shared normalization in the same pass. The control case
+without distance maps must reproduce P39zy exactly.
