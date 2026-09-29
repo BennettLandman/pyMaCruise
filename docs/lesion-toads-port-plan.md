@@ -797,7 +797,9 @@ This remains scalar integration using precomputed spatial/prior inputs.
 black-hole face values for each interior voxel in the selected VandyCRUISE
 `computeMemberships` x/y/z traversal. Each stencil is ordered X+, X-, Y+,
 Y-, Z+, Z-. Voxels on the outer planes are not yielded, matching the Java
-loop bounds; inputs remain read-only. A Java formula harness and committed
+loop bounds. This helper never writes its inputs; the selected Java update
+mutates membership arrays during its x/y/z traversal, so an eventual volume
+update must explicitly preserve that in-place scan behavior. A Java formula harness and committed
 5×4×6 coordinate-distinct float32 fixture compare every interior coordinate
 and face value exactly. Focused tests: 2 passed. Full suite: 486 passed with
 two expected RAS reorientation warnings in 80.05 seconds on implementation
