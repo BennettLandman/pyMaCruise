@@ -18,7 +18,11 @@ from pymacruise.boundary import (
     multi_atlas_csf_boundary_image,
 )
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
-from pymacruise.tgdm import TGDMBaselineParameters
+from pymacruise.tgdm import (
+    TGDMBaselineParameters,
+    TGDMMaCRUISEImageResult,
+    tgdm_nested_images,
+)
 from pymacruise.topology import TopologyCorrectionResult, topology_correct
 
 
@@ -206,3 +210,32 @@ def run_plus_tissue_update_stage(
         gm_confident_level=0.001,
     )
     return PlusTissueUpdateResult(gm=gm, wm=wm, mask=mask)
+
+
+def run_plus_tgdm_stage(
+    corrected_level_set: nib.spatialimages.SpatialImage,
+    white_matter: nib.spatialimages.SpatialImage,
+    gray_matter: nib.spatialimages.SpatialImage,
+    ace_gray_matter: nib.spatialimages.SpatialImage,
+    ace_thin_skeleton: nib.spatialimages.SpatialImage,
+    gvf: nib.spatialimages.SpatialImage,
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> TGDMMaCRUISEImageResult:
+    """Run the plus nested-surface stage on its selected cropped RAS products.
+
+    The MaCRUISEplus wrapper supplies corrected level-set, updated tissue,
+    MaACE-enhanced GM and thin skeleton, and the plus GVF field to its TGDM
+    wrapper. This adapter routes those existing inputs and selected
+    `WMIsoLevel` settings; output inverse-cropping belongs to the runner.
+    """
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    return tgdm_nested_images(
+        corrected_level_set,
+        white_matter,
+        gray_matter,
+        ace_gray_matter,
+        ace_skeleton=ace_thin_skeleton,
+        gvf=gvf,
+        parameters=plus_tgdm_parameters(options),
+    )
