@@ -462,6 +462,22 @@ and [`tests/data/synthetic/lesion_toads_similarity/README.md`](../tests/data/syn
 This validates coefficient setup only; voxelwise membership estimation and
 lesion segmentation remain open.
 
+### Completed substage: P39u unfielded data energies
+
+`compute_lesion_toads_unfielded_data_energies` reproduces the selected
+`OBJECT`, `LESION`, and `BLACKHOLE` weighted squared-residual accumulators for
+one voxel, before inversion, priors, or membership normalization. Nine
+selected-Java cases compare all three output energy bits across three types
+and three synthetic intensity vectors. The implementation preserves the
+Java left-to-right float32 multiplication order. Two focused tests pass; the
+full suite reports 429 passed with two expected RAS warnings in 54.25 seconds
+on implementation commit `c69df55991a468279f1e31b213cb64783f910f24`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-data-terms.md`](reports/full-pytest-2026-09-29-lesion-toads-data-terms.md)
+and [`tests/data/synthetic/lesion_toads_data_terms/README.md`](../tests/data/synthetic/lesion_toads_data_terms/README.md).
+This does not cover field correction, Sulcal-CSF/MPRAGE or FLAIR-specific
+PowerTable paths, smoothing, atlas priors, inversion, or normalized
+memberships.
+
 ### Started substage: P39u unfielded data energies
 
 Port only the source's unfielded weighted squared-residual terms for generic
