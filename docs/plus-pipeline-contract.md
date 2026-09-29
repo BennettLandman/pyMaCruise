@@ -15,7 +15,7 @@ ported by the settings object.
 | `ErodeMethod` | `3D` | `boundary_erosion_method` | Select 3D boundary erosion. |
 | `OverLookLabels` | `120,121,202,203,156,157` | `boundary_overlook_labels` | Labels passed to boundary construction. |
 | `update_Enhance` | `0` | `update_enhance` | Disable enhancement update. |
-| `WMIsoLevel` | `0.5` | `wm_iso_level` | White-matter level passed to the plus surface path. |
+| `WMIsoLevel` | `0.5` | `wm_iso_level` | `plus_tgdm_parameters` maps this to `TGDMBaselineParameters.white_matter_iso` while preserving the remaining baseline values. See the [P40d parameter-routing report](reports/full-pytest-2026-09-29-plus-wm-isolevel-routing.md). |
 | `GVF_Lambda` | `0.2` | `gvf_lambda` | `run_plus_gvf_stage` forwards this value to `generalized_gvf_image` with the source wrapper's 200-iteration maximum and no vector normalization. See the [P40c parameter-routing report](reports/full-pytest-2026-09-29-plus-gvf-routing.md). |
 | `IfGenerateIntermediate` | `true` | `generate_intermediate` | Request intermediate output files in the selected source workflow. |
 | `NewCSFfile` | output of boundary cleaning | not a scalar option | Supplies the updated CSF/boundary input to ACE. |

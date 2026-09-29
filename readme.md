@@ -115,6 +115,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P40c is complete. `run_plus_gvf_stage` forwards the selected lambda 0.2 and 200-iteration maximum to the existing RAS GVF adapter, retaining the wrapper’s unnormalized vector output. The committed 13³ anisotropic synthetic image confirms exact agreement with a direct call at lambda 0.2 and a distinct result from the base default lambda 1.0. Focused plus tests: 12 passed. Full suite: **467 passed in 66.01 seconds**, with two expected RAS warnings, on implementation commit `595db90207125764b4b427bac6702aa1cc928ab3`; see the [P40c report](docs/reports/full-pytest-2026-09-29-plus-gvf-routing.md) and [fixture](tests/data/synthetic/plus_gvf/README.md). The solver remains the existing SciPy CG adapter; this validates parameter routing only. The roadmap counts 145/159 rows (~91%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+**Progress update (2026-09-29):** P40d is complete. `plus_tgdm_parameters` maps the MaCRUISEplus `WMIsoLevel=0.5` to the existing TGDM parameter and preserves all other selected defaults; a nondefault synthetic setting proves the mapping. Focused plus/TGDM tests: 29 passed. The full suite reports **468 passed in 57.98 seconds**, with two expected RAS warnings, on implementation commit `cef0c45023013c3fd5ba0d51a9ceec2ecc0a8510`; see the [P40d report](docs/reports/full-pytest-2026-09-29-plus-wm-isolevel-routing.md) and [source mapping](docs/plus-pipeline-contract.md). This validates option routing, not surface-output equivalence. The roadmap counts 146/160 rows (~91%) Done, 2 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
