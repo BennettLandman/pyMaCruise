@@ -296,6 +296,129 @@ def run_lesion_toads_object_membership_sweep(
     return current
 
 
+def run_lesion_toads_object_prior_membership_sweep(
+    initial_class_memberships: np.ndarray,
+    class_data_terms: np.ndarray,
+    shape_values: np.ndarray,
+    shape_priors: np.ndarray,
+    class_similarities: np.ndarray,
+    smoothing_priors: np.ndarray,
+    relation_types: tuple[str, ...] | list[str],
+    *,
+    smoothing: float,
+    prior_coefficient: float,
+    zero: float = 1.0e-10,
+    infinity: float = 1.0e10,
+) -> np.ndarray:
+    """Sweep ordinary OBJECT classes with source shape-prior energy terms.
+
+    This keeps the P39zo restrictions (direct object classes and no lesion or
+    auxiliary maps) while adding the selected pairwise atlas prior. Shape
+    values and class relations are caller-supplied per voxel/class; the source
+    class-prior coefficients are a fixed class-by-class matrix. Memberships
+    are updated and normalized in place on a private copy in x/y/z order.
+    """
+    current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
+    data = np.asarray(class_data_terms, dtype=np.float32)
+    shapes = np.asarray(shape_values, dtype=np.float32)
+    if current.ndim != 4 or any(size < 3 for size in current.shape[:3]) or current.shape[3] == 0:
+        raise ValueError("initial_class_memberships must have shape (x, y, z, classes), with spatial sizes >= 3")
+    spatial_shape = current.shape[:3]
+    classes = current.shape[3]
+    if data.shape != current.shape or shapes.shape != current.shape:
+        raise ValueError("class_data_terms and shape_values must match initial_class_memberships shape")
+    relations = tuple(relation_types)
+    if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
+        raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
+    priors = np.asarray(shape_priors, dtype=np.float32)
+    similarities = np.asarray(class_similarities, dtype=np.float32)
+    smoothing_values = np.asarray(smoothing_priors, dtype=np.float32)
+    if priors.shape != (classes,) or smoothing_values.shape != (classes,):
+        raise ValueError("shape_priors and smoothing_priors must have one value per class")
+    if similarities.shape != (classes, classes):
+        raise ValueError("class_similarities must have shape (classes, classes)")
+    if not all(np.isfinite(array).all() for array in (current, data, shapes, priors, similarities, smoothing_values)):
+        raise ValueError("membership, term, and prior arrays must be finite")
+    if np.any(priors < 0) or np.any(smoothing_values < 0):
+        raise ValueError("shape and smoothing priors must be nonnegative")
+    smoothing_value = np.float32(smoothing)
+    coefficient = np.float32(prior_coefficient)
+    if not np.isfinite(smoothing_value) or smoothing_value <= 0:
+        raise ValueError("smoothing must be finite and positive")
+    if not np.isfinite(coefficient) or coefficient < 0:
+        raise ValueError("prior_coefficient must be finite and nonnegative")
+
+    zero_value = np.float32(zero)
+    infinity_value = np.float32(infinity)
+    if not np.isfinite(zero_value) or zero_value < 0:
+        raise ValueError("zero must be finite and nonnegative")
+    if not np.isfinite(infinity_value) or infinity_value < 0:
+        raise ValueError("infinity must be finite and nonnegative")
+    lesion = np.zeros(spatial_shape, dtype=np.float32)
+    black_hole = np.zeros(spatial_shape, dtype=np.float32)
+    zero_similarity = np.zeros(classes, dtype=np.float32)
+
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
+        x, y, z = neighborhood.coordinate
+        denominator = np.float32(0.0)
+        for k in range(classes):
+            shape = shapes[x, y, z]
+            if shape[k] <= np.float32(0.0):
+                current[x, y, z, k] = np.float32(0.0)
+                continue
+            update = update_lesion_toads_smoothing_energies(
+                neighborhood.class_memberships,
+                neighborhood.lesion_memberships,
+                neighborhood.black_hole_memberships,
+                class_index=k,
+                class_type="OBJECT",
+                smoothing_prior=float(smoothing_values[k]),
+                smoothing=float(smoothing_value),
+                class_energy=0.0,
+                lesion_energy=0.0,
+                black_hole_energy=0.0,
+                class_membership_data_term=float(data[x, y, z, k]),
+                lesion_membership_data_term=0.0,
+                black_hole_membership_data_term=0.0,
+                outmask_membership_data_term=0.0,
+            )
+            class_term = np.float32(update.class_membership_data_term)
+            if coefficient > np.float32(0.0):
+                prior_update = update_lesion_toads_prior_energies(
+                    priors,
+                    similarities[k],
+                    zero_similarity,
+                    zero_similarity,
+                    shape,
+                    class_index=k,
+                    class_type="OBJECT",
+                    prior_coefficient=float(coefficient),
+                    class_membership_data_term=float(class_term),
+                    lesion_membership_data_term=0.0,
+                    black_hole_membership_data_term=0.0,
+                    outmask_membership_data_term=0.0,
+                    class_energy=0.0,
+                    lesion_energy=0.0,
+                    black_hole_energy=0.0,
+                    has_lesion=False,
+                    lesion_class_index=0,
+                    lesion_class_type="LESION",
+                )
+                class_term = np.float32(prior_update.class_membership_data_term)
+            current[x, y, z, k] = convert_lesion_toads_class_membership(
+                float(class_term),
+                float(shape[k]),
+                relation_type=relations[k],
+                zero=float(zero_value),
+                infinity=float(infinity_value),
+            )
+            denominator = np.float32(denominator + current[x, y, z, k])
+        if denominator > np.float32(0.0):
+            for k in range(classes):
+                current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)
+    return current
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
