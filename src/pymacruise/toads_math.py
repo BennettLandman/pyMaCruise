@@ -986,3 +986,64 @@ def toads_optimized_membership_pass(
         prior_inverse_energy=prior_inverse,
         prior_objective_energy=prior_objective,
     )
+
+
+def toads_optimized_tissue_iteration(
+    image_values: ArrayLike,
+    initial_memberships: ArrayLike,
+    centroids: ArrayLike,
+    exponent_by_channel_class: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    segmentation: ArrayLike,
+    transformed_shape_values: ArrayLike,
+    closest_labels: ArrayLike,
+    atlas_shape_priors: ArrayLike,
+    smoothing_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    prior_coefficient: float,
+    centroid_smoothness: float,
+    *,
+    intensity_field: ArrayLike | None = None,
+    psf_ridge: float = 0.0,
+    prior_scale: float = 0.05,
+) -> tuple[NDArray[np.float32], np.float32, NDArray[np.float32]]:
+    """Run one optimized-tissue centroid-then-membership iteration.
+
+    This follows the selected main-loop ordering in
+    ``AlgorithmMultipleToads``: update damped centroids from current
+    memberships, then recompute image and prior terms and update memberships
+    using those centroids. It composes the validated selected three-class
+    primitives; thinning, field optimization, atlas deformation, stopping,
+    topology admissibility, and non-optimized object types are not included.
+    Returns ``(memberships, objective, updated_centroids)``.
+    """
+    updated_centroids = toads_optimized_centroid_update(
+        image_values,
+        initial_memberships,
+        centroids,
+        exponent_by_channel_class,
+        centroid_smoothness,
+        intensity_field=intensity_field,
+    )
+    memberships, objective = toads_optimized_membership_pass(
+        image_values,
+        initial_memberships,
+        updated_centroids,
+        exponent_by_channel_class,
+        modality_weights,
+        class_variance_weights,
+        segmentation,
+        transformed_shape_values,
+        closest_labels,
+        atlas_shape_priors,
+        smoothing_priors,
+        smoothing,
+        prior_factor,
+        prior_coefficient,
+        intensity_field=intensity_field,
+        psf_ridge=psf_ridge,
+        prior_scale=prior_scale,
+    )
+    return memberships, objective, updated_centroids

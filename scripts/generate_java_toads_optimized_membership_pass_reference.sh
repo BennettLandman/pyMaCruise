@@ -12,3 +12,9 @@ java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness false 0.0 > "$o
 java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness false 0.2 > "$output_dir/java_reference_field_off_psf_on.json"
 java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness true 0.0 > "$output_dir/java_reference_field_on_psf_off.json"
 java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness true 0.2 > "$output_dir/java_reference_field_on_psf_on.json"
+
+# Selected source loop order: recompute damped centroids, then memberships.
+java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness false 0.0 true > "$output_dir/java_iteration_field_off_psf_off.json"
+java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness false 0.2 true > "$output_dir/java_iteration_field_off_psf_on.json"
+java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness true 0.0 true > "$output_dir/java_iteration_field_on_psf_off.json"
+java -cp "$classes" ToadsOptimizedMembershipPassReferenceHarness true 0.2 true > "$output_dir/java_iteration_field_on_psf_on.json"

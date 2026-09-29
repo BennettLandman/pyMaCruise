@@ -8,7 +8,7 @@ public final class ToadsOptimizedMembershipPassReferenceHarness {
     private static final float[] SMOOTH_PRIOR={0.5f,0.8f,1.1f};
     private static final float[] ATLAS_PRIOR={0.2f,0.35f,0.45f};
     private static final float[] MODALITY_WEIGHT={1.0f,0.75f,0.5f};
-    private static final float[][] CENTROIDS={{0.64f,0.62f,0.81f},{0.35f,0.55f,0.72f},{0.18f,0.70f,0.88f}};
+    private static float[][] CENTROIDS={{0.64f,0.62f,0.81f},{0.35f,0.55f,0.72f},{0.18f,0.70f,0.88f}};
     private static final float[][] EXPONENTS={{0.8f,1.0f,1.0f},{1.0f,1.0f,1.0f},{1.0f,1.0f,1.0f}};
     private static final String SEGMENTATION_SHA="63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884";
     private static float image(int x,int y,int z,int c) { return ((11*x+7*y+5*z+3*c)%101)/100.0f; }
@@ -24,6 +24,25 @@ public final class ToadsOptimizedMembershipPassReferenceHarness {
         else label=(x+2*y+z+1)%4;
         return label<CLASSES?label:-1;
     }
+    private static float[][] updateCentroids(boolean useField) {
+        PowerTable[][] tables=new PowerTable[NC][CLASSES];
+        for(int c=0;c<NC;c++) for(int k=0;k<CLASSES;k++)
+            tables[c][k]=new PowerTable(0.0f,4.0f,0.000001f,EXPONENTS[c][k]);
+        float[][] updated=new float[NC][CLASSES];
+        for(int c=0;c<NC;c++) for(int k=0;k<CLASSES;k++) {
+            float num=0.0f,den=0.0f,old=CENTROIDS[c][k];
+            for(int x=1;x<NX-1;x++) for(int y=1;y<NY-1;y++) for(int z=1;z<NZ-1;z++) {
+                float img=useField?field(x,y,z,c)*image(x,y,z,c):image(x,y,z,c);
+                float residual=img-old,dist=residual*residual,factor=1.0f;
+                if(dist>ZERO) factor=(float)(tables[c][k].lookup((double)dist,(double)EXPONENTS[c][k])/dist);
+                float mem=membership(x,y,z,k),weight=factor*mem*mem;
+                num+=weight*img; den+=weight;
+            }
+            updated[c][k]=den>0.0f?(1.0f-0.1f)*num/den+0.1f*old:old;
+        }
+        return updated;
+    }
+    private static void flattenCentroids(float[][] values) { flatten2(values); }
     private static float[][] imageVariance(boolean useField) {
         float[] inverse=new float[NC], stddev=new float[NC]; float sum=0.0f;
         for(int c=0;c<NC;c++) {
@@ -147,6 +166,8 @@ public final class ToadsOptimizedMembershipPassReferenceHarness {
     public static void main(String[] args) {
         boolean useField=args.length==0||Boolean.parseBoolean(args[0]);
         float ridge=args.length<2?0.2f:Float.parseFloat(args[1]);
+        boolean updateCenters=args.length>2&&Boolean.parseBoolean(args[2]);
+        if(updateCenters) CENTROIDS=updateCentroids(useField);
         float[][][] memberships=new float[NX][NY][NZ];
         float[][][][] initial=new float[NX][NY][NZ][CLASSES];
         for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<CLASSES;k++)initial[x][y][z][k]=membership(x,y,z,k);
@@ -175,7 +196,8 @@ public final class ToadsOptimizedMembershipPassReferenceHarness {
             }
             if(den>0.0f)for(int k=0;k<CLASSES;k++){int idx=((x*NY+y)*NZ+z)*CLASSES+k;flat[idx]=flat[idx]/den;if(!suppressed[k])objective+=energy[k]*flat[idx]*flat[idx];}
         }
-        System.out.print("{\"source\":\"MultipleToadSegmentation.computeExactMemberships optimized tissue one-pass formula composition\",");
+        System.out.print("{\"source\":\""+(updateCenters?"MultipleToadSegmentation main-loop optimized tissue centroid-then-membership formula composition":"MultipleToadSegmentation.computeExactMemberships optimized tissue one-pass formula composition")+"\",");
+        if(updateCenters){System.out.print("\"centroids\":");flattenCentroids(CENTROIDS);System.out.print(",\"power_table_source_sha256\":\"2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae\",");}
         System.out.print("\"segmentation_source_sha256\":\""+SEGMENTATION_SHA+"\",\"use_field\":"+useField+",\"shape\":[7,6,5,3],\"psf_ridge\":"+Float.toString(ridge)+",\"prior_coefficient\":0.15,");
         System.out.print("\"image_variance_weights\":");printArray(variances[0]);System.out.print(",\"image_stddev\":");printArray(variances[1]);
         System.out.print(",\"class_standard_deviations\":");flatten2(deviations);System.out.print(",\"similarity\":[");for(int k=0;k<CLASSES;k++){if(k>0)System.out.print(',');printArray(similarity[k]);}System.out.print(']');

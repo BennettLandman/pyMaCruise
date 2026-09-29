@@ -20,3 +20,16 @@ Regenerate with
 
 This validates one small optimized-tissue membership pass only. It is not a
 complete TOADS segmentation or topology-constrained evolution run.
+
+
+## One-iteration references
+
+The `java_iteration_*.json` references extend the same phantom with the
+selected `AlgorithmMultipleToads` iteration order: update damped centroids
+from current memberships using the actual `PowerTable`, then recompute the
+image/prior terms and execute the optimized-tissue membership sweep. Four
+references cover multiplicative field on/off crossed with PSF ridge on/off.
+These are formula-harness checks for one selected three-class iteration, not a
+full segmentation, thinning, topology, field-optimization, or atlas-deformation
+run. Regenerate both the pass and iteration references with the script named
+above.
