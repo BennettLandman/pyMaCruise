@@ -239,6 +239,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 
 ### 2026-09-29
 
+- Completed P40g: the MaCRUISEplus boundary stage now routes configured overlooked labels through the selected 3D boundary helper and applies the TOADS-WM cleanup rule. The committed synthetic RAS fixture confirms the configured label changes the raw boundary, WM voxels above 0.01 are removed, and both products match direct helper composition. Full suite: 475 passed in 57.23 seconds on `7741bb27db7be5a3d51c9adda9c510fb0c1d452c`; see [P40g report](docs/reports/full-pytest-2026-09-29-plus-boundary-routing.md).
+
 - Completed P39e's descriptor-ordered loading of all 13 bundled LesionTOADS shape-prior maps from `.nii.gz`; 3D/dimension checks, immutable float32 outputs, source structure order, aliases, and non-RAS warnings are covered. This does not include registration or transformed-prior interpolation.
 - Built a headless harness from the selected topology Java sources and corrected the Python component counting, source max-tree ties, threshold-stop fill, and float32 arithmetic. Five topology fixtures now match all 3,807 output voxels and all 4,648 traced queue pops, including 1,511 critical-candidate decisions. See [topology comparison report](docs/reports/topology-correction-java-comparison-2026-09-29.md).
 - Full suite: 394 passed in 62.95 seconds on `5bb92b79c3a80e6fd57bebfc2b6c10505e99db20`; see [the topology matrix report](docs/reports/full-pytest-2026-09-29-topology-matrix.md).
