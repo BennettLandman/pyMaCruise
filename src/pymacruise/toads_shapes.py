@@ -1,4 +1,11 @@
-"""Source-shaped sampling of TOADS atlas membership priors."""
+"""Source-shaped sampling of TOADS atlas membership priors.
+
+This supplies the statistical-atlas shape-prior term used alongside tissue
+likelihoods in the framework of Bazin & Pham (2008). The transform, bounds,
+interpolation, and clipping details are ported from the selected VandyCRUISE
+source, so this sampling kernel is not evidence of the paper's full method or
+of segmentation equivalence. See ``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

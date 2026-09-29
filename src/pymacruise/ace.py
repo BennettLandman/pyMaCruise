@@ -3,6 +3,15 @@
 Source anchors include Blake Lucas's VandyCRUISE `AnisotropicDiffusion`,
 `Morphology`, and `CleanACE`, and Yuankai Huo's MaACE workflow adapter.
 Upstream notices are preserved under `licenses/upstream/`.
+
+The method-level context is Tosun et al. (2004), §"Anatomically consistent
+enhancement": a CSF-weighted Eikonal distance places a separating skeleton
+between close sulcal banks, then GM membership is removed at that skeleton.
+Huo et al. (2016), §2.3.1, extends the speed with a multi-atlas cortical-
+boundary prior. The selected V3 adapter represented here uses the source-
+specific CSF merge and thresholds described below; it does not accept or
+compute Huo et al.'s separate ``mu_boundary`` field. See
+``docs/papers/ace-maace.md`` for the paper-to-code mapping and scope limit.
 """
 
 from __future__ import annotations
@@ -62,7 +71,12 @@ def ace_seed_fields(
     *,
     intensity_threshold: float = 126.9,
 ) -> ACESeedFields:
-    """Port MaACE's membership thresholds and initial CSF speed mask."""
+    """Build source-specific fuzzy CSF seeds and the ACE-prohibited region.
+
+    The 30/210/254 thresholds, 18-neighbor WM closing, and square-root CSF
+    speed initialization are selected VandyCRUISE adapter behavior. They are
+    not formulas specified by Tosun et al. (2004) or Huo et al. (2016).
+    """
     gray = np.asarray(gray_matter, dtype=np.float32)
     white = np.asarray(white_matter, dtype=np.float32)
     phi = np.asarray(signed_distance, dtype=np.float32)
@@ -161,7 +175,14 @@ def ace_update_speed(
     multi_atlas_csf: np.ndarray | None = None,
     gaussian_alpha: float = 1.8,
 ) -> np.ndarray:
-    """Apply V3 after-diffusion CSF merge and ACE speed-function blur."""
+    """Apply the selected V3 CSF merge, then form ACE's weighted-distance speed.
+
+    The ``1 - 0.9 * csf`` speed is the conventional ACE rule in Tosun et al.
+    (2004), Eq. (3), and Huo et al. (2016), Eq. (6). The selected V3 wrapper
+    first promotes positive multi-atlas CSF values to speed seed value 1 after
+    diffusion. This input is atlas-CSF data, not Huo et al.'s distinct
+    multi-atlas cortical-boundary prior ``mu_boundary`` from Eq. (7).
+    """
     csf = np.asarray(diffused_csf, dtype=np.float32).copy()
     if csf.ndim != 3 or not np.isfinite(csf).all():
         raise ValueError("diffused_csf must be a finite 3D array")
@@ -171,8 +192,9 @@ def ace_update_speed(
             raise ValueError("multi-atlas CSF must share the diffused CSF grid")
         if not np.isfinite(updated).all():
             raise ValueError("multi-atlas CSF must be finite")
-        # The selected wrapper uses Merge (option 0) after diffusion: any
-        # positive atlas CSF sets the initial speed function to one.
+        # Selected MaACE adapter behavior: Merge (option 0) after diffusion
+        # promotes any positive atlas-CSF voxel to one. This is not the
+        # separate cortical-label-boundary prior in Huo et al. (2016), Eq. (7).
         csf[updated > 0] = 1.0
     speed = 1.0 - 0.9 * csf
     return ace_gaussian_blur(speed, gaussian_alpha)
@@ -299,12 +321,15 @@ def ace_enhance_arrays(
     gaussian_alpha: float = 1.8,
     diffusion_iterations: int = 25,
 ) -> ACEArrayResult:
-    """Run the selected V3 MaACE enhancement path on aligned 3D arrays.
+    """Run the selected V3 ACE/MaACE enhancement path on aligned 3D arrays.
 
     Inputs must already use the same RAS voxel grid; the NIfTI-facing wrapper
     performs orientation normalization and emits output images in a later API
     layer. Updated multi-atlas CSF follows the selected V3 after-diffusion
-    merge setting.
+    merge setting. The conceptual ACE operation follows the weighted-distance
+    skeleton and GM-separation method of Tosun et al. (2004), while Huo et al.'s
+    separate multi-atlas boundary-prior term is not an input to this adapter;
+    see ``docs/papers/ace-maace.md``.
     """
     gray = np.asarray(gray_matter, dtype=np.float32)
     white = np.asarray(white_matter, dtype=np.float32)
@@ -329,6 +354,10 @@ def ace_enhance_arrays(
     else:
         atlas_csf = None
 
+    # V3 source initializes its level set from threshold - WM intensity. This
+    # is a wrapper-specific approximation to the paper's stated 0.5 WM-
+    # membership interface because this API receives source gray/white
+    # channels rather than a normalized WM membership map.
     initial_phi = _signed_distance_fmm(intensity_threshold - white, 1000.0)
     seeds = ace_seed_fields(gray, white, initial_phi, intensity_threshold=intensity_threshold)
     guide = ace_gaussian_blur(initial_phi, gaussian_alpha)
@@ -350,11 +379,17 @@ def ace_enhance_arrays(
         inner_steps=10,
         curvature_threshold=5.0,
     )
+    # Propagate from the source-initialized WM interface with the ACE
+    # CSF-weighted speed. No separate multi-atlas label-boundary map is
+    # constructed or consumed here; see the scope note in docs/papers.
     weighted_distance, _ = _distance_and_characteristic_fmm(evolved_phi, speed)
 
     dx, dy, dz = _central_gradient_mirror(weighted_distance)
     magnitude = np.sqrt(dx * dx + dy * dy + dz * dz) * speed
     eligible = (weighted_distance > 0.25) & ~seeds.prohibited_region
+    # This gradient/shock threshold and component cleanup produce the
+    # separating-skeleton support in the selected V3 implementation. Those
+    # voxels are used below to open the digital GM gap described by ACE.
     memberships = np.zeros(gray.shape, dtype=np.int32)
     selected = eligible & (magnitude < 0.85)
     memberships[selected] = np.trunc(254.0 * (magnitude[selected] + 0.05)).astype(np.int32)
@@ -367,6 +402,9 @@ def ace_enhance_arrays(
     from pymacruise.skeleton import thin_ace
 
     thinned_memberships = thin_ace(memberships)
+    # The adapter returns enhanced GM plus a binary CSF/skeleton product. This
+    # API does not expose a fuzzy CSF map with removed GM values explicitly
+    # accumulated into it, as in the paper's conceptual membership update.
     enhanced = gray.copy()
     enhanced[memberships > 0] = 0.0
     border = np.zeros(gray.shape, dtype=bool)
@@ -719,7 +757,14 @@ def narrow_band_ace(
 def _distance_and_characteristic_fmm(
     level_set: np.ndarray, speed: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Port VandyCRUISE's speed-weighted distance/characteristic fast march."""
+    """Compute the CSF-weighted Eikonal travel time and characteristic field.
+
+    This implements the weighted-distance core described for ACE by Tosun et
+    al. (2004), Eq. (2), and extended by Huo et al. (2016), Eq. (5). Its speed
+    field is supplied by :func:`ace_update_speed`. The selected implementation
+    uses VandyCRUISE's six-neighbor FMM, including characteristic bookkeeping;
+    it is not a general-purpose or independently substituted FMM routine.
+    """
     phi = np.asarray(level_set, dtype=np.float32)
     velocity = np.asarray(speed, dtype=np.float32)
     if phi.ndim != 3 or phi.shape != velocity.shape:

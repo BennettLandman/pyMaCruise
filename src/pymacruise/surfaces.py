@@ -107,6 +107,12 @@ def extract_levelset_surface(
         raise ValueError("Level-set does not cross the requested iso-level")
 
     try:
+        # The triangulator is scikit-image's Cython port of Lewiner et al.'s
+        # ambiguity-resolving Marching Cubes 33 implementation. The preceding
+        # near-zero perturbation is retained from the Java source and is not a
+        # step prescribed by Lewiner et al. Nor does this API expose the
+        # source's separate 18-connectivity setting: exact JIST
+        # IsoSurfaceOnGrid topology/geometry remains a tracked substitution risk.
         index_vertices, faces, _normals, _values = marching_cubes(
             shifted,
             level=0.0,
@@ -117,6 +123,9 @@ def extract_levelset_surface(
     except (RuntimeError, ValueError) as exc:
         raise ValueError(f"Could not extract level-set surface: {exc}") from exc
 
+    # scikit-image returns array-index coordinates in input-axis order. Applying
+    # the complete normalized NIfTI affine here implements the RAS+ millimetre
+    # output contract, including oblique orientation and voxel spacing.
     affine = ras_image.affine
     vertices = index_vertices @ affine[:3, :3].T + affine[:3, 3]
     faces = np.asarray(faces, dtype=np.int64)

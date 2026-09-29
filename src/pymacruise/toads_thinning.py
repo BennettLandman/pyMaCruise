@@ -5,6 +5,12 @@ Pierre-Louis Bazin), especially ``initGrowingLabels``,
 ``initThinningLabels``, and ``propagateThinning``. See synthetic
 Java-reference reports for source hashes, matched slices, and known limits;
 this module is not a complete TOADS port.
+
+Paper context: heap-ordered object thinning/growing and topology-constrained
+label changes implement components of the multiple-object fast-marching and
+topology-preserving strategy (Bazin & Pham, 2007, 2008). Queue transitions
+follow the selected Java source; the current validated slices do not establish
+full-volume convergence or full TOADS behavior. See ``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

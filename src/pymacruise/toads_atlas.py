@@ -1,4 +1,11 @@
-"""Read and preflight the selected source TOADS atlas descriptor and assets."""
+"""Read and preflight the selected source TOADS atlas descriptor and assets.
+
+The statistical shape-prior and topology-template roles of these assets follow
+the atlas framework in Bazin & Pham (2008). Parsing, file ordering, and stored
+metadata are governed by the selected VandyCRUISE descriptor/source contract;
+loading the assets does not itself perform TOADS segmentation. See
+``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

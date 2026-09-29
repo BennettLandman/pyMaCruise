@@ -4,6 +4,12 @@ These helpers operate on arrays already normalized to the caller's RAS grid.
 The ``orientation_signs`` argument preserves the source MIPAV axis-direction
 factors; it is not a NIfTI orientation detector. Coordinates and dimensions use
 the selected Java ``[x][y][z]`` convention, with channels leading for images.
+
+Paper context: crop/pad and topology-template resampling are setup operations
+for the atlas-driven multiple-object workflow discussed by Bazin & Pham (2008).
+Their concrete bounds and coordinate conventions follow the selected Java
+wrapper and atlas source, not a standalone prescription in the paper. See
+``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

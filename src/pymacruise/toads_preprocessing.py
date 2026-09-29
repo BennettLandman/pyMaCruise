@@ -1,4 +1,10 @@
-"""Source-derived intensity preparation for the selected TOADS workflow."""
+"""Source-derived intensity preparation for the selected TOADS workflow.
+
+Paper context: robust intensity normalization supports the tissue-classification
+stage described by Bazin & Pham (2007, 2008); the concrete histogram bins and
+iteration order here follow the selected Java ``ImageFunctions`` source, not a
+formula inferred from those papers. See ``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

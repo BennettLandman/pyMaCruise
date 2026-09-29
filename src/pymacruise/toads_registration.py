@@ -1,4 +1,11 @@
-"""Source-ordered operations for TOADS rigid atlas registration."""
+"""Source-ordered operations for TOADS rigid atlas registration.
+
+Atlas registration is one component of the combined classification and
+topology-preserving framework in Bazin & Pham (2007, 2008). These kernels
+implement selected rigid exact-membership objective, derivatives, and line
+search behavior from VandyCRUISE; they do not implement the papers' complete
+segmentation workflow. See ``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

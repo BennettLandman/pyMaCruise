@@ -1,4 +1,10 @@
-"""ANTsPy N4 correction with the selected V3 command-line defaults."""
+"""ANTsPy N4 correction with the selected V3 command-line defaults.
+
+The N4 estimation algorithm is provided by ANTsPy/ANTs; this module adapts
+image geometry, wrapper-selected parameters, and output metadata rather than
+reimplementing the method (Tustison et al., 2010; see
+``docs/papers/n4.md``).
+"""
 
 from __future__ import annotations
 
@@ -75,8 +81,16 @@ def n4_bias_correct(
     if not np.any(values > 0):
         raise ValueError("N4 input must contain at least one positive intensity")
 
+    # The source wrapper invokes the ANTs CLI without specifying a mask or
+    # algorithm parameters. These values reproduce that wrapper's CLI defaults
+    # while overriding ANTsPy's different tolerance default; they are workflow
+    # settings, not numerical values prescribed by the N4 paper. The N4
+    # histogram/spline estimation itself is delegated to ANTsPy.
     ants, ants_image = _nib_to_ants(normalized)
     try:
+        # Invoke the published N4 bias-estimation implementation through the
+        # ANTsPy API: the paper's iterative intensity correction and smooth
+        # B-spline bias-field model are in ANTs, not duplicated here.
         corrected = ants.n4_bias_field_correction(
             ants_image,
             mask=None,

@@ -5,6 +5,12 @@ This module ports only the small capped distance-to-mask primitive from
 It is not a LesionTOADS implementation or evidence of segmentation
 equivalence. The source uses six-connected voxel steps, not physical distances.
 
+Paper context: topology-preserving segmentation is a central part of the
+method described by Shiee et al. (2010), but this helper is only one selected
+VandyCRUISE distance-support routine. It does not implement the paper's
+topological atlas, fast-marching evolution, or lesion segmentation. See
+``docs/papers/lesion-toads.md`` for this distinction.
+
 Arrays use ``(x, y, z)`` index order, matching the Java source's
 ``boolean[x][y][z]`` layout. Callers are responsible for providing arrays in
 the source algorithm's RAS-oriented voxel order.

@@ -1,4 +1,11 @@
-"""Selected VandyCRUISE multi-label 18/6 homeomorphism gate."""
+"""Selected VandyCRUISE multi-label 18/6 homeomorphism gate.
+
+This local accept/reject check implements the digital-topology constraint in
+the homeomorphic atlas framework of Bazin & Pham (2008), with connectivity and
+relation iteration following the selected VandyCRUISE source. It is a
+neighborhood predicate, not a whole segmentation implementation or proof that
+the resulting volume is homeomorphic. See ``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

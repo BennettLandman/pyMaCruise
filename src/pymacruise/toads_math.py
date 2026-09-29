@@ -1,4 +1,11 @@
-"""Small numerical helpers for source-compatible TOADS likelihoods."""
+"""Small numerical helpers for source-compatible TOADS likelihoods.
+
+The intensity likelihood, memberships, and atlas relation factors are the
+classification/shape-prior components of Bazin & Pham's TOADS framework
+(2007, 2008). This module's optimized tissue path follows selected
+VandyCRUISE Java operations; matching those primitives is not evidence that
+the complete published algorithm is implemented. See ``docs/papers/toads.md``.
+"""
 
 from __future__ import annotations
 

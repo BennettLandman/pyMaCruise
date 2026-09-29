@@ -8,6 +8,12 @@ membership path. Values are evaluated as float32 in source iteration order.
 Source anchor: ``toads-cruise/src/edu/jhmi/rad/medic/methods/MultipleToadPreprocess.java``
 (March 2007; Pierre-Louis Bazin). The selected wrapper/driver path and revision
 are recorded in ``docs/toads-port-plan.md`` and ``docs/assets-and-dependencies.md``.
+
+Paper context: the centroid and reciprocal-distance membership initialization
+feeds the statistical tissue-classification framework of Bazin & Pham (2007,
+2008). Its precise equations and edge behavior below are taken from the selected
+Java source; this initializer alone is not the paper's TOADS method.
+See ``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

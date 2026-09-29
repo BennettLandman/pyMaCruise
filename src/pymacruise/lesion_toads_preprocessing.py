@@ -4,6 +4,13 @@ Source anchor: ``toads-cruise/src/edu/jhmi/rad/medic/methods/LesionToadPreproces
 (March 2007; Pierre-Louis Bazin). The adapter and algorithm revision details
 are recorded in ``docs/toads-port-plan.md`` and ``docs/assets-and-dependencies.md``.
 
+Paper context: Shiee et al. (2010) describe Lesion-TOADS as multichannel,
+statistical-atlas segmentation with a lesion class. This helper covers only
+the source-derived intensity normalization and initial lesion/black-hole
+centroid values used to prepare that model; it does not implement the paper's
+iterative segmentation. See ``docs/papers/lesion-toads.md`` for the paper-to-
+code boundary and the selected-source-version caveat.
+
 The source ``LesionToadPreprocess`` constructor clamps negative channel values
 to zero, estimates robust bounds independently per channel, and
 ``normalizeImages`` divides values by the robust span without subtracting the

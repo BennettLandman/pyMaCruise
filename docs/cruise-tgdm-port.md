@@ -8,6 +8,12 @@ That adapter uses the MaCRUISE `MaGenericTGDM` copy of the VandyCRUISE
 contract is useful for source cross-checks but is not the selected wrapper.
 Visualization and mesh extraction are separate roadmap items.
 
+Published algorithm context and the code crosswalks are recorded separately
+for [CRUISE](papers/cruise.md) and
+[topology-preserving TGDM](papers/tgdm.md). The papers explain the methods;
+the selected MaCRUISE/VandyCRUISE source revisions remain the behavior
+authority for this port.
+
 ## Standalone crop-space wrapper defaults
 
 `run_TGDMinvcrop_jist.m` supplies membership input, tracking `Off`, all three

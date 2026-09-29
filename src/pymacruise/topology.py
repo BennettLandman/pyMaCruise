@@ -1,5 +1,12 @@
 """Native Python port of VandyCRUISE's 3D (6,18) topology correction.
 
+Method context: the scalar-field, critical-point and fast-marching approach is
+described by Bazin & Pham (2007); see ``docs/papers/topology-fast-marching.md``
+for a code-to-paper map. This is not Han et al.'s graph-based GTCA: no graph
+construction, cut direction, or multiscale graph optimization is performed
+here. The concrete connectivity and numeric defaults below come from the
+selected VandyCRUISE adapter, rather than being universal paper parameters.
+
 Source anchors are the topology implementation by Pierre-Louis Bazin and
 Blake Lucas in VandyCRUISE's `TopologyCorrection`, `TopologyPropagation`, and
 `NeighborConnectivity`, plus the Vanderbilt MaCRUISE adapters. Their supplied
@@ -29,6 +36,9 @@ _OBJECT = 80
 
 _FOREGROUND_6 = ndimage.generate_binary_structure(3, 1)
 _BACKGROUND_18 = ndimage.generate_binary_structure(3, 2)
+# Adapter-selected complementary digital connectivities. The paper describes
+# enforcing a requested topology; the (6,18) pair is the VandyCRUISE/MaCRUISE
+# configuration reproduced here, not a fixed parameter of every application.
 
 
 @dataclass(frozen=True)
@@ -44,7 +54,9 @@ def topology_numbers_618(neighborhood: np.ndarray) -> tuple[int, int]:
 
     ``neighborhood`` is a boolean 3x3x3 block around a candidate voxel. Its
     center is excluded from both counts, as in VandyCRUISE's
-    `NeighborConnectivity` implementation.
+    `NeighborConnectivity` implementation. These local component counts are
+    the discrete regularity test used by the fast-marching propagation. They
+    are not Han et al.'s graph-based GTCA criterion.
     """
     values = np.asarray(neighborhood, dtype=bool)
     if values.shape != (3, 3, 3):
@@ -84,6 +96,13 @@ def topology_correct(
     intensity order and admits a candidate only when adding it preserves one
     foreground 6-component and one background 18-component in its 3x3x3
     neighborhood. This follows the selected MaCRUISE JIST adapter defaults.
+    In the paper's terms, the input is a scalar/implicit field and propagation
+    preserves the requested topology across its level sets. The defaults
+    `paint_threshold`, `lowest_level`, `highest_level`, and `regularize`
+    reproduce wrapper choices; they are configurable adapter settings, not
+    constants prescribed by Bazin & Pham. The optional multi-atlas WM
+    refinement below is a separate V3 wrapper post-processing operation, not
+    part of that paper's fast-marching method.
 
     If ``multi_atlas_wm`` is supplied, also reproduce V3's subsequent
     `Refine_Topo_by_MA` operation: first apply the source's one-pass 3D
@@ -152,7 +171,17 @@ def _downward_topology_propagation(
     min_distance: float,
     lowest_level: float,
 ) -> np.ndarray:
-    """Port `initDownwardPaintLabels` + exact downward smoothing (3D)."""
+    """Port `initDownwardPaintLabels` + exact downward smoothing (3D).
+
+    This queue-driven descending front is the implementation-level
+    fast-marching/topology-propagation mapping: candidate scalar values
+    determine processing order, and an attempted object addition is accepted
+    only when the local foreground/background component test remains regular.
+    Rejected candidates are marked critical and are not promoted into the
+    object. The one-voxel zero frame and minimum-level stopping follow the
+    source adapter's boundary and threshold behavior; neither should be read
+    as a paper-wide universal convention.
+    """
     nx, ny, nz = image.shape
     padded = np.zeros((nx + 2, ny + 2, nz + 2), dtype=np.float32)
     padded[1:-1, 1:-1, 1:-1] = image
@@ -242,6 +271,13 @@ def _is_regular_object_addition(
     labels: np.ndarray,
     point: tuple[int, int, int],
 ) -> bool:
+    """Apply the selected 3D digital-topology regularity criterion.
+
+    The two component counts instantiate the adapter's (6,18) connectivity
+    pair for a local addition. This is a local topology test within the
+    fast-marching method; it is not the graph/cut optimization in Han et al.'s
+    GTCA.
+    """
     x, y, z = point
     neighborhood = labels[x - 1 : x + 2, y - 1 : y + 2, z - 1 : z + 2]
     candidate = neighborhood >= _TEST

@@ -6,7 +6,7 @@ The detailed, step-by-step porting roadmap and acceptance table are in [plan.md]
 
 The expanded command-line contract for current inputs, assumptions, and outputs is in [docs/cli-help.md](docs/cli-help.md). The full-workflow command remains a roadmap item.
 
-The authoritative full-suite evidence, pass count, and tested commit for each currently Done roadmap row are in [docs/reports/full-pytest-2026-09-28.md](docs/reports/full-pytest-2026-09-28.md).
+Full-suite evidence is linked from each roadmap row and collected in the dated reports: [September 28 runs](docs/reports/full-pytest-2026-09-28.md) and [September 29 runs](docs/reports/full-pytest-2026-09-29.md). Published-method citations and code maps are indexed in [docs/papers/README.md](docs/papers/README.md).
 
 ## Scope and target
 

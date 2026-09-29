@@ -4,6 +4,11 @@ The table is distinct from the P25 6/18 topology predicate in ``topology``.
 Its 2**26 entries index the 26 neighbors around a center voxel, packed with
 the Java ``CriticalPointLUT.keyFromPattern(boolean[][][])`` convention:
 x-major, then y, then z, with the center omitted.
+
+The LUT is the local digital-topology primitive behind the homeomorphic
+multi-object constraint discussed by Bazin & Pham (2007, 2008). The copied
+selected-source table and lookup define its behavior; a lookup by itself is
+not the full multi-label topology test. See ``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

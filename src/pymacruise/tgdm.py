@@ -1,4 +1,15 @@
-"""Source-derived local geometry and force terms for VandyCRUISE TGDM."""
+"""Source-derived local geometry and force terms for VandyCRUISE TGDM.
+
+Published-method context: the nested cortical-surface workflow follows the
+CRUISE method of Han et al. (NeuroImage, 2004; DOI
+10.1016/j.neuroimage.2004.06.043), whose geometric-deformable-model evolution
+is grounded in the topology-preserving level-set method of Han, Xu, and Prince
+(IEEE TPAMI, 2003; DOI 10.1109/TPAMI.2003.1201824). The selected
+MaCRUISE/VandyCRUISE source and wrapper remain the authority for exact force
+profiles, iteration settings, connectivity, visitation order, and adapter
+quirks. These citations provide method context; they do not imply that every
+step or setting in either paper is reproduced by this module.
+"""
 
 from __future__ import annotations
 
@@ -142,6 +153,12 @@ def tgdm_evolve(
     selected `(18,6)` wrapper's observed Java behavior. This low-level API does
     not create the source tissue-force fields or derive initial membership
     distances; those belong to the nested-surface adapters.
+
+    Paper connection: the narrow-band level-set evolution and local topology
+    admissibility checks are the TGDM concepts described by Han, Xu, and
+    Prince (2003, §3). The exact `CONNECT_18_6` simple-point test and
+    reinitialization schedule here follow selected VandyCRUISE `GenericTGDM`
+    source behavior, not a parameter prescription from the paper.
     """
     from pymacruise.ace import _signed_distance_fmm
 
@@ -406,6 +423,13 @@ def tgdm_nested_arrays(
     Inputs are arrays already aligned on a RAS-ordered voxel grid. NIfTI
     wrappers that enforce/reorient physical image geometry are a separate
     adapter task; this function never changes grids or resamples inputs.
+
+    Paper connection: CRUISE (Han et al., 2004, Methods) describes coupled
+    inner, central, and outer cortical surfaces driven by tissue memberships
+    and nested-surface constraints. This adapter uses the selected
+    MaCRUISE/VandyCRUISE tissue fields and profile defaults; its extra central
+    shrink and inner-surface recomputation are source-wrapper behavior, not
+    steps attributed to the 2004 paper.
     """
     membership = np.asarray(initial_membership, dtype=np.float32)
     wm = np.asarray(white_matter, dtype=np.float32)

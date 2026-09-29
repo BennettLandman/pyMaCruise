@@ -4,6 +4,12 @@ This module composes the already source-checked scalar transform sampler,
 trilinear prior derivative, and rigid coordinate Jacobian. It deliberately
 keeps those numerical primitives separate so their boundary behavior remains
 visible and independently testable.
+
+Paper context: the sampled atlas priors and rigid mapping provide the
+registration component associated with the TOADS atlas framework (Bazin &
+Pham, 2007, 2008). The selected VandyCRUISE implementation is the behavior
+authority; these kernels' synthetic comparisons do not demonstrate full atlas
+alignment or whole-method equivalence. See ``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

@@ -1,4 +1,12 @@
-"""Topology-preserving thinning from the supplied VandyCRUISE ThinACE source."""
+"""Topology-preserving thinning from the supplied VandyCRUISE ThinACE source.
+
+This is a separate source-specific cleanup stage after ACE/MaACE has found
+candidate separating voxels. Tosun et al. (2004) and Huo et al. (2016) describe
+thin-skeleton output as part of ACE/MaACE, but the priority queue, simple-point
+tests, connectivity conventions, and endpoint rules here are traced to the
+VandyCRUISE ``ThinACE`` implementation rather than inferred from those papers.
+See ``docs/papers/ace-maace.md``.
+"""
 
 from __future__ import annotations
 
@@ -65,6 +73,10 @@ def thin_ace(skeleton: np.ndarray) -> np.ndarray:
     This follows the source's iteration structure, 18-connected foreground /
     6-connected background tests, endpoint retention, and zero image border.
     Output foreground is encoded as 254, matching `ThinACE.solve`.
+
+    The papers motivate thinning the ACE shock set to a one-voxel skeleton;
+    these precise topology and ordering semantics are the VandyCRUISE source
+    implementation and should not be attributed to the paper-level method.
     """
     original = np.asarray(skeleton)
     if original.ndim != 3 or any(size < 3 for size in original.shape):

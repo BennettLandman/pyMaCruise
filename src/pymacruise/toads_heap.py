@@ -2,6 +2,11 @@
 
 Behavior reference: ``BinaryHeap4D.java`` (July 2004, Pierre-Louis Bazin);
 the original Java source is retained as a test-only reference.
+
+Paper context: the source-compatible priority queue schedules the fast-marching
+style multi-object front used by TOADS (Bazin & Pham, 2007, 2008). The heap is
+infrastructure only; it does not encode tissue likelihoods or topology rules.
+See ``docs/papers/toads.md``.
 """
 
 from __future__ import annotations

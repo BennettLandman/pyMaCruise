@@ -3,6 +3,12 @@
 This parser reads only the descriptor's structures, intensity rows, lesion
 priors, and black-hole priors. It does not inspect or load topology/shape image
 arrays. Prior vectors retain the structure order declared in the descriptor.
+
+Paper context: the selected numeric rows supply statistical intensity and
+lesion/black-hole prior inputs for the Lesion-TOADS model described by Shiee et
+al. (2010). This parser does not realize the paper's topology/shape atlas or
+registration/segmentation steps. See ``docs/papers/lesion-toads.md`` for the
+precise mapping and source-version caveat.
 """
 
 from __future__ import annotations
