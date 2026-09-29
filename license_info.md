@@ -1,6 +1,6 @@
 # License and Attribution Working Notes
 
-**Last reviewed:** 2026-09-27  
+**Last reviewed:** 2026-09-29
 **Status:** Inventory for later review with the tech transfer office; no final PyMaCRUISE license has been selected.
 
 ## Project-owner direction
@@ -18,6 +18,7 @@ The project owner states that they are an author on all existing source code sup
 | JIST source distribution | `JIST/src/license/LICENSE.txt` is Apache License 2.0. `NOTICE.txt` attributes Apache Commons CLI. The tree also contains component-specific notices/licenses, including a JJ2000 notice and LGPLv3 text in `CopyrightInfo.txt` in the MIPAV tree. | Full supplied `JIST/src/license/` contents copied unchanged to `licenses/upstream/jist/` (including third-party component files). JIST is not a final PyMaCRUISE runtime dependency; retain relevant notices if a source-derived component is used. |
 | Bundled TOADS/CRUISE, lesion-TOADS, and SPECTRE assets | Source paths and file hashes are tracked; the SPECTRE dataset includes OAS1-named image files. No standalone license file was found inside the selected atlas folders. The project-owner authorship statement applies to supplied source code; data provenance remains recorded separately from code authorship. | Bundled under `data/atlases/`; source paths, inventory, and checksums are recorded in `docs/assets-and-dependencies.md` and `data/atlases/SHA256SUMS`. |
 | Python runtime dependencies | Package ranges are in `pyproject.toml`; P30 adds scikit-image for Lewiner marching-cubes surface extraction. Exact environment versions are recorded in run reports where relevant. | Record package name, pinned version, and the license metadata shipped with each selected distribution when the P12 environment is established. Review scikit-image's BSD license and transitive dependency notices with the final dependency inventory. |
+| VandyCRUISE `BinaryHeap4D` reference | The selected heap source is dated July 2004 and names Pierre-Louis Bazin as author; its source file does not state a standalone license in its header. | The original source is retained under `tests/java_reference/upstream/` for deterministic ordering comparisons and is excluded from the runtime; SHA-256 and provenance are recorded in `tests/data/synthetic/toads_binary_heap/README.md`. Review with the other VandyCRUISE-derived materials before release. |
 | TGDM Java regression harness | Test-only source copies from the supplied MaCRUISE/VandyCRUISE/JIST trees retain their original class comments and attribution; the JIST heap identifies Mark Allen Weiss, and voxel/profile sources identify their original authors and source revisions where present. | The small numerical reference sources and test adapters are under `tests/java_reference/`; they are excluded from the Python runtime. MIPAV/JIST notices remain under `licenses/upstream/`. Review source provenance and required acknowledgements with tech transfer before release. |
 
 ## Comment and notice practice during the port
