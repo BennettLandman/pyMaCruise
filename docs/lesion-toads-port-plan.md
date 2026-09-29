@@ -527,12 +527,19 @@ and [`tests/data/synthetic/lesion_toads_sulcal_csf/README.md`](../tests/data/syn
 This remains a data-term slice before smoothing, priors, inversion, and
 membership normalization.
 
-### Started substage: P39y class membership conversion
+### Completed substage: P39y class membership conversion
 
 The selected source converts an accumulated class energy with the strict
 `num > ZERO` test: accepted energies become `1/num`, and all other values
 become `INF`. A `DIRECT` relation stores this inverse unchanged; a `PRIOR`
 relation multiplies by `shapeFactor(shape) = Numerics.min(1.0f, 2.0f*shape)`.
-Validate the float32 threshold, IEEE/sentinel behavior, and saturation/tie
-semantics against the selected Java `Numerics.min` implementation. This is
-one class-level conversion only, not a full membership update.
+Eleven selected Java cases match output float32 bits for energies below, at,
+and just above `ZERO`, direct and prior relations, shape factors below/at/above
+saturation, and zero/negative energy sentinel behavior. The source
+`Numerics.min` implementation determines tie behavior. Three focused tests
+pass; the full suite reports 438 passed with two expected RAS warnings in
+54.59 seconds on implementation commit
+`6c92a3db7da65c96b2f01c0f06e791cd479b9813`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-membership-conversion.md`](reports/full-pytest-2026-09-29-lesion-toads-membership-conversion.md)
+and [`tests/data/synthetic/lesion_toads_membership_conversion/README.md`](../tests/data/synthetic/lesion_toads_membership_conversion/README.md).
+This remains one class-level conversion, not a full membership update.
