@@ -11,7 +11,15 @@ public final class ToadsHomeomorphicChangeReferenceHarness {
     private static final CriticalPointLUT LUT = new CriticalPointLUT("/critical186LUT.raw.gz", 200);
     private static final int RANDOM_CASES = 128;
 
-    private static boolean isHomeomorphic(short[][][] segmentation, short x, short y,
+    public static void initializeReferenceLut() {
+        PrintStream output = System.out;
+        System.setOut(new PrintStream(new ByteArrayOutputStream()));
+        boolean loaded = LUT.loadCompressedPattern();
+        System.setOut(output);
+        if (!loaded) throw new IllegalStateException("could not load critical LUT");
+    }
+
+    public static boolean isHomeomorphic(short[][][] segmentation, short x, short y,
             short z, short k) {
         if (segmentation[x][y][z] == k) return true;
         boolean[][][] obj = new boolean[3][3][3];
