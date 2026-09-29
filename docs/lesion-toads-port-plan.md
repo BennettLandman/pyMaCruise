@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zu have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION distance handling and BLACKHOLE shape-prior handling,
+**Status:** P39 is Started. P39a–P39zv have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION and BLACKHOLE prior/distance handling,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -941,3 +941,18 @@ implementation commit `9fe0402f83748b3bd134fbfeee918f9ef4665f38`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-prior-sweep.md)
 and [`tests/data/synthetic/lesion_toads_blackhole_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_prior_sweep/README.md). Distance
 modulation remains open.
+
+
+### Completed substage: P39zv BLACKHOLE distance volume routing
+
+The BLACKHOLE sweep now routes ventricle, GM, and brainstem distance maps
+through the selected auxiliary update. Ventricle precedence scales lesion
+membership and lesion relation but leaves black-hole membership unchanged;
+GM and brainstem scale both maps. The committed Java formula fixture compares
+all interior class/auxiliary membership bits with GM enabled and disabled,
+including zero-distance spread and independent brainstem scaling. Focused
+tests: 4 passed. Full suite: 502 passed with two expected RAS warnings in
+79.39 seconds on implementation commit
+`c606d9c6c253b114d25581829d59dbec1e202a69`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-sweep.md)
+and [`tests/data/synthetic/lesion_toads_blackhole_distance_sweep/README.md`](../tests/data/synthetic/lesion_toads_blackhole_distance_sweep/README.md).
