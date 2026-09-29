@@ -395,6 +395,78 @@ class ToadsThinningQueueStep:
     inserted_neighbors: tuple[ToadsHeapItem, ...]
 
 
+@dataclass(frozen=True)
+class ToadsThinningQueueRun:
+    """Final state after the source outer loop drains or crosses its limit."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    class_volumes: NDArray[np.float32]
+    processed_items: tuple[ToadsHeapItem, ...]
+    queue: ToadsPriorityHeap4D
+
+
+def toads_run_thinning_queue(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    available: ArrayLike,
+    relation_matrix: ArrayLike,
+    transformed_shape_values: ArrayLike,
+    class_volumes: ArrayLike,
+    minimum_class_volumes: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    limit: float,
+    *,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsThinningQueueRun:
+    """Run the selected ``propagateThinning`` outer heap loop.
+
+    The source initializes ``val`` to 0 and tests its previous popped value in
+    ``while (isNotEmpty() && (val > -limit))``. Consequently, the first item
+    at or below the negative limit is still popped and processed if the prior
+    item was above it. This composes the queue-event port only; it does not
+    initialize thinning labels or perform the rest of TOADS.
+    """
+    limit32 = np.float32(limit)
+    if not np.isfinite(limit32) or limit32 < np.float32(0.0):
+        raise ValueError("limit must be finite, nonnegative, and representable as float32")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    labels = np.asarray(segmentation, dtype=np.int16).copy()
+    skel = np.asarray(skeleton, dtype=np.int16).copy()
+    available_state = np.asarray(available, dtype=np.bool_).copy()
+    volumes = np.asarray(class_volumes, dtype=np.float32).copy()
+    previous_priority = np.float32(0.0)
+    processed: list[ToadsHeapItem] = []
+    while queue and previous_priority > np.float32(-limit32):
+        step = toads_process_next_thinning_item(
+            labels,
+            skel,
+            memberships,
+            available_state,
+            relation_matrix,
+            transformed_shape_values,
+            volumes,
+            minimum_class_volumes,
+            queue,
+            limit32,
+            empty_label=empty_label,
+            zero_threshold=zero_threshold,
+        )
+        labels = step.segmentation
+        skel = step.skeleton
+        available_state = step.available
+        volumes = step.class_volumes
+        previous_priority = step.popped_item.value
+        processed.append(step.popped_item)
+    return ToadsThinningQueueRun(
+        labels, skel, available_state, volumes, tuple(processed), queue
+    )
+
+
 def toads_process_next_thinning_item(
     segmentation: ArrayLike,
     skeleton: ArrayLike,

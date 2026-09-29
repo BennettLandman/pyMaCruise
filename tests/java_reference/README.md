@@ -62,6 +62,13 @@ Regenerate with
 slice only, not repeated thinning or complete TOADS validation. See the
 fixture README and `docs/reports/toads-thinning-queue-step-2026-09-29.md`.
 
+The `ToadsThinningQueueRunReferenceHarness.java` also replays the same selected
+event under the original outer `val > -limit` loop, recording every pop and
+state snapshot. Threshold fixtures disable neighbor insertion to isolate the
+outer condition; a separate limit-100 case exercises dynamic rescheduling to
+queue exhaustion. Its output is the synthetic fixture under
+`tests/data/synthetic/toads_thinning_queue_run/`.
+
 ## Source used
 
 `upstream/` contains source copies from the supplied checkouts, with their
