@@ -88,6 +88,14 @@ class LesionToadsSixFaceNeighborhood:
     black_hole_memberships: np.ndarray
 
 
+@dataclass(frozen=True)
+class LesionToadsVolumeSmoothingUpdate:
+    """Per-class smoothing-energy updates at one streamed volume location."""
+
+    coordinate: tuple[int, int, int]
+    class_updates: tuple[LesionToadsSmoothingEnergyUpdate, ...]
+
+
 def iter_lesion_toads_six_face_neighborhoods(
     class_memberships: np.ndarray,
     lesion_memberships: np.ndarray,
@@ -120,6 +128,95 @@ def iter_lesion_toads_six_face_neighborhoods(
                     lesion_memberships=np.asarray([lesion[point] for point in faces], dtype=np.float32),
                     black_hole_memberships=np.asarray([black_hole[point] for point in faces], dtype=np.float32),
                 )
+
+
+def iter_lesion_toads_volume_smoothing_updates(
+    class_memberships: np.ndarray,
+    lesion_memberships: np.ndarray,
+    black_hole_memberships: np.ndarray,
+    class_membership_data_terms: np.ndarray,
+    lesion_membership_data_terms: np.ndarray,
+    black_hole_membership_data_terms: np.ndarray,
+    outmask_membership_data_terms: np.ndarray,
+    class_energies: np.ndarray,
+    lesion_energies: np.ndarray,
+    black_hole_energies: np.ndarray,
+    class_types: tuple[str, ...] | list[str],
+    smoothing_priors: np.ndarray,
+    *,
+    smoothing: float,
+) -> Iterator[LesionToadsVolumeSmoothingUpdate]:
+    """Stream the selected smoothing kernel over fixed synthetic/source maps.
+
+    This composes neighborhood extraction with the already validated scalar
+    update. Term/energy maps are one value per voxel and class. It intentionally
+    does not write memberships, apply atlas priors, invert terms, or normalize;
+    a later full update must reproduce Java's in-place scan behavior.
+    """
+    memberships = np.asarray(class_memberships, dtype=np.float32)
+    if memberships.ndim != 4 or memberships.shape[3] == 0:
+        raise ValueError("class_memberships must have shape (x, y, z, classes)")
+    spatial_shape = memberships.shape[:3]
+    classes = memberships.shape[3]
+    types = tuple(class_types)
+    if len(types) != classes:
+        raise ValueError("class_types must have one entry per class")
+    term_names = (
+        "class_membership_data_terms",
+        "lesion_membership_data_terms",
+        "black_hole_membership_data_terms",
+        "outmask_membership_data_terms",
+        "class_energies",
+        "lesion_energies",
+        "black_hole_energies",
+    )
+    terms = tuple(
+        np.asarray(value, dtype=np.float32)
+        for value in (
+            class_membership_data_terms,
+            lesion_membership_data_terms,
+            black_hole_membership_data_terms,
+            outmask_membership_data_terms,
+            class_energies,
+            lesion_energies,
+            black_hole_energies,
+        )
+    )
+    for name, values in zip(term_names, terms, strict=True):
+        if values.shape != (*spatial_shape, classes):
+            raise ValueError(f"{name} must match class_memberships shape")
+    priors = np.asarray(smoothing_priors, dtype=np.float32)
+    if priors.shape != (classes,):
+        raise ValueError("smoothing_priors must have one value per class")
+    if not np.isfinite(priors).all() or not np.isfinite(np.float32(smoothing)):
+        raise ValueError("smoothing parameters must be finite")
+    lesion = np.asarray(lesion_memberships, dtype=np.float32)
+    black_hole = np.asarray(black_hole_memberships, dtype=np.float32)
+    if lesion.shape != spatial_shape or black_hole.shape != spatial_shape:
+        raise ValueError("lesion and black-hole memberships must match the class spatial shape")
+
+    for neighborhood in iter_lesion_toads_six_face_neighborhoods(memberships, lesion, black_hole):
+        x, y, z = neighborhood.coordinate
+        updates = tuple(
+            update_lesion_toads_smoothing_energies(
+                neighborhood.class_memberships,
+                neighborhood.lesion_memberships,
+                neighborhood.black_hole_memberships,
+                class_index=k,
+                class_type=types[k],
+                smoothing_prior=float(priors[k]),
+                smoothing=smoothing,
+                class_energy=float(terms[4][x, y, z, k]),
+                lesion_energy=float(terms[5][x, y, z, k]),
+                black_hole_energy=float(terms[6][x, y, z, k]),
+                class_membership_data_term=float(terms[0][x, y, z, k]),
+                lesion_membership_data_term=float(terms[1][x, y, z, k]),
+                black_hole_membership_data_term=float(terms[2][x, y, z, k]),
+                outmask_membership_data_term=float(terms[3][x, y, z, k]),
+            )
+            for k in range(classes)
+        )
+        yield LesionToadsVolumeSmoothingUpdate(neighborhood.coordinate, updates)
 
 
 def convert_lesion_toads_class_membership(
