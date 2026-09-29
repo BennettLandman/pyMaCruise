@@ -12,6 +12,7 @@ from typing import Any
 import nibabel as nib
 
 from pymacruise.ace import ACEImageResult, ace_enhance
+from pymacruise.boundary import clean_csf_boundary_image, multi_atlas_csf_boundary_image
 from pymacruise.gvf import GVFImageResult, generalized_gvf_image
 from pymacruise.tgdm import TGDMBaselineParameters
 from pymacruise.topology import TopologyCorrectionResult, topology_correct
@@ -59,6 +60,14 @@ class PlusPipelineOptions:
         result = asdict(self)
         result["boundary_overlook_labels"] = list(self.boundary_overlook_labels)
         return result
+
+
+@dataclass(frozen=True)
+class PlusBoundaryResult:
+    """Raw and TOADS-WM-cleaned RAS boundary products for MaCRUISEplus."""
+
+    raw_boundary: nib.spatialimages.SpatialImage
+    cleaned_boundary: nib.spatialimages.SpatialImage
 
 
 def run_plus_gvf_stage(
@@ -139,3 +148,21 @@ def run_plus_topology_stage(
         paint_mask,
         multi_atlas_wm=ma_wm if options.refine_topology_by_maseg else None,
     )
+
+
+def run_plus_boundary_stage(
+    segmentation: nib.spatialimages.SpatialImage,
+    toads_wm_mask: nib.spatialimages.SpatialImage,
+    options: PlusPipelineOptions = PlusPipelineOptions(),
+) -> PlusBoundaryResult:
+    """Create the selected plus 3D boundary and clean it with TOADS WM."""
+    if not isinstance(options, PlusPipelineOptions):
+        raise ValueError("options must be PlusPipelineOptions")
+    if options.boundary_erosion_method != "3D":
+        raise ValueError("selected plus boundary stage supports only ErodeMethod='3D'")
+    raw = multi_atlas_csf_boundary_image(
+        segmentation,
+        overlooked_labels=options.boundary_overlook_labels,
+    )
+    cleaned = clean_csf_boundary_image(raw, toads_wm_mask, mode="toads_wm")
+    return PlusBoundaryResult(raw_boundary=raw, cleaned_boundary=cleaned)
