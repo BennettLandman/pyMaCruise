@@ -30,6 +30,16 @@ SCALED_HARNESS = (
 )
 SCALED_HARNESS_SHA256 = "379964d519202675bd51fa5a50d561fed22e1e22a9848345f02fb9acde5cc639"
 SCALED_FIXTURE_SHA256 = "3c48d9c7cdc57bd652f10b5bdf5c48021ca562877eaaf164b94abb04f49c5b32"
+SCALED_REGISTRATION_FIXTURE_DIR = (
+    Path(__file__).parent / "data" / "synthetic" / "lesion_scaled_registration_voxel"
+)
+SCALED_REGISTRATION_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionScaledRegistrationVoxelReferenceHarness.java"
+)
+SCALED_REGISTRATION_HARNESS_SHA256 = "0fc4d37c5e11fee5a1ef0c491c7a46e1caab5d0e2e64fcdc6e02bbe658de552f"
+SCALED_REGISTRATION_FIXTURE_SHA256 = "b00b3abdb5845f829e1cfd22d6590e9c47ea4e10ffa78f3f39745bd97b5a1d2b"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -394,4 +404,85 @@ def test_lesion_shape_pyramid_sampling_requires_full_resolution_centers() -> Non
             bbox_low_xyz=(0, 0, 0),
             bbox_high_xyz=(2, 2, 2),
             scale=2,
+        )
+
+
+def test_lesion_scaled_registration_voxel_matches_java_formula_fixture() -> None:
+    assert hashlib.sha256(SCALED_REGISTRATION_HARNESS.read_bytes()).hexdigest() == (
+        SCALED_REGISTRATION_HARNESS_SHA256
+    )
+    reference_path = SCALED_REGISTRATION_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == (
+        SCALED_REGISTRATION_FIXTURE_SHA256
+    )
+    reference = json.loads(reference_path.read_text())
+    for case in reference["cases"]:
+        template_dims = tuple(int(value) for value in case["template_dims"])
+        shapes: list[np.ndarray] = []
+        for class_index in range(4):
+            shape = np.empty(template_dims, dtype=np.float32)
+            for x in range(template_dims[0]):
+                for y in range(template_dims[1]):
+                    for z in range(template_dims[2]):
+                        if class_index == 0:
+                            value = np.float32(0.9)
+                        elif class_index == 1:
+                            value = np.float32(0.1)
+                            value = np.float32(value + np.float32(np.float32(0.01) * x))
+                            value = np.float32(value + np.float32(np.float32(0.02) * y))
+                            value = np.float32(value + np.float32(np.float32(0.03) * z))
+                            value = np.float32(
+                                value + np.float32(np.float32(np.float32(0.001) * x) * y)
+                            )
+                        elif class_index == 2:
+                            value = np.float32(0.15)
+                            value = np.float32(value + np.float32(np.float32(0.008) * x))
+                            value = np.float32(value + np.float32(np.float32(0.013) * y))
+                            value = np.float32(value + np.float32(np.float32(0.021) * z))
+                            value = np.float32(
+                                value + np.float32(np.float32(np.float32(0.0005) * x) * z)
+                            )
+                        else:
+                            value = np.float32(0.0)
+                        shape[x, y, z] = value
+            shapes.append(shape)
+
+        input_dims = tuple(int(value) for value in case["image_dims"])
+        bounds = tuple(((0, 0, 0), input_dims) for _ in shapes)
+        result = lesion_registration_voxel_contributions(
+            shapes,
+            (0.9, 0.5, 0.75, 0.6),
+            tuple(int(value) for value in case["point"]),
+            image_dimensions_xyz=input_dims,
+            image_resolutions_mm=tuple(case["image_resolutions"]),
+            template_resolutions_mm=tuple(case["template_resolutions"]),
+            transform=tuple(case["transform"]),
+            class_bounds_xyz=bounds,
+            scale=case["scale"],
+            image_center_xyz=tuple(case["image_center"]),
+            template_center_xyz=tuple(case["template_center"]),
+        )
+        np.testing.assert_array_equal(
+            np.asarray(result.template_coordinates_xyz, dtype=np.float32),
+            np.asarray(case["mapped"], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            result.shape_priors, np.asarray(case["priors"], dtype=np.float32)
+        )
+        np.testing.assert_array_equal(
+            result.prior_gradients_xyz,
+            np.asarray(case["prior_gradients_xyz"], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            result.coordinate_jacobian, np.asarray(case["jacobian"], dtype=np.float32)
+        )
+        assert result.coefficients.cost == np.float32(case["cost"])
+        assert result.coefficients.norm == np.float32(case["norm"])
+        np.testing.assert_array_equal(
+            result.coefficients.gradient,
+            np.asarray(case["gradient"], dtype=np.float32),
+        )
+        np.testing.assert_array_equal(
+            result.coefficients.hessian,
+            np.asarray(case["hessian"], dtype=np.float32),
         )

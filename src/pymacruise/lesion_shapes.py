@@ -32,6 +32,7 @@ class LesionRegistrationVoxelContributions:
 
     shape_priors: NDArray[np.float32]
     prior_gradients_xyz: NDArray[np.float32]
+    template_coordinates_xyz: tuple[np.float32, np.float32, np.float32] | None
     coordinate_jacobian: NDArray[np.float32]
     coefficients: RegistrationCoefficientSums
 
@@ -137,6 +138,7 @@ def lesion_registration_voxel_contributions(
     class_bounds_xyz: Sequence[
         tuple[tuple[int, int, int], tuple[int, int, int]]
     ],
+    scale: float = 1.0,
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
 ) -> LesionRegistrationVoxelContributions:
@@ -148,8 +150,10 @@ def lesion_registration_voxel_contributions(
     sampling/gating behavior with the already source-checked rigid Jacobian
     and common coefficient accumulator. Returned sums are unnormalized so
     callers can accumulate voxels in source scan order before the Java-style
-    final division by total prior-square norm. Multiple-transform registration
-    and volume iteration are outside this single-voxel slice.
+    final division by total prior-square norm. For pyramid levels, ``scale``
+    is passed to both source-matched samplers while centers stay in original
+    resolution coordinates. Multiple-transform registration and volume
+    iteration are outside this single-voxel slice.
     """
     membership_values = np.asarray(memberships, dtype=np.float32)
     class_count = len(shape_priors)
@@ -162,6 +166,7 @@ def lesion_registration_voxel_contributions(
 
     sampled_priors = np.zeros(class_count, dtype=np.float32)
     sampled_gradients = np.zeros((class_count, 3), dtype=np.float32)
+    mapped_coordinates = None
     for class_index in range(1, class_count):
         bbox_low_xyz, bbox_high_xyz = class_bounds_xyz[class_index]
         sample = sample_lesion_shape_prior(
@@ -174,10 +179,13 @@ def lesion_registration_voxel_contributions(
             class_index=class_index,
             bbox_low_xyz=bbox_low_xyz,
             bbox_high_xyz=bbox_high_xyz,
+            scale=scale,
             image_center_xyz=image_center_xyz,
             template_center_xyz=template_center_xyz,
         )
         sampled_priors[class_index] = sample.value
+        if mapped_coordinates is None and sample.template_xyz is not None:
+            mapped_coordinates = sample.template_xyz
         if sample.template_gradient_xyz is not None:
             sampled_gradients[class_index] = sample.template_gradient_xyz
 
@@ -192,6 +200,7 @@ def lesion_registration_voxel_contributions(
         center,
         image_resolutions_mm,
         template_resolutions_mm,
+        scale=scale,
     )
     coefficients = exact_registration_coefficient_contributions(
         membership_values,
@@ -200,7 +209,7 @@ def lesion_registration_voxel_contributions(
         jacobian,
     )
     return LesionRegistrationVoxelContributions(
-        sampled_priors, sampled_gradients, jacobian, coefficients
+        sampled_priors, sampled_gradients, mapped_coordinates, jacobian, coefficients
     )
 
 
