@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
+
+
+@dataclass(frozen=True)
+class LesionDistanceModulation:
+    """Lesion membership and relation after one source distance chain."""
+
+    membership: np.float32
+    relation: np.float32
 
 
 def convert_lesion_toads_class_membership(
@@ -47,3 +57,80 @@ def convert_lesion_toads_class_membership(
         shape_factor = np.float32(1.0) if np.float32(1.0) < doubled_shape else doubled_shape
         membership = np.float32(shape_factor * membership)
     return membership
+
+
+def modulate_lesion_toads_membership_by_distances(
+    lesion_membership: float,
+    lesion_relation: float,
+    *,
+    ventricle_distance: int,
+    gray_matter_distance: int,
+    brainstem_distance: int,
+    max_ventricle_distance: int,
+    max_gray_matter_distance: int,
+    max_brainstem_distance: int,
+    gm_flag: bool,
+    spread: float,
+) -> LesionDistanceModulation:
+    """Apply the selected lesion/lesion-relation distance modulation.
+
+    A valid ventricle distance takes precedence over valid gray-matter
+    distance; a valid brainstem distance is then applied independently. The
+    selected source substitutes ``spread`` for zero only in the ventricle and
+    gray-matter branches. This helper applies scalar distances already
+    computed elsewhere; it does not create masks or distance maps.
+    """
+    membership = np.float32(lesion_membership)
+    relation = np.float32(lesion_relation)
+    spread_value = np.float32(spread)
+    if not np.isfinite(membership) or not np.isfinite(relation):
+        raise ValueError("lesion membership and relation must be finite")
+    if not np.isfinite(spread_value):
+        raise ValueError("spread must be finite")
+    if not isinstance(gm_flag, (bool, np.bool_)):
+        raise ValueError("gm_flag must be boolean")
+
+    distances = (
+        ("ventricle_distance", ventricle_distance),
+        ("gray_matter_distance", gray_matter_distance),
+        ("brainstem_distance", brainstem_distance),
+    )
+    maxima = (
+        ("max_ventricle_distance", max_ventricle_distance),
+        ("max_gray_matter_distance", max_gray_matter_distance),
+        ("max_brainstem_distance", max_brainstem_distance),
+    )
+    for name, value in (*distances, *maxima):
+        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+            raise ValueError(f"{name} must be an integer byte value")
+        if not -128 <= int(value) <= 127:
+            raise ValueError(f"{name} must fit a signed byte")
+    for name, value in distances:
+        if int(value) < -1:
+            raise ValueError(f"{name} must be -1 or a nonnegative voxel distance")
+
+    vent = int(ventricle_distance)
+    gm = int(gray_matter_distance)
+    brainstem = int(brainstem_distance)
+    vent_max = np.float32(max_ventricle_distance)
+    gm_max = np.float32(max_gray_matter_distance)
+    brainstem_max = np.float32(max_brainstem_distance)
+
+    if vent_max != np.float32(0.0) and vent != -1:
+        numerator = spread_value if vent == 0 else np.float32(vent)
+        membership = np.float32(np.float32(numerator * membership) / vent_max)
+        factor = np.float32(numerator / vent_max)
+        relation = np.float32(relation * factor)
+    elif gm_flag and gm_max != np.float32(0.0) and gm != -1:
+        numerator = spread_value if gm == 0 else np.float32(gm)
+        membership = np.float32(np.float32(numerator * membership) / gm_max)
+        factor = np.float32(numerator / gm_max)
+        relation = np.float32(relation * factor)
+
+    if brainstem_max != np.float32(0.0) and brainstem != -1:
+        numerator = np.float32(brainstem)
+        membership = np.float32(np.float32(numerator * membership) / brainstem_max)
+        factor = np.float32(numerator / brainstem_max)
+        relation = np.float32(relation * factor)
+
+    return LesionDistanceModulation(membership=membership, relation=relation)
