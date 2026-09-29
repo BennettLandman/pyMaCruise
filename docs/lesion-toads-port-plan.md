@@ -544,7 +544,7 @@ pass; the full suite reports 438 passed with two expected RAS warnings in
 and [`tests/data/synthetic/lesion_toads_membership_conversion/README.md`](../tests/data/synthetic/lesion_toads_membership_conversion/README.md).
 This remains one class-level conversion, not a full membership update.
 
-### Started substage: P39z lesion distance modulation
+### Completed substage: P39z lesion distance modulation
 
 The selected source modulates lesion membership and `lesionRelation` using
 valid ventricle distance first, or gray-matter distance only when the
@@ -554,3 +554,23 @@ distance, the numerator uses `spread`; brainstem uses its stored distance
 directly, so zero clears the value. Preserve source maxima, `-1` sentinels,
 branch precedence, and float32 operation order. This scalar slice does not
 generate the distance maps or include black-hole membership.
+
+Twelve selected-Java scalar cases match lesion membership and
+`lesionRelation` float32 bits through ventricle/GM precedence and independent
+brainstem modulation, including the special `spread` numerator at zero
+ventricle/GM distance, `-1` sentinels, disabled maxima, and GM enable/disable.
+The focused suite reports 2 passed; the full suite reports 440 passed with two
+expected RAS warnings in 69.12 seconds on implementation commit
+`c93ec3978753acf857a656c0d4792228d176c90d`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-distance-modulation.md`](reports/full-pytest-2026-09-29-lesion-toads-distance-modulation.md)
+and [`tests/data/synthetic/lesion_toads_distance_modulation/README.md`](../tests/data/synthetic/lesion_toads_distance_modulation/README.md).
+
+### Started substage: P39za black-hole distance modulation
+
+Port the selected `BLACKHOLE` branch's distance postprocessing. Apply the
+selected ventricle-or-GM factor to both `lesionMembership` and
+`blackHoleMem`, then independently apply a valid brainstem factor to both;
+scale `lesionRelation` once per selected factor. Preserve the source's
+ventricle-versus-GM branch precedence, zero-distance `spread` behavior,
+`-1` sentinels, and Java float32 expression order. This reuses distances
+already computed elsewhere and does not normalize voxel memberships.
