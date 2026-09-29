@@ -2,7 +2,9 @@
 
 **Status:** P39 is Started. P39a–P39r have validated discrete preparation,
 atlas loading/sampling, registration derivatives, and selected registration
-coefficient slices on synthetic/reference data. P39d/e validate bundled
+coefficient slices on synthetic/reference data. P39s is now Started to
+compose growing-frontier initialization and per-event processing through
+queue exhaustion on a folded synthetic label phantom. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
 include atlas sampling, transform optimization, or segmentation. This
 document tracks algorithm scope and source contracts; it does not claim a
@@ -412,3 +414,15 @@ and [`tests/data/synthetic/lesion_growing_event/README.md`](../tests/data/synthe
 The reference composes a validated topology method body with selected
 LesionTOADS event formulas; it is not a whole-class run or full segmentation
 validation.
+
+### Started substage: P39s full growing-queue exhaustion
+
+Compose the selected `initGrowingLabels` setup and `propagateGrowing` event
+body until the source min-heap is empty. The synthetic phantom will contain a
+folded class boundary and narrow bands so the run exercises source scan order,
+lesion-aware priorities, accepted/rejected/stale events, and topology-gated
+neighbor scheduling across many iterations. Compare the full event trace and
+final segmentation, skeleton, availability, ordering, and class-volume state
+against a selected-method Java harness. This stage receives synthetic
+membership maps; it does not port statistical membership estimation or the
+later competition/thinning phases, and it is not a complete LesionTOADS result.

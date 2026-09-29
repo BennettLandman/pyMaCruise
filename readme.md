@@ -69,6 +69,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39r is complete. Five synthetic Java reference cases match one source-ordered LesionTOADS growth event, including accepted lesion growth in sum/max modes, ordinary-class growth, topology rejection, stale-item handling, neighbor scheduling, and heap order. The focused tests pass (2 tests); the full suite reports **425 passed in 54.31 seconds**, with two expected RAS warnings, on implementation commit `b607fa74457e476da5337e4b7318a31dad2890f4`; see the [P39r full-suite report](docs/reports/full-pytest-2026-09-29-lesion-growing-event.md) and [fixture provenance](tests/data/synthetic/lesion_growing_event/README.md). This validates a one-event slice only. The roadmap counts 122/136 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+**Progress update (2026-09-29):** P39s is Started. This slice will exhaust the LesionTOADS lesion-aware growing queue on a folded synthetic multi-class label phantom by composing the already validated P39q initializer and P39r event processor. The comparison will stop at source queue exhaustion and will explicitly exclude statistical lesion-membership estimation and later competition/thinning. The roadmap counts 122/137 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
