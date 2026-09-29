@@ -21,7 +21,7 @@ ported by the settings object.
 | `NewCSFfile` | output of boundary cleaning | not a scalar option | Supplies the updated CSF/boundary input to ACE. |
 | `UseUpdatedCSFinACE` | `3` | `use_updated_csf_in_ace` | `run_plus_ace_stage` passes placement 3 to the existing ACE API. Merge positive updated-CSF voxels after the speed map's second alpha-1.8 Gaussian; the selected MaACE wrapper writes speed 0.1 there. See [the P40b Java comparison](reports/full-pytest-2026-09-29-plus-ace-after-gaussian-csf-merge.md) and [the P40e wiring report](reports/full-pytest-2026-09-29-plus-maace-stage.md). |
 | `MaWM` | cropped pre-update WM file | not a scalar option | Input used for topology refinement. |
-| `refineTopoCorrectByMa` | `1` | `refine_topology_by_maseg` | Enable source refinement using MaSeg-derived WM. |
+| `refineTopoCorrectByMa` | `1` | `refine_topology_by_maseg` | `run_plus_topology_stage` requires and forwards MaWM into the existing atlas-refinement branch; with the flag off, it preserves base topology output. See the [P40f routing report](reports/full-pytest-2026-09-29-plus-topology-routing.md). |
 
 The original plus entry point applies these values after image preparation,
 the boundary generation/cleaning step, and the GM/WM update. The Python
