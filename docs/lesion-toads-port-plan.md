@@ -182,7 +182,7 @@ not perform registration, transformed-bound optimization, or lesion
 segmentation. Provenance and fixture are in
 `tests/data/synthetic/lesion_shape_sampling/README.md`.
 
-### Started substage: P39g transformed shape-prior derivatives
+### Completed substage: P39g transformed shape-prior derivatives
 
 LesionTOADS registration differentiates each sampled prior in template
 coordinates with `ImageFunctions.linearInterpolationXderivative`,
@@ -190,5 +190,9 @@ coordinates with `ImageFunctions.linearInterpolationXderivative`,
 coordinate Jacobian. The selected helper already has a source-comparison
 fixture in the TOADS registration tests; P39g makes that derivative available
 through the LesionTOADS sampler while preserving its own prior-value and
-input-bound behavior. This does not implement registration updates or
-segmentation.
+input-bound behavior. Fractional and integer source-fixture derivatives,
+including upper-boundary and out-of-range cases, match exactly. The full
+suite passes 399 tests with two expected non-RAS reorientation warnings on
+implementation commit `683ad5063549de8fcb56f40ec3cdabaab7505fab`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-derivatives.md`](reports/full-pytest-2026-09-29-lesion-derivatives.md).
+This does not implement registration updates or segmentation.
