@@ -44,6 +44,10 @@ image adapter and returns level sets on that cropped RAS grid; see the
 same GM-derived crop bounds and selected JIST exclusive-maximum convention;
 this does not convert mesh vertices. See the
 [P40j report](reports/full-pytest-2026-09-29-plus-tgdm-uncrop.md).
+`extract_plus_surfaces` then extracts inner, central, and outer surfaces from
+those full-grid level sets in RAS+ millimetres. It uses scikit-image Lewiner
+marching cubes; the separate JIST `IsoSurfaceOnGrid` comparison remains open.
+See the [P40k report](reports/full-pytest-2026-09-29-plus-surface-extraction.md).
 
 ## Image provenance and explicit input mask
 
