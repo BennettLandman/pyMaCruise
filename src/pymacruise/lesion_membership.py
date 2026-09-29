@@ -69,6 +69,14 @@ class LesionToadsPriorEnergyUpdate:
     black_hole_energy: np.float32
 
 
+@dataclass(frozen=True)
+class LesionToadsOutmaskMembership:
+    """OUTMASK class and outlier-map values after direct/prior mixing."""
+
+    class_membership: np.float32
+    outlier_membership: np.float32
+
+
 def convert_lesion_toads_class_membership(
     data_energy: float,
     shape_prior: float,
@@ -581,4 +589,43 @@ def update_lesion_toads_prior_energies(
         class_energy=class_energy_value,
         lesion_energy=lesion_energy_value,
         black_hole_energy=black_hole_energy_value,
+    )
+
+
+def update_lesion_toads_outmask_membership(
+    class_membership: float,
+    outmask_membership: float,
+    outlier_membership: float,
+    *,
+    relation_type: str,
+    shape_prior: float,
+) -> LesionToadsOutmaskMembership:
+    """Blend the selected OUTMASK and class memberships by outlier weight.
+
+    This is the `OUTMASK` assignment after the class and outmask terms have
+    already been inverted. Subsequent shared denominator normalization is a
+    separate source step.
+    """
+    class_value = np.float32(class_membership)
+    outmask_value = np.float32(outmask_membership)
+    outlier = np.float32(outlier_membership)
+    shape = np.float32(shape_prior)
+    if not all(np.isfinite(value) for value in (class_value, outmask_value, outlier, shape)):
+        raise ValueError("membership and shape inputs must be finite")
+    if relation_type not in {"direct", "prior"}:
+        raise ValueError("relation_type must be 'direct' or 'prior'")
+
+    class_fraction = np.float32(np.float32(1.0) - outlier)
+    class_component = np.float32(class_fraction * class_value)
+    outlier_component = np.float32(outlier * outmask_value)
+    mixed = np.float32(class_component + outlier_component)
+    if relation_type == "prior":
+        doubled_shape = np.float32(np.float32(2.0) * shape)
+        shape_factor = np.float32(1.0) if np.float32(1.0) < doubled_shape else doubled_shape
+        mixed = np.float32(shape_factor * mixed)
+        outlier = np.float32(shape_factor * outlier)
+    outlier = np.float32(outlier * outmask_value)
+    return LesionToadsOutmaskMembership(
+        class_membership=mixed,
+        outlier_membership=outlier,
     )
