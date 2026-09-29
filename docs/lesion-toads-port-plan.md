@@ -510,12 +510,19 @@ and [`tests/data/synthetic/lesion_toads_flair_weight/README.md`](../tests/data/s
 This remains a data-term slice before smoothing, atlas priors, inversion, and
 membership normalization.
 
-### Started substage: P39x Sulcal-CSF/MPRAGE data energy
+### Completed substage: P39x Sulcal-CSF/MPRAGE data energy
 
 For a generic `OBJECT` named exactly `Sulcal-CSF`, the selected source uses
 the T1-only squared residual. If MPRAGE is present, it applies that channel's
 CSF PowerTable; otherwise it uses the direct square. With no T1 index, the
-source falls back to weighted multi-channel object energy. Apply the optional
-field before calculating the residual. Validate all three branches, including
-PowerTable cached and out-of-range values, against the Java source. This slice
-does not add spatial/atlas terms or membership normalization.
+source falls back to weighted multi-channel object energy. Nine selected-Java
+cases match the MPRAGE PowerTable, direct T1 square, no-T1 generic fallback,
+field-corrected forms, and exact structure-name gating; class-energy
+float32 bits match exactly. Invalid T1 and missing PowerTable exponent
+reject. Two focused tests pass; the full suite reports 435 passed with two
+expected RAS warnings in 53.56 seconds on implementation commit
+`211d6286498a9065f92cb407f4e69dd621e692b7`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-sulcal-csf.md`](reports/full-pytest-2026-09-29-lesion-toads-sulcal-csf.md)
+and [`tests/data/synthetic/lesion_toads_sulcal_csf/README.md`](../tests/data/synthetic/lesion_toads_sulcal_csf/README.md).
+This remains a data-term slice before smoothing, priors, inversion, and
+membership normalization.
