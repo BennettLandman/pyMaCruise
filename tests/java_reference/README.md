@@ -148,3 +148,14 @@ Its synthetic folded-band case records the full event trace and final arrays,
 using the actual 18/6 LUT and `BinaryHeap4D`. Regenerate with
 `scripts/generate_java_toads_growing_pass_reference.sh`; see
 `tests/data/synthetic/toads_growing_pass/README.md` for the phantom and limits.
+
+## TOADS rigid registration update
+
+`ToadsRigidRegistrationUpdateHarness.java` uses the supplied Java
+`ParametricTransform`, `RotationMatrix`, and `ImageFunctions` with a compact
+synthetic atlas/membership pair. It transcribes the selected exact-membership
+coefficient loop and `registerGradientDescent` update for an accepted and an
+11-trial backtracked case. Regenerate with
+`scripts/generate_java_toads_rigid_registration_update_reference.sh`; see
+`tests/data/synthetic/toads_rigid_registration_update/README.md` for scope and
+limitations.
