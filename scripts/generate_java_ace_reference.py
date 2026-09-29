@@ -130,7 +130,11 @@ def main() -> None:
         stage_names.append(stage_path.relative_to(output).as_posix())
 
     metadata = {
-        "purpose": "selected MaCRUISE ACE wrapper Java synthetic reference",
+        "purpose": (
+            "selected MaACE Java wrapper after-Gaussian synthetic reference"
+            if args.place_to_add_csf == 3
+            else "selected MaCRUISE ACE wrapper Java synthetic reference"
+        ),
         "provenance": "synthetic; committed concentric tissue phantom",
         "frame": "RAS",
         "units": "mm",
