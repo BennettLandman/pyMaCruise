@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zp have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and direct OBJECT sweep slices including pairwise shape priors,
+**Status:** P39 is Started. P39a–P39zq have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through the one-LESION-class smoothing branch,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -859,3 +859,21 @@ commit `7b05f5c1da239cdfd0553e21e617da4b0d65441c`; see
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-object-prior-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-object-prior-sweep.md)
 and [`tests/data/synthetic/lesion_toads_object_prior_sweep/README.md`](../tests/data/synthetic/lesion_toads_object_prior_sweep/README.md). This
 remains ordinary OBJECT-only evidence; lesion and auxiliary classes are open.
+
+
+### Completed substage: P39zq OBJECT and LESION smoothing sweep
+
+`run_lesion_toads_lesion_smoothing_sweep` extends the source-ordered
+in-place update to ordinary OBJECT classes plus one LESION class. It updates
+the separate lesion data term and auxiliary membership from the selected
+six-face stencil, applies source shape gating and direct/prior conversion,
+then normalizes each visited voxel. The selected-Java harness matches all
+class and lesion membership bits on the committed 5×4×6 synthetic volume;
+boundary planes are unchanged and a reverse-order control differs. Focused
+tests: 3 passed. Full suite: 496 passed with two expected RAS warnings in
+81.87 seconds on implementation commit
+`db5f46743761cbe4feebbfb15343524b0787ae5a`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-sweep.md)
+and [`tests/data/synthetic/lesion_toads_lesion_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_sweep/README.md). Atlas priors,
+distance modulation, black-hole and OUTMASK classes, and full segmentation
+remain open.
