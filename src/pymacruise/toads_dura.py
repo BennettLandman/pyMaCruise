@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import nibabel as nib
 import numpy as np
 
 from pymacruise.ace import _signed_distance_fmm
@@ -22,6 +23,7 @@ from pymacruise.tgdm import (
     tgdm_evolve,
     tgdm_geometry,
 )
+from pymacruise.topology import topology_correct
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,34 @@ class DuraInitialLevelSets:
     outer_level_set: np.ndarray
     inner_signed_distance: np.ndarray
     outer_signed_distance: np.ndarray
+
+
+def dura_correct_white_matter_topology(
+    white_matter: nib.spatialimages.SpatialImage,
+    original_white_matter_mask: nib.spatialimages.SpatialImage,
+) -> nib.Nifti1Image:
+    """Apply the first ``tcWM`` call from ``MedicAlgorithmRemoveDura09``.
+
+    The selected Java wrapper passes its source WM membership field and the
+    original WM mask to ``MedicAlgorithmTopologyCorrection`` with foreground/
+    background connectivities 6/18, object-to-background propagation,
+    normalization enabled over levels 0–1, paint threshold 0.5, and regularize
+    amount 0.05. The shared Python topology implementation handles RAS
+    normalization and grid checks; this adapter supplies the Dura-specific
+    parameter that differs from its general default.
+
+    The returned image is the first corrected field (``wmTC``). This function
+    deliberately does not construct ``wmTC + raw GM`` or perform the separate
+    second ``tcGM`` call.
+    """
+    return topology_correct(
+        white_matter,
+        original_white_matter_mask,
+        paint_threshold=0.5,
+        lowest_level=0.0,
+        highest_level=1.0,
+        regularize=0.05,
+    ).corrected
 
 
 def dura_initial_level_sets(

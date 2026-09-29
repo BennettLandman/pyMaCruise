@@ -2,8 +2,10 @@
 
 **Status:** P39 is Started. P39a (numeric intensity initialization), P39b
 (atlas-prior parsing), and P39c (capped six-neighbor distance support) are
-validated on synthetic/reference data. This document tracks algorithm scope
-and source contracts; it does not claim a full LesionTOADS port.
+validated on synthetic/reference data. P39d is in progress and loads only the
+topology NIfTI; it does not claim raw-byte-loader or algorithm equivalence.
+This document tracks algorithm scope and source contracts; it does not claim
+a full LesionTOADS port.
 
 ## Selected workflow and source
 
@@ -129,3 +131,16 @@ the exact reachable call semantics, including dimensionality, structuring
 element, border handling, dtype, and iteration behavior. Add a small adapter
 or port only for behavior SciPy does not provide, and record any remaining
 differences as explicit deviations.
+
+### Started substage: P39d topology atlas loading
+
+`load_lesion_atlas_topology` resolves only the descriptor's topology `File`
+entry and reads its bundled `.nii.gz` with the shared RAS-aware NIfTI loader.
+It validates an in-atlas relative path and a 3D image, warns and reorients a
+non-RAS input, and does not load any declared shape image. The bundled atlas
+loads as an RAS-oriented `(172, 216, 164)` image. A 2×3×4 synthetic LPS image
+checks voxel-axis reorientation and confirms an absent shape file is
+irrelevant to this slice. This intentionally does not emulate Java's
+headerless `x + Nx*y + Nx*Ny*z` byte reader: it validates the repository's
+compressed-NIfTI path only. Shape-array loading, source index conversion,
+transformed sampling, and algorithmic topology use remain open.

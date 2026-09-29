@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 import pytest
 from skimage.measure import marching_cubes
@@ -13,7 +14,9 @@ from pymacruise.toads_dura import (
     dura_tgdm_evolve,
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
+    dura_correct_white_matter_topology,
 )
+from pymacruise.topology import topology_correct
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 
@@ -68,6 +71,40 @@ def test_dura_initial_level_sets_match_original_jist_jar() -> None:
     ):
         expected = np.asarray(reference[field_name], dtype=np.float32).reshape(shape)
         np.testing.assert_array_equal(actual_field, expected)
+
+
+def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> None:
+    shape = (9, 10, 8)
+    rng = np.random.default_rng(94021)
+    wm = np.linspace(-12.0, 278.0, np.prod(shape), dtype=np.float32)
+    rng.shuffle(wm)
+    wm = wm.reshape(shape)
+    paint = np.zeros(shape, dtype=np.float32)
+    # An asymmetric narrow painted path includes the image boundary.
+    paint[0:4, 2, 3] = 1.0
+    paint[3, 2:7, 3] = 1.0
+    paint[3, 6, 3:7] = 1.0
+    affine = np.diag([-1.0, -1.2, 1.5, 1.0])
+    affine[:3, 3] = (8.0, 11.0, -4.0)
+    wm_image = nib.Nifti1Image(wm, affine)
+    paint_image = nib.Nifti1Image(paint, affine)
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS") as caught:
+        actual = dura_correct_white_matter_topology(wm_image, paint_image)
+    assert len(caught) == 2
+
+    expected = topology_correct(
+        wm_image,
+        paint_image,
+        paint_threshold=0.5,
+        lowest_level=0.0,
+        highest_level=1.0,
+        regularize=0.05,
+    ).corrected
+    np.testing.assert_array_equal(actual.dataobj, expected.dataobj)
+    assert actual.get_data_dtype() == np.dtype(np.float32)
+    assert nib.aff2axcodes(actual.affine) == ("R", "A", "S")
+    assert actual.shape == shape
 
 
 def test_dura_output_mask_matches_wrapper_threshold_order_and_copies() -> None:

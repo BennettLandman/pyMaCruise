@@ -1,8 +1,9 @@
 """Parse numeric priors from a source-format LesionTOADS atlas descriptor.
 
-This parser reads only the descriptor's structures, intensity rows, lesion
-priors, and black-hole priors. It does not inspect or load topology/shape image
-arrays. Prior vectors retain the structure order declared in the descriptor.
+The numeric-prior parser reads structures, intensity rows, lesion priors, and
+black-hole priors without loading atlas images. A separate focused loader can
+resolve the topology NIfTI; it does not inspect or load shape maps. Prior
+vectors retain the structure order declared in the descriptor.
 
 Paper context: the selected numeric rows supply statistical intensity and
 lesion/black-hole prior inputs for the Lesion-TOADS model described by Shiee et
@@ -17,11 +18,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
+import nibabel as nib
 import numpy as np
+
+from .image_io import load_nifti_ras
 
 
 class LesionAtlasDescriptorError(ValueError):
-    """Raised when a LesionTOADS text descriptor has invalid prior metadata."""
+    """Raised when LesionTOADS descriptor metadata or atlas input is invalid."""
 
 
 @dataclass(frozen=True)
@@ -40,6 +44,14 @@ class LesionAtlasPriors:
     intensity_priors: np.ndarray
     lesion_priors: np.ndarray
     black_hole_priors: np.ndarray
+
+
+@dataclass(frozen=True)
+class LesionAtlasTopology:
+    """Topology NIfTI referenced by a descriptor; no shape maps are loaded."""
+
+    path: Path
+    image: nib.spatialimages.SpatialImage
 
 
 _MODALITY_ALIASES = {
@@ -134,6 +146,72 @@ def load_lesion_atlas_priors(
         lesion_priors=lesion_array,
         black_hole_priors=black_hole_array,
     )
+
+
+def load_lesion_atlas_topology(
+    descriptor_path: str | Path,
+) -> LesionAtlasTopology:
+    """Load just the descriptor's topology atlas as an RAS ``.nii.gz`` image.
+
+    Shape maps and the numeric priors remain untouched. The NIfTI is loaded via
+    the shared image I/O path, which warns and axis-reorients non-RAS inputs.
+    The descriptor reference must be relative to its directory and remain
+    within that atlas directory.
+    """
+    descriptor = Path(descriptor_path).resolve()
+    if not descriptor.is_file():
+        raise LesionAtlasDescriptorError(
+            f"Missing LesionTOADS atlas descriptor: {descriptor}"
+        )
+    lines = descriptor.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "Structure Atlas File (edit at your own risks)":
+        raise LesionAtlasDescriptorError(
+            f"Not a LesionTOADS atlas descriptor: {descriptor}"
+        )
+    section_index = next(
+        (i for i, line in enumerate(lines) if line.strip().startswith("Topology Atlas:")),
+        None,
+    )
+    if section_index is None:
+        raise LesionAtlasDescriptorError("Missing Topology Atlas section")
+    reference = None
+    for line in lines[section_index + 1 :]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _starts_section(stripped):
+            break
+        key, separator, value = stripped.partition(":")
+        if separator and key.strip() == "File":
+            reference = value.strip()
+            break
+    if not reference:
+        raise LesionAtlasDescriptorError("Topology Atlas section has no File reference")
+    relative = Path(reference)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise LesionAtlasDescriptorError(
+            f"Unsafe topology atlas path in descriptor: {reference}"
+        )
+    if relative.suffixes[-2:] != [".nii", ".gz"]:
+        raise LesionAtlasDescriptorError(
+            f"Topology atlas must use compressed .nii.gz: {reference}"
+        )
+    atlas_path = (descriptor.parent / relative).resolve()
+    if not atlas_path.is_relative_to(descriptor.parent):
+        raise LesionAtlasDescriptorError(
+            f"Topology atlas path escapes descriptor directory: {reference}"
+        )
+    try:
+        image = load_nifti_ras(atlas_path)
+    except (OSError, ValueError) as exc:
+        raise LesionAtlasDescriptorError(
+            f"Cannot load LesionTOADS topology atlas {atlas_path}: {exc}"
+        ) from exc
+    if len(image.shape) != 3:
+        raise LesionAtlasDescriptorError(
+            f"LesionTOADS topology atlas must be 3D, got {image.shape}: {atlas_path}"
+        )
+    return LesionAtlasTopology(atlas_path, image)
 
 
 def _canonical_modality(name: str) -> str:

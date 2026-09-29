@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 import pytest
 
 from pymacruise.lesion_atlas_priors import (
     LesionAtlasDescriptorError,
+    load_lesion_atlas_topology,
     load_lesion_atlas_priors,
 )
 
@@ -99,3 +101,83 @@ def test_lesion_atlas_parser_rejects_row_with_wrong_structure_count(tmp_path) ->
 
     with pytest.raises(LesionAtlasDescriptorError, match="expected 3"):
         load_lesion_atlas_priors(descriptor, ["T1_MPRAGE"])
+
+
+def test_bundled_lesion_topology_is_loaded_as_ras_nifti_only() -> None:
+    topology = load_lesion_atlas_topology(
+        ATLAS_ROOT / "cruise-atlas-12obj-lesiontoads2012.txt"
+    )
+
+    assert topology.path.name == "brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz"
+    assert topology.path.is_file()
+    assert topology.image.shape == (172, 216, 164)
+    assert nib.aff2axcodes(topology.image.affine) == ("R", "A", "S")
+
+
+def test_lesion_topology_loader_reorients_non_ras_and_does_not_load_shape_maps(
+    tmp_path,
+) -> None:
+    # The unreferenced shape file intentionally does not exist: this step only
+    # resolves and loads the topology atlas.
+    values = np.arange(24, dtype=np.int16).reshape((2, 3, 4))
+    source_affine = np.diag([-1.0, -1.0, 1.0, 1.0])
+    source_affine[0, 3] = 1.0
+    source_affine[1, 3] = 2.0
+    atlas_path = tmp_path / "topology.nii.gz"
+    nib.save(nib.Nifti1Image(values, source_affine), atlas_path)
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text(
+        "Structure Atlas File (edit at your own risks)\n"
+        "Topology Atlas:\n"
+        "File:\ttopology.nii.gz\n"
+        "Shape Atlas:\t8\n"
+        "File:\tmissing-shape.nii.gz\n"
+    )
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        topology = load_lesion_atlas_topology(descriptor)
+
+    expected = nib.orientations.apply_orientation(
+        values,
+        nib.orientations.ornt_transform(
+            nib.orientations.axcodes2ornt(("L", "P", "S")),
+            nib.orientations.axcodes2ornt(("R", "A", "S")),
+        ),
+    )
+    assert nib.aff2axcodes(topology.image.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(np.asanyarray(topology.image.dataobj), expected)
+
+
+@pytest.mark.parametrize(
+    "reference, message",
+    [
+        ("topology.nii", "compressed .nii.gz"),
+        ("../outside.nii.gz", "Unsafe topology atlas path"),
+    ],
+)
+def test_lesion_topology_loader_rejects_nonbundled_path_forms(
+    tmp_path, reference, message
+) -> None:
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text(
+        "Structure Atlas File (edit at your own risks)\n"
+        "Topology Atlas:\n"
+        f"File:\t{reference}\n"
+    )
+
+    with pytest.raises(LesionAtlasDescriptorError, match=message):
+        load_lesion_atlas_topology(descriptor)
+
+
+def test_lesion_topology_loader_rejects_non_3d_image(tmp_path) -> None:
+    atlas_path = tmp_path / "topology.nii.gz"
+    nib.save(nib.Nifti1Image(np.zeros((2, 3, 4, 2), dtype=np.int16), np.eye(4)), atlas_path)
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text(
+        "Structure Atlas File (edit at your own risks)\n"
+        "Topology Atlas:\n"
+        "File:\ttopology.nii.gz\n"
+    )
+
+    with pytest.raises(LesionAtlasDescriptorError, match="must be 3D"):
+        load_lesion_atlas_topology(descriptor)
