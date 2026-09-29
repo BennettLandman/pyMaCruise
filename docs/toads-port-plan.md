@@ -398,8 +398,9 @@ The source wrapper SHA-256 is
 reference JAR `DistanceField.class` SHA-256 is recorded in the fixture. The
 generator is `scripts/generate_java_dura_initial_levelsets_reference.sh` and
 accepts the original jar through `JIST_TEST_JAR`; the jar is only a development
-oracle, not a runtime dependency. The focused Dura test module now passes 16
-tests, including the nested and larger folded-cortex TGDM comparisons.
+oracle, not a runtime dependency. The focused Dura test module passes 23
+tests, including the nested and larger folded-cortex TGDM comparisons and
+five exact selected-Java topology-correction fixture calls.
 This validates initial arithmetic/distance construction only, not the two
 topology-correction algorithms or the complete dura workflow.
 

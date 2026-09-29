@@ -1,11 +1,13 @@
 # LesionTOADS and MaCRUISEplus port plan
 
 **Status:** P39 is Started. P39a (numeric intensity initialization), P39b
-(atlas-prior parsing), and P39c (capped six-neighbor distance support) are
-validated on synthetic/reference data. P39d is in progress and loads only the
-topology NIfTI; it does not claim raw-byte-loader or algorithm equivalence.
-This document tracks algorithm scope and source contracts; it does not claim
-a full LesionTOADS port.
+(atlas-prior parsing), P39c (capped six-neighbor distance support), P39d
+(topology NIfTI loading), and P39e (shape-prior NIfTI loading) are validated
+on synthetic/reference data. The atlas-loader rows validate bundled
+compressed-NIfTI handling only, not the Java raw-byte loader, registration,
+transformed-prior sampling, or lesion algorithm. This document tracks
+algorithm scope and source contracts; it does not claim a full LesionTOADS
+port.
 
 ## Selected workflow and source
 
@@ -144,3 +146,17 @@ irrelevant to this slice. This intentionally does not emulate Java's
 headerless `x + Nx*y + Nx*Ny*z` byte reader: it validates the repository's
 compressed-NIfTI path only. Shape-array loading, source index conversion,
 transformed sampling, and algorithmic topology use remain open.
+
+### Completed substage: P39e shape-prior NIfTI loading
+
+`load_lesion_atlas_shape_priors` follows the descriptor's declared
+`Structure`/`File` mapping and loads each of the 13 bundled shape maps as an
+immutable float32 RAS array in declared structure order. It validates that
+paths remain inside the atlas directory, that each image is 3D and matches the
+descriptor dimensions, and that voxel values are finite. The shared image
+loader warns/reorients non-RAS images; duplicate references such as
+`OuterVentricular-WM` share the same loaded array as `Cerebrum-WM`. Actual
+assets and synthetic malformed-path, missing-file, shape, dimension, value,
+alias, and orientation cases are covered. This intentionally does not
+implement the selected Java raw-float reader, atlas registration, or
+transformed-prior interpolation; those remain separate steps.
