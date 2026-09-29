@@ -586,7 +586,7 @@ commit `c5493e84aa72d03bd951194aad0a91eec0ee3e39`. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md`](reports/full-pytest-2026-09-29-lesion-toads-blackhole-distance-modulation.md)
 and [`tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md`](../tests/data/synthetic/lesion_toads_blackhole_distance_modulation/README.md).
 
-### Started substage: P39zb per-voxel membership normalization
+### Completed substage: P39zb per-voxel membership normalization
 
 Recreate the final one-voxel portion of `computeMemberships`: add lesion and
 black-hole auxiliary membership values to the denominator in their source
@@ -595,3 +595,21 @@ selected auxiliary values only when `den > 0`, and accumulate the local
 energy from normalized class and auxiliary memberships. This slice begins
 with assigned memberships and energies; it does not estimate their data
 terms or spatial priors.
+
+Eight selected-Java one-voxel cases match denominator, normalized class
+memberships, lesion/black-hole/outlier auxiliary memberships, and local
+energy float32 bits. They cover ordinary, LESION, BLACKHOLE, OUTLIER/OUTMASK,
+nonpositive denominator, repeated auxiliary-map division, optimized-lesion,
+and float32-sensitive sums. Focused suite: 5 passed; full suite: 447 passed
+with two expected RAS warnings in 67.49 seconds on implementation commit
+`4d0a25af19d146823402bea1febd5dfc60868695`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-voxel-membership-normalization.md`](reports/full-pytest-2026-09-29-lesion-toads-voxel-membership-normalization.md)
+and [`tests/data/synthetic/lesion_toads_voxel_membership_normalization/README.md`](../tests/data/synthetic/lesion_toads_voxel_membership_normalization/README.md).
+
+### Started substage: P39zc selected lesion-membership integration
+
+Compose the already checked per-class inverse/prior conversion, source
+direct/prior auxiliary lesion relation initialization, lesion and black-hole
+distance modulation, and final voxel denominator/normalization. Keep class
+energies as synthetic precomputed inputs; smoothing and spatial-prior energy
+assembly are not part of this integration slice.
