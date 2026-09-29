@@ -77,6 +77,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39v is complete. Nine selected-Java formula cases match field-corrected class, lesion, and black-hole data energies bit-for-bit for ordinary, lesion, and black-hole types over three synthetic multichannel image/field vectors. The complete suite reports **431 passed in 54.22 seconds**, with two expected RAS warnings, on implementation commit `c43ba3aaf7f38582dbd087bdb971f0d91bef2ebf`; see the [P39v full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-field-data-terms.md) and [formula fixture](tests/data/synthetic/lesion_toads_field_data_terms/README.md). The helper requires field inputs only when `use_field=True`; the special Sulcal-CSF/MPRAGE and FLAIR PowerTable branches remain separate. The roadmap counts 126/140 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39w is Started: it applies the selected FLAIR-only `useLesionWeight` PowerTable term to lesion energy, reusing the quantized Python lookup and keeping field application and float32 accumulation behavior explicit. The roadmap counts 126/141 rows (~89%) Done, 3 Started, 1 Blocked, and 11 Not started.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text

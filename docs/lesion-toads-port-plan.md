@@ -492,3 +492,14 @@ with two expected RAS warnings in 54.22 seconds on implementation commit
 and [`tests/data/synthetic/lesion_toads_field_data_terms/README.md`](../tests/data/synthetic/lesion_toads_field_data_terms/README.md).
 This excludes special PowerTable handling, smoothing, atlas priors, inversion,
 and membership normalization.
+
+### Started substage: P39w FLAIR lesion PowerTable energy
+
+The selected lesion branch uses a special single-channel FLAIR residual when
+`useLesionWeight` is enabled: square the float32 residual, pass it to the
+cached lesion `PowerTable`, and add the returned double to the float32 lesion
+energy accumulator (narrowing after addition). The implementation will reuse
+the existing Python source-compatible table lookup and validate cached-grid,
+out-of-range, and field-corrected cases against the real Java `PowerTable`.
+Other modalities, black-hole energies, spatial terms, and membership update
+are not part of this slice.
