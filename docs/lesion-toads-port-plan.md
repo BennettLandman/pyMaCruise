@@ -998,8 +998,8 @@ LesionTOADS engine.
 ### Started substage: P39zy LESION+OUTMASK volume composition
 
 Compose the independently validated OBJECT+LESION and OBJECT+OUTMASK in-place
-volume updates. Preserve source ordering when the LESION auxiliary map is
-added to the denominator before the class term, then the OUTMASK update
-blends and replaces the outlier map before normalization. Add source-selected
-distance modulation and atlas priors only as they become covered by the
-committed fixture and explicit criteria.
+volume updates, including their selected smoothing and atlas-prior terms.
+Preserve source ordering when the LESION auxiliary map is added to the
+denominator before the class term, then the OUTMASK update blends and replaces
+the outlier map before normalization. Distance modulation remains a separate
+follow-on slice.
