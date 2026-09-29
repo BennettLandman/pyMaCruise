@@ -568,9 +568,10 @@ and [`tests/data/synthetic/lesion_toads_distance_modulation/README.md`](../tests
 ### Started substage: P39za black-hole distance modulation
 
 Port the selected `BLACKHOLE` branch's distance postprocessing. Apply the
-selected ventricle-or-GM factor to both `lesionMembership` and
-`blackHoleMem`, then independently apply a valid brainstem factor to both;
-scale `lesionRelation` once per selected factor. Preserve the source's
-ventricle-versus-GM branch precedence, zero-distance `spread` behavior,
-`-1` sentinels, and Java float32 expression order. This reuses distances
-already computed elsewhere and does not normalize voxel memberships.
+selected ventricle-or-GM factor to `lesionMembership` and `lesionRelation`;
+the source ventricle branch leaves `blackHoleMem` unchanged, while the GM
+branch also scales it. A valid brainstem factor then independently scales
+both auxiliary maps and `lesionRelation`. Preserve this source-specific
+asymmetry, branch precedence, zero-distance `spread`, `-1` sentinels, and Java
+float32 expression order. This reuses distances already computed elsewhere
+and does not normalize voxel memberships.

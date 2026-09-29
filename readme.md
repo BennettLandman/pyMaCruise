@@ -85,7 +85,7 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39z is complete. Twelve selected-Java scalar cases match lesion membership and `lesionRelation` bits through ventricle/GM precedence and independent brainstem modulation, including the special `spread` numerator at zero ventricle/GM distance, `-1` sentinels, disabled maxima, and GM enable/disable. The complete suite reports **440 passed in 69.12 seconds**, with two expected RAS warnings, on implementation commit `c93ec3978753acf857a656c0d4792228d176c90d`; see the [P39z full-suite report](docs/reports/full-pytest-2026-09-29-lesion-toads-distance-modulation.md) and [formula fixture](tests/data/synthetic/lesion_toads_distance_modulation/README.md). This does not generate distance maps or normalize memberships. The roadmap counts 130/145 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
 
-P39za is Started: the matching black-hole branch applies those same selected factors to both lesion and black-hole auxiliary maps plus `lesionRelation`. The roadmap counts 130/145 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
+P39za is Started: the source `BLACKHOLE` branch applies ventricle distance to lesion membership and `lesionRelation` while leaving `blackHoleMem` unchanged; its GM and brainstem branches update both auxiliary maps. This source-specific asymmetry is included in the selected Java cases. The roadmap counts 130/145 rows (~90%) Done, 3 Started, 1 Blocked, and 11 Not started.
 
 The currently implemented CLI entry point supports the implemented stages:
 
