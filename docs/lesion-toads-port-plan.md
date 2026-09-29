@@ -181,3 +181,14 @@ The harness does not instantiate the complete atlas class and this slice does
 not perform registration, transformed-bound optimization, or lesion
 segmentation. Provenance and fixture are in
 `tests/data/synthetic/lesion_shape_sampling/README.md`.
+
+### Started substage: P39g transformed shape-prior derivatives
+
+LesionTOADS registration differentiates each sampled prior in template
+coordinates with `ImageFunctions.linearInterpolationXderivative`,
+`Yderivative`, and `Zderivative`, then composes those values with the rigid
+coordinate Jacobian. The selected helper already has a source-comparison
+fixture in the TOADS registration tests; P39g makes that derivative available
+through the LesionTOADS sampler while preserving its own prior-value and
+input-bound behavior. This does not implement registration updates or
+segmentation.
