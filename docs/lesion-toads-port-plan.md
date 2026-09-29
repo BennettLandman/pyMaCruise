@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zy have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK smoothing/blending/prior/normalization,
+**Status:** P39 is Started. P39a–P39zz have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1025,9 +1025,28 @@ This validates one selected composed membership branch, not the full
 iterative LesionTOADS engine. Distance modulation remains a separate step.
 
 
-### Started substage: P39zz combined lesion-distance routing
+### Completed substage: P39zz combined lesion-distance routing
 
-Route the selected ventricle-first, optional GM fallback, and independent
-brainstem distance rules through the combined LESION+OUTMASK update, keeping
-the outlier blend and shared normalization in the same pass. The control case
-without distance maps must reproduce P39zy exactly.
+The combined LESION+OUTMASK sweep now routes the selected ventricle-first,
+optional GM fallback, and independent brainstem distance rules through the
+lesion auxiliary update, preserving the outlier blend and shared
+normalization. Two committed Java formula fixtures cover direct and prior
+lesion relations, ventricle precedence, GM fallback, zero-distance spread,
+brainstem scaling, and varied outlier weights. Every interior class, lesion,
+and outlier membership bit matches; zero distance maxima reproduce P39zy.
+Focused tests: 10 passed. Full suite: 512 passed with two expected RAS
+warnings in 77.36 seconds on implementation commit
+`afed23eca5c3daec529339c7a00ec893a7dc8e21`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-lesion-outmask-distance-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-lesion-outmask-distance-sweep.md)
+and
+[`tests/data/synthetic/lesion_toads_lesion_outmask_distance_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_outmask_distance_sweep/README.md).
+This validates selected routing, not full LesionTOADS equivalence.
+
+
+### Started substage: P39zza BLACKHOLE+OUTMASK volume composition
+
+Compose the validated BLACKHOLE and OUTMASK class updates in one
+source-ordered pass. Preserve lesion and black-hole auxiliary updates,
+OUTMASK blending, atlas priors, distance behavior, and shared voxel
+normalization. Compare all four memberships to a selected Java harness on a
+committed synthetic volume.
