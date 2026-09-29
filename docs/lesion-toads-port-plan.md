@@ -80,9 +80,10 @@ primitive, not lesion membership or segmentation. See
 
 ## Next source-faithful increments
 
-1. Port lesion atlas topology/shape loading and transformed-prior sampling;
-   preserve descriptor order and use the bundled `.nii.gz` assets in the
-   legacy Java index order. Do not introduce any external atlas directory
+1. Port transformed LesionTOADS prior sampling from the loaded `.nii.gz` shape
+   maps. Match the selected class-specific bounds, rigid coordinate mapping,
+   interpolation/default-value behavior, and preserve descriptor order. Keep
+   this separate from registration and do not add an external atlas directory
    dependency.
 2. Resolve and bundle the selected 18/6 critical-point lookup table as a
    regular Git file if the source algorithm needs it. It is absent from the
