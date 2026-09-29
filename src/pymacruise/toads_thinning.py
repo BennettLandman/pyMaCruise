@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pymacruise.toads_heap import ToadsPriorityHeap4D
 from pymacruise.toads_topology import toads_homeomorphic_label_change
 
 
@@ -139,3 +140,134 @@ def toads_thinning_voxel_transition(
         topology_accepted,
         True,
     )
+
+
+@dataclass(frozen=True)
+class ToadsThinningQueueInitialization:
+    """Arrays and priority queue emitted by one source thinning initializer."""
+
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    class_volumes: NDArray[np.float32]
+    boundary_counts: NDArray[np.int32]
+    queue: ToadsPriorityHeap4D
+
+
+def toads_initialize_thinning_queue(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    *,
+    empty_label: int = -1,
+    initial_skeleton: ArrayLike | None = None,
+    initial_available: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+) -> ToadsThinningQueueInitialization:
+    """Initialize selected ``initThinningLabels`` state and max-heap entries.
+
+    The source scans only interior voxels, accumulates current-class
+    memberships in x/y/z order, detects boundaries from six face neighbors,
+    retains the source endpoint test's neighbor-count behavior, and inserts
+    negative membership-ratio priorities into a max heap. Existing border
+    skeleton/availability values are copied through unchanged.
+    """
+    labels = np.asarray(segmentation)
+    mems = np.asarray(memberships, dtype=np.float32)
+    if labels.ndim != 3 or any(length < 3 for length in labels.shape):
+        raise ValueError("segmentation must be a 3-D grid with every dimension at least 3")
+    if not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation labels must be integers")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D, match segmentation, and contain at least two classes")
+    classes = mems.shape[-1]
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must be valid class indices")
+    if not np.isfinite(mems).all():
+        raise ValueError("memberships must be finite")
+    zero = np.float32(zero_threshold)
+    if not np.isfinite(zero) or zero < np.float32(0.0):
+        raise ValueError("zero_threshold must be finite and nonnegative")
+
+    if initial_skeleton is None:
+        skeleton = np.full(labels.shape, empty_label, dtype=np.int16)
+    else:
+        source_skeleton = np.asarray(initial_skeleton)
+        if source_skeleton.shape != labels.shape or not np.issubdtype(source_skeleton.dtype, np.integer):
+            raise ValueError("initial_skeleton must be an integer grid matching segmentation")
+        skeleton = source_skeleton.astype(np.int16, copy=True)
+    if initial_available is None:
+        available = np.zeros(labels.shape + (classes,), dtype=np.bool_)
+    else:
+        source_available = np.asarray(initial_available)
+        if source_available.shape != labels.shape + (classes,) or source_available.dtype != np.bool_:
+            raise ValueError("initial_available must be a boolean grid matching segmentation and classes")
+        available = source_available.copy()
+
+    nx, ny, nz = labels.shape
+    volumes = np.zeros(classes, dtype=np.float32)
+    boundaries = np.zeros(classes, dtype=np.int32)
+    queue = ToadsPriorityHeap4D(nx * ny + ny * nz + nz * nx, "max")
+
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                current = int(labels[x, y, z])
+                skeleton[x, y, z] = np.int16(current)
+                volumes[current] = np.float32(volumes[current] + mems[x, y, z, current])
+                for candidate in range(classes):
+                    available[x, y, z, candidate] = candidate == current
+
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                current = int(labels[x, y, z])
+                for candidate in range(classes):
+                    if current != candidate:
+                        continue
+                    boundary = False
+                    neighbor_count = 0
+                    ni = nj = nl = 0
+                    for i in (-1, 0, 1):
+                        for j in (-1, 0, 1):
+                            for k in (-1, 0, 1):
+                                distance2 = i * i + j * j + k * k
+                                neighbor_label = int(labels[x + i, y + j, z + k])
+                                if distance2 == 1 and neighbor_label != candidate:
+                                    boundary = True
+                                elif distance2 > 0:
+                                    neighbor_count += 1
+                                    ni, nj, nl = x + i, y + j, z + k
+                    if not boundary:
+                        continue
+                    available[x, y, z, candidate] = False
+
+                    endpoint = False
+                    if neighbor_count == 1:
+                        neighbor_count = 0
+                        for i in (-1, 0, 1):
+                            for j in (-1, 0, 1):
+                                for k in (-1, 0, 1):
+                                    if i * i + j * j + k * k > 0 and labels[ni + i, nj + j, nl + k] == candidate:
+                                        neighbor_count += 1
+                        endpoint = neighbor_count <= 2
+
+                    if endpoint:
+                        order = np.float32(-0.0)
+                    else:
+                        best = 0
+                        maximum = np.float32(0.0)
+                        for other in range(classes):
+                            if mems[x, y, z, other] > maximum:
+                                best = other
+                                maximum = mems[x, y, z, other]
+                        if candidate == best:
+                            ratio = np.float32(1.0)
+                        else:
+                            ratio = np.float32(
+                                np.float32(mems[x, y, z, best] + zero)
+                                / np.float32(mems[x, y, z, candidate] + zero)
+                            )
+                        order = np.float32(np.float32(-1.0) / ratio)
+                    queue.add(order, x, y, z, candidate)
+                    boundaries[candidate] += 1
+
+    return ToadsThinningQueueInitialization(skeleton, available, volumes, boundaries, queue)
