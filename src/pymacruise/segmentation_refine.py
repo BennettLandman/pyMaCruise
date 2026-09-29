@@ -6,6 +6,17 @@ returned by ``max`` instead of the corresponding label value; this module
 returns the actual modal label and records counts/masks for every rule.
 Source reference: ``MAsegRefineBySurf.m`` and ``run_SegmentationRefine.m``,
 MaCRUISE SVN r9360.
+
+Published-method context: Huo et al., *Consistent cortical reconstruction
+and multi-atlas brain segmentation* (NeuroImage, 2016), §2.4, describes
+Cortical Consistent Segmentation Editing (CCSE): compare labels with the
+inner/outer surface level sets and consistency distances. This function
+implements the selected V3 MATLAB helper's three label rules and neighborhood
+fill order; it is not a complete reproduction of every CCSE detail in §2.4.
+In particular, the V3 wrapper's 0.2 mm thresholds, label groups, bounded
+5×5×5 propagation, and historical ``maxind`` behavior follow source code.
+The paper's reported 0.5 mm coefficients are evaluation settings, not defaults
+for this source-selected wrapper.
 """
 
 from __future__ import annotations

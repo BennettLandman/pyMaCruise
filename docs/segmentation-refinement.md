@@ -39,6 +39,31 @@ and integer label dtype. The result includes candidate masks, changed masks,
 per-rule counts, unresolved candidate counts, sweep counts, and the effective
 voxel thresholds so every modification can be audited.
 
+## Published-method context: MaCRUISE CCSE
+
+Huo Y, Plassard AJ, Carass A, Resnick SM, Pham DL, Prince JL, Landman BA.
+“Consistent cortical reconstruction and multi-atlas brain segmentation.”
+*NeuroImage*. 2016;138:197–210. DOI
+[10.1016/j.neuroimage.2016.05.030](https://doi.org/10.1016/j.neuroimage.2016.05.030);
+[PubMed](https://pubmed.ncbi.nlm.nih.gov/27184203/);
+[open full text](https://pmc.ncbi.nlm.nih.gov/articles/PMC4927397/).
+
+Section 2.4 describes CCSE as using inner and outer surface level sets plus
+consistency distances to reconcile volume labels with reconstructed cortical
+surfaces. The selected V3 helper implements that broad relationship: it clears
+cortical labels beyond the outer surface, fills the inner-side region from WM
+neighbors, and assigns cortical labels between surfaces. Exact thresholds,
+label groups, neighborhood size/order, clipping at volume edges, and the
+historical `maxind` assignment bug are defined by MaCRUISE SVN r9360 and its
+V3 wrapper, not inferred from the paper. In particular, the V3 wrapper uses
+0.2 mm coefficients here, while the paper's main evaluation uses 0.5 mm.
+
+The MaCRUISE paper also describes multi-atlas label fusion and TOADS-to-label
+segmentation fusion (§2.2). The current workflow accepts a MaSeg segmentation
+as input; these upstream fusion algorithms are not implemented by this module
+and must not be attributed to it. MaACE is a separate cortical-boundary
+enhancement method described in §2.3.1 and is tracked under P51.
+
 ## Synthetic validation
 
 The committed 11³ `.nii.gz` fixtures in
