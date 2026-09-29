@@ -733,10 +733,29 @@ implementation commit `899493c1c3999871b5c57f88a5df9a033f8701d9`. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-outmask-normalization.md`](reports/full-pytest-2026-09-29-lesion-toads-outmask-normalization.md)
 and [`tests/data/synthetic/lesion_toads_outmask_normalization/README.md`](../tests/data/synthetic/lesion_toads_outmask_normalization/README.md).
 
-### Started substage: P39zj lesion/black-hole plus OUTMASK voxel integration
+### Completed substage: P39zj lesion/black-hole plus OUTMASK voxel integration
 
 Compose a lesion or black-hole auxiliary map and an OUTMASK/outlier map in
 the same one-voxel denominator and normalization pass. Validate the
 interactions with selected Java cases and preserve class ordering and
 source-specific black-hole ventricle behavior. Memberships/energies begin as
 preconverted scalar inputs.
+
+Two selected-Java cases match class, lesion, black-hole, and outlier
+membership float32 bits, relation, denominator, and local energy through
+distance modulation, OUTMASK mixing, and shared normalization. They cover
+LESION+OUTMASK with GM-zero/brainstem and BLACKHOLE+OUTMASK with ventricle
+precedence (including the unchanged black-hole map) and a direct OUTMASK
+relation. Focused suite: 1 passed; full suite: 455 passed with two expected
+RAS warnings in 56.82 seconds on implementation commit
+`edad578985013fe3a747a4fad42df11c22a73013`. See
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-auxiliary-membership-integration.md`](reports/full-pytest-2026-09-29-lesion-toads-auxiliary-membership-integration.md)
+and [`tests/data/synthetic/lesion_toads_auxiliary_membership_integration/README.md`](../tests/data/synthetic/lesion_toads_auxiliary_membership_integration/README.md).
+
+### Started substage: P39zk data-energy-to-membership integration
+
+Compose selected unfielded class/lesion/black-hole residual energy
+accumulation with the validated smoothing, shape/similarity prior,
+membership conversion, distance, auxiliary-map, normalization, and local
+energy kernels for a synthetic voxel. This is a one-voxel integration with
+synthetic channel vectors and stencils; it does not run a complete volume.
