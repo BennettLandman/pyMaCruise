@@ -6,15 +6,17 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from pymacruise.toads_registration import trilinear_prior_derivatives
 from pymacruise.toads_shapes import sample_toad_shape_prior
 
 
 @dataclass(frozen=True)
 class LesionShapeSample:
-    """One sampled LesionTOADS prior and its rigidly mapped template point."""
+    """One sampled prior, mapped point, and optional template-space gradient."""
 
     value: np.float32
     template_xyz: tuple[np.float32, np.float32, np.float32] | None
+    template_gradient_xyz: tuple[np.float32, np.float32, np.float32] | None = None
 
 
 def sample_lesion_shape_prior(
@@ -82,7 +84,14 @@ def sample_lesion_shape_prior(
         return LesionShapeSample(default, None)
     mapped = bounds.template_xyz
     sampled = _linear_interpolation_with_default(values, mapped, default)
-    return LesionShapeSample(sampled, mapped)
+    # LesionToadAtlas computes derivatives only after its priorT > 0 gate.
+    # Reuse the derivative primitive already compared against the selected
+    # ImageFunctions source, while retaining this class's constant-outside
+    # value rule above (which differs from the TOADS shape sampler).
+    gradient = None
+    if sampled > np.float32(0.0):
+        gradient = tuple(np.float32(v) for v in trilinear_prior_derivatives(values, mapped))
+    return LesionShapeSample(sampled, mapped, gradient)
 
 
 def _linear_interpolation_with_default(

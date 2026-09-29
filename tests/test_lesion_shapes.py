@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.lesion_shapes import sample_lesion_shape_prior
+from pymacruise.toads_registration import trilinear_prior_derivatives
 
 
 FIXTURE_DIR = Path(__file__).parent / "data" / "synthetic" / "lesion_shape_sampling"
@@ -112,3 +113,94 @@ def test_lesion_shape_sampler_rejects_unsupported_modes_and_bad_maps() -> None:
             (1, 1, 1),
             **arguments,
         )
+
+
+def test_lesion_shape_sampler_exposes_selected_java_prior_gradient() -> None:
+    derivative_reference = json.loads(
+        (
+            Path(__file__).parent
+            / "data"
+            / "synthetic"
+            / "toads_registration_energy"
+            / "java_prior_derivative_reference.json"
+        ).read_text()
+    )
+    x, y, z = np.indices((5, 5, 5), dtype=np.int32)
+    shape = (
+        ((7 * x + 3 * y + 5 * z + 2 * x * y + 4 * y * z) % 23)
+        / np.float32(22.0)
+    ).astype(np.float32)
+    shared = {
+        "image_dimensions_xyz": (5, 5, 5),
+        "image_resolutions_mm": (1.0, 1.0, 1.0),
+        "template_resolutions_mm": (1.0, 1.0, 1.0),
+        "class_index": 1,
+        "bbox_low_xyz": (0, 0, 0),
+        "bbox_high_xyz": (5, 5, 5),
+    }
+
+    fractional = sample_lesion_shape_prior(
+        shape,
+        (0, 2, 3),
+        transform=(0.0, 0.0, 0.0, 0.25, -0.5, -0.25),
+        **shared,
+    )
+    np.testing.assert_array_equal(
+        fractional.template_xyz,
+        np.asarray((0.25, 1.5, 2.75), dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        fractional.template_gradient_xyz,
+        np.asarray(derivative_reference["derivatives"][0], dtype=np.float32),
+    )
+
+    upper_boundary = sample_lesion_shape_prior(
+        shape,
+        (3, 3, 3),
+        transform=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        **shared,
+    )
+    np.testing.assert_array_equal(
+        upper_boundary.template_gradient_xyz,
+        np.asarray(derivative_reference["derivatives"][1], dtype=np.float32),
+    )
+
+    for point, transform, mapped_point, reference_index in (
+        ((3, 1, 1), (0, 0, 0, 0.25, 0, 0), (3.25, 1.0, 1.0), 2),
+        ((0, 1, 1), (0, 0, 0, -0.1, 0, 0), (-0.1, 1.0, 1.0), 3),
+    ):
+        outside = sample_lesion_shape_prior(
+            shape,
+            point,
+            transform=transform,
+            **shared,
+        )
+        assert outside.value == np.float32(0.0)
+        assert outside.template_gradient_xyz is None
+        np.testing.assert_array_equal(
+            trilinear_prior_derivatives(shape, mapped_point),
+            np.asarray(derivative_reference["derivatives"][reference_index], dtype=np.float32),
+        )
+
+    excluded = sample_lesion_shape_prior(
+        shape,
+        (0, 2, 3),
+        image_dimensions_xyz=shared["image_dimensions_xyz"],
+        image_resolutions_mm=shared["image_resolutions_mm"],
+        template_resolutions_mm=shared["template_resolutions_mm"],
+        transform=(0, 0, 0, 0, 0, 0),
+        class_index=1,
+        bbox_low_xyz=(1, 0, 0),
+        bbox_high_xyz=(5, 5, 5),
+    )
+    assert excluded.template_xyz is None
+    assert excluded.template_gradient_xyz is None
+
+    zero_prior = sample_lesion_shape_prior(
+        np.zeros((5, 5, 5), dtype=np.float32),
+        (2, 2, 2),
+        transform=(0, 0, 0, 0, 0, 0),
+        **shared,
+    )
+    assert zero_prior.value == np.float32(0.0)
+    assert zero_prior.template_gradient_xyz is None
