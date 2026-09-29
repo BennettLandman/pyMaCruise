@@ -490,5 +490,8 @@ for empty classes; see the [P18an report](reports/toads-optimized-class-variance
 The pairwise centroid-similarity coefficient that consumes those variance
 values is also matched for the selected default scale, with source zero
 diagonal and IEEE zero-deviation behavior; see the [P18ao report](reports/toads-optimized-similarity-2026-09-28.md).
+The voxelwise inverse shape-prior contribution and its half-weighted objective
+energy are now matched against the source formula, with the source interior
+scan and untouched borders; see the [P18ap report](reports/toads-inverse-shape-prior-2026-09-29.md).
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
