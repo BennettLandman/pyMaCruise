@@ -383,3 +383,15 @@ RAS warnings in 53.99 seconds on implementation commit
 and [`tests/data/synthetic/lesion_growing_frontier/README.md`](../tests/data/synthetic/lesion_growing_frontier/README.md).
 This does not validate queue transitions, topology evolution, or lesion
 segmentation.
+
+### Started substage: P39r one growing event
+
+The source `propagateGrowing` pop reads the min-heap item, ignores it if the
+skeleton center is already filled, otherwise applies the multi-label
+18/6 homeomorphism check to the current hard segmentation. Accepted events
+set the skeleton, segmentation, and ordering; update class volume using the
+special lesion-class membership sum or maximum; clear center availability;
+and add eligible six-face neighbors with lesion-aware priorities. Rejected
+events restore availability at the event label. This next slice composes the
+already validated local topology predicate and priority formulas and stops
+after one queue pop; complete queue exhaustion/convergence is separate.

@@ -67,6 +67,8 @@ P39o is complete: on a 33³ multi-class synthetic phantom, the selected Java har
 
 **Progress update (2026-09-29):** P39q is complete. Four synthetic Java formula-harness cases match the selected LesionTOADS growing-frontier availability and exact min-heap pop sequence, covering additive/max lesion and black-hole scoring, zero ties, optimized-type exclusions, and the source `bestMembership` quirk. The focused suite passes (7 tests); the full suite reports **423 passed in 53.99 seconds**, with two expected RAS warnings, on implementation commit `aee53ea15220aade46b83c546a2151f3fcb134e2`; see the [P39q full-suite report](docs/reports/full-pytest-2026-09-29-lesion-growing-frontier.md) and [fixture provenance](tests/data/synthetic/lesion_growing_frontier/README.md). This validates queue initialization only. The roadmap counts 121/135 rows (~90%) Done, 2 Started, 1 Blocked, and 11 Not started.
 
+P39r has started: validate one topology-gated LesionTOADS growth event, including source-specific volume updates and frontier scheduling.
+
 The currently implemented CLI entry point supports the implemented stages:
 
 ```text
