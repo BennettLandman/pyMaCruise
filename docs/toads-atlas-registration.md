@@ -140,6 +140,23 @@ and lambda stopping gates, and rejects an objective with no positive prior
 support. This is optimizer wiring evidence only: no full Java execution of
 `MultipleToadDeformableAtlas` or known-transform alignment claim is available.
 
+### Java-composed coefficient and line-search comparison (P18bd)
+
+`tests/java_reference/ToadsRigidRegistrationUpdateHarness.java` composes the
+selected source membership coefficient loop, source-order coefficient
+normalization, and rigid gradient-descent line search. It uses the copied Java
+`ParametricTransform`, `RotationMatrix`, and `ImageFunctions` helpers for
+transform mapping, derivatives, and interpolation.
+`tests/test_toads_rigid_registration_update.py` compares Python coefficient
+arrays and every trial transform, energy, lambda transition, acceptance
+decision, and final optimizer state on deterministic synthetic cases: one
+improving trial and one case that rejects all eleven trials. Values meet the
+explicit float32 comparison bound (rtol `2e-6`, atol `2e-7`). This does not
+validate atlas world-origin/physical alignment, a full atlas dataset, pyramid
+registration, deformable TOADS, or tissue segmentation. Provenance and suite
+evidence are in
+`docs/reports/toads-rigid-registration-update-2026-09-29.md`.
+
 P18u initially used dense arrays. P18v switched the optimizer to
 `stream_toads_registration_energy` and
 `stream_toads_registration_coefficients`, which process one voxel and class

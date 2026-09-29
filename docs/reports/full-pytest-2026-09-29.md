@@ -20,6 +20,28 @@ equivalence. The generated inputs contain no subject imaging data.
 
 Subsequent plan, report, and README edits do not modify implementation or tests.
 
+## P18bd: Java-composed TOADS rigid-registration update
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/python -m pytest -q` from the `pymacruise/` repository root |
+| Result | **365 passed in 85.11 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested implementation commit | `82f8bb2d79a08ae3e3846a8670c6af4866269503` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run includes `tests/test_toads_rigid_registration_update.py`, which
+compares the composed coefficient calculation and line search against a Java
+harness using the supplied Java transform, rotation, and interpolation
+helpers. Every synthetic trial transform, energy, lambda progression,
+accept/reject outcome, and final state is checked. It covers one accepted
+update and one eleven-trial rejected case. This remains a source-slice
+validation, not full atlas registration or TOADS segmentation equivalence.
+
+Subsequent plan, report, and README edits do not modify implementation or tests.
+
 ## P18bc: initialized TOADS growing pass
 
 | Field | Value |
