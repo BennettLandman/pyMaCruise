@@ -63,6 +63,17 @@ class LesionRegistrationOptimizationStep:
     trial_energies: NDArray[np.float32]
 
 
+@dataclass(frozen=True)
+class LesionRegistrationOptimizationResult:
+    """Fixed-scale registration iterations and the selected loop stop cause."""
+
+    transform: NDArray[np.float32]
+    energy: np.float32
+    lambda_value: np.float32
+    iterations: tuple[LesionRegistrationOptimizationStep, ...]
+    stop_reason: str
+
+
 def sample_lesion_shape_prior(
     shape: np.ndarray,
     image_point_xyz: tuple[int, int, int],
@@ -521,6 +532,101 @@ def register_lesion_shapes_scaled_step(
     trial_array = np.asarray(trials, dtype=np.float32).reshape((-1, 6))
     energy_array = np.asarray(energies, dtype=np.float32)
     return LesionRegistrationOptimizationStep(result, trial_array, energy_array)
+
+
+def optimize_lesion_shapes_scaled(
+    shape_priors: Sequence[ArrayLike],
+    memberships: ArrayLike,
+    initial_transform: ArrayLike,
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    scale: float = 1.0,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+    offset: int = 0,
+    subsample: int = 3,
+    max_iterations: int = 50,
+    min_energy_change: float = 1e-6,
+    min_lambda: float = 0.001,
+    initial_lambda: float = 1.0,
+    lambda_factor: float = 1.5,
+    max_rejections: int = 10,
+) -> LesionRegistrationOptimizationResult:
+    """Repeat fixed-scale LesionTOADS updates until a source loop stop.
+
+    This follows the outer `registerShapesPyramid` scale loop body only. The
+    caller supplies already selected coarse maps/memberships and this
+    function does not construct a pyramid or advance to another scale.
+    """
+    if (
+        isinstance(max_iterations, bool)
+        or not isinstance(max_iterations, (int, np.integer))
+        or max_iterations < 0
+    ):
+        raise ValueError("max_iterations must be a nonnegative integer")
+    min_change = np.float32(min_energy_change)
+    lambda_floor = np.float32(min_lambda)
+    if not np.isfinite(min_change) or min_change < 0:
+        raise ValueError("min_energy_change must be finite and nonnegative")
+    if not np.isfinite(lambda_floor) or lambda_floor < 0:
+        raise ValueError("min_lambda must be finite and nonnegative")
+    transform = np.asarray(initial_transform, dtype=np.float32)
+    if transform.shape != (6,) or not np.isfinite(transform).all():
+        raise ValueError("initial_transform must be a finite six-value rigid vector")
+    current = lesion_registration_volume_coefficients(
+        shape_priors,
+        memberships,
+        image_dimensions_xyz=image_dimensions_xyz,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolutions_mm,
+        transform=tuple(transform),
+        scale=scale,
+        image_center_xyz=image_center_xyz,
+        template_center_xyz=template_center_xyz,
+        offset=offset,
+        subsample=subsample,
+    )
+    energy = current.energy
+    lam = np.float32(initial_lambda)
+    difference = np.float32(1.0)
+    history: list[LesionRegistrationOptimizationStep] = []
+    while (
+        len(history) < int(max_iterations)
+        and difference > min_change
+        and lam > lambda_floor
+    ):
+        step = register_lesion_shapes_scaled_step(
+            shape_priors,
+            memberships,
+            transform,
+            image_dimensions_xyz=image_dimensions_xyz,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            scale=scale,
+            image_center_xyz=image_center_xyz,
+            template_center_xyz=template_center_xyz,
+            offset=offset,
+            subsample=subsample,
+            initial_lambda=lam,
+            lambda_factor=lambda_factor,
+            max_rejections=max_rejections,
+        )
+        history.append(step)
+        transform = step.result.transform.copy()
+        energy = step.result.energy
+        lam = step.result.lambda_value
+        difference = step.result.relative_change
+    if len(history) >= int(max_iterations):
+        reason = "iteration_limit"
+    elif difference <= min_change:
+        reason = "min_energy_change"
+    else:
+        reason = "lambda_floor"
+    return LesionRegistrationOptimizationResult(
+        transform.copy(), energy, lam, tuple(history), reason
+    )
 
 
 def _linear_interpolation_with_default(

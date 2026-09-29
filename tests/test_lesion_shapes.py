@@ -12,6 +12,7 @@ from pymacruise.lesion_shapes import (
     accumulate_lesion_registration_coefficients,
     lesion_registration_voxel_contributions,
     lesion_registration_volume_coefficients,
+    optimize_lesion_shapes_scaled,
     register_lesion_shapes_scaled_step,
     sample_lesion_shape_prior,
 )
@@ -71,6 +72,16 @@ SCALED_STEP_HARNESS = (
 )
 SCALED_STEP_HARNESS_SHA256 = "07b00ea6032b30a1311547123b282de2f84e61ddbf53a67c9a9311f9ab7514b5"
 SCALED_STEP_FIXTURE_SHA256 = "8028db4ea1939167b8c572e30eb22b6f2cdac472ab495b188a27bddf48853038"
+SCALED_OPTIMIZER_FIXTURE_DIR = (
+    Path(__file__).parent / "data" / "synthetic" / "lesion_scaled_registration_optimizer"
+)
+SCALED_OPTIMIZER_HARNESS = (
+    Path(__file__).parent
+    / "java_reference"
+    / "LesionScaledRegistrationOptimizerReferenceHarness.java"
+)
+SCALED_OPTIMIZER_HARNESS_SHA256 = "66fc71104d03f22562bffc94c9e8f947d3edf38d2d18d717467db4e76c761bd0"
+SCALED_OPTIMIZER_FIXTURE_SHA256 = "ed9fd9b190a7b6654c24e2f95d7c22052998427b4d51c3bacb0bbd1542ab0794"
 
 
 def _shape_prior(dimensions: tuple[int, int, int], class_index: int) -> np.ndarray:
@@ -778,3 +789,83 @@ def test_scaled_lesion_registration_step_matches_java_trial_trace() -> None:
         assert step.result.accepted is case["accepted"]
         assert step.result.rejected_trials == case["rejected_trials"]
         assert (step.result.accepted, step.result.rejected_trials) == expected_final_outcomes[scale]
+
+
+def test_scaled_lesion_registration_optimizer_loop_matches_java_history() -> None:
+    reference_path = SCALED_OPTIMIZER_FIXTURE_DIR / "java_reference.json"
+    assert hashlib.sha256(SCALED_OPTIMIZER_HARNESS.read_bytes()).hexdigest() == (
+        SCALED_OPTIMIZER_HARNESS_SHA256
+    )
+    assert hashlib.sha256(reference_path.read_bytes()).hexdigest() == (
+        SCALED_OPTIMIZER_FIXTURE_SHA256
+    )
+    reference = json.loads(reference_path.read_text())
+    dimensions = (8, 8, 8)
+    x, y, z = np.indices(dimensions, dtype=np.int32)
+    prior_bits = (9 * x + 17 * y + 19 * z + 6 * x * y + 3 * y * z) % 7
+    lesion_shape = np.where(prior_bits < 3, np.float32(0.95), np.float32(0.05))
+    class0_shape = np.full(dimensions, np.float32(0.9), dtype=np.float32)
+    membership_bits = (3 * x + 12 * y + 13 * z + 15 * x * z + 2 * x * y) % 9
+    lesion_membership = np.where(
+        membership_bits < 4, np.float32(0.9), np.float32(0.1)
+    )
+    memberships = np.stack(
+        (np.full(dimensions, np.float32(0.5)), lesion_membership), axis=-1
+    ).astype(np.float32)
+    for case in reference["cases"]:
+        result = optimize_lesion_shapes_scaled(
+            (class0_shape, lesion_shape),
+            memberships,
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            image_dimensions_xyz=dimensions,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            scale=1.0,
+            image_center_xyz=(4.0, 4.0, 4.0),
+            template_center_xyz=(4.0, 4.0, 4.0),
+            offset=0,
+            subsample=2,
+            max_iterations=int(case["max_iterations"]),
+            min_energy_change=case["min_energy_change"],
+            min_lambda=case["min_lambda"],
+        )
+        assert len(result.iterations) == len(case["iterations"]), case["name"]
+        for actual_step, expected_step in zip(
+            result.iterations, case["iterations"], strict=True
+        ):
+            np.testing.assert_array_equal(
+                actual_step.trial_transforms,
+                np.asarray(
+                    [trial["transform"] for trial in expected_step["trials"]],
+                    dtype=np.float32,
+                ),
+            )
+            np.testing.assert_array_equal(
+                actual_step.trial_energies,
+                np.asarray(
+                    [trial["energy"] for trial in expected_step["trials"]],
+                    dtype=np.float32,
+                ),
+            )
+            actual = actual_step.result
+            np.testing.assert_array_equal(
+                actual.transform, np.asarray(expected_step["transform"], dtype=np.float32)
+            )
+            assert actual.energy == np.float32(expected_step["energy"])
+            assert actual.lambda_value == np.float32(expected_step["lambda"])
+            assert actual.relative_change == np.float32(expected_step["relative_change"])
+            assert actual.accepted is expected_step["accepted"]
+            assert actual.rejected_trials == expected_step["rejected_trials"]
+        np.testing.assert_array_equal(
+            result.transform, np.asarray(case["transform"], dtype=np.float32)
+        )
+        assert result.energy == np.float32(case["energy"])
+        assert result.lambda_value == np.float32(case["lambda"])
+        assert result.stop_reason == case["stop_reason"]
+
+    outcomes = {case["name"]: case["stop_reason"] for case in reference["cases"]}
+    assert outcomes == {
+        "source_stops": "lambda_floor",
+        "iteration_limit": "iteration_limit",
+        "minimum_change": "min_energy_change",
+    }
