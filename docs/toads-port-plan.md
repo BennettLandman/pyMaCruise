@@ -422,6 +422,18 @@ branch/neck, out-of-range values, and boundary-touching support. Flat plateaus
 are a separate queue tie-order case because Java and Python priority queues
 may resolve equal values differently.
 
+### Started substage: Dura WM-plus-GM union and second topology correction
+
+`dura_correct_gray_matter_topology` reuses the generic geometry-checked
+`calculate_volume(..., "ADD")` operation to form the wrapper's float32 union
+from corrected WM and the original raw GM image. It then runs the second
+`tcGM` topology adapter using the same original WM paint mask and the same
+Dura-specific 6/18 parameters, returning `gmTC`. The source does not feed
+corrected GM into the union or create a separate GM paint mask. Synthetic
+tests check float32 addition, the reused mask and settings through the
+composition, RAS geometry, and mismatched-grid rejection. Direct Java output
+comparison remains open, as do TGDM evolution and the full dura workflow.
+
 ### Completed geometry slice: TOADS crop and topology resampling
 
 `src/pymacruise/toads_crop.py` ports the selected source's inclusive crop-bound

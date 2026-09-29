@@ -24,6 +24,7 @@ from pymacruise.tgdm import (
     tgdm_geometry,
 )
 from pymacruise.topology import topology_correct
+from pymacruise.volume_ops import calculate_volume
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,36 @@ def dura_correct_white_matter_topology(
     """
     return topology_correct(
         white_matter,
+        original_white_matter_mask,
+        paint_threshold=0.5,
+        lowest_level=0.0,
+        highest_level=1.0,
+        regularize=0.05,
+    ).corrected
+
+
+def dura_correct_gray_matter_topology(
+    topologically_corrected_white_matter: nib.spatialimages.SpatialImage,
+    raw_gray_matter: nib.spatialimages.SpatialImage,
+    original_white_matter_mask: nib.spatialimages.SpatialImage,
+) -> nib.Nifti1Image:
+    """Build the source WM+raw-GM union and apply its second ``tcGM`` call.
+
+    ``MedicAlgorithmRemoveDura09.execute()`` adds the already corrected WM
+    field to the original, uncorrected GM field in float32, then passes that
+    union and the same original WM mask to a second topology adapter. Generic
+    NIfTI addition and physical-grid checks reuse ``calculate_volume``; the
+    Dura-specific 6/18, object-to-background settings and regularization are
+    applied by ``topology_correct``. The returned image is ``gmTC``. This does
+    not yet evolve TGDM or assemble the complete dura-removal workflow.
+    """
+    union = calculate_volume(
+        topologically_corrected_white_matter,
+        raw_gray_matter,
+        "ADD",
+    )
+    return topology_correct(
+        union,
         original_white_matter_mask,
         paint_threshold=0.5,
         lowest_level=0.0,

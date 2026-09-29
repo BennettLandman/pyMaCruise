@@ -15,8 +15,10 @@ from pymacruise.toads_dura import (
     dura_signed_distance_field,
     dynamic_pressure_tgdm_point_update,
     dura_correct_white_matter_topology,
+    dura_correct_gray_matter_topology,
 )
 from pymacruise.topology import topology_correct
+from pymacruise.volume_ops import calculate_volume
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 
@@ -105,6 +107,43 @@ def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> N
     assert actual.get_data_dtype() == np.dtype(np.float32)
     assert nib.aff2axcodes(actual.affine) == ("R", "A", "S")
     assert actual.shape == shape
+
+
+def test_dura_gray_matter_call_adds_raw_gm_and_reuses_original_wm_mask() -> None:
+    shape = (8, 9, 7)
+    wm_tc = np.linspace(0.0, 255.0, np.prod(shape), dtype=np.float32).reshape(shape)
+    raw_gm = np.flip(wm_tc, axis=1).copy() * np.float32(0.37)
+    original_wm_mask = np.zeros(shape, dtype=np.uint8)
+    original_wm_mask[2:6, 3:7, 2:5] = 1
+    affine = np.diag([0.9, 1.1, 1.6, 1.0])
+    wm_image = nib.Nifti1Image(wm_tc, affine)
+    gm_image = nib.Nifti1Image(raw_gm, affine)
+    mask_image = nib.Nifti1Image(original_wm_mask, affine)
+
+    actual = dura_correct_gray_matter_topology(wm_image, gm_image, mask_image)
+    source_union = calculate_volume(wm_image, gm_image, "ADD")
+    expected = topology_correct(
+        source_union,
+        mask_image,
+        paint_threshold=0.5,
+        lowest_level=0.0,
+        highest_level=1.0,
+        regularize=0.05,
+    ).corrected
+
+    np.testing.assert_array_equal(actual.dataobj, expected.dataobj)
+    assert actual.get_data_dtype() == np.dtype(np.float32)
+    assert nib.aff2axcodes(actual.affine) == ("R", "A", "S")
+    assert actual.shape == shape
+
+    shifted = affine.copy()
+    shifted[0, 3] = 0.2
+    with pytest.raises(ValueError, match="affines differ"):
+        dura_correct_gray_matter_topology(
+            wm_image,
+            nib.Nifti1Image(raw_gm, shifted),
+            mask_image,
+        )
 
 
 def test_dura_output_mask_matches_wrapper_threshold_order_and_copies() -> None:
