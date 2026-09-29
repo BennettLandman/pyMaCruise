@@ -689,6 +689,21 @@ Subsequent plan/report/README edits do not modify implementation or tests.
 This run validates the P18as implementation and committed synthetic references.
 Subsequent plan/report/README edits do not modify implementation or tests.
 
+## Additional full-suite run for P18at
+
+| Field | Value |
+|---|---|
+| Command | `.venv/bin/pytest -q` from the `pymacruise/` repository root |
+| Result | **353 passed in 64.63 seconds** |
+| Pytest | 9.1.1 |
+| Python | 3.13.2 |
+| Tested commit | `a04ae2ab66ece1ba1863522ef205e981bd8b5df2` |
+| Run date | 2026-09-29 |
+| Run scope | Complete configured suite; all collected tests passed |
+
+This run validates the P18at implementation and committed synthetic references.
+Subsequent plan/report/README edits do not modify implementation or tests.
+
 ## Future rows
 
 When a roadmap row is completed, run the complete suite and add its row-specific

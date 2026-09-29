@@ -474,9 +474,15 @@ P18aj composes that gate with reciprocal-energy normalization in
 [a synthetic source-order comparison](reports/toads-shape-weighted-membership-2026-09-28.md).
 P18ak implements and compares one ordered in-place six-face-smoothed sweep in
 [a small-grid source-formula report](reports/toads-ordered-membership-2026-09-28.md).
-The full source membership evolution still depends on generating its data and
-atlas-prior terms, applying the topology admissibility gate, and iterating to
-the selected convergence condition.
+P18as now composes the selected centroid-then-membership sequence for one
+optimized-tissue iteration against Java references; see
+[the P18as report](reports/toads-optimized-iteration-2026-09-29.md). P18at
+matches one topology-aware thinning queue-item transition against the Java
+18/6 LUT on nine cases; see [the P18at report](reports/toads-thinning-transition-2026-09-29.md).
+Full evolution still requires queue initialization/scheduling, repeated
+thinning and growing, both wrapper topology-correction stages, deformable
+atlas registration, convergence, and dura orchestration. These validated
+slices do not replace or establish the full segmentation.
 
 The latest isolated update slices now include optimized-tissue damped
 centroids, checked against the actual source `PowerTable` on committed
