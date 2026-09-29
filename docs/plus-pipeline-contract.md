@@ -48,6 +48,9 @@ this does not convert mesh vertices. See the
 those full-grid level sets in RAS+ millimetres. It uses scikit-image Lewiner
 marching cubes; the separate JIST `IsoSurfaceOnGrid` comparison remains open.
 See the [P40k report](reports/full-pytest-2026-09-29-plus-surface-extraction.md).
+`run_plus_thickness_stage` routes the uncropped inner/outer level sets and
+meshes into the existing level-set subtraction and closest-point thickness
+functions. See the [P40l report](reports/full-pytest-2026-09-29-plus-thickness.md).
 
 ## Image provenance and explicit input mask
 
