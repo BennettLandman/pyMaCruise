@@ -62,6 +62,14 @@ coordinates are RAS+ millimetres and use tagged ASCII legacy VTK. These
 commands expose selected standalone stages; they do not assemble the complete
 base MaCRUISE or LesionTOADS pipelines.
 
+Each of the seven standalone commands also accepts optional
+`--provenance RUN.json`. After successful processing it writes a JSON sidecar
+with a schema version, command name, PyMaCRUISE version, resolved input and
+output paths, the `RAS` spatial convention, and effective parameters
+(including API defaults used by that command). Output directories are
+expanded into the individual output image paths. Optional inputs that were
+not supplied are omitted.
+
 ### `pymacruise ace`
 
 ```text

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -83,16 +84,32 @@ def test_cli_standalone_commands_match_public_apis_on_committed_synthetic_data(t
     # component against a direct call with the identical solver settings.
     gvf_input_path = SYNTHETIC / "plus_gvf" / "scalar.nii.gz"
     gvf_input = nib.load(gvf_input_path)
-    gvf_expected = generalized_gvf_image(gvf_input, max_iterations=200)
+    gvf_parameters = {
+        "lambda_value": 0.8,
+        "max_iterations": 200,
+        "solver_tolerance": 1e-5,
+    }
+    gvf_expected = generalized_gvf_image(gvf_input, **gvf_parameters)
     gvf_output = tmp_path / "gvf.nii.gz"
+    gvf_provenance = tmp_path / "gvf-run.json"
     _run_cli("gvf", "--input", gvf_input_path, "--output", gvf_output,
-             "--max-iterations", "200")
+             "--lambda", "0.8", "--max-iterations", "200",
+             "--solver-tolerance", "1e-5", "--provenance", gvf_provenance)
     gvf_written = nib.load(gvf_output)
     assert gvf_written.shape == (*gvf_expected.vector_field.shape[:3], 3)
     assert nib.aff2axcodes(gvf_written.affine) == ("R", "A", "S")
     np.testing.assert_array_equal(
         np.asarray(gvf_written.dataobj), np.asarray(gvf_expected.vector_field.dataobj)
     )
+    provenance = json.loads(gvf_provenance.read_text(encoding="utf-8"))
+    assert provenance["schema_version"] == 1
+    assert provenance["command"] == "gvf"
+    assert provenance["software"]["name"] == "pymacruise"
+    assert provenance["software"]["version"]
+    assert provenance["spatial_convention"] == "RAS"
+    assert provenance["inputs"] == {"scalar_image": str(gvf_input_path.resolve())}
+    assert provenance["parameters"] == gvf_parameters
+    assert provenance["outputs"] == {"vector_field": str(gvf_output.resolve())}
 
     # Nested TGDM compares all six output products to its public API on the
     # committed source-mapped 25^3 synthetic phantom.
