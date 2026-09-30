@@ -15,7 +15,8 @@ estimation remains unported. P39zzp also validates the selected weighted
 centroid update for several blend factors, and P39zzq validates the selected
 class/auxiliary variance update with its source branch behavior. P39zzr
 validates selected diagonal-covariance channel weights and fallback behavior,
-and P39zzs validates pooled noise standard deviations.
+P39zzs validates pooled noise standard deviations, and P39zzt validates
+generic centroid update modes.
 
 ## Selected workflow and source
 
@@ -1296,3 +1297,23 @@ implementation commit `710085d2fe9407a27c77fcd641c17fa476c5ac33`; see
 and the shared
 [`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
 This validates only the pooled estimator for fixed labels and centroids.
+
+### Completed substage: P39zzt generic centroid modes
+
+`compute_lesion_toads_basic_centroids` ports the generic class accumulator and
+the selected `none`, `linked`, `damped`, `prior`, and fallback updates. It
+retains source channel/class/x/y/z accumulation order, float32 narrowing,
+optional field multiplication, and RAYLEIGH second-moment behavior for the
+source modes that apply it. The 5×4×3 RAS variance phantom compares raw Java
+float32 bits for two channels across all modes with and without fields. Its
+classes cover ordinary OBJECT/MASK and RAYLEIGH categories plus an absent
+class; link groups vary by channel, and the damped mode keeps the old centroid
+for the empty class. LESION, BLACKHOLE, and PowerTable-optimized types reject
+until their specialized branches are ported. Focused tests: 2 passed. Full
+suite: 618 passed with 2 expected RAS warnings in 123.29 seconds on
+implementation commit `8275a1370ab76c8c5beab68518d65ab0372b6771`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-basic-centroids.md`](reports/full-pytest-2026-09-30-lesion-basic-centroids.md)
+and the shared
+[`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
+This validates generic centroid updates on supplied labels and memberships,
+not specialized centroids or full LesionTOADS iteration.
