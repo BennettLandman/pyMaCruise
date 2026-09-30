@@ -93,3 +93,73 @@ def compute_constrained_lesion_toads_centroids(
             previous = current
             result[channel, class_index] = next_centroid
     return result
+
+
+def compute_weighted_lesion_toads_centroids(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    segmentation: ArrayLike,
+    centroids: ArrayLike,
+    *,
+    fields: ArrayLike | None = None,
+    factor: float = 0.2,
+) -> NDArray[np.float32]:
+    """Apply selected ``computeWeightedCentroids(factor)`` semantics.
+
+    The source accumulates membership-squared weighted samples over the
+    current hard segmentation, optionally multiplying each image sample by
+    its field first, then blends the new mean with the existing centroid.
+    If a class has no assigned voxels, the source writes zero without blending.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    weights = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    initial = np.asarray(centroids, dtype=np.float32)
+    field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    spatial, channels = values.shape[:3], values.shape[3]
+    if weights.ndim != 4 or weights.shape[:3] != spatial or weights.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and have at least one class")
+    classes = weights.shape[3]
+    if labels.shape != spatial or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer grid matching the images")
+    if initial.shape != (channels, classes):
+        raise ValueError("centroids must have shape (channels, classes)")
+    if field_values is not None and field_values.shape != values.shape:
+        raise ValueError("fields must match the image grid and channel count")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must index the membership classes")
+    if not all(np.isfinite(array).all() for array in (values, weights, initial)):
+        raise ValueError("images, memberships, and centroids must be finite")
+    if field_values is not None and not np.isfinite(field_values).all():
+        raise ValueError("fields must be finite")
+    blend = np.float32(factor)
+    if not np.isfinite(blend):
+        raise ValueError("factor must be finite")
+
+    result = initial.copy()
+    for channel in range(channels):
+        for class_index in range(classes):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(spatial[0]):
+                for y in range(spatial[1]):
+                    for z in range(spatial[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = weights[x, y, z, class_index]
+                        square = np.float32(membership * membership)
+                        sample = values[x, y, z, channel]
+                        if field_values is not None:
+                            sample = np.float32(field_values[x, y, z, channel] * sample)
+                        numerator = np.float32(numerator + np.float32(square * sample))
+                        denominator = np.float32(denominator + square)
+            if denominator > np.float32(0.0):
+                retained = np.float32(np.float32(np.float32(1.0) - blend) * numerator)
+                estimate = np.float32(retained / denominator)
+                prior = np.float32(blend * result[channel, class_index])
+                result[channel, class_index] = np.float32(estimate + prior)
+            else:
+                result[channel, class_index] = np.float32(0.0)
+    return result

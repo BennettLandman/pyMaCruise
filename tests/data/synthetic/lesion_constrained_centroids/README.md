@@ -8,14 +8,17 @@ order, and the data means exceed the initial centroid bands for classes 0 and
 1 so the source upper clamps are used. The empty class tests the source's zero
 mean followed by its lower clamp.
 
-The selected-method Java harness calculates the weighted means and 45% bounds
-with and without `useField`; it emits raw float32 centroid bits. Python matches
-all centroid bits, including field multiplication before residual
-accumulation, all exercised clamps, and empty-class behavior. The fixture and
-reference can be regenerated with
-`scripts/generate_lesion_centroid_fixture.py` and
-`scripts/generate_java_lesion_constrained_centroids_reference.sh`.
+Selected-method Java harnesses provide raw float32 references for both
+`computeConstrainedCentroids()` and `computeWeightedCentroids(factor)`. The
+former tests field/no-field behavior and 45% bounds. The latter tests factors
+0, 0.35, and 1 with and without `useField`, including the source behavior
+that an empty class becomes zero even at factor 1. Python matches all bits,
+including field multiplication before accumulation and the x/y/z traversal.
+Regenerate the NIfTI with `scripts/generate_lesion_centroid_fixture.py`; the
+Java references are regenerated with
+`scripts/generate_java_lesion_constrained_centroids_reference.sh` and
+`scripts/generate_java_lesion_weighted_centroids_reference.sh`.
 
-This validates the constrained centroid updater on fixed labels and
-memberships. It does not estimate lesion/black-hole centroids, variances,
-channel weights, membership energies, or a full LesionTOADS iteration.
+These validate two centroid update methods on fixed labels and memberships.
+They do not estimate lesion/black-hole centroids, variances, channel weights,
+membership energies, or a full LesionTOADS iteration.
