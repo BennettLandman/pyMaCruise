@@ -105,10 +105,11 @@ def test_special_centroids_reject_malformed_maps_and_parameters() -> None:
         compute_lesion_toads_auxiliary_centroids(
             *args, fields=fields[..., :1]
         )
-    with pytest.raises(ValueError, match="categories"):
+    with pytest.raises(ValueError, match="unsupported"):
         compute_lesion_toads_auxiliary_centroids(
             images, memberships, labels, INITIAL, lesion, black,
             LESION_CENTROID, BLACK_CENTROID,
-            ("object", "optimized_lesion", "blackhole", "object", "object"),
+            ("object", "optimized_gm", "blackhole", "object", "object"),
             LESION_EXPONENTS,
+            optimized_power_exponents=LESION_EXPONENTS,
         )

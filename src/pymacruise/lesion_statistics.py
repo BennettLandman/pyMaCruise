@@ -801,13 +801,16 @@ def compute_lesion_toads_auxiliary_centroids(
     centroid_links: ArrayLike | None = None,
     prior_centroids: ArrayLike | None = None,
     zero_threshold: float = 1.0e-10,
+    optimized_power_exponents: ArrayLike | None = None,
 ) -> LesionToadsAuxiliaryCentroids:
-    """Port selected ordinary LESION/BLACKHOLE centroid routing.
+    """Port selected ordinary and optimized auxiliary-centroid routing.
 
     For hard-labeled LESION/BLACKHOLE classes, the source compares class,
     lesion, and black-hole memberships. Equal maxima route to the class
-    membership first, then lesion, then black-hole. Lesion samples receive
-    the source PowerTable residual weight. Class centroids use the selected
+    membership first, then lesion, then black-hole. Ordinary LESION samples
+    receive the source residual-based PowerTable weight. Optimized lesion
+    samples instead share a PowerTable factor from winning-membership squared
+    times corrected intensity. Class centroids use the selected
     `computeCentroids()` mode; with the source's hard-coded unlinked auxiliary
     centroid branch, lesion estimates are blended 20% toward the sampled mean
     and black-hole estimates are replaced with the sampled mean. The helper
@@ -822,6 +825,10 @@ def compute_lesion_toads_auxiliary_centroids(
     old_lesion = np.asarray(lesion_centroids, dtype=np.float32)
     old_black = np.asarray(black_hole_centroids, dtype=np.float32)
     exponents = np.asarray(lesion_power_exponents, dtype=np.float32)
+    optimized_exponents = (
+        None if optimized_power_exponents is None
+        else np.asarray(optimized_power_exponents, dtype=np.float32)
+    )
     field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
     types = tuple(item.lower() if isinstance(item, str) else item for item in object_types)
     if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
@@ -836,16 +843,25 @@ def compute_lesion_toads_auxiliary_centroids(
         raise ValueError("centroids must have shape (channels, classes)")
     if len(types) != classes or any(not isinstance(item, str) for item in types):
         raise ValueError("object_types must provide one string per membership class")
-    if any(item not in {"object", "mask", "outmask", "lesion", "blackhole"} for item in types):
-        raise ValueError("object_types must be generic, LESION, or BLACKHOLE categories")
-    if not ({"lesion", "blackhole"} & set(types)):
-        raise ValueError("object_types must include LESION or BLACKHOLE")
+    auxiliary_types = {"lesion", "blackhole", "optimized_lesion", "optimized_blackhole"}
+    if any(item not in {"object", "mask", "outmask"} | auxiliary_types for item in types):
+        raise ValueError("object_types include a category unsupported by auxiliary centroid routing")
+    if not (auxiliary_types & set(types)):
+        raise ValueError("object_types must include an auxiliary lesion or black-hole category")
     if lesion_map.shape != spatial or black_map.shape != spatial:
         raise ValueError("lesion and black-hole memberships must match the image grid")
     if old_lesion.shape != (channels,) or old_black.shape != (channels,):
         raise ValueError("lesion and black-hole centroids must match the image channels")
     if exponents.shape != (channels,):
         raise ValueError("lesion_power_exponents must have one value per image channel")
+    optimized_present = any(
+        kind in {"optimized_lesion", "optimized_blackhole"} for kind in types
+    )
+    if optimized_present:
+        if optimized_exponents is None or optimized_exponents.shape != (channels,):
+            raise ValueError("optimized_power_exponents must have one value per image channel")
+        if not np.isfinite(optimized_exponents).all():
+            raise ValueError("optimized_power_exponents must be finite")
     if field_values is not None and field_values.shape != values.shape:
         raise ValueError("fields must match the image grid and channel count")
     if np.any(labels < 0) or np.any(labels >= classes):
@@ -897,43 +913,61 @@ def compute_lesion_toads_auxiliary_centroids(
                         sample = values[x, y, z, channel]
                         if field_values is not None:
                             sample = np.float32(field_values[x, y, z, channel] * sample)
-                        if kind in {"lesion", "blackhole"}:
+                        if kind in {
+                            "lesion", "blackhole", "optimized_lesion", "optimized_blackhole"
+                        }:
                             lesion_value = lesion_map[x, y, z]
                             black_value = black_map[x, y, z]
                             winner = max(class_membership, lesion_value, black_value)
-                            if winner == class_membership:
-                                square = np.float32(class_membership * class_membership)
-                                term = np.float32(square * sample)
-                                numerators[class_index] = np.float32(
-                                    numerators[class_index] + term
-                                )
-                                denominators[class_index] = np.float32(
-                                    denominators[class_index] + square
-                                )
-                            elif winner == lesion_value:
+                            optimized_kind = kind in {
+                                "optimized_lesion", "optimized_blackhole"
+                            }
+                            factor = np.float32(1.0)
+                            if optimized_kind:
+                                assert optimized_exponents is not None
+                                distance = np.float32(np.float32(winner * winner) * sample)
+                                exponent = float(optimized_exponents[channel])
+                            elif winner != class_membership and winner == lesion_value:
                                 difference = np.float32(sample - old_lesion[channel])
                                 distance = np.float32(difference * difference)
-                                factor = np.float32(1.0)
-                                if distance > zero:
-                                    powered = toads_powertable_lookup(
-                                        distance,
-                                        float(exponents[channel]),
-                                        cached_exponent=float(exponents[channel]),
-                                    )
-                                    factor = np.float32(
-                                        np.float64(powered) / np.float64(distance)
-                                    )
-                                square = np.float32(lesion_value * lesion_value)
-                                weighted = np.float32(np.float32(factor * lesion_value) * lesion_value)
+                                exponent = float(exponents[channel])
+                            else:
+                                distance = zero
+                                exponent = 0.0
+                            if (
+                                optimized_kind or (winner != class_membership and winner == lesion_value)
+                            ) and distance > zero:
+                                powered = toads_powertable_lookup(
+                                    distance, exponent, cached_exponent=exponent
+                                )
+                                factor = np.float32(
+                                    np.float64(powered) / np.float64(distance)
+                                )
+                            if winner == class_membership:
+                                weighted = np.float32(
+                                    np.float32(np.float32(factor * class_membership)
+                                               * class_membership)
+                                )
+                                numerators[class_index] = np.float32(
+                                    numerators[class_index] + np.float32(weighted * sample)
+                                )
+                                denominators[class_index] = np.float32(
+                                    denominators[class_index] + weighted
+                                )
+                            elif winner == lesion_value:
+                                weighted = np.float32(
+                                    np.float32(np.float32(factor * lesion_value) * lesion_value)
+                                )
                                 lesion_num = np.float32(
                                     lesion_num + np.float32(weighted * sample)
                                 )
                                 lesion_den = np.float32(lesion_den + weighted)
                             else:
-                                square = np.float32(black_value * black_value)
-                                weighted = np.float32(square * sample)
-                                black_num = np.float32(black_num + weighted)
-                                black_den = np.float32(black_den + square)
+                                weighted = np.float32(
+                                    np.float32(np.float32(factor * black_value) * black_value)
+                                )
+                                black_num = np.float32(black_num + np.float32(weighted * sample))
+                                black_den = np.float32(black_den + weighted)
                         else:
                             square = np.float32(class_membership * class_membership)
                             term = np.float32(square * sample)
