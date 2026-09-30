@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -10,6 +12,23 @@ from numpy.typing import ArrayLike, NDArray
 _FACES = ((-1, 0, 0), (0, -1, 0), (0, 0, -1), (0, 0, 1), (0, 1, 0), (1, 0, 0))
 _INTERIOR = (slice(1, -1), slice(1, -1), slice(1, -1))
 _EMPTY = np.int8(-1)
+
+
+@dataclass(frozen=True)
+class ToadsRelationList:
+    """Source-style relation map and relation-membership table."""
+
+    relation_map: NDArray[np.int16]
+    relation_membership: NDArray[np.bool_]
+
+    @property
+    def class_adjacency(self) -> NDArray[np.bool_]:
+        """Return the selected source's first ``class_count`` union rows."""
+        return self.relation_membership[: self.relation_membership.shape[1]]
+
+    @property
+    def class_count(self) -> int:
+        return int(self.relation_membership.shape[1])
 
 
 def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
@@ -134,3 +153,77 @@ def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8
         closest[_INTERIOR] = target
 
     return closest
+
+
+def toads_build_relation_list(
+    segmentation: ArrayLike,
+    class_count: int,
+) -> ToadsRelationList:
+    """Build source-ordered relation IDs for local six-face label sets.
+
+    This ports ``MultipleToadSegmentation.buildRelationList`` from a fresh
+    constructor-equivalent relation map. Singleton relations occupy IDs
+    ``0..class_count-1``. Each distinct boundary set, containing the voxel's
+    own class and its unique six-face neighbors, receives the next ID in the
+    source x/y/z first-occurrence order; set equality is order-independent.
+    The returned table contains those sets followed by the source's unioned
+    adjacency rows for each singleton class. Borders retain their initialized
+    class labels, as the Java method writes only interior voxels. A uint64
+    bitset is used internally to vectorize boundary set collection.
+    """
+    labels = np.asarray(segmentation)
+    if labels.ndim != 3 or any(size == 0 for size in labels.shape):
+        raise ValueError("segmentation must be a nonempty 3-D integer array")
+    if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
+        raise ValueError("segmentation labels must be integers")
+    if isinstance(class_count, (bool, np.bool_)) or not isinstance(class_count, (int, np.integer)):
+        raise ValueError("class_count must be a positive integer")
+    classes = int(class_count)
+    if not 1 <= classes <= 63:
+        raise ValueError("class_count must be between 1 and 63 for source class bitsets")
+    if any(size < 3 for size in labels.shape):
+        raise ValueError("segmentation dimensions must be at least three voxels")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation contains an out-of-range class index")
+
+    class_labels = labels.astype(np.int64, copy=False)
+    center = class_labels[_INTERIOR]
+    relation_keys = np.left_shift(np.uint64(1), center.astype(np.uint64))
+    is_boundary = np.zeros(center.shape, dtype=bool)
+    for dx, dy, dz in _FACES:
+        neighbor = class_labels[
+            slice(1 + dx, labels.shape[0] - 1 + dx),
+            slice(1 + dy, labels.shape[1] - 1 + dy),
+            slice(1 + dz, labels.shape[2] - 1 + dz),
+        ]
+        differs = neighbor != center
+        is_boundary |= differs
+        bits = np.left_shift(np.uint64(1), neighbor.astype(np.uint64))
+        relation_keys |= np.where(differs, bits, np.uint64(0))
+
+    boundary_keys = relation_keys[is_boundary]
+    if boundary_keys.size:
+        unique_keys, first_indices = np.unique(boundary_keys, return_index=True)
+        ordered_keys = unique_keys[np.argsort(first_indices)]
+    else:
+        ordered_keys = np.empty(0, dtype=np.uint64)
+    if classes + ordered_keys.size > 500:
+        raise ValueError("source relation table exceeds the 500-entry capacity")
+
+    relation_map = class_labels.astype(np.int16, copy=True)
+    relation_map_interior = relation_map[_INTERIOR]
+    for relation_id, key in enumerate(ordered_keys, start=classes):
+        relation_map_interior[is_boundary & (relation_keys == key)] = relation_id
+
+    relation_membership = np.zeros((classes + ordered_keys.size, classes), dtype=bool)
+    relation_membership[np.arange(classes), np.arange(classes)] = True
+    for index, key in enumerate(ordered_keys, start=classes):
+        members = np.array(
+            [bool((int(key) >> class_index) & 1) for class_index in range(classes)],
+            dtype=bool,
+        )
+        relation_membership[index] = members
+        for class_index in np.flatnonzero(members):
+            relation_membership[class_index] |= members
+
+    return ToadsRelationList(relation_map, relation_membership)
