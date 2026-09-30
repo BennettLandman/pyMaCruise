@@ -70,8 +70,23 @@ public final class ToadsGrowingPassReferenceHarness {
     private static String available(boolean[][][][] a){StringBuilder b=new StringBuilder();for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++)for(int k=0;k<C;k++)b.append(a[x][y][z][k]?'1':'0');return b.toString();}
     private static String floats(float[] a){StringBuilder b=new StringBuilder("[");for(int i=0;i<a.length;i++){if(i>0)b.append(',');b.append(Float.floatToIntBits(a[i]));}return b.append(']').toString();}
     private static String ordering(float[][][] a){float[] flat=new float[N*N*N];int n=0;for(float[][] x:a)for(float[] y:x)for(float v:y)flat[n++]=v;return floats(flat);}
+    private static String ints(short[][][] values){StringBuilder b=new StringBuilder("[");boolean first=true;for(short[][] x:values)for(short[] y:x)for(short v:y){if(!first)b.append(',');first=false;b.append(v);}return b.append(']').toString();}
+    private static String ints(byte[][][][] values){StringBuilder b=new StringBuilder("[");boolean first=true;for(byte[][][] x:values)for(byte[][] y:x)for(byte[] z:y)for(byte v:z){if(!first)b.append(',');first=false;b.append(v);}return b.append(']').toString();}
+    private static String bools(boolean[][] values){StringBuilder b=new StringBuilder("[");boolean first=true;for(boolean[] x:values)for(boolean v:x){if(!first)b.append(',');first=false;b.append(v?'1':'0');}return b.append(']').toString();}
+    private String relationStateAfterGrowth(){
+        int limit=2;
+        ToadsRelationDiffusionReferenceHarness.Outcome relation=ToadsRelationDiffusionReferenceHarness.computeRelations(seg,C,mems,limit);
+        byte[][][][] initialBoundary=ToadsBoundaryDistancesReferenceHarness.initial(N,N,N,C,true);
+        ToadsBoundaryDistancesReferenceHarness.Outcome boundary=ToadsBoundaryDistancesReferenceHarness.compute(seg,initialBoundary,C,limit);
+        byte[][][][] closest=ToadsClosestLabelsReferenceHarness.closestLabels(seg,limit);
+        ToadsRelationListReferenceHarness.Result table=ToadsRelationListReferenceHarness.build(seg,C);
+        return "{\"limit\":"+limit+",\"relation_map\":"+ints(relation.map)+",\"relation_membership\":"+bools(table.relations)
+            +",\"relation_diffusion_iterations\":"+relation.iterations+",\"boundary_diffusion_passes\":"+boundary.passes
+            +",\"initial_boundary_distances\":"+ints(initialBoundary)
+            +",\"boundary_distances\":"+ints(boundary.distances)+",\"closest_labels\":"+ints(closest)+"}";
+    }
     private void emit(){
-        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.initGrowingLabels + propagateGrowing queue exhaustion\",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"lut_sha256\":\"50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f\",\"heap_sha256\":\"9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a\",\"shape\":[9,9,9,4],\"events\":["+String.join(",",events)+"],\"segmentation\":\""+labels(seg,false)+"\",\"skeleton\":\""+labels(skel,true)+"\",\"available\":\""+available(available)+"\",\"ordering_bits\":"+ordering(ordering)+",\"volumes_bits\":"+floats(volume)+",\"queue_after\":[]}");
+        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.initGrowingLabels + propagateGrowing queue exhaustion\",\"source_sha256\":\"63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"lut_sha256\":\"50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f\",\"heap_sha256\":\"9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a\",\"shape\":[9,9,9,4],\"events\":["+String.join(",",events)+"],\"segmentation\":\""+labels(seg,false)+"\",\"skeleton\":\""+labels(skel,true)+"\",\"available\":\""+available(available)+"\",\"ordering_bits\":"+ordering(ordering)+",\"volumes_bits\":"+floats(volume)+",\"queue_after\":[],\"relation_state_after_growth\":"+relationStateAfterGrowth()+"}");
     }
     public static void main(String[] args){ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();ToadsGrowingPassReferenceHarness h=new ToadsGrowingPassReferenceHarness();h.initialize();h.propagate();h.emit();}
 }

@@ -53,7 +53,7 @@ public final class ToadsThinningQueueRunReferenceHarness {
     }
     public static void main(String[] args) throws Exception {
         ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();
-        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.propagateThinning outer queue loop\",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"cases\":[");
+        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.propagateThinning outer queue loop\",\"source_sha256\":\"63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"cases\":[");
         System.out.print(run("drain_with_rescheduling",100.0f,false));
         System.out.print(","+run("cross_threshold_at_second_item",0.5f,true));
         System.out.print(","+run("top_priority_equals_threshold",0.25f,true));

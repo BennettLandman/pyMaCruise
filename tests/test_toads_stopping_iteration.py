@@ -18,11 +18,6 @@ GROWING_REFERENCE = (
 CONTROL_REFERENCE = (
     Path(__file__).parent / "data/synthetic/toads_iteration_control/java_reference.json"
 )
-RELATION_REFERENCE = (
-    Path(__file__).parent / "data/synthetic/toads_relation_state_refresh/java_reference.json"
-)
-
-
 def _inputs():
     size, classes = 9, 4
     segmentation = np.zeros((size, size, size), dtype=np.int16)
@@ -54,7 +49,7 @@ def _inputs():
 def test_stopping_iteration_composes_java_referenced_final_growth_and_label_transfer() -> None:
     reference = json.loads(GROWING_REFERENCE.read_text())
     control_reference = json.loads(CONTROL_REFERENCE.read_text())
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert control_reference["source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
     segmentation, skeleton, memberships, ordering, volumes = _inputs()
     result = toads_stopping_iteration(
@@ -131,19 +126,18 @@ def test_stopping_iteration_rejects_continuation_branch() -> None:
         )
 
 
-def test_continuing_iteration_composes_empty_growth_and_java_relation_refresh() -> None:
-    reference = json.loads(RELATION_REFERENCE.read_text())
+def test_continuing_iteration_composes_populated_growth_and_java_relation_refresh() -> None:
+    growing_reference = json.loads(GROWING_REFERENCE.read_text())
+    reference = growing_reference["relation_state_after_growth"]
     control_reference = json.loads(CONTROL_REFERENCE.read_text())
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert growing_reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert control_reference["source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
-    shape = tuple(reference["shape"])
-    classes = reference["classes"]
-    segmentation = np.asarray(reference["segmentation"], dtype=np.int8).reshape(shape)
-    membership_bits = np.asarray(reference["membership_float_bits"], dtype=np.uint32)
-    memberships = membership_bits.view(np.float32).reshape((*shape, classes))
-    initial_distances = np.asarray(
-        reference["initial_boundary_distances"], dtype=np.int8
-    ).reshape((*shape, classes))
+    segmentation, skeleton, memberships, ordering, volumes = _inputs()
+    shape = segmentation.shape
+    classes = memberships.shape[-1]
+    initial_distances = np.asarray(reference["initial_boundary_distances"], dtype=np.int8).reshape(
+        (*shape, classes)
+    )
     result = toads_continuing_iteration(
         1.0,
         0.5,
@@ -151,10 +145,10 @@ def test_continuing_iteration_composes_empty_growth_and_java_relation_refresh() 
         5,
         1e-5,
         segmentation,
-        np.full(shape, -1, dtype=np.int8),
+        skeleton,
         memberships,
-        np.zeros(shape, dtype=np.float32),
-        np.ones(classes, dtype=np.float32),
+        ordering,
+        volumes,
         initial_distances,
         relation_limit=reference["limit"],
         do_growing=False,
@@ -162,8 +156,8 @@ def test_continuing_iteration_composes_empty_growth_and_java_relation_refresh() 
 
     assert not result.control.stop and result.control.run_growing
     assert not result.control.update_classification and result.control.refresh_relations
-    assert result.growing.events == ()
-    np.testing.assert_array_equal(result.growing.segmentation, segmentation)
+    assert len(result.growing.events) == 448
+    assert "".join(str(int(value)) for value in result.growing.segmentation.ravel()) == growing_reference["segmentation"]
     state = result.relation_state
     np.testing.assert_array_equal(state.relation.relation_map.ravel(), reference["relation_map"])
     np.testing.assert_array_equal(

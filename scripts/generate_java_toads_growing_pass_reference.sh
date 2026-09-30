@@ -11,6 +11,10 @@ heap_source="$reference_root/upstream/edu/jhmi/rad/medic/structures/BinaryHeap4D
 mkdir -p "$classes" "$(dirname -- "$output")"
 javac -d "$classes" "$lut_source" "$heap_source" \
   "$reference_root/ToadsHomeomorphicChangeReferenceHarness.java" \
+  "$reference_root/ToadsRelationListReferenceHarness.java" \
+  "$reference_root/ToadsRelationDiffusionReferenceHarness.java" \
+  "$reference_root/ToadsBoundaryDistancesReferenceHarness.java" \
+  "$reference_root/ToadsClosestLabelsReferenceHarness.java" \
   "$reference_root/ToadsGrowingPassReferenceHarness.java"
 cp "$repo_root/src/pymacruise/data/critical186LUT.raw.gz" "$classes/critical186LUT.raw.gz"
 java -cp "$classes" ToadsGrowingPassReferenceHarness > "$output"

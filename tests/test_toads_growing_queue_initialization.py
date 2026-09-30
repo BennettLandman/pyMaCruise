@@ -44,7 +44,7 @@ def _case_arrays(name: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def test_growing_queue_initialization_matches_java_min_heap_reference() -> None:
     reference = json.loads(REFERENCE.read_text())
     assert reference["source"] == "VandyCRUISE MultipleToadSegmentation.initGrowingLabels"
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert reference["heap_sha256"] == "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a"
     assert reference["shape"] == [7, 7, 7, 4]
     assert {case["name"] for case in reference["cases"]} == {"mixed", "single_seed", "no_boundary"}

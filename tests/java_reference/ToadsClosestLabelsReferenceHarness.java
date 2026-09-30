@@ -19,7 +19,7 @@ public final class ToadsClosestLabelsReferenceHarness {
         int nx = segmentation.length, ny = segmentation[0].length, nz = segmentation[0][0].length;
         byte[][][][] closestLabel = new byte[nx][ny][nz][4];
         byte[][][][] tmpLabel = new byte[nx][ny][nz][4];
-        for (int x = 0; x < NX; x++) for (int y = 0; y < NY; y++) for (int z = 0; z < NZ; z++) {
+        for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) for (int z = 0; z < nz; z++) {
             closestLabel[x][y][z][0] = segmentation[x][y][z];
             closestLabel[x][y][z][1] = EMPTY;
             closestLabel[x][y][z][2] = EMPTY;

@@ -52,7 +52,7 @@ public final class ToadsGrowingQueueInitializationReferenceHarness {
     private void emit(boolean first){if(!first)System.out.print(',');System.out.print("{\"name\":\""+kind+"\",\"skeleton\":\""+labels(skeleton)+"\",\"available\":\""+available(available)+"\",\"queue\":"+queue()+"}");}
     public static void main(String[] args){
         String[] cases={"mixed","single_seed","no_boundary"};
-        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.initGrowingLabels\",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"heap_sha256\":\"9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a\",\"shape\":[7,7,7,4],\"cases\":[");
+        System.out.print("{\"source\":\"VandyCRUISE MultipleToadSegmentation.initGrowingLabels\",\"source_sha256\":\"63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"heap_sha256\":\"9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a\",\"shape\":[7,7,7,4],\"cases\":[");
         for(int i=0;i<cases.length;i++){ToadsGrowingQueueInitializationReferenceHarness h=new ToadsGrowingQueueInitializationReferenceHarness(cases[i]);h.initialize();h.emit(i==0);}
         System.out.println("]}");
     }

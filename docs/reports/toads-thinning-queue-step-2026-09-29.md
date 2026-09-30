@@ -21,7 +21,7 @@ segmentation value, selects the membership and volume update.
 The harness runs the selected source `CriticalPointLUT` and `BinaryHeap4D`
 classes. The production VandyCRUISE source is
 `MultipleToadSegmentation.java`, SHA-256
-`63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884`; the LUT
+`63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884`; the LUT
 SHA-256 is
 `50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f`; the heap
 SHA-256 is

@@ -35,7 +35,7 @@ def test_repeated_queue_run_matches_java_source_loop() -> None:
     direct = next(case for case in step_reference["cases"] if case["name"] == "direct_allowed")["input"]
     reference = json.loads(RUN_REFERENCE.read_text())
     assert reference["source"] == "VandyCRUISE MultipleToadSegmentation.propagateThinning outer queue loop"
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert {case["name"] for case in reference["cases"]} == {
         "drain_with_rescheduling", "cross_threshold_at_second_item",
         "top_priority_equals_threshold", "zero_limit_processes_nothing",

@@ -52,7 +52,7 @@ def _labels(values, *, skeleton: bool = False) -> str:
 def test_initialized_growing_pass_matches_java_lut_and_heap_reference() -> None:
     reference = json.loads(REFERENCE.read_text())
     assert reference["source"] == "VandyCRUISE MultipleToadSegmentation.initGrowingLabels + propagateGrowing queue exhaustion"
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert reference["lut_sha256"] == "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f"
     assert reference["heap_sha256"] == "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a"
     assert reference["shape"] == [9, 9, 9, 4]

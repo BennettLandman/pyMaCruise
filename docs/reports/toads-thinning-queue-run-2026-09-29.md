@@ -28,7 +28,7 @@ The harness uses the selected Java `CriticalPointLUT` and `BinaryHeap4D`, and
 reuses the event implementation in
 `ToadsThinningQueueStepReferenceHarness.java`. VandyCRUISE
 `MultipleToadSegmentation.java` SHA-256:
-`63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884`.
+`63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884`.
 
 ## Validation evidence
 

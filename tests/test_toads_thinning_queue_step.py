@@ -33,7 +33,7 @@ def _skeleton_text(skeleton: np.ndarray) -> str:
 def test_one_queue_event_matches_java_lut_heap_and_source_order() -> None:
     reference = json.loads(REFERENCE.read_text())
     assert reference["source"] == "VandyCRUISE MultipleToadSegmentation.propagateThinning one queue event"
-    assert reference["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     assert reference["lut_source_sha256"] == "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f"
     assert reference["heap_sha256"] == "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a"
     assert {case["name"] for case in reference["cases"]} == {

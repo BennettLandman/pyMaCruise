@@ -148,6 +148,9 @@ Its synthetic folded-band case records the full event trace and final arrays,
 using the actual 18/6 LUT and `BinaryHeap4D`. Regenerate with
 `scripts/generate_java_toads_growing_pass_reference.sh`; see
 `tests/data/synthetic/toads_growing_pass/README.md` for the phantom and limits.
+The same harness then refreshes relation map, boundary distances, and closest
+labels on the post-growth segmentation, giving a Java reference for that
+continuing-iteration call sequence.
 
 ## TOADS classification transfer from segmentation labels
 
