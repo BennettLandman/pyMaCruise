@@ -70,6 +70,167 @@ class LesionToadsThinningInitialization:
     queue: ToadsPriorityHeap4D
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningTransition:
+    """Discrete and volume state after one selected LesionTOADS pop."""
+
+    segmentation_label: int
+    skeleton_label: int
+    class_volume: NDArray[np.float32]
+    available_at_center: NDArray[np.bool_]
+    ordering_at_center: np.float32
+    candidate_label: int | None
+    topology_accepted: bool | None
+    processed: bool
+
+
+def lesion_toads_thinning_voxel_transition(
+    segmentation_neighborhood: ArrayLike,
+    skeleton_neighborhood: ArrayLike,
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership_neighborhood: ArrayLike,
+    black_hole_membership_neighborhood: ArrayLike,
+    transformed_shape_neighborhood: ArrayLike,
+    class_volume: ArrayLike,
+    minimum_class_volume: ArrayLike,
+    available_at_center: ArrayLike,
+    ordering_at_center: float,
+    queue_value: float,
+    *,
+    lesion_class: int,
+    processing_class: int,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+) -> LesionToadsThinningTransition:
+    """Apply one selected LesionTOADS ``propagateThinning`` removal event.
+
+    The caller has already removed the heap head. This function ports the
+    selected local target choice, topology gate, volume decrement, and center
+    state updates. The shape-prior fallback intentionally follows the
+    LesionTOADS source (largest transformed shape value, without TOADS'
+    relation-matrix check); queue-neighbor insertion is a separate operation.
+    """
+    labels = np.asarray(segmentation_neighborhood)
+    skeleton = np.asarray(skeleton_neighborhood)
+    mems = np.asarray(memberships, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership_neighborhood, dtype=np.float32)
+    black_hole_mems = np.asarray(black_hole_membership_neighborhood, dtype=np.float32)
+    shapes = np.asarray(transformed_shape_neighborhood, dtype=np.float32)
+    volumes = np.asarray(class_volume, dtype=np.float32)
+    minimums = np.asarray(minimum_class_volume, dtype=np.float32)
+    available = np.asarray(available_at_center)
+    types = tuple(object_types)
+    if labels.shape != (3, 3, 3) or skeleton.shape != (3, 3, 3):
+        raise ValueError("segmentation and skeleton neighborhoods must have shape (3, 3, 3)")
+    if not np.issubdtype(labels.dtype, np.integer) or not np.issubdtype(skeleton.dtype, np.integer):
+        raise ValueError("segmentation and skeleton labels must be integers")
+    classes = len(types)
+    if classes < 2 or classes > 128:
+        raise ValueError("object_types must contain between 2 and 128 classes")
+    if mems.shape != (classes,) or not np.isfinite(mems).all():
+        raise ValueError("memberships must be a finite class vector")
+    if lesion_mems.shape != (3, 3, 3) or black_hole_mems.shape != (3, 3, 3):
+        raise ValueError("lesion and black-hole neighborhoods must have shape (3, 3, 3)")
+    if shapes.shape != (3, 3, 3, classes) or not np.isfinite(shapes).all():
+        raise ValueError("transformed shapes must be finite with shape (3, 3, 3, classes)")
+    if not np.isfinite(lesion_mems).all() or not np.isfinite(black_hole_mems).all():
+        raise ValueError("lesion and black-hole memberships must be finite")
+    if volumes.shape != (classes,) or minimums.shape != (classes,):
+        raise ValueError("class volume arrays must match object_types")
+    if available.shape != (classes,) or available.dtype != np.bool_:
+        raise ValueError("available_at_center must be a boolean vector matching object_types")
+    if not np.isfinite(volumes).all() or not np.isfinite(minimums).all():
+        raise ValueError("class volumes and minimums must be finite")
+    for name, index in (("lesion_class", lesion_class), ("processing_class", processing_class)):
+        if isinstance(index, (bool, np.bool_)) or not isinstance(index, (int, np.integer)):
+            raise ValueError(f"{name} must be an integer class index")
+        if not 0 <= int(index) < classes:
+            raise ValueError(f"{name} must be a valid class index")
+    if not isinstance(use_lesion_max, (bool, np.bool_)):
+        raise ValueError("use_lesion_max must be boolean")
+    if not np.isfinite([ordering_at_center, queue_value]).all():
+        raise ValueError("ordering values must be finite")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must be valid class indices")
+    if np.any((skeleton != empty_label) & ((skeleton < 0) | (skeleton >= classes))):
+        raise ValueError("skeleton labels must be valid class indices or empty_label")
+
+    center_label = int(labels[1, 1, 1])
+    center_skeleton = int(skeleton[1, 1, 1])
+    updated_volumes = volumes.copy()
+    updated_available = available.copy()
+    if center_skeleton != processing_class or not (
+        volumes[processing_class] > minimums[processing_class]
+    ):
+        return LesionToadsThinningTransition(
+            center_label, center_skeleton, updated_volumes, updated_available,
+            np.float32(ordering_at_center), None, None, False,
+        )
+
+    target = _best_membership_at(
+        0, 0, 0,
+        mems.reshape((1, 1, 1, classes)),
+        types,
+        lesion_mems[1:2, 1:2, 1:2],
+        black_hole_mems[1:2, 1:2, 1:2],
+        use_lesion_max=bool(use_lesion_max),
+    )
+    direct = False
+    next_label: int | None = None
+    best_prior = np.float32(0.0)
+    if target != processing_class:
+        for dx, dy, dz in _FACE_NEIGHBORS:
+            neighbor = int(labels[1 + dx, 1 + dy, 1 + dz])
+            if neighbor == target:
+                direct = True
+            elif neighbor != processing_class:
+                prior = shapes[1 + dx, 1 + dy, 1 + dz, target]
+                if prior > best_prior:
+                    next_label = neighbor
+                    best_prior = prior
+    if target == processing_class:
+        candidate = None
+        topology_accepted = None
+    elif direct:
+        candidate = target
+        topology_accepted = toads_homeomorphic_label_change(labels, target)
+    elif next_label is not None:
+        candidate = next_label
+        topology_accepted = toads_homeomorphic_label_change(labels, next_label)
+    else:
+        candidate = None
+        topology_accepted = None
+
+    updated_available[processing_class] = False
+    updated_ordering = np.float32(queue_value)
+    if processing_class == lesion_class:
+        if use_lesion_max:
+            decrement = _lesion_score(
+                mems[processing_class], lesion_mems[1, 1, 1], black_hole_mems[1, 1, 1],
+                use_lesion_max=True,
+            )
+        else:
+            decrement = np.float32(
+                np.float32(mems[processing_class] + lesion_mems[1, 1, 1])
+                + black_hole_mems[1, 1, 1]
+            )
+    else:
+        decrement = mems[processing_class]
+    updated_volumes[processing_class] = np.float32(
+        volumes[processing_class] - decrement
+    )
+    new_label = (
+        int(candidate)
+        if candidate is not None and topology_accepted
+        else center_label
+    )
+    return LesionToadsThinningTransition(
+        new_label, int(empty_label), updated_volumes, updated_available,
+        updated_ordering, candidate, topology_accepted, True,
+    )
+
+
 def _lesion_score(
     ordinary_membership: np.float32,
     lesion_membership: np.float32,
