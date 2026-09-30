@@ -814,6 +814,150 @@ def toads_ordered_membership_sweep(
     return updated, total_objective
 
 
+def toads_object_mask_outlier_membership_sweep(
+    class_data_energy: ArrayLike,
+    outlier_data_energy: ArrayLike,
+    initial_memberships: ArrayLike,
+    initial_outlier_membership: ArrayLike,
+    class_types: tuple[str, ...] | list[str],
+    shape_priors: ArrayLike,
+    closest_labels: ArrayLike,
+    smoothing_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    *,
+    prior_inverse_energy: ArrayLike | None = None,
+    prior_objective_energy: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[NDArray[np.float32], NDArray[np.float32], np.float32]:
+    """Sweep selected OBJECT/MASK/OUTLIER classes in source order.
+
+    Inputs are per-class ordinary data energies plus a separate scalar-map
+    OUTLIER energy, both already computed by the selected intensity helpers.
+    The in-place six-face sweep applies selected shape relations and optional
+    atlas terms. For its single OUTLIER class, the current outlier map mixes
+    the two reciprocal energies and receives source-ordered normalization.
+    Only class arrays and the outlier map are updated; topology gating,
+    classification stopping, and whole-TOADS iteration remain separate.
+    """
+    energies = np.asarray(class_data_energy, dtype=np.float32)
+    outlier_energy = np.asarray(outlier_data_energy, dtype=np.float32)
+    updated = np.asarray(initial_memberships, dtype=np.float32).copy()
+    outlier = np.asarray(initial_outlier_membership, dtype=np.float32).copy()
+    kinds = tuple(class_types)
+    priors = np.asarray(smoothing_priors, dtype=np.float32)
+    smooth = np.float32(smoothing)
+    threshold = np.float32(zero_threshold)
+    reciprocal_cap = np.float32(infinite_reciprocal)
+    if energies.ndim != 4 or energies.shape[-1] == 0 or not np.isfinite(energies).all():
+        raise ValueError("class_data_energy must be finite 4-D with a class axis")
+    spatial_shape = energies.shape[:3]
+    classes = energies.shape[-1]
+    if updated.shape != energies.shape or not np.isfinite(updated).all():
+        raise ValueError("initial_memberships must be finite and match class_data_energy")
+    if outlier.shape != spatial_shape or not np.isfinite(outlier).all():
+        raise ValueError("initial_outlier_membership must match the class spatial grid")
+    if outlier_energy.shape != spatial_shape or not np.isfinite(outlier_energy).all():
+        raise ValueError("outlier_data_energy must match the class spatial grid")
+    if len(kinds) != classes or kinds.count("OUTLIER") != 1 or any(
+        kind not in {"OBJECT", "MASK", "OUTLIER"} for kind in kinds
+    ):
+        raise ValueError("class_types must contain OBJECT/MASK classes and exactly one OUTLIER class")
+    if priors.shape != (classes,) or not np.isfinite(priors).all():
+        raise ValueError("smoothing_priors must be finite and match the class count")
+    if not np.isfinite(smooth) or not np.isfinite(threshold) or not np.isfinite(reciprocal_cap):
+        raise ValueError("smoothing and reciprocal constants must be finite")
+    if threshold < np.float32(0.0) or reciprocal_cap <= np.float32(0.0):
+        raise ValueError("reciprocal threshold/cap must be nonnegative/positive")
+    factors, suppressed = toads_shape_relation_factors(shape_priors, closest_labels, prior_factor)
+    if factors.shape != energies.shape:
+        raise ValueError("shape_priors must match class_data_energy grid and class count")
+    if (prior_inverse_energy is None) != (prior_objective_energy is None):
+        raise ValueError("prior inverse and objective energy must be provided together")
+    if prior_inverse_energy is None:
+        prior_num = prior_objective = None
+    else:
+        prior_num = np.asarray(prior_inverse_energy, dtype=np.float32)
+        prior_objective = np.asarray(prior_objective_energy, dtype=np.float32)
+        if prior_num.shape != energies.shape or not np.isfinite(prior_num).all():
+            raise ValueError("prior_inverse_energy must be finite and match class_data_energy")
+        if prior_objective.shape != energies.shape or not np.isfinite(prior_objective).all():
+            raise ValueError("prior_objective_energy must be finite and match class_data_energy")
+
+    outlier_class = kinds.index("OUTLIER")
+    total_objective = np.float32(0.0)
+    nx, ny, nz = spatial_shape
+    offsets = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                denominator = np.float32(0.0)
+                objective_at_voxel = np.zeros(classes, dtype=np.float32)
+                for k in range(classes):
+                    if suppressed[x, y, z, k]:
+                        updated[x, y, z, k] = np.float32(0.0)
+                        continue
+                    num = energies[x, y, z, k]
+                    num_outlier = outlier_energy[x, y, z]
+                    objective_value = num
+                    current_outlier = outlier[x, y, z]
+                    if k == outlier_class:
+                        class_fraction = np.float32(np.float32(1.0) - current_outlier)
+                        objective_value = np.float32(
+                            np.float32(class_fraction * num)
+                            + np.float32(current_outlier * num_outlier)
+                        )
+                    neighbor_sum = np.float32(0.0)
+                    if smooth > np.float32(0.0):
+                        for dx, dy, dz in offsets:
+                            for other in range(classes):
+                                if other == k:
+                                    continue
+                                value = updated[x + dx, y + dy, z + dz, other]
+                                neighbor_sum = np.float32(neighbor_sum + np.float32(value * value))
+                        smoothing_increment = np.float32(np.float32(priors[k] * smooth) * neighbor_sum)
+                        num = np.float32(num + smoothing_increment)
+                        if k == outlier_class:
+                            num_outlier = np.float32(num_outlier + smoothing_increment)
+                        smoothing_objective = np.float32(np.float32(np.float32(0.5) * priors[k]) * smooth)
+                        smoothing_objective = np.float32(smoothing_objective * neighbor_sum)
+                        objective_value = np.float32(objective_value + smoothing_objective)
+                    if prior_num is not None:
+                        num = np.float32(num + prior_num[x, y, z, k])
+                        if k == outlier_class:
+                            num_outlier = np.float32(num_outlier + prior_num[x, y, z, k])
+                        objective_value = np.float32(objective_value + prior_objective[x, y, z, k])
+                    if k == outlier_class:
+                        class_reciprocal = (
+                            np.float32(np.float32(1.0) / num)
+                            if num > threshold else reciprocal_cap
+                        )
+                        outlier_reciprocal = (
+                            np.float32(np.float32(1.0) / num_outlier)
+                            if num_outlier > threshold else reciprocal_cap
+                        )
+                        value, outlier[x, y, z] = toads_outlier_membership_mix(
+                            class_reciprocal, current_outlier, outlier_reciprocal,
+                            factors[x, y, z, k],
+                        )
+                    else:
+                        reciprocal = np.float32(np.float32(1.0) / num) if num > threshold else reciprocal_cap
+                        value = np.float32(factors[x, y, z, k] * reciprocal)
+                    updated[x, y, z, k] = value
+                    denominator = np.float32(denominator + value)
+                    objective_at_voxel[k] = objective_value
+                if denominator > np.float32(0.0):
+                    for k in range(classes):
+                        updated[x, y, z, k] = np.float32(updated[x, y, z, k] / denominator)
+                        if k == outlier_class:
+                            outlier[x, y, z] = np.float32(outlier[x, y, z] / denominator)
+                        contribution = np.float32(objective_at_voxel[k] * updated[x, y, z, k])
+                        contribution = np.float32(contribution * updated[x, y, z, k])
+                        total_objective = np.float32(total_objective + contribution)
+    return updated, outlier, total_objective
+
+
 def toads_object_mask_membership_pass(
     image_values: ArrayLike,
     initial_memberships: ArrayLike,
