@@ -814,6 +814,79 @@ def toads_ordered_membership_sweep(
     return updated, total_objective
 
 
+def toads_object_mask_membership_pass(
+    image_values: ArrayLike,
+    initial_memberships: ArrayLike,
+    centroids: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    image_variances: ArrayLike,
+    transformed_shapes: ArrayLike,
+    closest_labels: ArrayLike,
+    smoothing_priors: ArrayLike,
+    centroid_similarity: ArrayLike,
+    atlas_shape_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    prior_coefficient: float,
+    *,
+    class_types: tuple[str, ...] | list[str] | None = None,
+    intensity_field: ArrayLike | None = None,
+    psf_bias: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[NDArray[np.float32], np.float32]:
+    """Compose a selected OBJECT/MASK exact-membership pass.
+
+    OBJECT classes use the field/PSF-aware residual term while MASK classes
+    use the source's binary nonzero-intensity mismatch term. Both feed the same
+    existing inverse-shape prior and source-ordered in-place membership sweep.
+    Lesion/outlier mixtures, topology admissibility, thinning, registration,
+    and outer convergence remain separate.
+    """
+    object_energy = toads_object_intensity_energy(
+        image_values,
+        centroids,
+        modality_weights,
+        class_variance_weights,
+        image_variances,
+        intensity_field=intensity_field,
+        psf_bias=psf_bias,
+    )
+    mask_energy = toads_mask_intensity_energy(
+        image_values, modality_weights, class_variance_weights, image_variances
+    )
+    if class_types is None:
+        types = ("OBJECT",) * object_energy.shape[-1]
+    else:
+        types = tuple(class_types)
+    if len(types) != object_energy.shape[-1] or any(kind not in {"OBJECT", "MASK"} for kind in types):
+        raise ValueError("class_types must select OBJECT or MASK for each class")
+    data_energy = np.empty_like(object_energy)
+    for class_index, kind in enumerate(types):
+        selected = object_energy if kind == "OBJECT" else mask_energy
+        data_energy[..., class_index] = selected[..., class_index]
+    shapes = np.asarray(transformed_shapes, dtype=np.float32)
+    if shapes.shape != data_energy.shape or not np.isfinite(shapes).all():
+        raise ValueError("transformed_shapes must be finite and match image class-energy grid")
+    prior_inverse, prior_objective = toads_inverse_shape_prior_energy(
+        shapes, atlas_shape_priors, centroid_similarity, prior_coefficient
+    )
+    return toads_ordered_membership_sweep(
+        data_energy,
+        initial_memberships,
+        shapes,
+        closest_labels,
+        smoothing_priors,
+        smoothing,
+        prior_factor,
+        prior_inverse_energy=prior_inverse,
+        prior_objective_energy=prior_objective,
+        zero_threshold=zero_threshold,
+        infinite_reciprocal=infinite_reciprocal,
+    )
+
+
 def toads_object_membership_pass(
     image_values: ArrayLike,
     initial_memberships: ArrayLike,
@@ -835,42 +908,14 @@ def toads_object_membership_pass(
     zero_threshold: float = 1e-10,
     infinite_reciprocal: float = 1e10,
 ) -> tuple[NDArray[np.float32], np.float32]:
-    """Compose one selected ordinary-OBJECT exact-membership pass.
-
-    This reuses the separately checked OBJECT intensity term, inverse shape
-    prior, and source-ordered membership sweep. The sweep reads updated
-    six-face memberships in place, applies direct/neighbor/prior shape
-    relations, normalizes reciprocals, and accumulates the objective. The
-    composition covers OBJECT classes only; lesion/outlier mixtures, topology
-    admissibility, thinning, registration, and outer convergence remain apart.
-    """
-    data_energy = toads_object_intensity_energy(
-        image_values,
-        centroids,
-        modality_weights,
-        class_variance_weights,
-        image_variances,
-        intensity_field=intensity_field,
-        psf_bias=psf_bias,
-    )
-    shapes = np.asarray(transformed_shapes, dtype=np.float32)
-    if shapes.shape != data_energy.shape or not np.isfinite(shapes).all():
-        raise ValueError("transformed_shapes must be finite and match image class-energy grid")
-    prior_inverse, prior_objective = toads_inverse_shape_prior_energy(
-        shapes, atlas_shape_priors, centroid_similarity, prior_coefficient
-    )
-    return toads_ordered_membership_sweep(
-        data_energy,
-        initial_memberships,
-        shapes,
-        closest_labels,
-        smoothing_priors,
-        smoothing,
-        prior_factor,
-        prior_inverse_energy=prior_inverse,
-        prior_objective_energy=prior_objective,
-        zero_threshold=zero_threshold,
-        infinite_reciprocal=infinite_reciprocal,
+    """Compose one source-ordered exact-membership pass of OBJECT classes."""
+    return toads_object_mask_membership_pass(
+        image_values, initial_memberships, centroids, modality_weights,
+        class_variance_weights, image_variances, transformed_shapes,
+        closest_labels, smoothing_priors, centroid_similarity, atlas_shape_priors,
+        smoothing, prior_factor, prior_coefficient,
+        class_types=None, intensity_field=intensity_field, psf_bias=psf_bias,
+        zero_threshold=zero_threshold, infinite_reciprocal=infinite_reciprocal,
     )
 
 
