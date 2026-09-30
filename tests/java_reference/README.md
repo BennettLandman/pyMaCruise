@@ -196,3 +196,10 @@ coefficient loop and `registerGradientDescent` update for an accepted and an
 `scripts/generate_java_toads_rigid_registration_update_reference.sh`; see
 `tests/data/synthetic/toads_rigid_registration_update/README.md` for scope and
 limitations.
+
+## TOADS boundary-distance update
+
+`ToadsBoundaryDistancesReferenceHarness.java` transcribes
+`computeBoundaryDistances`, including signed-byte interface seeding and the
+source loop behavior that prevents a zero distance from expanding. Regenerate
+with `scripts/generate_java_toads_boundary_distances_reference.sh`.

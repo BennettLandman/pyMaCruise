@@ -683,3 +683,20 @@ and
 [`tests/data/synthetic/toads_relation_diffusion/README.md`](../tests/data/synthetic/toads_relation_diffusion/README.md).
 This validates exact-membership relation propagation only. Approximate mode,
 topology evolution, and full TOADS segmentation remain open.
+
+### Completed substage: P18bl TOADS boundary-distance update
+
+`toads_update_boundary_distances` ports the source's class-wise signed-byte
+boundary field update. The selected Java method and Python match every byte on
+fresh and prepopulated synthetic arrays. These checks preserve two source
+quirks: the diffusion loop clears `change` without restoring it, and the
+`min(0, neighbor + 1)` expression cannot expand a zero value. Thus the method
+marks both class sides of an interface but does not produce a distance ramp.
+Focused checks: 6 passed. Full suite: 560 passed with 2 expected RAS warnings
+in 77.53 seconds on implementation commit
+`5341266f146ef305c2412f31d846b74dcff01d1d`; see
+[`docs/reports/full-pytest-2026-09-29-toads-boundary-distances.md`](reports/full-pytest-2026-09-29-toads-boundary-distances.md)
+and
+[`tests/data/synthetic/toads_boundary_distances/README.md`](../tests/data/synthetic/toads_boundary_distances/README.md).
+This validates boundary-distance state only, not distance-weighted
+membership behavior or complete TOADS evolution.
