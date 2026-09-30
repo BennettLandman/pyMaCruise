@@ -534,6 +534,7 @@ def compute_lesion_toads_basic_centroids(
     object_types: tuple[str, ...] | list[str],
     *,
     fields: ArrayLike | None = None,
+    outlier_membership: ArrayLike | None = None,
     mode: str = "none",
     smoothness: float = 0.0,
     centroid_links: ArrayLike | None = None,
@@ -543,7 +544,8 @@ def compute_lesion_toads_basic_centroids(
 
     This ports the generic selected ``computeCentroids()`` branch: class
     accumulators use squared memberships and optional field-corrected samples;
-    ``linked`` combines accumulators for classes sharing a link id, ``damped``
+    OUTLIER classes first scale class membership by one minus the supplied
+    outlier membership map. ``linked`` combines accumulators for classes sharing a link id, ``damped``
     blends with the previous centroid, and ``prior`` adds the source's
     ``smoothness * 1e4`` prior weight. The source RAYLEIGH second-moment rule
     is used in ``none``, ``linked``, ``damped`` and fallback modes. LESION,
@@ -558,6 +560,9 @@ def compute_lesion_toads_basic_centroids(
     labels = np.asarray(segmentation)
     initial = np.asarray(centroids, dtype=np.float32)
     field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    outlier_values = (
+        None if outlier_membership is None else np.asarray(outlier_membership, dtype=np.float32)
+    )
     types = tuple(item.lower() if isinstance(item, str) else item for item in object_types)
     if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
         raise ValueError("images must have shape (x, y, z, channels)")
@@ -570,12 +575,16 @@ def compute_lesion_toads_basic_centroids(
     allowed_types = {"object", "mask", "outlier", "outmask", "rayleigh"}
     if any(item not in allowed_types for item in types):
         raise ValueError("object_types include a category requiring a specialized centroid update")
+    if "outlier" in types and outlier_values is None:
+        raise ValueError("outlier_membership is required when an OUTLIER class is present")
     if labels.shape != spatial or not np.issubdtype(labels.dtype, np.integer):
         raise ValueError("segmentation must be an integer grid matching the images")
     if initial.shape != (channels, classes):
         raise ValueError("centroids must have shape (channels, classes)")
     if field_values is not None and field_values.shape != values.shape:
         raise ValueError("fields must match the image grid and channel count")
+    if outlier_values is not None and outlier_values.shape != spatial:
+        raise ValueError("outlier_membership must match the image grid")
     if np.any(labels < 0) or np.any(labels >= classes):
         raise ValueError("segmentation labels must index the membership classes")
     finite_arrays = (values, weights, initial)
@@ -583,6 +592,8 @@ def compute_lesion_toads_basic_centroids(
         raise ValueError("images, memberships, and centroids must be finite")
     if field_values is not None and not np.isfinite(field_values).all():
         raise ValueError("fields must be finite")
+    if outlier_values is not None and not np.isfinite(outlier_values).all():
+        raise ValueError("outlier_membership must be finite")
     blend = np.float32(smoothness)
     if not np.isfinite(blend):
         raise ValueError("smoothness must be finite")
@@ -617,6 +628,11 @@ def compute_lesion_toads_basic_centroids(
                         if labels[x, y, z] != class_index:
                             continue
                         membership = weights[x, y, z, class_index]
+                        if types[class_index] == "outlier":
+                            assert outlier_values is not None
+                            membership = np.float32(
+                                membership * np.float32(np.float32(1.0) - outlier_values[x, y, z])
+                            )
                         sample = values[x, y, z, channel]
                         if field_values is not None:
                             sample = np.float32(field_values[x, y, z, channel] * sample)
