@@ -489,7 +489,7 @@ def run_lesion_toads_lesion_smoothing_sweep(
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsLesionSweepResult:
-    """Sweep OBJECT classes plus one LESION class and its auxiliary map.
+    """Sweep OBJECT classes plus one LESION or OPTIMIZED_LESION class.
 
     The selected LESION branch receives a separate lesion data term and
     updates `lesionMembership` from the same smoothing stencil. The method
@@ -511,10 +511,10 @@ def run_lesion_toads_lesion_smoothing_sweep(
     classes = current.shape[3]
     types = tuple(class_types)
     relations = tuple(relation_types)
-    if len(types) != classes or types.count("LESION") != 1 or any(
-        kind not in {"OBJECT", "LESION"} for kind in types
+    if len(types) != classes or sum(kind in {"LESION", "OPTIMIZED_LESION"} for kind in types) != 1 or any(
+        kind not in {"OBJECT", "LESION", "OPTIMIZED_LESION"} for kind in types
     ):
-        raise ValueError("class_types must contain ordinary OBJECT classes and exactly one LESION class")
+        raise ValueError("class_types must contain ordinary OBJECT classes and exactly one LESION or OPTIMIZED_LESION class")
     if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
         raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
     if data.shape != current.shape or shapes.shape != current.shape:
@@ -591,7 +591,7 @@ def run_lesion_toads_lesion_smoothing_sweep(
 
     black_hole = np.zeros(spatial_shape, dtype=np.float32)
     zero_similarity = np.zeros(classes, dtype=np.float32)
-    lesion_class = types.index("LESION")
+    lesion_class = next(k for k, kind in enumerate(types) if kind in {"LESION", "OPTIMIZED_LESION"})
     for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
         x, y, z = neighborhood.coordinate
         denominator = np.float32(0.0)
@@ -638,7 +638,7 @@ def run_lesion_toads_lesion_smoothing_sweep(
                         black_hole_energy=0.0,
                         has_lesion=True,
                         lesion_class_index=lesion_class,
-                        lesion_class_type="LESION",
+                        lesion_class_type=types[lesion_class],
                     )
                     class_term = np.float32(prior_update.class_membership_data_term)
                     lesion_term = np.float32(prior_update.lesion_membership_data_term)

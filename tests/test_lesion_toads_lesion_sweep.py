@@ -136,7 +136,7 @@ def test_object_lesion_sweep_matches_selected_java_in_place_references() -> None
 
 def test_lesion_sweep_rejects_multiple_lesion_classes() -> None:
     memberships, lesion, class_data, lesion_data, shapes = _inputs((3, 3, 3), 3)
-    with pytest.raises(ValueError, match="exactly one LESION class"):
+    with pytest.raises(ValueError, match="exactly one LESION or OPTIMIZED_LESION class"):
         run_lesion_toads_lesion_smoothing_sweep(
             memberships,
             lesion,
