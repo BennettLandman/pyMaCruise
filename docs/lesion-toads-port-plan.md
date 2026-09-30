@@ -11,7 +11,8 @@ document tracks algorithm scope and source contracts; it does not claim a
 full LesionTOADS port. P39zzn also matches repeated thinning with accepted and
 rejected topology-driven label changes, and P39zzo matches the constrained
 centroid updater with and without field correction; upstream membership
-estimation remains unported.
+estimation remains unported. P39zzp also validates the selected weighted
+centroid update for several blend factors.
 
 ## Selected workflow and source
 
@@ -1216,3 +1217,24 @@ and
 [`tests/data/synthetic/lesion_constrained_centroids/README.md`](../tests/data/synthetic/lesion_constrained_centroids/README.md).
 This validates centroid updating only; other centroid categories,
 variances/channel weights, and membership iteration remain open.
+
+### Completed substage: P39zzp weighted centroids
+
+`compute_weighted_lesion_toads_centroids` ports the selected
+`computeWeightedCentroids(factor)` method. It accumulates
+membership-squared-weighted image samples by current class in source order,
+multiplies samples by their field values when enabled, and blends the mean
+with the current centroid. The selected method sets an empty class to zero
+without applying the blend, which differs from the constrained centroid
+method and is preserved here. On the same committed 5×4×3 RAS phantom, Java
+and Python match raw float32 bits for factors 0, 0.35, and 1 with and without
+fields. Factor 1 preserves populated class values; the empty class remains
+zero. Focused tests: 3 passed. Full suite: 610 passed with 2 expected RAS
+warnings in 79.91 seconds on implementation commit
+`8cb8ac17c57a54c4ece1e5400dcfb61500f41dce`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-weighted-centroids.md`](reports/full-pytest-2026-09-30-lesion-weighted-centroids.md)
+and the shared
+[`tests/data/synthetic/lesion_constrained_centroids/README.md`](../tests/data/synthetic/lesion_constrained_centroids/README.md).
+This is a selected centroid method only; centroid-category assignment,
+variance/channel-weight updates, membership updates, and complete segmentation
+remain unvalidated.
