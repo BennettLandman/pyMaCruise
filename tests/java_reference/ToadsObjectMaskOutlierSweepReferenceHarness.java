@@ -2,6 +2,7 @@
 public final class ToadsObjectMaskOutlierSweepReferenceHarness {
     private static final String SOURCE_SHA="63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884";
     private static final int NX=4, NY=4, NZ=4, CLASSES=2, OUTLIER_CLASS=1;
+    private static final String[] TYPE={"OBJECT","OUTLIER"};
     private static final float SMOOTHING=0.13f, PRIOR_FACTOR=0.61f, ZERO=1e-10f, INF=1e10f;
     private static final float PRIOR_COEFFICIENT=0.27f;
     private static final float[] SMOOTH_PRIORS={0.7f,1.1f};
@@ -12,6 +13,7 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
     private static float outlier(int x,int y,int z) { return 0.18f+0.01f*(x+2*y+z); }
     private static float energy(int x,int y,int z,int k) { return 0.8f+0.03f*(x+2*y+3*z+2*k); }
     private static float outlierEnergy(int x,int y,int z) { return 1.2f+0.02f*(2*x+y+z); }
+    private static int segmentation(int x,int y,int z) { return -1; }
 
     private static float[][][][] update(float[][][] outlierMap, float[] objectiveOut, boolean usePrior) {
         float[][][][] membership=new float[NX][NY][NZ][CLASSES];
@@ -34,7 +36,7 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
             float denominator=0.0f;
             float[] objective={0.0f,0.0f};
             for(int k=0;k<CLASSES;k++) {
-                float num=data[x][y][z][k],numO=outEnergy[x][y][z];
+                float num=data[x][y][z][k],numO=outEnergy[x][y][z],numL=0.0f;
                 float out=outlierMap[x][y][z];
                 float obj=num;
                 if(k==OUTLIER_CLASS)obj=(1.0f-out)*num+out*numO;
@@ -45,7 +47,15 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
                 }
                 float addition=SMOOTH_PRIORS[k]*SMOOTHING*sum;
                 num=num+addition;
-                if(k==OUTLIER_CLASS)numO=numO+addition;
+                // Selected source has this nested form:
+                // if (type==LESION) if (segmentation==k) numL += addition;
+                // else if (type==OUTLIER) numO += addition; else if ...
+                // For this OBJECT/OUTLIER-only harness the outer LESION test
+                // is false, so the auxiliary OUTLIER energy is not smoothed.
+                if(TYPE[k].equals("LESION"))
+                    if(segmentation(x,y,z)==k)numL+=addition;
+                    else if(TYPE[k].equals("OUTLIER"))numO=numO+addition;
+                    else if(TYPE[k].equals("OUTMASK"))numO=numO+addition;
                 obj=obj+(0.5f*SMOOTH_PRIORS[k])*SMOOTHING*sum;
                 if(usePrior) {
                     float inversePrior=0.0f;
