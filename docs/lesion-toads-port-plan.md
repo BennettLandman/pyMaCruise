@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zze have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION (including OPTIMIZED_LESION), BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zzh have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, volume membership sweeps through OBJECT+LESION (including OPTIMIZED_LESION), final classification output, and thinning-frontier initialization, alongside BLACKHOLE prior/distance handling and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1154,3 +1154,22 @@ and the updated
 [`tests/data/synthetic/lesion_toads_lesion_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_sweep/README.md).
 Java fixture coverage is the smoothing/normalization slice; the separate
 operator references validate the prior and distance kernels.
+
+### Completed substage: P39zzh LesionTOADS thinning frontier
+
+`initialize_lesion_toads_thinning_frontier` ports the selected
+`initThinningLabels()` setup: it resets class volumes, updates interior
+skeleton and availability state, detects six-face segmentation boundaries,
+and seeds the selected binary max heap using negative reciprocal
+`maxMembershipRatio`. A source-method excerpt plus the copied selected Java
+`BinaryHeap4D` match all resulting arrays, boundary counts, queue insertion
+events, and queue removal order on the 4×4×4 synthetic RAS fixture for both
+`useLesionMax` modes. This includes an interior non-boundary voxel, unchanged
+outer planes, equal-priority heap ties, lesion/black-hole scores, and the
+source `bestMembership()` quirk. Focused tests: 2 passed. Full suite: 600
+passed with 2 expected RAS warnings in 80.34 seconds on implementation commit
+`7820fc2d22ecee9ea531fc3c8c05aa44303fe1fe`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-thinning-init.md`](reports/full-pytest-2026-09-29-lesion-thinning-init.md)
+and [`tests/data/synthetic/lesion_toads_thinning_initialization/README.md`](../tests/data/synthetic/lesion_toads_thinning_initialization/README.md).
+This validates initialization only, not topology-gated changes during
+`propagateThinning()` or full LesionTOADS segmentation.
