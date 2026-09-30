@@ -84,6 +84,105 @@ class LesionToadsThinningTransition:
     processed: bool
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningSchedule:
+    """Availability and heap insertions from one thinning post-removal loop."""
+
+    available: NDArray[np.bool_]
+    inserted_items: tuple[ToadsHeapItem, ...]
+
+
+def schedule_lesion_toads_thinning_neighbors(
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    available: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    removed_voxel: tuple[int, int, int],
+    removed_class: int,
+    popped_priority: float,
+    class_volume: float,
+    minimum_class_volume: float,
+    limit: float,
+    *,
+    use_lesion_max: bool = False,
+    zero: float = 1.0e-10,
+) -> LesionToadsThinningSchedule:
+    """Schedule eligible face neighbors using LesionTOADS membership scores.
+
+    This is the selected post-removal loop in ``propagateThinning``. Unlike
+    the base TOADS scheduler, LesionTOADS does not special-case a neighbor
+    with one same-label adjacent voxel; every available neighbor gets the
+    ``val - 1/maxMembershipRatio`` priority using lesion/black-hole scores.
+    """
+    mems = np.asarray(memberships, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
+    black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
+    state = np.asarray(available)
+    types = tuple(object_types)
+    if mems.ndim != 4 or mems.shape[-1] < 2 or mems.shape[-1] > 128:
+        raise ValueError("memberships must be 4-D with 2 to 128 classes")
+    if len(types) != mems.shape[-1]:
+        raise ValueError("one object type is required per membership class")
+    spatial = mems.shape[:3]
+    if any(size < 3 for size in spatial):
+        raise ValueError("membership grids must have every dimension at least 3")
+    if lesion_mems.shape != spatial or black_hole_mems.shape != spatial:
+        raise ValueError("lesion and black-hole membership maps must match memberships")
+    if state.shape != (*spatial, mems.shape[-1]) or state.dtype != np.bool_:
+        raise ValueError("available must be a boolean grid matching memberships")
+    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)):
+        raise ValueError("membership arrays must be finite")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    if (not isinstance(removed_class, (int, np.integer))
+            or isinstance(removed_class, (bool, np.bool_))
+            or not 0 <= int(removed_class) < mems.shape[-1]):
+        raise ValueError("removed_class must be a valid membership class")
+    if len(removed_voxel) != 3:
+        raise ValueError("removed_voxel must contain three coordinates")
+    x, y, z = (int(value) for value in removed_voxel)
+    if not (1 <= x < spatial[0] - 1 and 1 <= y < spatial[1] - 1 and 1 <= z < spatial[2] - 1):
+        raise ValueError("removed_voxel must be interior")
+    zero32 = np.float32(zero)
+    value32 = np.float32(popped_priority)
+    volume32 = np.float32(class_volume)
+    minimum32 = np.float32(minimum_class_volume)
+    limit32 = np.float32(limit)
+    if (not all(np.isfinite(item) for item in (zero32, value32, volume32, minimum32, limit32))
+            or zero32 <= np.float32(0.0) or limit32 < np.float32(0.0)):
+        raise ValueError("priority/volume/limit must be finite; ZERO must be positive and limit nonnegative")
+
+    updated = state.copy()
+    inserted: list[ToadsHeapItem] = []
+    # This nested order is the source caller's six face sequence and controls
+    # equal-priority insertions into Java's non-stable binary heap.
+    for i in (-1, 0, 1):
+        for j in (-1, 0, 1):
+            for k in (-1, 0, 1):
+                if i * i + j * j + k * k != 1:
+                    continue
+                xi, yj, zk = x + i, y + j, z + k
+                if not updated[xi, yj, zk, removed_class]:
+                    continue
+                best = _best_membership_at(
+                    xi, yj, zk, mems, types, lesion_mems, black_hole_mems,
+                    use_lesion_max=bool(use_lesion_max),
+                )
+                ratio = _membership_ratio_at(
+                    xi, yj, zk, int(removed_class), best, mems, types,
+                    lesion_mems, black_hole_mems,
+                    use_lesion_max=bool(use_lesion_max), zero=zero32,
+                )
+                order = np.float32(value32 - np.float32(np.float32(1.0) / ratio))
+                if volume32 > minimum32 and order > np.float32(-limit32):
+                    updated[xi, yj, zk, removed_class] = False
+                    queue.add(order, xi, yj, zk, int(removed_class))
+                    inserted.append(ToadsHeapItem(order, xi, yj, zk, int(removed_class)))
+    return LesionToadsThinningSchedule(updated, tuple(inserted))
+
+
 def lesion_toads_thinning_voxel_transition(
     segmentation_neighborhood: ArrayLike,
     skeleton_neighborhood: ArrayLike,
