@@ -12,7 +12,8 @@ full LesionTOADS port. P39zzn also matches repeated thinning with accepted and
 rejected topology-driven label changes, and P39zzo matches the constrained
 centroid updater with and without field correction; upstream membership
 estimation remains unported. P39zzp also validates the selected weighted
-centroid update for several blend factors.
+centroid update for several blend factors, and P39zzq validates the selected
+class/auxiliary variance update with its source branch behavior.
 
 ## Selected workflow and source
 
@@ -1238,3 +1239,23 @@ and the shared
 This is a selected centroid method only; centroid-category assignment,
 variance/channel-weight updates, membership updates, and complete segmentation
 remain unvalidated.
+
+### Completed substage: P39zzq class and auxiliary variances
+
+`compute_lesion_toads_variances` ports the selected `computeVariances()`
+method for class, lesion, and black-hole standard deviations. It accumulates
+membership-squared residuals in source channel/class/x/y/z order and applies
+field correction before residual calculation when enabled. On a 5×4×3
+synthetic RAS phantom, the selected-method Java excerpt and Python match raw
+float32 outputs for two channels, ordinary/LESION/BLACKHOLE classes, an empty
+class, lesion and black-hole winner branches, ties, and zero auxiliary
+memberships. The selected source black-hole winner branch assigns
+`lmem = lesionMembership` before weighting the black-hole residual; the port
+preserves and documents that behavior. Focused tests: 2 passed. Full suite:
+612 passed with 2 expected RAS warnings in 78.04 seconds on implementation
+commit `5f1948658030ec17407d1d53e3875d809b57cfda`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-variances.md`](reports/full-pytest-2026-09-30-lesion-variances.md)
+and
+[`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
+This validates the variance method for fixed maps only; membership iteration,
+centroid-category assignment, and channel weights remain open.
