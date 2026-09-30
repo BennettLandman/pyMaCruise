@@ -6,7 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pymacruise.toads_iteration import toads_stopping_iteration
+from pymacruise.toads_iteration import (
+    toads_continuing_iteration,
+    toads_stopping_iteration,
+)
 
 
 GROWING_REFERENCE = (
@@ -14,6 +17,9 @@ GROWING_REFERENCE = (
 )
 CONTROL_REFERENCE = (
     Path(__file__).parent / "data/synthetic/toads_iteration_control/java_reference.json"
+)
+RELATION_REFERENCE = (
+    Path(__file__).parent / "data/synthetic/toads_relation_state_refresh/java_reference.json"
 )
 
 
@@ -121,5 +127,68 @@ def test_stopping_iteration_rejects_continuation_branch() -> None:
             volumes,
             (0, 1, 2, 3),
             np.zeros(segmentation.shape, dtype=np.int8),
+            do_growing=True,
+        )
+
+
+def test_continuing_iteration_composes_empty_growth_and_java_relation_refresh() -> None:
+    reference = json.loads(RELATION_REFERENCE.read_text())
+    control_reference = json.loads(CONTROL_REFERENCE.read_text())
+    assert reference["source_sha256"] == "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert control_reference["source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
+    shape = tuple(reference["shape"])
+    classes = reference["classes"]
+    segmentation = np.asarray(reference["segmentation"], dtype=np.int8).reshape(shape)
+    membership_bits = np.asarray(reference["membership_float_bits"], dtype=np.uint32)
+    memberships = membership_bits.view(np.float32).reshape((*shape, classes))
+    initial_distances = np.asarray(
+        reference["initial_boundary_distances"], dtype=np.int8
+    ).reshape((*shape, classes))
+    result = toads_continuing_iteration(
+        1.0,
+        0.5,
+        1,
+        5,
+        1e-5,
+        segmentation,
+        np.full(shape, -1, dtype=np.int8),
+        memberships,
+        np.zeros(shape, dtype=np.float32),
+        np.ones(classes, dtype=np.float32),
+        initial_distances,
+        relation_limit=reference["limit"],
+        do_growing=False,
+    )
+
+    assert not result.control.stop and result.control.run_growing
+    assert not result.control.update_classification and result.control.refresh_relations
+    assert result.growing.events == ()
+    np.testing.assert_array_equal(result.growing.segmentation, segmentation)
+    state = result.relation_state
+    np.testing.assert_array_equal(state.relation.relation_map.ravel(), reference["relation_map"])
+    np.testing.assert_array_equal(
+        state.relation.relation_membership.ravel().astype(np.int8),
+        reference["relation_membership"],
+    )
+    np.testing.assert_array_equal(state.boundary_distances.ravel(), reference["boundary_distances"])
+    np.testing.assert_array_equal(state.closest_labels.ravel(), reference["closest_labels"])
+
+
+def test_continuing_iteration_rejects_stopping_branch() -> None:
+    segmentation, skeleton, memberships, ordering, volumes = _inputs()
+    with pytest.raises(ValueError, match="cannot handle a selected stop condition"):
+        toads_continuing_iteration(
+            1.0,
+            0.9,
+            3,
+            3,
+            1e-5,
+            segmentation,
+            skeleton,
+            memberships,
+            ordering,
+            volumes,
+            np.zeros((*segmentation.shape, memberships.shape[-1]), dtype=np.int8),
+            relation_limit=1,
             do_growing=True,
         )
