@@ -236,7 +236,10 @@ inputs. Regenerate with
 source-order float32 membership sweep with ordinary OBJECT and OUTLIER
 classes. It covers six-face smoothing, shape-relation factors, OUTLIER energy
 mixing, normalization of both class membership and the scalar outlier map,
-and objective accumulation on a deterministic 4 x 4 x 4 phantom. Regenerate
+and objective accumulation on a deterministic 4 x 4 x 4 phantom. A paired
+case also composes atlas inverse-prior energy and its half-weighted objective.
+The generator checks the selected `MultipleToadSegmentation.java` source hash.
+Regenerate
 with `scripts/generate_java_toads_object_mask_outlier_sweep_reference.sh`;
 the selected-method scope and limitations are listed in
 `tests/data/synthetic/toads_object_mask_outlier_sweep/README.md`.
