@@ -16,6 +16,7 @@ from pymacruise.toads_dura import (
     dynamic_pressure_tgdm_point_update,
     dura_correct_white_matter_topology,
     dura_correct_gray_matter_topology,
+    run_dura_removal,
 )
 from pymacruise.topology import topology_correct
 from pymacruise.volume_ops import calculate_volume
@@ -124,6 +125,69 @@ def test_dura_two_pass_topology_and_float32_union_match_selected_java_harness() 
         np.testing.assert_array_equal(actual.affine, expected.affine)
         assert actual.shape == expected.shape == (9, 9, 9)
         assert actual.get_data_dtype() == np.dtype(np.float32)
+
+
+def test_dura_removal_composes_selected_stages_on_ras_grid() -> None:
+    fixture = DURA_TWO_PASS_TOPOLOGY_FIXTURE
+    wm = nib.load(str(fixture / "wm_input.nii.gz"))
+    paint = nib.load(str(fixture / "paint_mask.nii.gz"))
+    raw_gm = nib.load(str(fixture / "raw_gm.nii.gz"))
+    t1_values = np.arange(np.prod(wm.shape), dtype=np.float32).reshape(wm.shape) + 20.0
+    t1 = nib.Nifti1Image(t1_values, wm.affine)
+
+    result = run_dura_removal(
+        t1,
+        wm,
+        raw_gm,
+        paint,
+        max_iterations=1,
+        mask_translation=2.0,
+        level_set_translation=0.0,
+    )
+
+    expected_wm = nib.load(str(fixture / "java_wm_tc.nii.gz"))
+    expected_gm = nib.load(str(fixture / "java_gm_tc.nii.gz"))
+    np.testing.assert_array_equal(result.wm_topology.dataobj, expected_wm.dataobj)
+    np.testing.assert_array_equal(result.gm_topology.dataobj, expected_gm.dataobj)
+    expected_levels = dura_initial_level_sets(
+        np.asarray(expected_wm.dataobj, dtype=np.float32),
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+    )
+    expected_evolution = dura_tgdm_evolve(
+        expected_levels.outer_signed_distance,
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        expected_levels.inner_signed_distance,
+        outer_iterations=1,
+    )
+    assert result.evolution.completed_outer_passes == 1
+    np.testing.assert_array_equal(result.evolution.level_set, expected_evolution.level_set)
+    expected_outputs = apply_dura_output_mask(
+        t1_values,
+        np.asarray(expected_wm.dataobj, dtype=np.float32),
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        expected_evolution.level_set,
+    )
+    for actual, expected in (
+        (result.stripped_t1, expected_outputs.stripped_volume),
+        (result.corrected_white_matter, expected_outputs.corrected_white_matter),
+        (result.corrected_gray_matter, expected_outputs.corrected_gray_matter),
+        (result.brain_mask_level_set, expected_outputs.brain_mask_level_set),
+        (result.brain_mask, expected_outputs.corrected_brain_mask),
+    ):
+        np.testing.assert_array_equal(actual.dataobj, expected)
+        assert nib.aff2axcodes(actual.affine) == ("R", "A", "S")
+        np.testing.assert_array_equal(actual.affine, t1.affine)
+
+    shifted_affine = wm.affine.copy()
+    shifted_affine[0, 3] += 0.25
+    with pytest.raises(ValueError, match="must match the original T1 RAS grid"):
+        run_dura_removal(
+            t1,
+            nib.Nifti1Image(np.asarray(wm.dataobj), shifted_affine),
+            raw_gm,
+            paint,
+            max_iterations=0,
+        )
 
 
 def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> None:

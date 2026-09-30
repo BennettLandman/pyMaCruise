@@ -16,6 +16,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.ace import _signed_distance_fmm
+from pymacruise.image_io import normalize_image_to_ras
 from pymacruise.tgdm import (
     TGDMGeometry,
     TGDMProfileSettings,
@@ -46,6 +47,130 @@ class DuraInitialLevelSets:
     outer_level_set: np.ndarray
     inner_signed_distance: np.ndarray
     outer_signed_distance: np.ndarray
+
+
+@dataclass(frozen=True)
+class DuraRemovalResult:
+    """RAS NIfTI products and stage state from a composed Dura removal run."""
+
+    stripped_t1: nib.Nifti1Image
+    corrected_white_matter: nib.Nifti1Image
+    corrected_gray_matter: nib.Nifti1Image
+    brain_mask_level_set: nib.Nifti1Image
+    brain_mask: nib.Nifti1Image
+    wm_topology: nib.Nifti1Image
+    gm_topology: nib.Nifti1Image
+    evolution: TGDMEvolutionResult
+
+
+def run_dura_removal(
+    original_t1: nib.spatialimages.SpatialImage,
+    white_matter_membership: nib.spatialimages.SpatialImage,
+    gray_matter_membership: nib.spatialimages.SpatialImage,
+    original_white_matter_mask: nib.spatialimages.SpatialImage,
+    *,
+    membership_level: float = 0.4,
+    curvature_force: float = 0.5,
+    alignment_force: float = 1.0,
+    pressure_force: float = 0.5,
+    alignment_alpha: float = 0.5,
+    max_iterations: int = 5,
+    mask_translation: float = 2.0,
+    level_set_translation: float = 0.0,
+    record_passes: bool = False,
+) -> DuraRemovalResult:
+    """Compose the selected Dura wrapper on a shared native T1 RAS grid.
+
+    This wires `MedicAlgorithmRemoveDura09.execute()` in source order:
+    correct WM topology, form WM-corrected + raw-GM and correct GM topology,
+    build capped inner/outer signed-distance fields, evolve the pial mask
+    level set, then threshold it before zeroing the three returned images.
+    Inputs are axis-reoriented to RAS with warnings and must share one physical
+    grid; outputs retain that grid. Topology, distance, and TGDM numerics are
+    supplied by the separately validated stage implementations.
+    """
+    named_inputs = (
+        ("original T1", original_t1),
+        ("white-matter membership", white_matter_membership),
+        ("gray-matter membership", gray_matter_membership),
+        ("original white-matter mask", original_white_matter_mask),
+    )
+    normalized: list[nib.spatialimages.SpatialImage] = []
+    for name, image in named_inputs:
+        if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):
+            raise ValueError(f"{name} must be a NIfTI image")
+        ras = normalize_image_to_ras(image, source_name=name)
+        data = np.asanyarray(ras.dataobj)
+        if data.ndim != 3 or any(size < 3 for size in data.shape):
+            raise ValueError(f"{name} must be a 3D image with dimensions >= 3")
+        if not np.issubdtype(data.dtype, np.number) or not np.isfinite(data).all():
+            raise ValueError(f"{name} must contain finite numeric voxels")
+        normalized.append(ras)
+    t1, raw_wm, raw_gm, wm_mask = normalized
+    reference_shape = t1.shape
+    reference_affine = t1.affine
+    for name, image in zip(
+        ("white-matter membership", "gray-matter membership", "original white-matter mask"),
+        normalized[1:],
+    ):
+        if image.shape != reference_shape or not np.allclose(
+            image.affine, reference_affine, rtol=0, atol=1e-4
+        ):
+            raise ValueError(f"{name} must match the original T1 RAS grid")
+
+    wm_tc = dura_correct_white_matter_topology(raw_wm, wm_mask)
+    gm_tc = dura_correct_gray_matter_topology(wm_tc, raw_gm, wm_mask)
+    wm_values = np.asarray(wm_tc.dataobj, dtype=np.float32)
+    gm_values = np.asarray(gm_tc.dataobj, dtype=np.float32)
+    levels = dura_initial_level_sets(
+        wm_values,
+        gm_values,
+        membership_level=membership_level,
+    )
+    evolution = dura_tgdm_evolve(
+        levels.outer_signed_distance,
+        gm_values,
+        levels.inner_signed_distance,
+        membership_level=membership_level,
+        alpha=alignment_alpha,
+        alignment_force=alignment_force,
+        curvature_force=curvature_force,
+        pressure_force=pressure_force,
+        outer_iterations=max_iterations,
+        record_passes=record_passes,
+    )
+    final = apply_dura_output_mask(
+        np.asanyarray(t1.dataobj),
+        wm_values,
+        gm_values,
+        evolution.level_set,
+        mask_translation=mask_translation,
+        level_set_translation=level_set_translation,
+    )
+    def output_image(values: np.ndarray, name: str) -> nib.Nifti1Image:
+        header = t1.header.copy()
+        header.set_data_dtype(values.dtype)
+        image = nib.Nifti1Image(values, reference_affine, header=header)
+        _, qcode = t1.get_qform(coded=True)
+        _, scode = t1.get_sform(coded=True)
+        if qcode:
+            image.set_qform(reference_affine, code=int(qcode), strip_shears=True)
+        else:
+            image.set_qform(None, code=0)
+        image.set_sform(reference_affine, code=int(scode) if scode else 1)
+        image.set_filename(f"{name}.nii.gz")
+        return image
+
+    return DuraRemovalResult(
+        stripped_t1=output_image(final.stripped_volume, "t1_durastripped"),
+        corrected_white_matter=output_image(final.corrected_white_matter, "wm_fixed"),
+        corrected_gray_matter=output_image(final.corrected_gray_matter, "gm_fixed"),
+        brain_mask_level_set=output_image(final.brain_mask_level_set, "brain_mask_levelset"),
+        brain_mask=output_image(final.corrected_brain_mask, "brain_mask"),
+        wm_topology=wm_tc,
+        gm_topology=gm_tc,
+        evolution=evolution,
+    )
 
 
 def dura_correct_white_matter_topology(
