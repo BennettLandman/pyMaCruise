@@ -7,6 +7,9 @@ those terms is outside this function. The selected Java method also
 accumulates an objective value while updating the maps. The underlying
 map-sweep result does not expose that objective, so this adapter makes no
 claim about energy/objective equivalence.
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md`` describes
+lesion-aware membership competition and class relationships. This adapter
+composes selected source operations for fixed inputs, not the complete method.
 """
 
 from __future__ import annotations

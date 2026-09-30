@@ -3,6 +3,9 @@
 This adapter composes the already validated one-voxel energy helper over the
 selected ``computeMemberships`` interior scan. It stops before smoothing,
 shape priors, inversion, membership changes, or objective accumulation.
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``. These raw
+maps provide selected data-term inputs for lesion-aware classification; they
+are not a complete membership update or the full paper energy.
 """
 
 from __future__ import annotations

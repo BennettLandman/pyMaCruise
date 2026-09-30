@@ -86,7 +86,7 @@ def extract_levelset_surface(
 
     This ports the active JIST defaults: iso-level 0, digital connectivity 18,
     and ``inclusive=false``. Source ``solveOriginal`` moves values within
-    0.1 of the iso-level to +/-0.1 (exact zeros to -0.01) before extraction.
+    0.1 of the iso-level to +/-0.1 (exact zeros to -0.1) before extraction.
     """
     if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):
         raise ValueError("Level-set input must be a NIfTI image")

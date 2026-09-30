@@ -1,4 +1,9 @@
-"""One fixed-input homogeneous RAYLEIGH membership pass for base TOADS."""
+"""One fixed-input homogeneous RAYLEIGH membership pass for base TOADS.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. This
+ports a selected class-energy/membership slice with fixed parameters; it does
+not establish the complete atlas-driven classification procedure.
+"""
 
 from __future__ import annotations
 

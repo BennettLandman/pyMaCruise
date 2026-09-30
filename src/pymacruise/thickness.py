@@ -7,6 +7,11 @@ on triangles, accelerated by a centroid k-d tree with a conservative bound.
 Source versions: ``LevelSetThickness.java`` CVS r1.2,
 ``GetThicknessCRUISE.java`` CVS r1.2, and
 ``ClosestPointThicknessForInner.java`` CVS r1.2 (author Yuankai Huo).
+
+Paper context: Han et al. (2004), cited in ``docs/papers/cruise.md``, places
+cortical surface reconstruction and thickness among CRUISE outputs. This
+module implements selected wrapper measurements; it does not reproduce the
+paper's experiments or establish equivalence of the substituted surface mesh.
 """
 
 from __future__ import annotations

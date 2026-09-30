@@ -1,4 +1,9 @@
-"""Composed post-membership stopping transition from AlgorithmMultipleToads."""
+"""Composed post-membership stopping transition from AlgorithmMultipleToads.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. This is
+the selected wrapper's bounded stop/continue transition after a membership
+pass, not a complete published iteration or convergence claim.
+"""
 
 from __future__ import annotations
 

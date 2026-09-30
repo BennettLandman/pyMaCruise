@@ -1,4 +1,11 @@
-"""Selected unfielded LesionTOADS class data-energy accumulators."""
+"""Selected LesionTOADS class data-energy accumulators.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``, describes
+statistical intensity terms for lesion-aware classification. P39v validates
+the selected field-multiplied image branch alongside the unfielded terms.
+These accumulators use fixed inputs and do not establish the complete paper
+energy model or iteration.
+"""
 
 from __future__ import annotations
 

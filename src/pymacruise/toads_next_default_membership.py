@@ -6,7 +6,10 @@ transform, and current membership maps. It samples the eleven atlas priors at
 that transform, runs the selected source thinning queue, and immediately
 runs the next exact-membership sweep with explicitly supplied statistics.
 It does not estimate centroids/variances, register the atlas, or decide
-whether another outer iteration should run.
+whether another outer iteration should run. Paper context: Bazin and Pham
+(2007, 2008), ``docs/papers/toads.md``. This connects one selected continuing
+transition to the next tissue-class membership sweep; it is not convergence
+or whole-algorithm validation.
 """
 
 from __future__ import annotations

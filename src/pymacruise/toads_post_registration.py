@@ -3,6 +3,9 @@
 This composes already validated fixed-input kernels. Membership computation
 and atlas registration are supplied as a ``ToadsDefaultRegistrationHandoff``;
 this function does not repeat either stage or introduce another iteration.
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. This
+captures only the selected wrapper's post-registration control-flow branch,
+not the complete topology-preserving evolution described in the papers.
 """
 
 from __future__ import annotations

@@ -1,4 +1,9 @@
-"""Compose the selected default TOADS membership-to-rigid-registration handoff."""
+"""Compose the selected default TOADS membership-to-rigid-registration handoff.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. The
+selected fixed-input handoff links statistical memberships to an atlas
+registration stage; it is not full atlas alignment or a complete TOADS run.
+"""
 
 from __future__ import annotations
 

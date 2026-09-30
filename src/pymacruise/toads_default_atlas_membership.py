@@ -1,4 +1,9 @@
-"""Fixed-input exact-membership pass for the selected 11-class TOADS atlas."""
+"""Fixed-input exact-membership pass for the selected 11-class TOADS atlas.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. This
+composes one fixed-statistics tissue-classification stage; it does not perform
+the papers' complete alternating topology/registration workflow.
+"""
 
 from __future__ import annotations
 

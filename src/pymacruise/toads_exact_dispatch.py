@@ -5,7 +5,9 @@ This module is deliberately narrower than
 source-supported ordinary OBJECT/MASK[/OUTLIER] branches into their existing
 fixed-input kernels. Image statistics, class parameters, priors, relation
 labels, and auxiliary-map initialization are explicit inputs. It does not
-estimate statistics or claim to implement the complete TOADS loop.
+estimate statistics or claim to implement the complete TOADS loop. Paper
+context: Bazin and Pham (2007, 2008), see ``docs/papers/toads.md``; this is
+only a source-selected statistical-classification substep.
 """
 
 from __future__ import annotations

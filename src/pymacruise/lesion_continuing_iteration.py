@@ -1,4 +1,10 @@
-"""Compose the next LesionTOADS iteration from a continuing branch result."""
+"""Compose the next LesionTOADS iteration from a continuing branch result.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md`` describes
+iterative lesion-aware statistical/topological segmentation. This composes a
+bounded selected-source transition with fixed inputs, not convergence or a
+complete LesionTOADS workflow.
+"""
 
 from __future__ import annotations
 

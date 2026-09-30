@@ -1,4 +1,9 @@
-"""Fixed-input exact-membership dispatch for ordinary and optimized TOADS types."""
+"""Fixed-input exact-membership dispatch for ordinary and optimized TOADS types.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``. The
+source-selected optimized tissue energy is one statistical classification
+component, not a complete paper-level segmentation implementation.
+"""
 
 from __future__ import annotations
 

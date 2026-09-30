@@ -1,4 +1,10 @@
-"""TOADS relation-neighborhood maps from the selected VandyCRUISE source."""
+"""TOADS relation-neighborhood maps from the selected VandyCRUISE source.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md`` describe
+object relationships as part of topology-preserving classification. These
+maps reproduce selected source neighborhood updates, not a global topology
+proof.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,9 @@
-"""Compose the selected LesionTOADS post-registration wrapper branch."""
+"""Compose the selected LesionTOADS post-registration wrapper branch.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``. This is a
+bounded selected-wrapper transition linking registration to topology-related
+updates; it does not implement the full published evolution.
+"""
 
 from __future__ import annotations
 

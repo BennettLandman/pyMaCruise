@@ -5,6 +5,9 @@ Images and statistical estimation are upstream: inputs here are fixed energy,
 shape, similarity, and membership maps. Every interior class must be active
 (positive shape) so this slice does not emulate Java's stale ``energy[k]``
 value for a shape-skipped class.
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``. This
+source-selected membership/objective slice uses fixed maps and excludes
+statistics estimation and unsupported skipped-shape cases.
 """
 
 from __future__ import annotations

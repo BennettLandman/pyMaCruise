@@ -1,4 +1,10 @@
-"""Fixed-input volume data-energy adapter for TOADS RAYLEIGH classes."""
+"""Fixed-input volume data-energy adapter for TOADS RAYLEIGH classes.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md`` describes
+statistical tissue-classification terms. This volume kernel composes the
+selected Java RAYLEIGH distance with fixed parameters and does not claim the
+paper's full classification procedure.
+"""
 
 from __future__ import annotations
 

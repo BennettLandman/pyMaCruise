@@ -4,7 +4,11 @@ This is the ``computeExactMemberships`` -> ``registerShapes`` handoff for the
 selected base-TOADS wrapper when it is configured with the lesion-bearing
 atlas descriptor.  It shares the validated exact-membership registration
 kernel with the default-atlas handoff, but retains the descriptor class order
-and its lesion map as part of the membership result.
+and its lesion map as part of the membership result. Paper context: the
+2007/2008 TOADS atlas framework and 2010 Lesion-TOADS extension
+(``docs/papers/toads.md`` and ``docs/papers/lesion-toads.md``). This handoff
+exercises the selected base-TOADS registration branch only; it does not
+implement the separate LesionTOADS registration workflow.
 """
 
 from __future__ import annotations

@@ -1,4 +1,10 @@
-"""Fixed-input membership pass for the selected lesion-bearing TOADS atlas."""
+"""Fixed-input membership pass for the selected lesion-bearing TOADS atlas.
+
+Paper context: the 2010 Lesion-TOADS method adds lesion-aware classes to the
+TOADS statistical/topological framework (``docs/papers/lesion-toads.md``).
+This is specifically the selected base-TOADS 13-class descriptor branch; it
+does not port the LesionTOADS engine or claim paper-level equivalence.
+"""
 
 from __future__ import annotations
 

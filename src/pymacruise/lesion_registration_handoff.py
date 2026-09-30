@@ -1,4 +1,10 @@
-"""Connect updated LesionTOADS memberships to its active atlas registration."""
+"""Connect updated LesionTOADS memberships to its active atlas registration.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md`` describes
+statistical/topological atlas priors. This is the selected active source
+handoff with supplied memberships; it does not establish full workflow
+registration equivalence.
+"""
 
 from __future__ import annotations
 

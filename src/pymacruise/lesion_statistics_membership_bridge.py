@@ -4,6 +4,9 @@ The selected wrapper refreshes statistics after thinning, computes data
 energies and memberships, then updates its energy ratio. This module composes
 those already validated stages; thinning, correction-field estimation,
 topology, atlas registration, and stopping decisions remain caller-owned.
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md`` describes
+alternating statistical updates and lesion-aware classification. This bridge
+composes selected fixed-input stages; it does not implement the full iteration.
 """
 
 from __future__ import annotations
