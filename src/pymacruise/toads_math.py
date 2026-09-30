@@ -286,6 +286,36 @@ def toads_outlier_intensity_energy(
     return residual_energy, outlier_energy
 
 
+def toads_outlier_membership_mix(
+    class_membership: float,
+    outlier_membership: float,
+    outlier_energy_reciprocal: float,
+    membership_factor: float = 1.0,
+) -> tuple[np.float32, np.float32]:
+    """Apply the selected TOADS OUTLIER mix after reciprocal conversion.
+
+    The class value mixes its reciprocal data energy with the reciprocal
+    outlier energy according to the current outlier map. The relation factor
+    then scales the class result and, in the source's left-to-right order, the
+    outlier membership before its multiplication by outlier energy. This
+    primitive is shared by TOADS and the analogous LesionTOADS OUTMASK path.
+    """
+    class_value = np.float32(class_membership)
+    outlier = np.float32(outlier_membership)
+    outlier_energy = np.float32(outlier_energy_reciprocal)
+    factor = np.float32(membership_factor)
+    if not all(np.isfinite(value) for value in (class_value, outlier, outlier_energy, factor)):
+        raise ValueError("membership, outlier energy, and factor inputs must be finite")
+    class_fraction = np.float32(np.float32(1.0) - outlier)
+    class_component = np.float32(class_fraction * class_value)
+    outlier_component = np.float32(outlier * outlier_energy)
+    mixed = np.float32(class_component + outlier_component)
+    class_result = np.float32(factor * mixed)
+    factored_outlier = np.float32(factor * outlier)
+    outlier_result = np.float32(factored_outlier * outlier_energy)
+    return class_result, outlier_result
+
+
 def toads_psf_ridge_bias(
     image_values: ArrayLike,
     segmentation: ArrayLike,

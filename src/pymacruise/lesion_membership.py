@@ -7,6 +7,8 @@ from collections.abc import Iterator
 
 import numpy as np
 
+from .toads_math import toads_outlier_membership_mix
+
 
 @dataclass(frozen=True)
 class LesionDistanceModulation:
@@ -2179,16 +2181,13 @@ def update_lesion_toads_outmask_membership(
     if relation_type not in {"direct", "prior"}:
         raise ValueError("relation_type must be 'direct' or 'prior'")
 
-    class_fraction = np.float32(np.float32(1.0) - outlier)
-    class_component = np.float32(class_fraction * class_value)
-    outlier_component = np.float32(outlier * outmask_value)
-    mixed = np.float32(class_component + outlier_component)
+    shape_factor = np.float32(1.0)
     if relation_type == "prior":
         doubled_shape = np.float32(np.float32(2.0) * shape)
         shape_factor = np.float32(1.0) if np.float32(1.0) < doubled_shape else doubled_shape
-        mixed = np.float32(shape_factor * mixed)
-        outlier = np.float32(shape_factor * outlier)
-    outlier = np.float32(outlier * outmask_value)
+    mixed, outlier = toads_outlier_membership_mix(
+        class_value, outlier, outmask_value, shape_factor
+    )
     return LesionToadsOutmaskMembership(
         class_membership=mixed,
         outlier_membership=outlier,
