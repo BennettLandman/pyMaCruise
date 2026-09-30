@@ -1,6 +1,6 @@
 # LesionTOADS CRUISE-input adapter fixture
 
-This fixture exercises the selected `LesionToadSegmentation.generateCruiseInputs()` Java method excerpt. The source file SHA-256 recorded by the harness is `77016c000b8bbbfe55bfbe8d665ddd8be914c8ecbae8563ccce59aaa834bcfe0`.
+This fixture exercises the selected `VandyCRUISE` `LesionToadSegmentation.generateCruiseInputs()` Java method excerpt. The source file SHA-256 recorded by the harness is `545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99`.
 
 The synthetic grid is asymmetric (`5 × 4 × 3`) with RAS axis codes and voxel sizes `(0.8, 1.2, 2.5)` mm. It includes duplicate aliases for both CSF and GM to validate the Java last-matching-class overwrite behavior, plus cerebellar-prefix classes, Brainstem, Background, ordinary classes, lesion and black-hole membership maps. The label image cycles through all 13 atlas names. Membership values are distinct float32 fractions so channel routing and sequential accumulation can be checked by their exact IEEE-754 bits.
 

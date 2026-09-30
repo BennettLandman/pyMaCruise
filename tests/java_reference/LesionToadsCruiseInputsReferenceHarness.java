@@ -69,7 +69,7 @@ public final class LesionToadsCruiseInputsReferenceHarness {
 
     public static void main(String[] args) {
         float[][][][] result = calculate(5, 4, 3);
-        StringBuilder out = new StringBuilder("{\"source_method\":\"LesionToadSegmentation.generateCruiseInputs\",\"source_sha256\":\"77016c000b8bbbfe55bfbe8d665ddd8be914c8ecbae8563ccce59aaa834bcfe0\",\"shape_xyz\":[5,4,3],\"channels\":[\"CSF\",\"GM\",\"WM\",\"hard-WM\"],\"atlas_names\":[");
+        StringBuilder out = new StringBuilder("{\"source_method\":\"LesionToadSegmentation.generateCruiseInputs\",\"source_sha256\":\"545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99\",\"shape_xyz\":[5,4,3],\"channels\":[\"CSF\",\"GM\",\"WM\",\"hard-WM\"],\"atlas_names\":[");
         for (int i = 0; i < NAMES.length; i++) {
             if (i > 0) out.append(',');
             out.append('"').append(NAMES[i]).append('"');

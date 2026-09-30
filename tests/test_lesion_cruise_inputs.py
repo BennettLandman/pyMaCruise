@@ -14,10 +14,10 @@ from pymacruise.lesion_cruise_inputs import lesion_toads_generate_cruise_inputs
 
 FIXTURE_DIR = Path(__file__).parent / "data" / "synthetic" / "lesion_cruise_inputs"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionToadsCruiseInputsReferenceHarness.java"
-HARNESS_SHA256 = "7df0f63724826f526e7b2aa91ef6d50e11963d5b6666ff81d30d092803a581a2"
+HARNESS_SHA256 = "b8e88b741d8bac82f1cc463abd2c31556a96044506d1f3fc3df04bf3f54a77db"
 REFERENCE = FIXTURE_DIR / "java_reference.json"
-REFERENCE_SHA256 = "d5fd6fcc7962f023b7e1dc72b8906b163c0248b89d8c58cdf921b0bbdf2eba4a"
-SOURCE_SHA256 = "77016c000b8bbbfe55bfbe8d665ddd8be914c8ecbae8563ccce59aaa834bcfe0"
+REFERENCE_SHA256 = "464e51cc508bf77dd48e3f1ada930caf6bf566cc38c54db2eab648b28d1a67d1"
+SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
 FIXTURE_HASHES = {
     "memberships.nii.gz": "419206862abb90ac7891614de3eb7abfeff016723b7af36924c193e70877ceeb",
     "lesion_membership.nii.gz": "3a48b16796783cb794baa0c1eeec5932680d6404ac08fafda1c12e8ea09b139b",
