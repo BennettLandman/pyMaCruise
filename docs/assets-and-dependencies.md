@@ -40,6 +40,16 @@
 
 ## Distribution and repository policy
 
+- Atlas files have one checked-in copy under repository-root `data/atlases/`.
+  The source distribution includes this tree, and the setuptools build hook
+  stages it into `pymacruise/data/atlases/` for the wheel without creating a
+  second checked-in copy or using Git LFS. Use
+  `pymacruise.atlas_resources.get_bundled_atlas_root()` or
+  `get_bundled_atlas_descriptor(relative_path)` to resolve assets in either an
+  installed wheel or a source checkout. For example, the default descriptor
+  is `cruise-atlas-10obj-toads2008.txt`, and the TOADS2012/LesionTOADS
+  descriptors are under `lesionToads-atlas-2012/`. Distribution archives are
+  about 140 MB because they contain all supplied atlas/configuration assets.
 - Keep human subject inputs out of Git. Use only synthetic subject images in `tests/data/synthetic/` unless the owner explicitly authorizes otherwise. The selected legacy SPECTRE atlas bundle contains OAS1-named images; its source path and hashes are recorded for the later tech-transfer review.
 - Bundle every supplied atlas/data file required at runtime within `data/atlases/`; do not require neighboring source checkouts after installation. Store image payloads as `.nii.gz`, commit as regular Git files, and maintain a SHA-256 manifest. P05c records remaining source-world geometry caveats for normalized images. Required files not present in supplied sources, including MNI reference/mask, remain explicit outstanding assets and must be obtained before claiming a fully self-contained full-output release.
 - MIPAV and JIST notices are preserved under `licenses/upstream/`; VandyCRUISE, toads-cruise, and the MaCRUISE folder had no project-root license file in this inventory. Keep original author/revision information in relevant Python comments. See [license_info.md](../license_info.md) for the later tech-transfer handoff.
