@@ -169,6 +169,32 @@ def toads_membership_relation_tiers(
     return relation_types, eligible
 
 
+def toads_membership_relation_factors(
+    closest_labels: ArrayLike,
+    transformed_shapes: ArrayLike,
+    prior_factor: float,
+) -> NDArray[np.float32]:
+    """Build source per-class relation weights before reciprocal normalization.
+
+    The exact-membership update assigns weight 1 to direct support, the
+    clamped neighbor factor to neighbor support, and the capped shape factor
+    to prior support. A prior class with exactly zero transformed shape is
+    short-circuited to zero membership by the source; its weight is therefore
+    zero here. This returns only those weights, not an energy or membership
+    update.
+    """
+    relation_types, eligible = toads_membership_relation_tiers(closest_labels, transformed_shapes)
+    shapes = np.asarray(transformed_shapes, dtype=np.float32)
+    prior = float(prior_factor)
+    if not np.isfinite(prior):
+        raise ValueError("prior_factor must be finite")
+    shape_factor = toads_shape_factor(shapes, prior)
+    neighbor_factor = toads_neighbor_factor(shapes, prior)
+    weights = np.where(relation_types == 2, np.float32(1.0), shape_factor)
+    weights = np.where(relation_types == 1, neighbor_factor, weights)
+    return np.asarray(np.where(eligible, weights, np.float32(0.0)), dtype=np.float32)
+
+
 def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
     """Build the selected source's four-slot closest-label map.
 
