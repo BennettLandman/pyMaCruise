@@ -1068,15 +1068,6 @@ def toads_object_mask_outlier_membership_pass(
         kind not in {"OBJECT", "MASK", "OUTLIER"} for kind in types
     ):
         raise ValueError("class_types must contain OBJECT/MASK classes and exactly one OUTLIER class")
-    object_energy = toads_object_intensity_energy(
-        image_values,
-        centroids,
-        modality_weights,
-        class_variance_weights,
-        image_variances,
-        intensity_field=intensity_field,
-        psf_bias=psf_bias,
-    )
     mask_energy = toads_mask_intensity_energy(
         image_values, modality_weights, class_variance_weights, image_variances
     )
@@ -1090,17 +1081,17 @@ def toads_object_mask_outlier_membership_pass(
         intensity_field=intensity_field,
         psf_bias=psf_bias,
     )
-    if len(types) != object_energy.shape[-1]:
+    if len(types) != outlier_residual.shape[-1]:
         raise ValueError("class_types must match the number of classes")
-    class_energy = np.empty_like(object_energy)
+    class_energy = np.empty_like(outlier_residual)
     outlier_class = types.index("OUTLIER")
     for class_index, kind in enumerate(types):
-        if kind == "OBJECT":
-            class_energy[..., class_index] = object_energy[..., class_index]
+        if kind == "OBJECT" or kind == "OUTLIER":
+            # The OUTLIER energy helper already returns the same ordinary
+            # residual map for every class, avoiding a second volume pass.
+            class_energy[..., class_index] = outlier_residual[..., class_index]
         elif kind == "MASK":
             class_energy[..., class_index] = mask_energy[..., class_index]
-        else:
-            class_energy[..., class_index] = outlier_residual[..., class_index]
     prior_inverse, prior_objective = toads_inverse_shape_prior_energy(
         transformed_shapes, atlas_shape_priors, centroid_similarity, prior_coefficient
     )
