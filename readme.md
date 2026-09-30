@@ -262,7 +262,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Completed P39zzzc: the 13 exact selected GM atlas names and signed-byte capped distance map match a Java excerpt on synthetic true-RAS NIfTIs, including case/punctuation controls, empty support, and cap behavior. Focused tests: 2 passed; full suite: 664 passed with 2 expected RAS warnings in 164.97 seconds on `4665da22d2c2e30743fb541cb08ae72a01540c0e`; see the [P39zzzc report](docs/reports/full-pytest-2026-09-30-p39-gm-distance.md). This validates supplied-label distance support only.
 - Started P18cq: port the selected ordinary-OBJECT base-TOADS centroid accumulator and active damped update as an isolated Java-compared statistics stage.
 - Started P39zzzd: port the ordinary GM-class ventricle-distance attenuation branch and its normalization behavior from selected LesionTOADS membership routing.
-- The plan now records 231/247 rows (~94%) Done, 4 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P18cr: validate ordinary-OBJECT assigned-class variance using the selected full-grid float32 accumulation, field correction, and zero-support behavior.
+- The plan now records 231/248 rows (~93%) Done, 5 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
