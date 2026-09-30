@@ -524,3 +524,169 @@ def compute_lesion_toads_noise_standard_deviation(
             value = np.float32(np.sqrt(np.float64(quotient)))
             result[channel, :] = value
     return result
+
+
+def compute_lesion_toads_basic_centroids(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    segmentation: ArrayLike,
+    centroids: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    *,
+    fields: ArrayLike | None = None,
+    mode: str = "none",
+    smoothness: float = 0.0,
+    centroid_links: ArrayLike | None = None,
+    prior_centroids: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Update generic LesionTOADS class centroids for supplied hard labels.
+
+    This ports the generic selected ``computeCentroids()`` branch: class
+    accumulators use squared memberships and optional field-corrected samples;
+    ``linked`` combines accumulators for classes sharing a link id, ``damped``
+    blends with the previous centroid, and ``prior`` adds the source's
+    ``smoothness * 1e4`` prior weight. The source RAYLEIGH second-moment rule
+    is used in ``none``, ``linked``, ``damped`` and fallback modes. LESION,
+    BLACKHOLE, and PowerTable-optimized categories have additional source
+    branches, so this generic helper rejects them for dedicated ports.
+
+    Accumulation follows source channel/class/x/y/z order and explicitly
+    rounds intermediate values to float32 to match Java ``float`` arithmetic.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    weights = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    initial = np.asarray(centroids, dtype=np.float32)
+    field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    types = tuple(item.lower() if isinstance(item, str) else item for item in object_types)
+    if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    spatial, channels = values.shape[:3], values.shape[3]
+    if weights.ndim != 4 or weights.shape[:3] != spatial or weights.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and have at least one class")
+    classes = weights.shape[3]
+    if len(types) != classes or any(not isinstance(item, str) for item in types):
+        raise ValueError("object_types must provide one string per membership class")
+    allowed_types = {"object", "mask", "outlier", "outmask", "rayleigh"}
+    if any(item not in allowed_types for item in types):
+        raise ValueError("object_types include a category requiring a specialized centroid update")
+    if labels.shape != spatial or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer grid matching the images")
+    if initial.shape != (channels, classes):
+        raise ValueError("centroids must have shape (channels, classes)")
+    if field_values is not None and field_values.shape != values.shape:
+        raise ValueError("fields must match the image grid and channel count")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must index the membership classes")
+    finite_arrays = (values, weights, initial)
+    if not all(np.isfinite(array).all() for array in finite_arrays):
+        raise ValueError("images, memberships, and centroids must be finite")
+    if field_values is not None and not np.isfinite(field_values).all():
+        raise ValueError("fields must be finite")
+    blend = np.float32(smoothness)
+    if not np.isfinite(blend):
+        raise ValueError("smoothness must be finite")
+
+    normalized_mode = mode.lower() if isinstance(mode, str) else ""
+    if not normalized_mode:
+        raise ValueError("mode must be a nonempty string")
+    links = None if centroid_links is None else np.asarray(centroid_links)
+    if normalized_mode == "linked":
+        if links is None or links.shape != (channels, classes):
+            raise ValueError("centroid_links must have shape (channels, classes) in linked mode")
+        if not np.issubdtype(links.dtype, np.integer):
+            raise ValueError("centroid_links must contain integer link identifiers")
+    priors = None if prior_centroids is None else np.asarray(prior_centroids, dtype=np.float32)
+    if normalized_mode == "prior":
+        if priors is None or priors.shape != (channels, classes):
+            raise ValueError("prior_centroids must have shape (channels, classes) in prior mode")
+        if not np.isfinite(priors).all():
+            raise ValueError("prior_centroids must be finite")
+
+    result = initial.copy()
+    rayleigh_types = {index for index, kind in enumerate(types) if kind == "rayleigh"}
+    one = np.float32(1.0)
+    two = np.float32(2.0)
+    for channel in range(channels):
+        numerators = np.zeros(classes, dtype=np.float32)
+        denominators = np.zeros(classes, dtype=np.float32)
+        for class_index in range(classes):
+            for x in range(spatial[0]):
+                for y in range(spatial[1]):
+                    for z in range(spatial[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = weights[x, y, z, class_index]
+                        sample = values[x, y, z, channel]
+                        if field_values is not None:
+                            sample = np.float32(field_values[x, y, z, channel] * sample)
+                        square = np.float32(membership * membership)
+                        if class_index in rayleigh_types:
+                            sample_term = np.float32(sample * sample)
+                        else:
+                            sample_term = sample
+                        weighted = np.float32(square * sample_term)
+                        numerators[class_index] = np.float32(
+                            numerators[class_index] + weighted
+                        )
+                        denominators[class_index] = np.float32(
+                            denominators[class_index] + square
+                        )
+
+        for class_index in range(classes):
+            numerator = numerators[class_index]
+            denominator = denominators[class_index]
+            rayleigh = class_index in rayleigh_types and normalized_mode != "prior"
+            if normalized_mode == "linked":
+                assert links is not None
+                nsum = numerator
+                dsum = denominator
+                for linked_class in range(classes):
+                    if linked_class != class_index and links[channel, class_index] == links[channel, linked_class]:
+                        nsum = np.float32(
+                            nsum + np.float32(blend * numerators[linked_class])
+                        )
+                        dsum = np.float32(
+                            dsum + np.float32(blend * denominators[linked_class])
+                        )
+                if dsum > np.float32(0.0):
+                    result[channel, class_index] = (
+                        np.float32(
+                            np.sqrt(np.float64(np.float32(nsum / np.float32(two * dsum))))
+                        )
+                        if rayleigh else np.float32(nsum / dsum)
+                    )
+                else:
+                    result[channel, class_index] = np.float32(0.0)
+            elif normalized_mode == "damped":
+                if denominator > np.float32(0.0):
+                    if rayleigh:
+                        estimate = np.float32(np.sqrt(
+                            np.float64(np.float32(numerator / np.float32(two * denominator)))
+                        ))
+                        retained = np.float32(np.float32(one - blend) * estimate)
+                    else:
+                        retained = np.float32(
+                            np.float32(np.float32(one - blend) * numerator) / denominator
+                        )
+                    prior = np.float32(blend * result[channel, class_index])
+                    result[channel, class_index] = np.float32(retained + prior)
+            elif normalized_mode == "prior":
+                assert priors is not None
+                prior_weight = np.float32(blend * np.float32(1.0e4))
+                nsum = np.float32(numerator + np.float32(prior_weight * priors[channel, class_index]))
+                dsum = np.float32(denominator + prior_weight)
+                result[channel, class_index] = (
+                    np.float32(nsum / dsum) if dsum > np.float32(0.0) else np.float32(0.0)
+                )
+            elif normalized_mode == "none" or normalized_mode not in {"linked", "damped", "prior"}:
+                if denominator > np.float32(0.0):
+                    if rayleigh:
+                        result[channel, class_index] = np.float32(
+                            np.sqrt(np.float64(np.float32(numerator / np.float32(two * denominator))))
+                        )
+                    else:
+                        result[channel, class_index] = np.float32(numerator / denominator)
+                else:
+                    result[channel, class_index] = np.float32(0.0)
+    return result
