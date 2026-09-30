@@ -237,6 +237,59 @@ def uncrop_toads_images(
     return output, trans
 
 
+def uncrop_toads_buffer(
+    cropped: np.ndarray,
+    original_shape: tuple[int, int, int],
+    bounds: tuple[int, int, int, int, int, int],
+    padding: int,
+    background: float | int,
+) -> np.ndarray:
+    """Return a selected-Java ``uncropAndBuffer`` buffer.
+
+    A 3D ``[x,y,z]`` input yields one scalar volume; a 4D ``[channel,x,y,z]``
+    input yields channel-major volumes. In each volume x is the fastest axis,
+    matching ``x + nx*y + nx*ny*z`` in ``MultipleToadPreprocess``. The returned
+    array is one-dimensional and uses the input dtype, so byte labels retain
+    Java byte bit patterns and float values retain their source precision.
+    """
+    source = np.asarray(cropped)
+    if source.ndim not in (3, 4) or not np.issubdtype(source.dtype, np.number):
+        raise ValueError("TOADS buffer input must be a numeric [x,y,z] or [channel,x,y,z] array")
+    if len(original_shape) != 3 or len(bounds) != 6:
+        raise ValueError("TOADS buffer shape and bounds must describe three spatial axes")
+    if padding < 0:
+        raise ValueError("TOADS buffer padding must be nonnegative")
+    nx, ny, nz = (int(v) for v in original_shape)
+    x0, x_n, y0, y_n, z0, z_n = (int(v) for v in bounds)
+    if min(nx, ny, nz) < 1 or x0 > x_n or y0 > y_n or z0 > z_n:
+        raise ValueError("TOADS buffer source geometry is invalid")
+    expected = (x_n - x0 + 1 + 2 * padding, y_n - y0 + 1 + 2 * padding, z_n - z0 + 1 + 2 * padding)
+    spatial = source.shape[-3:]
+    if spatial != expected:
+        raise ValueError("TOADS buffer crop shape does not match its bounds and padding")
+
+    channels = 1 if source.ndim == 3 else source.shape[0]
+    if channels < 1:
+        raise ValueError("TOADS buffer must contain at least one channel")
+    output = np.full((channels, nx, ny, nz), background, dtype=source.dtype)
+    starts = (max(x0 - padding, 0), max(y0 - padding, 0), max(z0 - padding, 0))
+    ends = (min(x_n + padding, nx - 1), min(y_n + padding, ny - 1), min(z_n + padding, nz - 1))
+    if all(start <= end for start, end in zip(starts, ends)):
+        cropped_starts = (starts[0] - x0 + padding, starts[1] - y0 + padding, starts[2] - z0 + padding)
+        cropped_ends = (ends[0] - x0 + padding + 1, ends[1] - y0 + padding + 1, ends[2] - z0 + padding + 1)
+        slices = tuple(slice(start, end) for start, end in zip(starts, tuple(end + 1 for end in ends)))
+        crop_slices = tuple(slice(start, end) for start, end in zip(cropped_starts, cropped_ends))
+        if source.ndim == 3:
+            output[0][slices] = source[crop_slices]
+        else:
+            output[(slice(None), *slices)] = source[(slice(None), *crop_slices)]
+    # C-order flattening of [channel,z,y,x] produces Java's channel-major,
+    # x-fastest linear layout while preserving the [x,y,z] public convention.
+    if source.ndim == 3:
+        return output[0].transpose(2, 1, 0).reshape(-1)
+    return output.transpose(0, 3, 2, 1).reshape(-1)
+
+
 def transform_toads_topology(
     topology: np.ndarray,
     bounds: tuple[int, int, int, int, int, int],
