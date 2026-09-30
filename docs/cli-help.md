@@ -36,7 +36,7 @@ SPECTRE and does not require FSL or FreeSurfer.
 
 The Python API returns source orientation codes for the three inputs. The full
 workflow manifest will also record source orientations and conversions when
-P34/P42 orchestration is implemented.
+P34/P42a workflow orchestration is implemented.
 
 ## Other currently exposed commands
 
@@ -50,6 +50,6 @@ P34/P42 orchestration is implemented.
   both images must share one physical grid.
 
 The full-pipeline configuration file, restart behavior, and final output
-manifest will be specified when P34 and P42 are implemented. See
+manifest will be specified when P34 and P42a are implemented. See
 [`io-contract.md`](io-contract.md) for profile-level input/output semantics and
 [`toads-port-plan.md`](toads-port-plan.md) for the TOADS blocker plan.
