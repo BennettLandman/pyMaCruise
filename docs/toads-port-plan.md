@@ -668,3 +668,18 @@ and
 [`tests/data/synthetic/toads_relation_list/README.md`](../tests/data/synthetic/toads_relation_list/README.md).
 Only relation-set construction is validated here; diffusion into interior
 voxels is a separate step.
+
+### Completed substage: P18bk TOADS relation-map diffusion
+
+`toads_compute_relations` builds the selected relation table and runs the
+exact-membership `computeRelations` update. Java and Python match the final
+map and pass count across uniform, planar, and folded cases with asymmetric
+float32 memberships. The fixtures cover zero limit, zero-support strict ties,
+the exclusive iteration cap, and early stop. Focused checks: 5 passed. Full
+suite: 554 passed, 2 expected RAS warnings, in 88.89 seconds on implementation
+commit `19ae617f0fca849b11a60211758792acedc25ec1`; see
+[`docs/reports/full-pytest-2026-09-29-toads-relation-diffusion.md`](reports/full-pytest-2026-09-29-toads-relation-diffusion.md)
+and
+[`tests/data/synthetic/toads_relation_diffusion/README.md`](../tests/data/synthetic/toads_relation_diffusion/README.md).
+This validates exact-membership relation propagation only. Approximate mode,
+topology evolution, and full TOADS segmentation remain open.

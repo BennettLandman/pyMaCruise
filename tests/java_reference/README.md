@@ -177,6 +177,15 @@ membership table, and per-class union rows for uniform, planar, and folded
 synthetic label volumes. Regenerate with
 `scripts/generate_java_toads_relation_list_reference.sh`.
 
+## TOADS relation-map diffusion
+
+`ToadsRelationDiffusionReferenceHarness.java` composes relation-list creation
+with selected `computeRelations` exact-membership diffusion and records the
+final map, input membership float bits, and loop-pass count. It reuses the
+synthetic-label method excerpt in `ToadsRelationListReferenceHarness.java`.
+Regenerate with
+`scripts/generate_java_toads_relation_diffusion_reference.sh`.
+
 ## TOADS rigid registration update
 
 `ToadsRigidRegistrationUpdateHarness.java` uses the supplied Java
