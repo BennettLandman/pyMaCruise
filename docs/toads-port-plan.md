@@ -314,7 +314,7 @@ complete `MedicAlgorithmRemoveDura09` pipeline. See
 JAR/class hashes, fixture recipe, and Java invocation. Focused regression
 coverage is in `tests/test_toads_dura.py`.
 
-### Started substage: Dura dynamic-pressure TGDM evolution
+### Completed substage: Dura dynamic-pressure TGDM evolution
 
 `src/pymacruise/toads_dura.py::dura_tgdm_evolve` now connects the selected
 `DynamicPressureTGDM` profile to the reusable `tgdm_evolve` kernel. It applies
@@ -371,10 +371,14 @@ It is generated from synthetic fields only. Source SHA-256 values:
 - `FastMarchingGradient.java`: `cf857c0c62e2c7a219e9e530c863b4e40ae594b55e90a355cd7fdf6e0709d3a3`
 - `DistanceFieldyh.java`: `a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811`
 
-At the time this first harness slice was added, the focused Dura test module
-passed 11 tests. The later folded-cortex case is separately gated against the
-owner-approved Dice and mesh-distance thresholds. P18 remains Started pending
-the whole-evolution original-JIST comparison and remaining wrapper stages.
+The nested full-profile and folded-cortex tests pass. The full suite passed
+628 tests with 2 expected RAS warnings in 110.04 seconds on tested commit
+`03626d4986c20eb9c3fc934d2b09a7ac75f9a84f`; see
+[`docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md`](reports/full-pytest-2026-09-30-p18-dura-tgdm.md).
+The folded final segmentation and surface metrics meet the agreed thresholds;
+four voxel signs and the measured intermediate-field differences remain
+documented. P18 remains Started because TOADS evolution, registration
+optimization, and full end-to-end equivalence remain open.
 
 ### Completed substage: Dura wrapper output-mask application
 
