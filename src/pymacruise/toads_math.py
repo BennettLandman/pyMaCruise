@@ -316,6 +316,84 @@ def toads_outlier_membership_mix(
     return class_result, outlier_result
 
 
+def toads_outlier_membership_update(
+    class_data_energy: float,
+    outlier_data_energy: float,
+    outlier_membership: float,
+    membership_factor: float,
+    *,
+    smoothing_prior: float = 0.0,
+    smoothing: float = 0.0,
+    neighbor_sum: float = 0.0,
+    prior_coefficient: float = 0.0,
+    inverse_prior: float = 0.0,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[np.float32, np.float32, np.float32]:
+    """Compose selected TOADS OUTLIER smoothing, prior, and membership math.
+
+    The source forms the objective mixture from the original data terms, adds
+    the full smoothing/prior increments to both reciprocal denominators and
+    their half-weighted increments to the objective, then inverts each
+    denominator independently before applying the shared relation mix.
+    The selected coefficients, six-neighbor sum, and inverse-prior sum are
+    inputs; neighborhood and atlas-similarity construction are separate
+    stages. Returns class membership, updated outlier membership, and local
+    objective energy for this class at one voxel.
+    """
+    num = np.float32(class_data_energy)
+    num_outlier = np.float32(outlier_data_energy)
+    outlier = np.float32(outlier_membership)
+    factor = np.float32(membership_factor)
+    smoothing_prior_value = np.float32(smoothing_prior)
+    smoothing_value = np.float32(smoothing)
+    neighbors = np.float32(neighbor_sum)
+    prior_value = np.float32(prior_coefficient)
+    inverse_prior_value = np.float32(inverse_prior)
+    threshold = np.float32(zero_threshold)
+    reciprocal_cap = np.float32(infinite_reciprocal)
+    values = (
+        num, num_outlier, outlier, factor, smoothing_prior_value, smoothing_value,
+        neighbors, prior_value, inverse_prior_value, threshold, reciprocal_cap,
+    )
+    if not all(np.isfinite(value) for value in values):
+        raise ValueError("OUTLIER update inputs must be finite")
+    if threshold < np.float32(0.0) or reciprocal_cap <= np.float32(0.0):
+        raise ValueError("reciprocal threshold/cap must be nonnegative/positive")
+
+    class_fraction = np.float32(np.float32(1.0) - outlier)
+    class_component = np.float32(class_fraction * num)
+    outlier_component = np.float32(outlier * num_outlier)
+    objective = np.float32(class_component + outlier_component)
+
+    smoothing_increment = np.float32(smoothing_prior_value * smoothing_value)
+    smoothing_increment = np.float32(smoothing_increment * neighbors)
+    num = np.float32(num + smoothing_increment)
+    num_outlier = np.float32(num_outlier + smoothing_increment)
+    smoothing_objective = np.float32(np.float32(0.5) * smoothing_prior_value)
+    smoothing_objective = np.float32(smoothing_objective * smoothing_value)
+    smoothing_objective = np.float32(smoothing_objective * neighbors)
+    objective = np.float32(objective + smoothing_objective)
+
+    prior_increment = np.float32(prior_value * inverse_prior_value)
+    num = np.float32(num + prior_increment)
+    num_outlier = np.float32(num_outlier + prior_increment)
+    prior_objective = np.float32(np.float32(0.5) * prior_value)
+    prior_objective = np.float32(prior_objective * inverse_prior_value)
+    objective = np.float32(objective + prior_objective)
+
+    reciprocal = np.float32(np.float32(1.0) / num) if num > threshold else reciprocal_cap
+    outlier_reciprocal = (
+        np.float32(np.float32(1.0) / num_outlier)
+        if num_outlier > threshold
+        else reciprocal_cap
+    )
+    class_result, outlier_result = toads_outlier_membership_mix(
+        reciprocal, outlier, outlier_reciprocal, factor
+    )
+    return class_result, outlier_result, objective
+
+
 def toads_psf_ridge_bias(
     image_values: ArrayLike,
     segmentation: ArrayLike,
