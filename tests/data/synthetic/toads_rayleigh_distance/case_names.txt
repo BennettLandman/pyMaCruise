@@ -1,0 +1,17 @@
+positive_zero
+negative_zero
+negative_finite
+ordinary_positive
+positive_val_zero_sigma
+positive_val_negative_zero_sigma
+positive_val_negative_sigma
+subnormal_val
+subnormal_sigma
+large_equal
+large_val_small_sigma
+nan_val
+positive_infinity_val
+negative_infinity_val
+finite_val_infinite_sigma
+finite_val_nan_sigma
+positive_infinity_pair

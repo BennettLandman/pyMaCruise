@@ -47,7 +47,10 @@ def compute_lesion_toads_unfielded_data_energies(
     channel is multiplied by its field value before centroid residuals, as in
     the Java branch. `obj` is accepted as the repository descriptor's name
     for the source `OBJECT` type. Inputs are one voxel's channel vectors,
-    already normalized/scaled by the caller.
+    already normalized/scaled by the caller. For exact unfielded
+    `Sulcal-CSF`, the selected Java source adds its T1 special term and then
+    the generic weighted multichannel sum; with an intensity field, the
+    special T1 term is exclusive because that branch has an active `else`.
     """
     image = np.asarray(image_values, dtype=np.float32)
     centroid = np.asarray(class_centroid, dtype=np.float32)
@@ -127,8 +130,31 @@ def compute_lesion_toads_unfielded_data_energies(
     class_energy = np.float32(0.0)
     lesion_energy = np.float32(0.0)
     black_hole_energy = np.float32(0.0)
+    # In the selected unfielded source, the closing `else` before the
+    # multichannel loop is inside a block comment. Sulcal-CSF therefore adds
+    # its special T1 term first and then falls through to the ordinary
+    # weighted all-channel sum. In the fielded branch the `else` is active,
+    # so the Sulcal-CSF T1 term replaces that generic sum.
+    if sulcal_csf_t1 and not use_field:
+        difference = np.float32(values[t1_channel] - centroid[t1_channel])
+        squared_difference = np.float32(difference * difference)
+        if has_mprage:
+            lookup = toads_powertable_lookup(
+                float(squared_difference),
+                float(csf_power_exponent),
+                cached_exponent=float(cached_csf_exponent),
+                minimum=0.0,
+                maximum=4.0,
+                step=float(np.float32(1.0e-6)),
+            ).item()
+            # Java's float += double lookup promotes to double and narrows
+            # after the special term, before the following float loop.
+            class_energy = np.float32(float(class_energy) + lookup)
+        else:
+            class_energy = squared_difference
+
     for channel in range(image.size):
-        if not sulcal_csf_t1:
+        if not (sulcal_csf_t1 and use_field):
             difference = np.float32(values[channel] - centroid[channel])
             weighted_difference = np.float32(weights[channel] * difference)
             contribution = np.float32(weighted_difference * difference)
@@ -148,7 +174,7 @@ def compute_lesion_toads_unfielded_data_energies(
             black_hole_contribution = np.float32(black_hole_weighted_difference * black_hole_difference)
             black_hole_energy = np.float32(black_hole_energy + black_hole_contribution)
 
-    if sulcal_csf_t1:
+    if sulcal_csf_t1 and use_field:
         difference = np.float32(values[t1_channel] - centroid[t1_channel])
         squared_difference = np.float32(difference * difference)
         if has_mprage:

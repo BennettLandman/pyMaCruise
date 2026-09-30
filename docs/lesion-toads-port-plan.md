@@ -532,18 +532,24 @@ and [`tests/data/synthetic/lesion_toads_flair_weight/README.md`](../tests/data/s
 This remains a data-term slice before smoothing, atlas priors, inversion, and
 membership normalization.
 
-### Completed substage: P39x Sulcal-CSF/MPRAGE data energy
+### P39x Sulcal-CSF/MPRAGE data energy — source-correction follow-up
 
-For a generic `OBJECT` named exactly `Sulcal-CSF`, the selected source uses
-the T1-only squared residual. If MPRAGE is present, it applies that channel's
-CSF PowerTable; otherwise it uses the direct square. With no T1 index, the
-source falls back to weighted multi-channel object energy. Nine selected-Java
-cases match the MPRAGE PowerTable, direct T1 square, no-T1 generic fallback,
-field-corrected forms, and exact structure-name gating; class-energy
-float32 bits match exactly. Invalid T1 and missing PowerTable exponent
-reject. Two focused tests pass; the full suite reports 435 passed with two
-expected RAS warnings in 53.56 seconds on implementation commit
-`211d6286498a9065f92cb407f4e69dd621e692b7`. See
+The selected source has distinct fielded and unfielded behavior for a generic
+`OBJECT` named exactly `Sulcal-CSF`. In the unfielded branch, it accumulates
+the special T1 squared residual first (or the CSF PowerTable lookup when
+MPRAGE is present), then also executes the generic weighted all-channel object
+energy loop: the apparent `else` before that loop is inside a comment. In the
+fielded branch, the active `else` makes the special T1 term exclusive. If the
+T1 channel is unavailable, the generic weighted multichannel term is used.
+
+The corrected Python helper is pinned against a regenerated 10-case selected-
+Java fixture, including a case that distinguishes source-order float32
+accumulation from the reversed order. Focused regression: **10 passed in
+0.75 seconds**, including data-term, field, FLAIR, and membership-composition
+tests; `git diff --check` passed. The former nine-case description and full
+suite result below refer to the pre-correction implementation. The old nine-
+case evidence is superseded for source-branch correctness; a full-suite rerun
+after the correction is pending. See
 [`docs/reports/full-pytest-2026-09-29-lesion-toads-sulcal-csf.md`](reports/full-pytest-2026-09-29-lesion-toads-sulcal-csf.md)
 and [`tests/data/synthetic/lesion_toads_sulcal_csf/README.md`](../tests/data/synthetic/lesion_toads_sulcal_csf/README.md).
 This remains a data-term slice before smoothing, priors, inversion, and
