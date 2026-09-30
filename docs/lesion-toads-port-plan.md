@@ -1434,3 +1434,18 @@ implementation commit `fbecc45a357576d0c5a583d366d4dc5e1c3d6087`; see
 and [`tests/data/synthetic/lesion_mixed_centroids/README.md`](../tests/data/synthetic/lesion_mixed_centroids/README.md).
 This validates a mixed fixed-map centroid update, not the enclosing
 LesionTOADS membership iteration.
+
+### Completed substages: P39zzzzk–P39zzzzm fixed-input composition
+
+P39zzzzk applies the selected interior membership-map update to supplied
+energy and spatial/prior inputs, including class, LESION, BLACKHOLE, and
+OUTMASK maps. P39zzzzl separately reduces supplied per-class and auxiliary
+energy maps into the selected objective. P39zzzzm builds raw unfielded
+OBJECT/LESION/BLACKHOLE data-energy arrays over an asymmetric three-channel
+RAS NIfTI, preserving x/y/z and class order plus shared auxiliary-slot
+overwrites. Focused tests passed (1, 3, and 4 respectively). The full suite
+reports 736 passed with 2 expected RAS warnings in 168.07 seconds on
+implementation commit `a203b7ec912046b07017de34b63cb595a5f887af`; see
+[`docs/reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md`](reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md).
+These fixed-input adapters do not derive the full spatial/atlas energy state,
+orchestrate all LesionTOADS passes, or establish workflow equivalence.

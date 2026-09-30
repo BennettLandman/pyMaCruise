@@ -794,3 +794,21 @@ atlas priors. Full-suite evidence and exact implementation commits are linked
 from P18by–P18ca in [`plan.md`](../plan.md). These compositions still do not
 perform TOADS deformation, topology-gated growth/thinning in the complete
 outer loop, or final segmentation transfer.
+
+### Completed substages: P18cy optimized-tissue dispatch and P18cz Rayleigh distance
+
+P18cy extends fixed-input `computeExactMemberships()` composition to
+interleaved OBJECT, MASK, OPTIMIZED_CSF, OPTIMIZED_GM, and OPTIMIZED_WM
+classes. The pinned Java harness covers category-specific PowerTable
+exponents, field and PSF modes, direct/neighbor/prior relations, smoothing,
+atlas priors, objective order, and unchanged borders. Focused checks: 7
+passed. P18cz implements only `rayleighDistance(float val, float sig)`;
+17 Java/Python cases match float32 bits, including Java-compatible
+nonpositive returns and IEEE edge outcomes. Focused checks: 2 passed. The
+full suite reports 736 passed with 2 expected RAS warnings in 168.07 seconds
+on implementation commit `a203b7ec912046b07017de34b63cb595a5f887af`; see
+[`docs/reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md`](reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md)
+and the P18cy/P18cz fixture provenance in `tests/data/synthetic/`.
+Optimized dispatch still excludes LESION, OUTLIER, OUTMASK, and Rayleigh
+class mixing. The Rayleigh primitive does not estimate centroids or route a
+class family. Neither slice closes the TOADS iteration or workflow.
