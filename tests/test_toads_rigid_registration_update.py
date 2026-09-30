@@ -64,9 +64,10 @@ def test_full_rigid_registration_update_matches_java_source_harness() -> None:
     assert reference["parametric_transform_sha256"] == "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac"
     assert reference["rotation_matrix_sha256"] == "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0"
     assert reference["image_functions_sha256"] == "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892"
-    assert set(reference["cases"]) == {"accepted", "backtracked"}
+    assert set(reference["cases"]) == {"accepted", "backtracked", "multi_step"}
     memberships, atlas, kwargs = _inputs()
-    for name, expected in reference["cases"].items():
+    for name in ("accepted", "backtracked"):
+        expected = reference["cases"][name]
         initial = _from_bits(expected["initial_transform"])
         coefficients = vectorized_toads_registration_coefficients(
             memberships,
@@ -170,3 +171,27 @@ def test_full_rigid_registration_update_matches_java_source_harness() -> None:
     assert reference["cases"]["accepted"]["rejected"] == 0
     assert reference["cases"]["backtracked"]["accepted"] is False
     assert reference["cases"]["backtracked"]["rejected"] == 11
+
+
+def test_repeated_rigid_registration_updates_match_java_outer_loop() -> None:
+    reference = json.loads(REFERENCE.read_text())
+    memberships, atlas, kwargs = _inputs()
+    expected = reference["cases"]["multi_step"]
+    initial = _from_bits(expected["initial_transform"])
+    result = register_toads_atlas_rigid(
+        memberships,
+        atlas,
+        initial_transform=tuple(initial),
+        **{**kwargs, "max_iterations": 8},
+    )
+    assert len(result.iterations) == len(expected["updates"])
+    for actual, source in zip(result.iterations, expected["updates"], strict=True):
+        _assert_float32_close(actual.transform, source["transform"])
+        _assert_float32_close([actual.energy], [source["energy"]])
+        _assert_float32_close([actual.lambda_value], [source["lambda"]])
+        _assert_float32_close([actual.relative_change], [source["relative_change"]])
+        assert actual.accepted is source["accepted"]
+        assert actual.rejected_trials == source["rejected"]
+    assert result.stop_reason == "energy_tolerance"
+    assert expected["updates"][-1]["accepted"] is False
+    assert expected["updates"][-1]["rejected"] == 11
