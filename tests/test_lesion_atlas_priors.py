@@ -113,6 +113,7 @@ def test_bundled_lesion_topology_is_loaded_as_ras_nifti_only() -> None:
     assert topology.path.is_file()
     assert topology.image.shape == (172, 216, 164)
     assert nib.aff2axcodes(topology.image.affine) == ("R", "A", "S")
+    assert np.issubdtype(topology.image.get_data_dtype(), np.integer)
 
 
 def test_lesion_topology_loader_reorients_non_ras_and_does_not_load_shape_maps(
@@ -131,6 +132,7 @@ def test_lesion_topology_loader_reorients_non_ras_and_does_not_load_shape_maps(
         "Structure Atlas File (edit at your own risks)\n"
         "Topology Atlas:\n"
         "File:\ttopology.nii.gz\n"
+        "Dimensions:\t2\t3\t4\n"
         "Shape Atlas:\t8\n"
         "File:\tmissing-shape.nii.gz\n"
     )
@@ -147,6 +149,36 @@ def test_lesion_topology_loader_reorients_non_ras_and_does_not_load_shape_maps(
     )
     assert nib.aff2axcodes(topology.image.affine) == ("R", "A", "S")
     np.testing.assert_array_equal(np.asanyarray(topology.image.dataobj), expected)
+
+
+def test_lesion_topology_loader_rejects_descriptor_dimension_mismatch(tmp_path) -> None:
+    nib.save(nib.Nifti1Image(np.zeros((2, 3, 4), dtype=np.int8), np.eye(4)), tmp_path / "topology.nii.gz")
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text(
+        "Structure Atlas File (edit at your own risks)\n"
+        "Topology Atlas:\n"
+        "File:\ttopology.nii.gz\n"
+        "Dimensions:\t2\t3\t5\n"
+    )
+
+    with pytest.raises(LesionAtlasDescriptorError, match="does not match descriptor dimensions"):
+        load_lesion_atlas_topology(descriptor)
+
+
+@pytest.mark.parametrize("dimensions", ["2 3", "2 3 0", "2 x 4"])
+def test_lesion_topology_loader_rejects_malformed_descriptor_dimensions(
+    tmp_path, dimensions
+) -> None:
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text(
+        "Structure Atlas File (edit at your own risks)\n"
+        "Topology Atlas:\n"
+        "File:\ttopology.nii.gz\n"
+        f"Dimensions:\t{dimensions}\n"
+    )
+
+    with pytest.raises(LesionAtlasDescriptorError, match="dimensions"):
+        load_lesion_atlas_topology(descriptor)
 
 
 @pytest.mark.parametrize(

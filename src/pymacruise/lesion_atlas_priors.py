@@ -184,6 +184,7 @@ def load_lesion_atlas_topology(
     if section_index is None:
         raise LesionAtlasDescriptorError("Missing Topology Atlas section")
     reference = None
+    declared_dimensions = None
     for line in lines[section_index + 1 :]:
         stripped = line.strip()
         if not stripped:
@@ -191,9 +192,22 @@ def load_lesion_atlas_topology(
         if _starts_section(stripped):
             break
         key, separator, value = stripped.partition(":")
-        if separator and key.strip() == "File":
+        if not separator:
+            continue
+        if key.strip() == "File":
             reference = value.strip()
-            break
+        elif key.strip() == "Dimensions":
+            try:
+                parsed_dimensions = tuple(int(item) for item in value.split())
+            except ValueError as exc:
+                raise LesionAtlasDescriptorError(
+                    f"Invalid topology atlas dimensions: {value}"
+                ) from exc
+            if len(parsed_dimensions) != 3 or any(size <= 0 for size in parsed_dimensions):
+                raise LesionAtlasDescriptorError(
+                    f"Topology atlas dimensions must be three positive integers: {value}"
+                )
+            declared_dimensions = parsed_dimensions
     if not reference:
         raise LesionAtlasDescriptorError("Topology Atlas section has no File reference")
     relative = Path(reference)
@@ -219,6 +233,12 @@ def load_lesion_atlas_topology(
     if len(image.shape) != 3:
         raise LesionAtlasDescriptorError(
             f"LesionTOADS topology atlas must be 3D, got {image.shape}: {atlas_path}"
+        )
+    if declared_dimensions is not None and tuple(image.shape) != declared_dimensions:
+        raise LesionAtlasDescriptorError(
+            "LesionTOADS topology atlas RAS shape "
+            f"{image.shape} does not match descriptor dimensions {declared_dimensions}: "
+            f"{atlas_path}"
         )
     return LesionAtlasTopology(atlas_path, image)
 
