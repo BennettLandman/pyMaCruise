@@ -1,0 +1,28 @@
+{
+  "source_class": "edu.jhmi.rad.medic.methods.LesionToadPreprocess",
+  "source_method": "uncropImages()",
+  "source_file_sha256": "72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08",
+  "normalized_method_body_sha256": "d2a489171b23e1cd3ff85f2ce203a93e1f1055ca3727493b883ee8b7f5237b18",
+  "matching_kernel_source_class": "edu.jhmi.rad.medic.methods.MultipleToadPreprocess",
+  "matching_kernel_source_file_sha256": "31296a4c154ac5366dcd78aa7e5da28bb1c56163f1e230cc451cb3e4feb071e7",
+  "matching_kernel_normalized_method_body_sha256": "d2a489171b23e1cd3ff85f2ce203a93e1f1055ca3727493b883ee8b7f5237b18",
+  "java_reference_fixture": "../toads_crop_geometry/java_reference.json",
+  "java_reference_harness": "../../../java_reference/ToadsCropGeometryReferenceHarness.java",
+  "reference_scope": "Reuse the already validated Java crop/uncrop output; the normalized uncropImages method bodies match after removing comments and whitespace normalization.",
+  "source_operation_sequence": [
+    "return immediately if cropped is false",
+    "reset xCi/yCi/zCi to original-grid centers",
+    "subtract rotation-scaled crop-center offset from transform translation",
+    "allocate full-size output and initialize it to zero",
+    "copy the clipped inclusive padded region from cropped images",
+    "replace images and clear cropped flag"
+  ],
+  "unmodeled_lifecycle_fields": [
+    "xCi = nix/2, yCi = niy/2, zCi = niz/2 internal-center updates",
+    "cropped = false internal-state update"
+  ],
+  "excluded": [
+    "hard-label classification and output adapters",
+    "NIfTI serialization"
+  ]
+}

@@ -3,6 +3,14 @@
 This driver starts from a supplied continuing post-registration state and
 repeats the already-composed P39v membership update and P39w registration /
 stop branch. It does not initialize atlas state or estimate fixed maps.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``, describes
+an iterative lesion-aware statistical and topological segmentation. This
+driver captures only the selected VandyCRUISE wrapper's repeated transition
+and stop order for fixed inputs; these control-flow details come from the
+source, not the paper. Synthetic Java-harness comparisons cover the stated
+branch/loop cases and do not validate full LesionTOADS convergence or output
+equivalence.
 """
 
 from __future__ import annotations

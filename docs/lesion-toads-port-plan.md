@@ -58,17 +58,26 @@ does not claim parity with those excluded skull-stripping stages.
 
 ## Completed substeps
 
-### P39a: intensity and centroid initialization
+### P39a: intensity and centroid initialization (reopened)
 
-`src/pymacruise/lesion_toads_preprocessing.py` ports negative-value clamping,
-per-channel robust bounds (fraction 0.01, two refinement scales), division by
-the robust span without subtracting the minimum, and lesion/black-hole
-centroids `low/span + atlas_prior`. On the committed 9×8×7 T1/FLAIR phantom,
-all 1,008 normalized values, both channels' bounds, and both centroid vectors
-match the standalone Java harness exactly. Zero robust spans are rejected;
-the Java source instead propagates NaN/infinity. This is an explicit
-invalid-input deviation. See
-`tests/data/synthetic/lesion_toads_preprocessing/README.md`.
+The initial robust-span implementation and its 2026-09-28 full-suite entry
+are superseded: source audit of `AlgorithmLesionToads` confirmed that the
+selected wrapper constructs `LesionToadPreprocess` with
+`robustMaxMin=false`. The active order is negative-value clamp and ordinary
+`Imin`/`Imax` scan, then `(image-Imin)/(Imax-Imin)` normalization, then crop,
+tissue-centroid setup, and later robust bounds on the normalized cropped
+channels for lesion/black-hole centroids using `low + prior*(high-low)`.
+
+`src/pymacruise/lesion_toads_preprocessing.py` now separates the active
+normalizer from those later centroid calculations. The committed 9×8×7
+T1/FLAIR fixture compares all 1,008 normalized values and the ordinary and
+centroid robust bounds/centroids against the selected Java harness. The
+convenience composition computes centroids on the uncropped full grid; exact
+wrapper call order uses the separate APIs with the crop adapter in between.
+Zero ordinary or centroid spans are rejected with `ValueError`, while Java
+would propagate NaN/infinity; this invalid-input deviation is explicit.
+P39a remains open until a full-suite report covers the corrected code.
+See `tests/data/synthetic/lesion_toads_preprocessing/README.md`.
 
 ### P39b: descriptor prior parsing
 

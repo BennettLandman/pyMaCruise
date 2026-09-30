@@ -1,4 +1,13 @@
-"""Compose the selected LesionTOADS post-thinning statistics update."""
+"""Compose the selected LesionTOADS post-thinning statistics update.
+
+Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``, describes
+statistical intensity modeling and channel weighting within lesion-aware
+segmentation. This function composes selected VandyCRUISE centroid, variance,
+and channel-weight updates after thinning; formulas, class iteration order,
+and wrapper placement follow that source. Its fixed-input Java-harness checks
+cover this refresh only, not the full statistical estimation or iterative
+LesionTOADS workflow.
+"""
 
 from __future__ import annotations
 

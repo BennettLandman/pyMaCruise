@@ -3,10 +3,12 @@
  *
  * robustMinimum/robustMaximum are copied from
  * toads-cruise/src/edu/jhmi/rad/medic/libraries/ImageFunctions.java.
- * The clamp, normalization, and lesion/black-hole centroid expressions follow
- * LesionToadPreprocess.java (constructor, normalizeImages,
- * initialLesionCentroid, and initialBlackHoleCentroid). This standalone
- * harness uses float arithmetic and does not require MIPAV or JIST.
+ * The selected wrapper pins robustMaxMin=false. The clamp and ordinary
+ * min/max follow the LesionToadPreprocess constructor; normalization follows
+ * normalizeImages; robust bounds and low+prior*(high-low) centroid expressions
+ * follow initialLesionCentroid and initialBlackHoleCentroid, on normalized
+ * whole-grid inputs (the outer wrapper crop is not part of this harness).
+ * This standalone harness uses float arithmetic and does not require MIPAV/JIST.
  */
 import java.util.Locale;
 
@@ -106,28 +108,42 @@ public final class LesionToadsPreprocessingReferenceHarness {
         float[][] images = phantom();
         float[] low = new float[CHANNELS];
         float[] high = new float[CHANNELS];
+        float[] imageMin = new float[CHANNELS];
+        float[] imageMax = new float[CHANNELS];
         float[] lesion = new float[CHANNELS];
         float[] blackHole = new float[CHANNELS];
         for (int c = 0; c < CHANNELS; c++) {
+            imageMin[c] = images[c][0];
+            imageMax[c] = images[c][0];
             for (int i = 0; i < images[c].length; i++) {
-                if (images[c][i] < 0.0f) images[c][i] = 0.0f;
+                if (images[c][i] < 0.0f) {
+                    images[c][i] = 0.0f;
+                    imageMin[c] = 0.0f;
+                } else {
+                    if (images[c][i] > imageMax[c]) imageMax[c] = images[c][i];
+                    if (images[c][i] < imageMin[c]) imageMin[c] = images[c][i];
+                }
+            }
+            float span = imageMax[c] - imageMin[c];
+            for (int i = 0; i < images[c].length; i++) {
+                images[c][i] = (images[c][i] - imageMin[c]) / span;
             }
             low[c] = robustMinimum(images[c], 0.01f, 2);
             high[c] = robustMaximum(images[c], 0.01f, 2);
-            float span = high[c] - low[c];
-            float lowOverSpan = low[c] / span;
-            lesion[c] = lowOverSpan + LESION_PRIORS[c];
-            blackHole[c] = lowOverSpan + BLACK_HOLE_PRIORS[c];
-            for (int i = 0; i < images[c].length; i++) images[c][i] = images[c][i] / span;
+            float centroidSpan = high[c] - low[c];
+            lesion[c] = low[c] + LESION_PRIORS[c] * centroidSpan;
+            blackHole[c] = low[c] + BLACK_HOLE_PRIORS[c] * centroidSpan;
         }
 
-        System.out.print("{\"shape\":[" + NX + "," + NY + "," + NZ + "],\"channels\":[");
+        System.out.print("{\"source_sha256\":{\"LesionToadPreprocess.java\":\"72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08\",\"AlgorithmLesionToads.java\":\"556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb\",\"ImageFunctions.java\":\"be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892\"},\"call_order\":[\"LesionToadPreprocess.constructor\",\"AlgorithmLesionToads.normalizeImages\",\"findCroppingBoundaries\",\"cropImages\",\"initialCentroids\",\"initialLesionCentroid\",\"initialBlackHoleCentroid\"],\"reference_scope\":\"No-crop source excerpt: normalization then both auxiliary centroid methods over the full normalized grid\",\"robustMaxMin\":false,\"shape\":[" + NX + "," + NY + "," + NZ + "],\"channels\":[");
         for (int c = 0; c < CHANNELS; c++) {
             if (c > 0) System.out.print(',');
             System.out.print(array(images[c]));
         }
-        System.out.print("],\"robust_minima\":" + array(low));
-        System.out.print(",\"robust_maxima\":" + array(high));
+        System.out.print("],\"intensity_minima\":" + array(imageMin));
+        System.out.print(",\"intensity_maxima\":" + array(imageMax));
+        System.out.print(",\"centroid_robust_minima\":" + array(low));
+        System.out.print(",\"centroid_robust_maxima\":" + array(high));
         System.out.print(",\"lesion_priors\":" + array(LESION_PRIORS));
         System.out.print(",\"black_hole_priors\":" + array(BLACK_HOLE_PRIORS));
         System.out.print(",\"lesion_centroid\":" + array(lesion));

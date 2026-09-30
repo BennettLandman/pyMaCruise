@@ -16,7 +16,7 @@ validation criteria.
 | Plan row | Paper | Annotation location | Scope/limit recorded |
 | --- | --- | --- | --- |
 | P49 TOADS | Bazin & Pham, 2007 and 2008 | [`docs/papers/toads.md`](../papers/toads.md), TOADS module docstrings | Maps only current preprocessing, membership, atlas, registration, topology, heap, thinning, and crop components; full TOADS integration and convergence remain open. `toads_dura.py` is excluded as a separate MaCRUISE stage. |
-| P50 LesionTOADS | Shiee et al., 2010 | [`docs/papers/lesion-toads.md`](../papers/lesion-toads.md), three implemented `lesion_*.py` module docstrings | Documents descriptor priors, normalization/centroids, and a capped distance primitive; the iterative lesion engine, atlas loading, and full path remain incomplete, and deployed plugin version is unresolved. |
+| P50 LesionTOADS | Shiee et al., 2010 | [`docs/papers/lesion-toads.md`](../papers/lesion-toads.md), selected implemented `lesion_*.py` module docstrings | Documents descriptor priors, selected wrapper normalization/centroids, bounded growth/topology and iteration/statistics slices, and a capped distance primitive; these are source-specific components rather than the paper's complete iterative algorithm. Atlas loading, the complete workflow, and deployed plugin version remain open. |
 | P51 ACE / MaACE | Tosun et al., 2004; Huo et al., 2016 §2.3.1 | [`docs/papers/ace-maace.md`](../papers/ace-maace.md), `ace.py`, `skeleton.py` | Separates the ACE field, MaACE multi-atlas boundary prior, and source-specific ThinACE cleanup. The selected Python path does not yet supply Huo's distinct boundary-label prior and does not claim complete MaACE. |
 | P52 CRUISE | Han et al., 2004 | [`docs/papers/cruise.md`](../papers/cruise.md), `tgdm.py` | Maps nested surface evolution and identifies MaSeg/TOADS input and adapter differences from the published FANTASM/AutoFill workflow. Mesh/thickness substitutions and equivalence limits remain explicit. |
 | P53 TGDM | Han, Xu & Prince, 2003 §3 | [`docs/papers/tgdm.md`](../papers/tgdm.md), `tgdm.py` | Maps narrow-band evolution, simple-point checks, and reinitialization while deferring exact `(18,6)` connectivity and profiles to source. It does not infer volume-wide topology/equivalence from local tests. |
@@ -28,3 +28,18 @@ validation criteria.
 The complete set of bibliography and mapping notes is indexed in
 [`docs/papers/README.md`](../papers/README.md). Each note links to its
 publication record or accessible manuscript and names the mapped code.
+
+## P50 documentation follow-up (2026-09-30)
+
+The P50 crosswalk and module documentation now also connect
+`lesion_growth.py` to the paper's topology-preserving competition at a
+conceptual level, `lesion_fixed_input_loop.py` to iterative lesion-aware
+segmentation, and `lesion_statistics_refresh.py` to statistical modeling and
+channel-weight updates. The comments identify queue ordering, local topology
+decisions, refresh formulas, and wrapper stop conditions as selected
+VandyCRUISE source behavior. They limit evidence to the named synthetic
+Java-harness slices and do not claim whole-volume topology preservation,
+complete convergence, or end-to-end LesionTOADS equivalence.
+
+This was a documentation-only follow-up; the full-suite result above predates
+later implementation slices and is not evidence for those newer slices.

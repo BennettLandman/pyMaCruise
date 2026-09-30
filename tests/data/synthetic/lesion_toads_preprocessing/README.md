@@ -9,8 +9,18 @@ entries for T1 MPRAGE and FLAIR:
 - Lesion: `[0.4, 1.2]`
 - Black hole: `[0.1, 0.6]`
 
-The Java-only reference harness emits per-channel robust bounds, every
-normalized voxel, and both initialized centroid vectors. Recreate the input
+The selected `AlgorithmLesionToads` source pins `robustMaxMin=false`. Its call
+order is constructor negative clamp and ordinary min/max, `normalizeImages`
+using `(image - Imin) / (Imax - Imin)`, crop, tissue-centroid initialization,
+then the separate lesion and black-hole centroid methods. Those latter
+methods compute robust bounds on the normalized (in the wrapper, cropped)
+channels and use `low + prior * (high - low)`. The fixture harness reproduces
+normalization and those centroid formulas on the full grid; it does not
+reproduce cropping. It emits ordinary bounds, centroid robust bounds, every
+normalized voxel, and both initialized centroid vectors. Source SHA-256 values
+and the wrapper call order are pinned in `java_reference.json`.
+
+Recreate the input
 NIfTI files and recipe with:
 
 ```sh
@@ -25,9 +35,11 @@ java -cp /tmp/pymacruise-p39-reference LesionToadsPreprocessingReferenceHarness 
   > tests/data/synthetic/lesion_toads_preprocessing/java_reference.json
 ```
 
-The fixture isolates the numeric preprocessing and centroid initialization;
-it does not validate lesion atlas registration or the full topology-preserving
-segmentation. The source divides by a zero robust span without checking.
-PyMaCRUISE instead raises `ValueError` for that invalid input, so the
-implementation intentionally differs from Java's resulting NaN/infinity
-behavior in that case.
+The fixture isolates the active normalization and centroid formulas; it does
+not validate cropping, lesion atlas registration, or the full
+topology-preserving segmentation. The active source divides by a zero
+ordinary or robust centroid span without checking. PyMaCRUISE instead raises
+`ValueError` for those invalid inputs, so it intentionally differs from
+Java's resulting NaN/infinity behavior. The robust normalization and
+`low / span + prior` formulas in the Java class are an inactive
+`robustMaxMin=true` branch and are not represented as selected-wrapper behavior.
