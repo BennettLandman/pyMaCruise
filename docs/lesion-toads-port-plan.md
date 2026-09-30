@@ -136,7 +136,7 @@ element, border handling, dtype, and iteration behavior. Add a small adapter
 or port only for behavior SciPy does not provide, and record any remaining
 differences as explicit deviations.
 
-### Started substage: P39d topology atlas loading
+### Completed substage: P39d topology NIfTI loading
 
 `load_lesion_atlas_topology` resolves only the descriptor's topology `File`
 entry and reads its bundled `.nii.gz` with the shared RAS-aware NIfTI loader.
@@ -144,10 +144,17 @@ It validates an in-atlas relative path and a 3D image, warns and reorients a
 non-RAS input, and does not load any declared shape image. The bundled atlas
 loads as an RAS-oriented `(172, 216, 164)` image. A 2×3×4 synthetic LPS image
 checks voxel-axis reorientation and confirms an absent shape file is
-irrelevant to this slice. This intentionally does not emulate Java's
-headerless `x + Nx*y + Nx*Ny*z` byte reader: it validates the repository's
-compressed-NIfTI path only. Shape-array loading, source index conversion,
-transformed sampling, and algorithmic topology use remain open.
+irrelevant to this slice. P39zzf additionally checks an optional descriptor
+dimension triplet against the RAS NIfTI shape and rejects malformed or
+mismatched dimensions. Selected-source limitation: `LesionToadAtlas` reads
+exactly `Nx*Ny*Nz` bytes from a headerless file, while the self-contained
+repository bundles only `.nii.gz` topology data; this Python path therefore
+uses NiBabel and does not claim to reproduce that raw-byte reader. Shape-array
+loading, source index conversion, transformed sampling, and algorithmic
+topology use remain open. Full-suite validation: 594 passed, 2 expected RAS
+warnings, in 79.50 seconds on implementation commit
+`f3ea4073b4933d0dc3a6a712f3bce59c9ec9763a`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-topology-geometry.md`](reports/full-pytest-2026-09-29-lesion-topology-geometry.md).
 
 ### Completed substage: P39e shape-prior NIfTI loading
 
