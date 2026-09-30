@@ -131,6 +131,70 @@ def toads_optimized_tissue_data_term(
     return energy
 
 
+def toads_object_intensity_energy(
+    image_values: ArrayLike,
+    centroids: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    image_variances: ArrayLike,
+    *,
+    intensity_field: ArrayLike | None = None,
+    psf_bias: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Compute the selected exact-membership ``OBJECT`` intensity term.
+
+    For each class then modality, the source accumulates weighted squared
+    residuals. The factor order is modality weight × class variance weight ×
+    image variance, followed by multiplication by the residual twice. Optional
+    intensity-field correction is applied before PSF-bias and centroid
+    subtraction. This covers only the ordinary OBJECT data term, before
+    smoothing, shape prior, reciprocal inversion, relation weights, and
+    membership normalization.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    means = np.asarray(centroids, dtype=np.float32)
+    mod_weights = np.asarray(modality_weights, dtype=np.float32)
+    var_weights = np.asarray(class_variance_weights, dtype=np.float32)
+    var_images = np.asarray(image_variances, dtype=np.float32)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    channels = images.shape[-1]
+    if means.ndim != 2 or means.shape[0] != channels or means.shape[1] < 1:
+        raise ValueError("centroids must have shape (modality, class)")
+    if var_weights.shape != means.shape:
+        raise ValueError("class_variance_weights must match centroid shape")
+    if mod_weights.shape != (channels,) or var_images.shape != (channels,):
+        raise ValueError("modality weights and image variances must match modality count")
+    if not all(np.isfinite(value).all() for value in (means, var_weights, mod_weights, var_images)):
+        raise ValueError("OBJECT intensity parameters must be finite")
+
+    if intensity_field is None:
+        corrected = images
+    else:
+        field = np.asarray(intensity_field, dtype=np.float32)
+        if field.shape != images.shape or not np.isfinite(field).all():
+            raise ValueError("intensity_field must be finite and match image_values")
+        corrected = np.asarray(field * images, dtype=np.float32)
+    if psf_bias is None:
+        bias = np.zeros_like(images, dtype=np.float32)
+    else:
+        bias = np.asarray(psf_bias, dtype=np.float32)
+        if bias.shape != images.shape or not np.isfinite(bias).all():
+            raise ValueError("psf_bias must be finite and match image_values")
+
+    energy = np.zeros(images.shape[:-1] + (means.shape[1],), dtype=np.float32)
+    for class_index in range(means.shape[1]):
+        for channel in range(channels):
+            residual = np.asarray(corrected[..., channel] - bias[..., channel], dtype=np.float32)
+            residual = np.asarray(residual - means[channel, class_index], dtype=np.float32)
+            weight = np.float32(mod_weights[channel] * var_weights[channel, class_index])
+            weight = np.float32(weight * var_images[channel])
+            weighted_residual = np.asarray(weight * residual, dtype=np.float32)
+            contribution = np.asarray(weighted_residual * residual, dtype=np.float32)
+            energy[..., class_index] = np.asarray(energy[..., class_index] + contribution, dtype=np.float32)
+    return energy
+
+
 def toads_psf_ridge_bias(
     image_values: ArrayLike,
     segmentation: ArrayLike,
