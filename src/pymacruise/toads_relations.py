@@ -20,6 +20,7 @@ class ToadsRelationList:
 
     relation_map: NDArray[np.int16]
     relation_membership: NDArray[np.bool_]
+    diffusion_iterations: int = 0
 
     @property
     def class_adjacency(self) -> NDArray[np.bool_]:
@@ -227,3 +228,77 @@ def toads_build_relation_list(
             relation_membership[class_index] |= members
 
     return ToadsRelationList(relation_map, relation_membership)
+
+
+def toads_compute_relations(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    limit: int,
+) -> ToadsRelationList:
+    """Build and diffuse the selected exact-membership TOADS relation map.
+
+    This composes the source `computeRelations` loop with the validated local
+    relation table. Class-only interior entries may adopt a neighboring
+    relation ID with the strictly greatest summed membership support. Face
+    traversal and class accumulation match the Java ordering; each pass reads
+    the prior map and writes synchronously. The source sets ``change`` while
+    any simple class map remains and has an exclusive ``t < 10*limit`` cap.
+    Approximate-membership mode is not covered and is intentionally rejected.
+    """
+    labels = np.asarray(segmentation)
+    membership_values = np.asarray(memberships, dtype=np.float32)
+    if membership_values.ndim != 4 or membership_values.shape[:3] != labels.shape:
+        raise ValueError("memberships must match the segmentation grid and have a class axis")
+    classes = membership_values.shape[-1]
+    if classes < 1 or not np.isfinite(membership_values).all():
+        raise ValueError("memberships must be finite and have at least one class")
+    if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit < 0:
+        raise ValueError("limit must be a nonnegative integer")
+
+    relation = toads_build_relation_list(labels, classes)
+    relation_map = relation.relation_map.copy()
+    table = relation.relation_membership
+    nx, ny, nz = labels.shape
+    iterations = 0
+    change = True
+    for _ in range(1, 10 * int(limit)):
+        if not change:
+            break
+        current = relation_map
+        updated = relation_map.copy()
+        target = updated[_INTERIOR]
+        change = bool(np.any(current[_INTERIOR] < classes))
+        active = target < classes
+        best_support = np.zeros(active.shape, dtype=np.float32)
+        best_relation = target.copy()
+        for dx, dy, dz in _FACES:
+            slices = (
+                slice(1 + dx, nx - 1 + dx),
+                slice(1 + dy, ny - 1 + dy),
+                slice(1 + dz, nz - 1 + dz),
+            )
+            neighbor_relation = current[slices]
+            candidate = neighbor_relation >= classes
+            safe_relation = np.clip(neighbor_relation, 0, table.shape[0] - 1)
+            related_classes = table[safe_relation]
+            neighbor_memberships = membership_values[slices]
+            support = np.zeros(active.shape, dtype=np.float32)
+            for class_index in range(classes):
+                term = np.where(
+                    related_classes[..., class_index],
+                    neighbor_memberships[..., class_index],
+                    np.float32(0.0),
+                ).astype(np.float32, copy=False)
+                support = np.asarray(support + term, dtype=np.float32)
+            choose = active & candidate & (support > best_support)
+            best_support[choose] = support[choose]
+            best_relation[choose] = neighbor_relation[choose]
+        target[...] = best_relation
+        relation_map[_INTERIOR] = target
+        iterations += 1
+
+    return ToadsRelationList(
+        relation_map=relation_map,
+        relation_membership=table,
+        diffusion_iterations=iterations,
+    )

@@ -8,7 +8,7 @@ public final class ToadsRelationListReferenceHarness {
     private static final short EMPTY = -1;
     private static final int MAXLB = 500;
 
-    private static byte[][][] phantom(int nx, int ny, int nz, int classes, int mode) {
+    static byte[][][] phantom(int nx, int ny, int nz, int classes, int mode) {
         byte[][][] labels = new byte[nx][ny][nz];
         for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) for (int z = 0; z < nz; z++) {
             int value;
@@ -23,12 +23,12 @@ public final class ToadsRelationListReferenceHarness {
         return labels;
     }
 
-    private static final class Result {
+    static final class Result {
         short[][][] map;
         boolean[][] relations;
     }
 
-    private static Result build(byte[][][] segmentation, int classes) {
+    static Result build(byte[][][] segmentation, int classes) {
         int nx = segmentation.length, ny = segmentation[0].length, nz = segmentation[0][0].length;
         short[][][] relationMap = new short[nx][ny][nz];
         List<short[]> lbs = new ArrayList<>();
