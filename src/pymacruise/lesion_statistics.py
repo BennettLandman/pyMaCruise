@@ -303,3 +303,156 @@ def compute_lesion_toads_variances(
         else:
             black_std[channel] = np.float32(0.0)
     return LesionToadsVariances(class_std, lesion_std, black_std)
+
+
+def compute_lesion_toads_channel_weights(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    class_centroids: ArrayLike,
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    outlier_membership: ArrayLike,
+    lesion_centroid: ArrayLike,
+    black_hole_centroid: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    *,
+    outlier_distance: float,
+    fields: ArrayLike | None = None,
+    norm_type: str = "Diagonal Covariance",
+) -> NDArray[np.float32]:
+    """Port selected ``computeChannelWeights()`` channel-weight behavior.
+
+    The selected diagonal-covariance path retains the source's squared-error
+    OBJECT/OUTLIER terms and its linear residual sum for lesion-related
+    classes. MASK and OUTMASK object types do not contribute in this method.
+    Other normalization modes return the source's uniform ``1 / nc`` weights.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    weights = np.asarray(memberships, dtype=np.float32)
+    centroids = np.asarray(class_centroids, dtype=np.float32)
+    lesion_map = np.asarray(lesion_membership, dtype=np.float32)
+    black_map = np.asarray(black_hole_membership, dtype=np.float32)
+    outlier_map = np.asarray(outlier_membership, dtype=np.float32)
+    lesion_mean = np.asarray(lesion_centroid, dtype=np.float32)
+    black_mean = np.asarray(black_hole_centroid, dtype=np.float32)
+    field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    types = tuple(object_types)
+    if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    spatial, channels = values.shape[:3], values.shape[3]
+    if weights.ndim != 4 or weights.shape[:3] != spatial or weights.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and have at least one class")
+    classes = weights.shape[3]
+    if len(types) != classes or any(not isinstance(item, str) for item in types):
+        raise ValueError("object_types must provide one string per membership class")
+    if centroids.shape != (channels, classes):
+        raise ValueError("class_centroids must have shape (channels, classes)")
+    if any(array.shape != spatial for array in (lesion_map, black_map, outlier_map)):
+        raise ValueError("lesion, black-hole, and outlier maps must match the image grid")
+    if lesion_mean.shape != (channels,) or black_mean.shape != (channels,):
+        raise ValueError("lesion and black-hole centroids must match image channels")
+    if field_values is not None and field_values.shape != values.shape:
+        raise ValueError("fields must match the image grid and channel count")
+    outlier = np.float32(outlier_distance)
+    if not np.isfinite(outlier):
+        raise ValueError("outlier_distance must be finite")
+    finite_arrays = (
+        values, weights, centroids, lesion_map, black_map, outlier_map,
+        lesion_mean, black_mean,
+    )
+    if not all(np.isfinite(array).all() for array in finite_arrays):
+        raise ValueError("image, membership, and centroid arrays must be finite")
+    if field_values is not None and not np.isfinite(field_values).all():
+        raise ValueError("fields must be finite")
+    if norm_type != "Diagonal Covariance":
+        return np.full(channels, np.float32(1.0) / np.float32(channels), dtype=np.float32)
+
+    epsilon = np.float32(1.0e-30)
+    infinite = np.float32(1.0e10)
+    raw_weights = np.empty(channels, dtype=np.float32)
+    weight_sum = np.float32(0.0)
+    lesion_types = {"lesion", "optimized_lesion", "blackhole"}
+    for channel in range(channels):
+        numerator = np.float32(0.0)
+        denominator = np.float32(0.0)
+        for class_index, kind in enumerate(types):
+            for x in range(spatial[0]):
+                for y in range(spatial[1]):
+                    for z in range(spatial[2]):
+                        membership = weights[x, y, z, class_index]
+                        sample = values[x, y, z, channel]
+                        if field_values is not None:
+                            sample = np.float32(field_values[x, y, z, channel] * sample)
+                        if kind == "object":
+                            difference = np.float32(sample - centroids[channel, class_index])
+                            square_weight = np.float32(
+                                np.float32(membership * membership) + epsilon
+                            )
+                            term = np.float32(
+                                np.float32(square_weight * difference) * difference
+                            )
+                            numerator = np.float32(numerator + term)
+                            denominator = np.float32(denominator + square_weight)
+                        elif kind == "outlier":
+                            difference = np.float32(sample - centroids[channel, class_index])
+                            outlier_value = outlier_map[x, y, z]
+                            complement = np.float32(np.float32(1.0) - outlier_value)
+                            inlier_weight = np.float32(
+                                np.float32(
+                                    np.float32(
+                                        np.float32(membership * membership) * complement
+                                    )
+                                    * complement
+                                )
+                                + epsilon
+                            )
+                            inlier_term = np.float32(
+                                np.float32(inlier_weight * difference) * difference
+                            )
+                            outlier_weight = np.float32(
+                                np.float32(
+                                    np.float32(membership * membership) * outlier_value
+                                )
+                                * outlier_value
+                            )
+                            outlier_term = np.float32(
+                                np.float32(outlier_weight * outlier) * outlier
+                            )
+                            numerator = np.float32(
+                                numerator + np.float32(inlier_term + outlier_term)
+                            )
+                            denominator = np.float32(
+                                denominator
+                                + np.float32(np.float32(membership * membership) + epsilon)
+                            )
+                        elif kind in lesion_types:
+                            difference = np.float32(sample - centroids[channel, class_index])
+                            lesion_difference = np.float32(sample - lesion_mean[channel])
+                            black_difference = np.float32(sample - black_mean[channel])
+                            lesion_value = lesion_map[x, y, z]
+                            black_value = black_map[x, y, z]
+                            class_weight = np.float32(
+                                np.float32(membership * membership) + epsilon
+                            )
+                            lesion_weight = np.float32(
+                                np.float32(lesion_value * lesion_value) + epsilon
+                            )
+                            black_weight = np.float32(
+                                np.float32(black_value * black_value) + epsilon
+                            )
+                            class_term = np.float32(class_weight * difference)
+                            lesion_term = np.float32(lesion_weight * lesion_difference)
+                            black_term = np.float32(black_weight * black_difference)
+                            numerator_delta = np.float32(
+                                np.float32(class_term + lesion_term) + black_term
+                            )
+                            numerator = np.float32(numerator + numerator_delta)
+                            denominator_delta = np.float32(
+                                np.float32(class_weight + lesion_weight) + black_weight
+                            )
+                            denominator = np.float32(denominator + denominator_delta)
+        raw = np.float32(denominator / numerator) if numerator > np.float32(0.0) else infinite
+        raw_weights[channel] = raw
+        weight_sum = np.float32(weight_sum + raw)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.asarray(raw_weights / weight_sum, dtype=np.float32)
