@@ -230,6 +230,17 @@ relation / reciprocal membership update on raw and field-corrected synthetic
 inputs. Regenerate with
 `scripts/generate_java_toads_object_membership_pass_reference.sh`.
 
+## TOADS OBJECT/OUTLIER membership sweep
+
+`ToadsObjectMaskOutlierSweepReferenceHarness.java` records a selected
+source-order float32 membership sweep with ordinary OBJECT and OUTLIER
+classes. It covers six-face smoothing, shape-relation factors, OUTLIER energy
+mixing, normalization of both class membership and the scalar outlier map,
+and objective accumulation on a deterministic 4 x 4 x 4 phantom. Regenerate
+with `scripts/generate_java_toads_object_mask_outlier_sweep_reference.sh`;
+the selected-method scope and limitations are listed in
+`tests/data/synthetic/toads_object_mask_outlier_sweep/README.md`.
+
 ## TOADS MASK intensity energy
 
 `ToadsMaskIntensityEnergyReferenceHarness.java` records the selected binary
