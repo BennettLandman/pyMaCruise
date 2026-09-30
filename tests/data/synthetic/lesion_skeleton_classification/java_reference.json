@@ -1,0 +1,1 @@
+{"source_method":"LesionToadSegmentation.updateClassificationFromSkeleton","source_sha256":"545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99","template_labels":[-10,20,-128,99],"initial":[5,-10,20,0,99,0,2,-10,-7,20],"skeleton":[-1,0,1,2,3,-1,2,0,3,1],"classification":[0,-10,20,-128,99,0,-128,-10,99,20],"changed":4}
