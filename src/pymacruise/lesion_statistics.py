@@ -456,3 +456,71 @@ def compute_lesion_toads_channel_weights(
         weight_sum = np.float32(weight_sum + raw)
     with np.errstate(invalid="ignore", divide="ignore"):
         return np.asarray(raw_weights / weight_sum, dtype=np.float32)
+
+
+def compute_lesion_toads_noise_standard_deviation(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    segmentation: ArrayLike,
+    class_centroids: ArrayLike,
+    *,
+    fields: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Port selected ``computeNoiseVariance()`` and broadcast per-channel SD.
+
+    The source excludes hard class 0, pools residuals over all remaining
+    classes, then assigns each channel's one pooled standard deviation to
+    every class. It uses membership-squared weights with an additive ``1e-30``
+    floor in both numerator and denominator.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    weights = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    centroids = np.asarray(class_centroids, dtype=np.float32)
+    field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    spatial, channels = values.shape[:3], values.shape[3]
+    if weights.ndim != 4 or weights.shape[:3] != spatial or weights.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and have at least one class")
+    classes = weights.shape[3]
+    if labels.shape != spatial or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer grid matching the images")
+    if centroids.shape != (channels, classes):
+        raise ValueError("class_centroids must have shape (channels, classes)")
+    if field_values is not None and field_values.shape != values.shape:
+        raise ValueError("fields must match the image grid and channel count")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must index the membership classes")
+    if not all(np.isfinite(array).all() for array in (values, weights, centroids)):
+        raise ValueError("images, memberships, and centroids must be finite")
+    if field_values is not None and not np.isfinite(field_values).all():
+        raise ValueError("fields must be finite")
+
+    result = np.zeros((channels, classes), dtype=np.float32)
+    epsilon = np.float32(1.0e-30)
+    for channel in range(channels):
+        numerator = np.float32(0.0)
+        denominator = np.float32(0.0)
+        for class_index in range(1, classes):
+            for x in range(spatial[0]):
+                for y in range(spatial[1]):
+                    for z in range(spatial[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = weights[x, y, z, class_index]
+                        sample = values[x, y, z, channel]
+                        if field_values is not None:
+                            sample = np.float32(field_values[x, y, z, channel] * sample)
+                        difference = np.float32(sample - centroids[channel, class_index])
+                        square_weight = np.float32(
+                            np.float32(membership * membership) + epsilon
+                        )
+                        term = np.float32(np.float32(square_weight * difference) * difference)
+                        numerator = np.float32(numerator + term)
+                        denominator = np.float32(denominator + square_weight)
+        if denominator > np.float32(0.0):
+            quotient = np.float32(numerator / denominator)
+            value = np.float32(np.sqrt(np.float64(quotient)))
+            result[channel, :] = value
+    return result

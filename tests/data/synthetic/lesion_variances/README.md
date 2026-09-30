@@ -15,8 +15,14 @@ membership value. This source behavior is documented and reproduced, not
 corrected silently. Class standard deviation for the absent class and
 auxiliary standard deviations with no selected support are zero.
 
+The same NIfTI also supports the selected `computeNoiseVariance()` update.
+Its Java excerpt and Python implementation match pooled channel deviations
+with and without fields, exclude hard class 0, assign each pooled value to
+all classes, and return zeros when no non-background labels exist.
+
 Regenerate the NIfTI with `scripts/generate_lesion_variance_fixture.py` and
-the reference with `scripts/generate_java_lesion_variances_reference.sh`.
-This validates the variance updater for supplied hard labels and membership
-maps; it does not validate centroid-category assignment or full membership
+the references with `scripts/generate_java_lesion_variances_reference.sh` and
+`scripts/generate_java_lesion_noise_variance_reference.sh`. These validate
+the variance and noise-standard-deviation methods for supplied maps only;
+they do not validate centroid-category assignment or full membership
 iteration.
