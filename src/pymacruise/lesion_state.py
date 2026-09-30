@@ -19,6 +19,8 @@ from typing import Sequence
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pymacruise.toads_control import toads_classification_from_labels
+
 
 @dataclass(frozen=True)
 class LesionToadsSegmentationState:
@@ -63,6 +65,81 @@ class LesionToadsSegmentationState:
     channel_weight: NDArray[np.float32]
     lesion_weight: NDArray[np.float32]
     lesion_class: int
+
+
+@dataclass(frozen=True)
+class LesionToadsFinalClassification:
+    """Final template labels and source lesion/black-hole subtype map."""
+
+    classification: NDArray[np.int8]
+    lesion_classification: NDArray[np.int16]
+    changed_classification_voxels: int
+    lesion_voxels: int
+
+
+def lesion_toads_final_classification(
+    segmentation: ArrayLike,
+    template_labels: ArrayLike,
+    previous_classification: ArrayLike,
+    memberships: ArrayLike,
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    lesion_class: int,
+    *,
+    has_lesion: bool = True,
+) -> LesionToadsFinalClassification:
+    """Transfer labels and assign selected LesionTOADS lesion subtypes.
+
+    The selected outer loop first invokes
+    ``updateClassificationFromLabels()`` and then
+    ``updateLesionClassifcation()``. A lesion subtype is emitted only when the
+    resulting class label is the lesion class and either auxiliary membership
+    strictly exceeds that class's ordinary membership. Lesion membership wins
+    the subtype tie (code 1); a strictly larger black-hole membership yields
+    code 2. The returned lesion map uses the Java ``short`` range and values
+    0, 1, or 2.
+    """
+    labels = np.asarray(segmentation)
+    class_memberships = np.asarray(memberships, dtype=np.float32)
+    lesion = np.asarray(lesion_membership, dtype=np.float32)
+    black_hole = np.asarray(black_hole_membership, dtype=np.float32)
+    if labels.ndim != 3 or any(size == 0 for size in labels.shape):
+        raise ValueError("segmentation must be a nonempty 3-D integer array")
+    if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
+        raise ValueError("segmentation labels must be integers")
+    if class_memberships.ndim != 4 or class_memberships.shape[:3] != labels.shape:
+        raise ValueError("memberships must match segmentation and have a class axis")
+    classes = class_memberships.shape[-1]
+    if isinstance(lesion_class, (bool, np.bool_)) or not isinstance(lesion_class, (int, np.integer)):
+        raise ValueError("lesion_class must be an integer class index")
+    if not 0 <= int(lesion_class) < classes:
+        raise ValueError("lesion_class is outside the membership class axis")
+    if lesion.shape != labels.shape or black_hole.shape != labels.shape:
+        raise ValueError("lesion and black-hole memberships must match segmentation")
+    if not all(np.isfinite(array).all() for array in (class_memberships, lesion, black_hole)):
+        raise ValueError("membership arrays must contain only finite values")
+    if not isinstance(has_lesion, (bool, np.bool_)):
+        raise ValueError("has_lesion must be boolean")
+
+    classification, changed = toads_classification_from_labels(
+        labels, template_labels, previous_classification
+    )
+    lesion_values = np.zeros(labels.shape, dtype=np.int16)
+    if has_lesion:
+        lesion_label = int(np.asarray(template_labels)[int(lesion_class)])
+        ordinary = class_memberships[..., int(lesion_class)]
+        selected = (classification == lesion_label) & (
+            (lesion > ordinary) | (black_hole > ordinary)
+        )
+        lesion_values[selected] = np.where(
+            lesion[selected] < black_hole[selected], 2, 1
+        ).astype(np.int16)
+    return LesionToadsFinalClassification(
+        classification=classification,
+        lesion_classification=lesion_values,
+        changed_classification_voxels=changed,
+        lesion_voxels=int(np.count_nonzero(lesion_values)),
+    )
 
 
 def initialize_lesion_toads_segmentation_state(
