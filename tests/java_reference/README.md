@@ -203,3 +203,14 @@ limitations.
 `computeBoundaryDistances`, including signed-byte interface seeding and the
 source loop behavior that prevents a zero distance from expanding. Regenerate
 with `scripts/generate_java_toads_boundary_distances_reference.sh`.
+
+## TOADS relation-state refresh
+
+`ToadsRelationStateRefreshReferenceHarness.java` calls the selected relation
+diffusion, boundary-distance, and closest-label excerpts in wrapper order on
+one folded synthetic input, carrying nonuniform float32 memberships and
+prepopulated boundary bytes. It records every output and loop count.
+Regenerate with
+`scripts/generate_java_toads_relation_state_refresh_reference.sh`; fixture
+scope is documented in
+`tests/data/synthetic/toads_relation_state_refresh/README.md`.

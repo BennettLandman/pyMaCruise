@@ -700,3 +700,19 @@ and
 [`tests/data/synthetic/toads_boundary_distances/README.md`](../tests/data/synthetic/toads_boundary_distances/README.md).
 This validates boundary-distance state only, not distance-weighted
 membership behavior or complete TOADS evolution.
+
+### Completed substage: P18bm source-ordered relation-state refresh
+
+`toads_refresh_relation_state` composes the selected wrapper's
+`computeRelations` → `computeBoundaryDistances` → `computeClosestLabels`
+sequence. It returns the diffused relation map/table, updated carried
+signed-byte boundary state, and four closest-label slots from one segmentation
+snapshot, with the selected loops' pass counts. A composed selected-Java
+harness and Python match every map/table entry and byte on an asymmetric
+folded 9×8×7 phantom with nonuniform float32 memberships and prepopulated
+boundary state. Focused checks: 5 passed. Full-suite evidence is recorded in
+[`docs/reports/full-pytest-2026-09-29-toads-relation-state-refresh.md`](reports/full-pytest-2026-09-29-toads-relation-state-refresh.md)
+for 565 passed and 2 expected RAS warnings in 77.82s on implementation commit
+`ae7e5558b301c22f1ebe4d334a1fda7e90b6a711`. This validates selected state
+refresh only; approximate-membership mode and TOADS segmentation evolution
+remain open.
