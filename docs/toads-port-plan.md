@@ -597,5 +597,13 @@ harness reference exactly; see [the P18bc report](reports/toads-growing-pass-202
 This remains source-slice evidence only and does not establish full TOADS
 segmentation, atlas alignment, or real-data parity.
 
+### Started substage: P18bg AlgorithmMultipleToads loop control
+
+Implement the source outer-loop convergence and iteration-limit decisions,
+including its conditional growing pass on a stopping iteration, final
+classification update, and relation refresh only when continuing. Keep the
+energy-ratio float32 order and stage order explicit. This is control-flow
+validation, not a complete TOADS iteration.
+
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
