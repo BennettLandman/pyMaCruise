@@ -221,3 +221,11 @@ scope is documented in
 ordinary OBJECT squared-residual energy on a synthetic multimodal volume,
 with optional field correction and PSF bias. Regenerate with
 `scripts/generate_java_toads_object_intensity_energy_reference.sh`.
+
+## TOADS ordinary OBJECT membership pass
+
+`ToadsObjectMembershipPassReferenceHarness.java` composes the selected
+ordinary-OBJECT intensity term, inverse shape prior, and ordered smoothing /
+relation / reciprocal membership update on raw and field-corrected synthetic
+inputs. Regenerate with
+`scripts/generate_java_toads_object_membership_pass_reference.sh`.

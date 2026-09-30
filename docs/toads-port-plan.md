@@ -731,3 +731,19 @@ commit `dd26e5ce978514c0df75f022bf8a7bf370d1ea71`; see
 [`docs/reports/full-pytest-2026-09-29-toads-object-intensity-energy.md`](reports/full-pytest-2026-09-29-toads-object-intensity-energy.md)
 and [`tests/data/synthetic/toads_object_intensity_energy/README.md`](../tests/data/synthetic/toads_object_intensity_energy/README.md).
 This is one source data term, not a full class-energy or membership update.
+
+### Completed substage: P18br ordinary OBJECT membership pass composition
+
+`toads_object_membership_pass` composes the P18bq data term with the existing
+inverse-shape prior and `toads_ordered_membership_sweep`. It reuses the
+source-checked Python helpers for prior terms, in-place six-face smoothing,
+relation weighting, reciprocal conversion, normalization, and objective
+accumulation. The selected Java composition harness and Python match every
+membership bit and objective float on a 4×4×4 synthetic volume with two
+modalities and three classes, in both raw and field-corrected/PSF-bias modes.
+Focused checks: 2 passed. Full suite: 569 passed, 2 expected RAS warnings, in
+77.32s on implementation commit `e01b03e838fa9330f7487c9feb31260a3e1883dd`;
+see [`docs/reports/full-pytest-2026-09-29-toads-object-membership-pass.md`](reports/full-pytest-2026-09-29-toads-object-membership-pass.md)
+and [`tests/data/synthetic/toads_object_membership_pass/README.md`](../tests/data/synthetic/toads_object_membership_pass/README.md).
+This is the ordinary OBJECT pass only; lesion/outlier mixtures, topology
+gates, and outer TOADS evolution remain open.
