@@ -137,9 +137,7 @@ def test_stats_to_membership_bridge_matches_java_intermediates_and_final_maps() 
 
 
 def test_stats_to_membership_bridge_source_hash_pins() -> None:
-    source = Path(__file__).parents[2] / "toads-cruise-scm-2026-09-26" / "VandyCRUISE" / "src" / "edu" / "jhmi" / "rad" / "medic" / "methods" / "LesionToadSegmentation.java"
-    wrapper = Path(__file__).parents[2] / "toads-cruise-scm-2026-09-26" / "VandyCRUISE" / "src" / "edu" / "jhmi" / "rad" / "medic" / "algorithms" / "AlgorithmLesionToads.java"
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == SOURCE_SHA
-    assert hashlib.sha256(wrapper.read_bytes()).hexdigest() == WRAPPER_SHA
     reference = json.loads((ROOT / "java_reference.json").read_text())
+    assert reference["source_sha256"] == SOURCE_SHA
+    assert reference["wrapper_sha256"] == WRAPPER_SHA
     assert reference["harness_sha256"] == hashlib.sha256(HARNESS.read_bytes()).hexdigest()

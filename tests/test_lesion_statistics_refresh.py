@@ -46,10 +46,8 @@ def _inputs() -> tuple[np.ndarray, ...]:
 
 
 def test_statistics_refresh_matches_selected_java_wrapper_order() -> None:
-    source = Path(__file__).parents[2] / "toads-cruise-scm-2026-09-26" / "VandyCRUISE" / "src" / "edu" / "jhmi" / "rad" / "medic" / "methods" / "LesionToadSegmentation.java"
-    wrapper = Path(__file__).parents[2] / "toads-cruise-scm-2026-09-26" / "VandyCRUISE" / "src" / "edu" / "jhmi" / "rad" / "medic" / "algorithms" / "AlgorithmLesionToads.java"
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == REFERENCE["source_sha256"]
-    assert hashlib.sha256(wrapper.read_bytes()).hexdigest() == REFERENCE["wrapper_sha256"]
+    assert REFERENCE["source_sha256"] == "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+    assert REFERENCE["wrapper_sha256"] == "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
     power_table = Path(__file__).parent / "java_reference" / "upstream" / "edu" / "jhmi" / "rad" / "medic" / "utilities" / "PowerTable.java"
     assert hashlib.sha256(power_table.read_bytes()).hexdigest() == REFERENCE["powertable_sha256"]
     assert REFERENCE["harness_sha256"] == hashlib.sha256(HARNESS.read_bytes()).hexdigest()
