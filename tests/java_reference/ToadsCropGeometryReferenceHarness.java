@@ -1,6 +1,8 @@
 /*
- * Test-only transcription of selected methods from the toads-cruise source.
- * See tests/data/synthetic/toads_crop_geometry/README.md for provenance.
+ * Test-only source excerpt harness for selected toads-cruise methods.
+ * The body of findCroppingBoundaries and computeImageCoordinates below follows
+ * the selected source lines directly; dependencies and provenance are recorded
+ * in tests/data/synthetic/toads_crop_geometry/README.md.
  */
 import java.util.Locale;
 
@@ -10,7 +12,7 @@ public final class ToadsCropGeometryReferenceHarness {
     static final int BORDER = 2, BG = 1;
     static final float[] IMAGE_RES = {1.0f, 1.25f, 1.5f};
     static final float[] TEMPLATE_RES = {1.0f, 1.0f, 1.0f};
-    static final float[] ORIENT = {1.0f, -1.0f, 1.0f};
+    static final float[] ORIENT = {-1.0f, -1.0f, 1.0f};
     static final float[] ROT = {0.12f, -0.08f, 0.05f};
     static final float[] TRANS = {0.4f, -0.25f, 0.3f};
 
@@ -20,6 +22,9 @@ public final class ToadsCropGeometryReferenceHarness {
     static int x0, xN, y0, yN, z0, zN;
     static int mx, my, mz;
     static float[] transform = new float[6];
+    static float[] low = {0.0f}, high = {1.0f};
+    static boolean normalized = true;
+    static float bgRatio = 0.2f;
 
     static float[][] rotation(float a, float b, float c) {
         // Transcribed from RotationMatrix.setParameters(float,float,float).
@@ -39,15 +44,18 @@ public final class ToadsCropGeometryReferenceHarness {
         return r;
     }
 
-    static float[] imageCoordinates(int x, int y, int z, float[][] r) {
-        // Transcribed from MultipleToadPreprocess.computeImageCoordinates.
-        float xct=TX/2.0f, yct=TY/2.0f, zct=TZ/2.0f;
-        float xci=NX/2.0f, yci=NY/2.0f, zci=NZ/2.0f;
-        return new float[] {
-            (r[0][0]*((x-xct)*TEMPLATE_RES[0]-transform[3])+r[1][0]*((y-yct)*TEMPLATE_RES[1]-transform[4])+r[2][0]*((z-zct)*TEMPLATE_RES[2]-transform[5]))*ORIENT[0]/IMAGE_RES[0]+xci,
-            (r[0][1]*((x-xct)*TEMPLATE_RES[0]-transform[3])+r[1][1]*((y-yct)*TEMPLATE_RES[1]-transform[4])+r[2][1]*((z-zct)*TEMPLATE_RES[2]-transform[5]))*ORIENT[1]/IMAGE_RES[1]+yci,
-            (r[0][2]*((x-xct)*TEMPLATE_RES[0]-transform[3])+r[1][2]*((y-yct)*TEMPLATE_RES[1]-transform[4])+r[2][2]*((z-zct)*TEMPLATE_RES[2]-transform[5]))*ORIENT[2]/IMAGE_RES[2]+zci
-        };
+    static float[] computeImageCoordinates(int x,int y,int z,float[] trans,float[][] rot) {
+        // Selected-source method body: MultipleToadPreprocess.java:653-663.
+        float xCt=TX/2.0f,yCt=TY/2.0f,zCt=TZ/2.0f;
+        float xCi=NX/2.0f,yCi=NY/2.0f,zCi=NZ/2.0f;
+        float rtx=TEMPLATE_RES[0],rty=TEMPLATE_RES[1],rtz=TEMPLATE_RES[2];
+        float rix=IMAGE_RES[0],riy=IMAGE_RES[1],riz=IMAGE_RES[2];
+        float orx=ORIENT[0],ory=ORIENT[1],orz=ORIENT[2];
+        float[] XI = new float[3];
+        XI[0] = (rot[0][0]*((x-xCt)*rtx-trans[3])+rot[1][0]*((y-yCt)*rty-trans[4])+rot[2][0]*((z-zCt)*rtz-trans[5]))*orx/rix + xCi;
+        XI[1] = (rot[0][1]*((x-xCt)*rtx-trans[3])+rot[1][1]*((y-yCt)*rty-trans[4])+rot[2][1]*((z-zCt)*rtz-trans[5]))*ory/riy + yCi;
+        XI[2] = (rot[0][2]*((x-xCt)*rtx-trans[3])+rot[1][2]*((y-yCt)*rty-trans[4])+rot[2][2]*((z-zCt)*rtz-trans[5]))*orz/riz + zCi;
+        return XI;
     }
 
     static float[] templateCoordinates(int x, int y, int z, float[][] r) {
@@ -68,15 +76,23 @@ public final class ToadsCropGeometryReferenceHarness {
         return topology[round(x)][round(y)][round(z)];
     }
 
-    static void findBounds() {
+    static void findCroppingBoundaries() {
+        // Selected-source loop body: MultipleToadPreprocess.java:302-344.
         x0=NX-1; xN=0; y0=NY-1; yN=0; z0=NZ-1; zN=0;
-        // Source image scan with normalized=true and bgRatio=0.2.
-        for (int x=0;x<NX;x++) for (int y=0;y<NY;y++) for (int z=0;z<NZ;z++) if (image[x][y][z] > 0.2f) {
-            x0=Math.min(x0,x); xN=Math.max(xN,x); y0=Math.min(y0,y); yN=Math.max(yN,y); z0=Math.min(z0,z); zN=Math.max(zN,z);
+        // Source scans channels inside each voxel; this fixture has nc=1.
+        for (int x=0;x<NX;x++) for (int y=0;y<NY;y++) for (int z=0;z<NZ;z++) {
+            for (int c=0;c<1;c++) {
+                if (((normalized) && (image[x][y][z] > bgRatio))
+                    || (image[x][y][z] > bgRatio*(high[c]-low[c]))) {
+                    if (x<x0) x0=x; if (x>xN) xN=x;
+                    if (y<y0) y0=y; if (y>yN) yN=y;
+                    if (z<z0) z0=z; if (z>zN) zN=z;
+                }
+            }
         }
         float[][] r=rotation(ROT[0],ROT[1],ROT[2]);
         for (int x=0;x<TX;x++) for (int y=0;y<TY;y++) for (int z=0;z<TZ;z++) if (topology[x][y][z] > BG) {
-            float[] v=imageCoordinates(x,y,z,r);
+            float[] v=computeImageCoordinates(x,y,z,transform,r);
             if (v[0]<x0) x0=floor(v[0]); if (v[0]>xN) xN=ceil(v[0]);
             if (v[1]<y0) y0=floor(v[1]); if (v[1]>yN) yN=ceil(v[1]);
             if (v[2]<z0) z0=floor(v[2]); if (v[2]>zN) zN=ceil(v[2]);
@@ -143,7 +159,7 @@ public final class ToadsCropGeometryReferenceHarness {
         // Distinct labels exercise categorical nearest-neighbor transformation.
         for (int x=1;x<=3;x++) for(int y=2;y<=4;y++) for(int z=1;z<=3;z++) if(x==1||x==3||y==2||y==4||z==1||z==3) topology[x][y][z]=(byte)2;
         for (int x=3;x<=6;x++) for(int y=3;y<=6;y++) for(int z=2;z<=5;z++) topology[x][y][z]=(byte)3;
-        findBounds();
+        findCroppingBoundaries();
         int[] bounds={x0,xN,y0,yN,z0,zN};
         crop();
         float[] croppedTransform=transform.clone();

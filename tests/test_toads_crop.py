@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -16,6 +17,14 @@ from pymacruise.toads_crop import (
 
 
 FIXTURE = Path(__file__).parent / "data/synthetic/toads_crop_geometry/java_reference.json"
+JAVA_HARNESS = Path(__file__).parent / "java_reference/ToadsCropGeometryReferenceHarness.java"
+JAVA_HARNESS_SHA256 = "73434da80a7c4d05aff37738f410bd40a617cea1b588253388dc3133e120c4c3"
+FIXTURE_SHA256 = "27de97cd1cee967dadd621a26d760d2a7cd09ad9aa0cdb9680644367c6dbc29a"
+
+
+def test_toads_crop_java_reference_is_pinned() -> None:
+    assert hashlib.sha256(JAVA_HARNESS.read_bytes()).hexdigest() == JAVA_HARNESS_SHA256
+    assert hashlib.sha256(FIXTURE.read_bytes()).hexdigest() == FIXTURE_SHA256
 
 
 def _phantom():
