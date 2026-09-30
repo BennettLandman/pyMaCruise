@@ -13,3 +13,12 @@ membership update. The relation map created after prior growth is intentionally
 retained through thinning, matching the selected wrapper; per-voxel direct vs.
 prior membership dispatch is checked independently against the selected Java
 lookup rule. Correction fields and atlas maps remain supplied fixed inputs.
+
+Pinned source provenance: `AlgorithmLesionToads.java` SHA-256
+`556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb`,
+`LesionToadSegmentation.java` SHA-256
+`545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99`, and
+`LesionToadAtlas.java` SHA-256
+`718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e`. The
+Java formula excerpt, reference JSON, hashes, and fixture are committed here;
+running tests does not require the original checkout.

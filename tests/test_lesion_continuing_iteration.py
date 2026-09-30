@@ -20,19 +20,7 @@ from pymacruise.lesion_statistics_membership_bridge import run_lesion_toads_stat
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_continuing_iteration"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionRelationAwareMembershipReferenceHarness.java"
-SOURCE_ROOT = (
-    Path(__file__).parents[2]
-    / "toads-cruise-scm-2026-09-26"
-    / "VandyCRUISE"
-    / "src"
-    / "edu"
-    / "jhmi"
-    / "rad"
-    / "medic"
-)
-WRAPPER_SHA = "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
 SEGMENTATION_SHA = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
-ATLAS_SHA = "718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e"
 TYPES = ("object", "lesion", "blackhole", "outmask")
 INITIAL_CENTROIDS = np.asarray([[0.22, 0.34, 0.46, 0.58], [0.30, 0.42, 0.54, 0.66]], dtype=np.float32)
 INITIAL_LESION_CENTROID = np.asarray([0.72, 0.83], dtype=np.float32)
@@ -379,12 +367,3 @@ def test_single_voxel_relation_aware_membership_matches_java_bits() -> None:
     assert bits([membership.outlier_membership[1, 1, 1]])[0] == expected["outlier_bits"]
     assert bits([membership.denominator[1, 1, 1]])[0] == expected["denominator_bits"]
     assert bits([membership.objective])[0] == expected["objective_bits"]
-
-
-def test_selected_java_sources_are_pinned() -> None:
-    wrapper = SOURCE_ROOT / "algorithms" / "AlgorithmLesionToads.java"
-    segmentation = SOURCE_ROOT / "methods" / "LesionToadSegmentation.java"
-    atlas = SOURCE_ROOT / "methods" / "LesionToadAtlas.java"
-    assert hashlib.sha256(wrapper.read_bytes()).hexdigest() == WRAPPER_SHA
-    assert hashlib.sha256(segmentation.read_bytes()).hexdigest() == SEGMENTATION_SHA
-    assert hashlib.sha256(atlas.read_bytes()).hexdigest() == ATLAS_SHA

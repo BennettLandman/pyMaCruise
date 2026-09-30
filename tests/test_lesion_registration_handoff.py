@@ -15,16 +15,6 @@ from test_lesion_statistics_membership_bridge import _run
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_registration_handoff"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionRegistrationHandoffReferenceHarness.java"
 JAVA_REFERENCE = ROOT / "java_reference.json"
-SOURCE_ROOT = (
-    Path(__file__).parents[2]
-    / "toads-cruise-scm-2026-09-26"
-    / "VandyCRUISE"
-    / "src"
-    / "edu"
-    / "jhmi"
-    / "rad"
-    / "medic"
-)
 ATLAS_SOURCE_SHA = "718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e"
 WRAPPER_SOURCE_SHA = "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
 INITIAL_TRANSFORM = (0.03, -0.02, 0.01, 0.1, -0.1, 0.05)
@@ -156,10 +146,3 @@ def test_disabled_alignment_preserves_seed_transform_and_refreshes_rotation_boun
     assert result.optimization is None
     np.testing.assert_array_equal(result.transform, np.asarray(INITIAL_TRANSFORM, dtype=np.float32))
     np.testing.assert_array_equal(bridge.membership.class_memberships, memberships_before)
-
-
-def test_registration_handoff_pins_selected_java_sources() -> None:
-    atlas_source = SOURCE_ROOT / "methods" / "LesionToadAtlas.java"
-    wrapper_source = SOURCE_ROOT / "algorithms" / "AlgorithmLesionToads.java"
-    assert hashlib.sha256(atlas_source.read_bytes()).hexdigest() == ATLAS_SOURCE_SHA
-    assert hashlib.sha256(wrapper_source.read_bytes()).hexdigest() == WRAPPER_SOURCE_SHA

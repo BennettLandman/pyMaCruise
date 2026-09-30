@@ -16,19 +16,7 @@ from test_lesion_statistics_membership_bridge import _run as _bridge
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_post_registration"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionPostRegistrationBranchReferenceHarness.java"
-SOURCE_ROOT = (
-    Path(__file__).parents[2]
-    / "toads-cruise-scm-2026-09-26"
-    / "VandyCRUISE"
-    / "src"
-    / "edu"
-    / "jhmi"
-    / "rad"
-    / "medic"
-)
-SOURCE_SHA = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
 WRAPPER_SHA = "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
-ATLAS_SHA = "718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e"
 TYPES = ("object", "lesion", "blackhole", "outmask")
 
 
@@ -224,12 +212,3 @@ def test_stopping_branch_transfers_labels_and_preserves_strict_subtype_tie() -> 
     assert result.final_classification.lesion_classification[2, 2, 1] == 1
     assert result.final_classification.lesion_classification[2, 2, 2] == 2
     assert result.relations is None
-
-
-def test_source_java_files_and_fixture_provenance_are_pinned() -> None:
-    wrapper = SOURCE_ROOT / "algorithms" / "AlgorithmLesionToads.java"
-    source = SOURCE_ROOT / "methods" / "LesionToadSegmentation.java"
-    atlas = SOURCE_ROOT / "methods" / "LesionToadAtlas.java"
-    assert hashlib.sha256(wrapper.read_bytes()).hexdigest() == WRAPPER_SHA
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == SOURCE_SHA
-    assert hashlib.sha256(atlas.read_bytes()).hexdigest() == ATLAS_SHA
