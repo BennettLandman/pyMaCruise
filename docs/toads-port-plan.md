@@ -636,3 +636,19 @@ and
 
 This validates the source label-transfer method only. The complete
 AlgorithmMultipleToads numerical loop and full TOADS evolution remain open.
+
+### Completed substage: P18bi TOADS four-slot closest-label propagation
+
+`toads_closest_labels` in `src/pymacruise/toads_relations.py` ports
+`MultipleToadSegmentation.computeClosestLabels`. It seeds slots from the
+selected six-face traversal, then propagates missing labels synchronously for
+the source's `1 <= t < 5*limit` passes. The Java source-excerpt harness and
+vectorized Python function match all 2,016 slot values for three limits on an
+asymmetric 9×8×7 six-class phantom. Focused checks: 7 passed. Full suite: 542
+passed, 2 expected RAS warnings, in 78.03 seconds on implementation commit
+`5f7a1fad86af0be938d8493a17b179b35d6c2e6b`; see
+[`docs/reports/full-pytest-2026-09-29-toads-closest-labels.md`](reports/full-pytest-2026-09-29-toads-closest-labels.md)
+and
+[`tests/data/synthetic/toads_closest_labels/README.md`](../tests/data/synthetic/toads_closest_labels/README.md).
+This validates closest-label maps, not relation-map construction or complete
+TOADS segmentation.

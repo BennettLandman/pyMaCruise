@@ -161,6 +161,14 @@ The Python-selected-method comparison and malformed-input checks are covered
 by `tests/test_toads_classification_labels.py`; this reference does not imply
 whole-algorithm equivalence.
 
+## TOADS closest-label propagation
+
+`ToadsClosestLabelsReferenceHarness.java` transcribes the selected
+`computeClosestLabels` neighborhood seed and fixed-count diffusion loops.
+It records all four signed-byte label slots on a folded asymmetric phantom at
+three marching limits. Regenerate with
+`scripts/generate_java_toads_closest_labels_reference.sh`.
+
 ## TOADS rigid registration update
 
 `ToadsRigidRegistrationUpdateHarness.java` uses the supplied Java
