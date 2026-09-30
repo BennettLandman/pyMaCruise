@@ -17,8 +17,9 @@ class/auxiliary variance update with its source branch behavior. P39zzr
 validates selected diagonal-covariance channel weights and fallback behavior,
 P39zzs validates pooled noise standard deviations, and P39zzt validates
 generic centroid update modes. P39zzu validates source OUTLIER suppression in
-the generic class-centroid accumulators, and P39zzv validates PowerTable
-weights for optimized CSF/GM/WM centroids.
+the generic class-centroid accumulators, P39zzv validates PowerTable weights
+for optimized CSF/GM/WM centroids, and P39zzw validates ordinary LESION and
+BLACKHOLE centroid routing.
 
 ## Selected workflow and source
 
@@ -1359,3 +1360,25 @@ RAS warnings in 113.80 seconds on implementation commit
 and
 [`tests/data/synthetic/lesion_optimized_centroids/README.md`](../tests/data/synthetic/lesion_optimized_centroids/README.md).
 This validates the optimized tissue centroid branch for supplied maps only.
+
+### Completed substage: P39zzw LESION/BLACKHOLE centroid routing
+
+`compute_lesion_toads_auxiliary_centroids` ports the ordinary LESION and
+BLACKHOLE branches of selected `computeCentroids()`. It routes a hard-labeled
+special-class sample by the maximum of class, lesion, and black-hole
+membership; equality checks preserve class-first, lesion-second, black-hole
+last tie precedence. Lesion-routed samples use the source lesion PowerTable
+weight around the prior lesion centroid. The auxiliary lesion centroid then
+blends 20% toward its weighted sample mean, while the black-hole centroid is
+replaced by its direct weighted mean. The committed 5×4×3 RAS phantom covers
+all three winners, three tie configurations, an exact zero lesion distance,
+an absent class, and two channels with/without field correction. Selected Java
+outputs match raw float32 bits for all five class-centroid modes, including
+the source's hard-coded unlinked auxiliary updates. Focused tests: 2 passed.
+Full suite: 624 passed with 2 expected RAS warnings in 155.83 seconds on
+implementation commit `62d269854156c7fc45b2b35ab8f6c851e95b4e29`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-auxiliary-centroids.md`](reports/full-pytest-2026-09-30-lesion-auxiliary-centroids.md)
+and
+[`tests/data/synthetic/lesion_special_centroids/README.md`](../tests/data/synthetic/lesion_special_centroids/README.md).
+This validates ordinary auxiliary-centroid routing for fixed memberships,
+not optimized lesion categories or full iteration.
