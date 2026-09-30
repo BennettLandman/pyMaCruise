@@ -20,6 +20,8 @@ generic centroid update modes. P39zzu validates source OUTLIER suppression in
 the generic class-centroid accumulators, P39zzv validates PowerTable weights
 for optimized CSF/GM/WM centroids, and P39zzw validates ordinary LESION and
 BLACKHOLE centroid routing.
+P39zzx validates its optimized LESION/BLACKHOLE variant and its separate
+PowerTable factor source.
 
 ## Selected workflow and source
 
@@ -1382,3 +1384,24 @@ and
 [`tests/data/synthetic/lesion_special_centroids/README.md`](../tests/data/synthetic/lesion_special_centroids/README.md).
 This validates ordinary auxiliary-centroid routing for fixed memberships,
 not optimized lesion categories or full iteration.
+
+### Completed substage: P39zzx optimized LESION/BLACKHOLE centroids
+
+`compute_lesion_toads_auxiliary_centroids` now supports
+`OPTIMIZED_LESION` and `OPTIMIZED_BLACKHOLE` classes. It routes by the same
+maximum-membership/tie rule, but computes a shared PowerTable factor from the
+winning membership squared times field-corrected intensity, then uses it in
+the selected class, lesion, or black-hole accumulator. This preserves the
+selected source's unusual factor input rather than substituting a residual.
+The RAS fixture adds a below-ZERO winning term and a PowerTable argument
+outside the cached range. Selected Java outputs match raw float32 class and
+auxiliary centroid bits for all five update modes with and without fields;
+the routing coverage counts are 16 class, 7 lesion, and 7 black-hole samples,
+with each of the three tie configurations present. Focused tests: 2 passed,
+plus 2 ordinary auxiliary-centroid regression tests. Full suite: 626 passed
+with 2 expected RAS warnings in 111.20 seconds on implementation commit
+`9c785fa309bb38889736d6b494e0273e50182d87`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-optimized-auxiliary-centroids.md`](reports/full-pytest-2026-09-30-lesion-optimized-auxiliary-centroids.md)
+and
+[`tests/data/synthetic/lesion_optimized_auxiliary_centroids/README.md`](../tests/data/synthetic/lesion_optimized_auxiliary_centroids/README.md).
+This validates optimized auxiliary centroid routing for fixed maps only.
