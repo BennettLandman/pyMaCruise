@@ -267,7 +267,9 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Started P18ct: validate selected TOADS class-pair similarity dispatch, including mixed lesion/non-lesion coefficient behavior.
 - Started P39zzzzh: port the active default LesionTOADS classification update from ordinary/lesion memberships.
 - Started P18cu: port selected base-TOADS classification output generation and its wrapper packing.
-- The plan now records 237/255 rows (~93%) Done, 6 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P18cv: port base-TOADS CRUISE-output maps for exact and approximate modes.
+- Started P39zzzzi: validate the active stopping-step lesion/black-hole subtype map.
+- The plan now records 237/257 rows (~92%) Done, 8 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
