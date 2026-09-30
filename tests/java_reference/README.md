@@ -236,3 +236,10 @@ on an asymmetric synthetic table. Regenerate with
 neighbor, and prior support weights with the exact-zero prior exclusion and
 records float32 bits for multiple prior strengths. Regenerate with
 `scripts/generate_java_toads_relation_factor_composition_reference.sh`.
+
+## TOADS ordinary OBJECT intensity energy
+
+`ToadsObjectIntensityEnergyReferenceHarness.java` records the selected
+ordinary OBJECT squared-residual energy on a synthetic multimodal volume,
+with optional field correction and PSF bias. Regenerate with
+`scripts/generate_java_toads_object_intensity_energy_reference.sh`.

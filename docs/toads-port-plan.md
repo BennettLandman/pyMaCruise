@@ -764,3 +764,18 @@ implementation commit `197fcd7b1fc3082ccdd166ad6a8e4d94558c580f`; see
 and [`tests/data/synthetic/toads_relation_factor_composition/README.md`](../tests/data/synthetic/toads_relation_factor_composition/README.md).
 This validates the weight composition only; exact membership energies and
 normalization remain open.
+
+### Completed substage: P18bq TOADS ordinary OBJECT intensity energy
+
+`toads_object_intensity_energy` reproduces the selected ordinary OBJECT
+branch of `computeExactMemberships`: source-order modality-weight ×
+class-variance × image-variance scaling and squared intensity residuals, with
+optional field correction and PSF bias. NumPy vectorizes across the synthetic
+volume while each modality/class operation retains float32 behavior. Selected
+Java and Python match every output bit for raw and corrected three-modality,
+four-class cases, with and without a PSF-bias array. Focused checks: 2 passed.
+Full suite: 578 passed, 2 expected RAS warnings, in 78.57s on implementation
+commit `dd26e5ce978514c0df75f022bf8a7bf370d1ea71`; see
+[`docs/reports/full-pytest-2026-09-29-toads-object-intensity-energy.md`](reports/full-pytest-2026-09-29-toads-object-intensity-energy.md)
+and [`tests/data/synthetic/toads_object_intensity_energy/README.md`](../tests/data/synthetic/toads_object_intensity_energy/README.md).
+This is one source data term, not a full class-energy or membership update.
