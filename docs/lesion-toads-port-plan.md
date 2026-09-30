@@ -14,7 +14,8 @@ centroid updater with and without field correction; upstream membership
 estimation remains unported. P39zzp also validates the selected weighted
 centroid update for several blend factors, and P39zzq validates the selected
 class/auxiliary variance update with its source branch behavior. P39zzr
-validates selected diagonal-covariance channel weights and fallback behavior.
+validates selected diagonal-covariance channel weights and fallback behavior,
+and P39zzs validates pooled noise standard deviations.
 
 ## Selected workflow and source
 
@@ -1278,3 +1279,20 @@ implementation commit `79ad6140610123725a1d758e4602aac8592a9b19`; see
 and
 [`tests/data/synthetic/lesion_channel_weights/README.md`](../tests/data/synthetic/lesion_channel_weights/README.md).
 This validates only channel weighting for fixed statistics and memberships.
+
+### Completed substage: P39zzs pooled noise variance
+
+`compute_lesion_toads_noise_standard_deviation` ports the selected
+`computeNoiseVariance()` method. It scans hard classes 1..N−1, accumulates
+membership-squared intensity residuals by channel in source order, and
+broadcasts the pooled standard deviation to every class. Field multiplication
+occurs before residual calculation when enabled. The existing 5×4×3 RAS
+variance phantom matches selected-method Java bits with and without fields;
+tests confirm background-class intensities do not affect the result and an
+empty non-background pool yields all zeros. Focused tests: 2 passed. Full
+suite: 616 passed with 2 expected RAS warnings in 113.03 seconds on
+implementation commit `710085d2fe9407a27c77fcd641c17fa476c5ac33`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-noise-variance.md`](reports/full-pytest-2026-09-30-lesion-noise-variance.md)
+and the shared
+[`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
+This validates only the pooled estimator for fixed labels and centroids.
