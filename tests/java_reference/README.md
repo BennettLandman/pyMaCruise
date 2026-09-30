@@ -214,3 +214,11 @@ Regenerate with
 `scripts/generate_java_toads_relation_state_refresh_reference.sh`; fixture
 scope is documented in
 `tests/data/synthetic/toads_relation_state_refresh/README.md`.
+
+## TOADS relation factors
+
+`ToadsRelationFactorsReferenceHarness.java` transcribes the selected
+`distanceFactor`, `shapeFactor`, and `neighborFactor` operations and records
+float32 bits over boundary/clamp edge cases. Regenerate with
+`scripts/generate_java_toads_relation_factors_reference.sh`; both selected
+Java source checksums are enforced by the script.

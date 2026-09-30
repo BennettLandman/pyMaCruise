@@ -716,3 +716,19 @@ for 565 passed and 2 expected RAS warnings in 77.82s on implementation commit
 `ae7e5558b301c22f1ebe4d334a1fda7e90b6a711`. This validates selected state
 refresh only; approximate-membership mode and TOADS segmentation evolution
 remain open.
+
+### Completed substage: P18bn TOADS distance, shape, and neighbor factors
+
+`toads_distance_factor`, `toads_shape_factor`, and `toads_neighbor_factor` in
+`src/pymacruise/toads_relations.py` reproduce the selected
+`MultipleToadSegmentation` helpers used during exact membership updates. The
+implementation retains float32 operation order and the selected
+`Numerics.min`/`bounded` comparison semantics. The selected-method Java
+fixture and Python match float32 bits for signed-byte boundary distances,
+positive marching limits, shape thresholds, and prior strengths. Focused
+checks: 7 passed. Full suite: 572 passed, 2 expected RAS warnings, in 77.29s
+on implementation commit `f4e28fe095c1bcf6884a8a1b6e46bb0efcbe3c0c`; see
+[`docs/reports/full-pytest-2026-09-29-toads-relation-factors.md`](reports/full-pytest-2026-09-29-toads-relation-factors.md)
+and [`tests/data/synthetic/toads_relation_factors/README.md`](../tests/data/synthetic/toads_relation_factors/README.md).
+The larger membership update, approximate mode, and TOADS evolution remain
+open.
