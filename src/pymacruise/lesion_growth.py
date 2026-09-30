@@ -130,6 +130,15 @@ class LesionToadsThinningQueueRun:
     queue: ToadsPriorityHeap4D
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningPass:
+    """Initialized and final states from one selected thinning pass."""
+
+    initialization: LesionToadsThinningInitialization
+    minimum_class_volume: NDArray[np.float32]
+    run: LesionToadsThinningQueueRun
+
+
 def process_next_lesion_toads_thinning_item(
     segmentation: ArrayLike,
     skeleton: ArrayLike,
@@ -345,6 +354,71 @@ def run_lesion_toads_thinning_queue(
     )
 
 
+def propagate_lesion_toads_thinning(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    transformed_shape: ArrayLike,
+    initial_skeleton: ArrayLike,
+    initial_available: ArrayLike,
+    initial_ordering: ArrayLike,
+    *,
+    lesion_class: int,
+    volume_ratio: float,
+    limit: float,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+) -> LesionToadsThinningPass:
+    """Compose selected ``initThinningLabels`` and ``propagateThinning``.
+
+    The minimum for each class follows the Java float expression
+    ``Numerics.max(100, volumeRatio*volume[k])`` after initializer volumes
+    have been computed. The caller supplies lesion memberships, atlas-derived
+    transformed shape samples, and the preexisting ordering field; those
+    upstream estimates are outside this isolated thinning pass.
+    """
+    ratio = np.float32(volume_ratio)
+    if not np.isfinite(ratio) or ratio < np.float32(0.0):
+        raise ValueError("volume_ratio must be finite and nonnegative")
+    frontier = initialize_lesion_toads_thinning_frontier(
+        segmentation,
+        memberships,
+        object_types,
+        lesion_membership,
+        black_hole_membership,
+        initial_skeleton,
+        initial_available,
+        lesion_class=lesion_class,
+        use_lesion_max=use_lesion_max,
+    )
+    product = np.float32(ratio * frontier.class_volume)
+    minimums = np.asarray(
+        [value if value > np.float32(100.0) else np.float32(100.0) for value in product],
+        dtype=np.float32,
+    )
+    run = run_lesion_toads_thinning_queue(
+        segmentation,
+        frontier.skeleton,
+        memberships,
+        object_types,
+        lesion_membership,
+        black_hole_membership,
+        transformed_shape,
+        frontier.available,
+        initial_ordering,
+        frontier.class_volume,
+        minimums,
+        frontier.queue,
+        limit,
+        lesion_class=lesion_class,
+        use_lesion_max=use_lesion_max,
+        empty_label=empty_label,
+    )
+    return LesionToadsThinningPass(frontier, minimums, run)
+
+
 def schedule_lesion_toads_thinning_neighbors(
     memberships: ArrayLike,
     object_types: tuple[str, ...] | list[str],
@@ -506,8 +580,9 @@ def lesion_toads_thinning_voxel_transition(
         raise ValueError("ordering values must be finite")
     if np.any(labels < 0) or np.any(labels >= classes):
         raise ValueError("segmentation labels must be valid class indices")
-    if np.any((skeleton != empty_label) & ((skeleton < 0) | (skeleton >= classes))):
-        raise ValueError("skeleton labels must be valid class indices or empty_label")
+    center_skeleton = int(skeleton[1, 1, 1])
+    if center_skeleton != empty_label and not 0 <= center_skeleton < classes:
+        raise ValueError("center skeleton label must be a valid class index or empty_label")
 
     center_label = int(labels[1, 1, 1])
     center_skeleton = int(skeleton[1, 1, 1])
