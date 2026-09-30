@@ -229,3 +229,10 @@ ordinary-OBJECT intensity term, inverse shape prior, and ordered smoothing /
 relation / reciprocal membership update on raw and field-corrected synthetic
 inputs. Regenerate with
 `scripts/generate_java_toads_object_membership_pass_reference.sh`.
+
+## TOADS MASK intensity energy
+
+`ToadsMaskIntensityEnergyReferenceHarness.java` records the selected binary
+`maskDistance(image, 0)` energy for positive, negative, exact-zero, and
+signed-zero samples. Regenerate with
+`scripts/generate_java_toads_mask_intensity_energy_reference.sh`.

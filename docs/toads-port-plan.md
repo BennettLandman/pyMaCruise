@@ -747,3 +747,18 @@ see [`docs/reports/full-pytest-2026-09-29-toads-object-membership-pass.md`](repo
 and [`tests/data/synthetic/toads_object_membership_pass/README.md`](../tests/data/synthetic/toads_object_membership_pass/README.md).
 This is the ordinary OBJECT pass only; lesion/outlier mixtures, topology
 gates, and outer TOADS evolution remain open.
+
+### Completed substage: P18bs TOADS MASK intensity energy
+
+`toads_mask_intensity_energy` implements the selected MASK likelihood using
+the source `maskDistance(image, 0)`: exact positive and negative zero map to
+zero cost, and all finite nonzero intensities map to unit cost. The remaining
+per-modality and per-class weights accumulate in Java float32 order. A
+selected Java formula harness and Python match every energy bit on synthetic
+multimodal inputs. Focused checks: 2 passed. Full suite: 571 passed, 2
+expected RAS warnings, in 78.37s on implementation commit
+`8cc0d1ecc491a187b114b613930c6443d7f94953`; see
+[`docs/reports/full-pytest-2026-09-29-toads-mask-intensity-energy.md`](reports/full-pytest-2026-09-29-toads-mask-intensity-energy.md)
+and [`tests/data/synthetic/toads_mask_intensity_energy/README.md`](../tests/data/synthetic/toads_mask_intensity_energy/README.md).
+This is the MASK data term only; mixed object types and full TOADS evolution
+remain open.
