@@ -8,7 +8,9 @@ membership update's centroid-similarity setup. P39d/e validate bundled
 compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
 include atlas sampling, transform optimization, or segmentation. This
 document tracks algorithm scope and source contracts; it does not claim a
-full LesionTOADS port.
+full LesionTOADS port. P39zzn also matches repeated thinning with accepted and
+rejected topology-driven label changes on a synthetic volume; upstream
+membership estimation remains unported.
 
 ## Selected workflow and source
 
@@ -1173,3 +1175,23 @@ passed with 2 expected RAS warnings in 80.34 seconds on implementation commit
 and [`tests/data/synthetic/lesion_toads_thinning_initialization/README.md`](../tests/data/synthetic/lesion_toads_thinning_initialization/README.md).
 This validates initialization only, not topology-gated changes during
 `propagateThinning()` or full LesionTOADS segmentation.
+
+### Completed substage: P39zzn topology-changing thinning pass
+
+The selected thinning pass was checked with a second synthetic RAS NIfTI in
+which memberships favor adjacent cyclic target labels across a folded,
+mostly coherent tissue pattern. The Java reference invokes the selected
+`CriticalPointLUT` predicate through the already compared 18/6 topology
+adapter, then applies the selected heap, volume, and neighbor scheduling
+semantics. Python matches all 706 heap events, candidate and topology
+decisions (9 accepted, 69 rejected), 5 newly inserted neighbors, final
+segmentation/skeleton/availability/ordering arrays, float32 class-volume
+bits, and empty heap. Focused comparison: 1 passed. Full suite: 607 passed
+with 2 expected RAS warnings in 89.92 seconds on implementation commit
+`5c9b8d38833fe1834c96c5e8cc4fe4003076e570`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-topology-thinning.md`](reports/full-pytest-2026-09-30-lesion-topology-thinning.md)
+and
+[`tests/data/synthetic/lesion_toads_topology_thinning/README.md`](../tests/data/synthetic/lesion_toads_topology_thinning/README.md).
+This is a fixed-input thinning-stage comparison; atlas sampling,
+registration, upstream membership estimation, and full LesionTOADS remain
+outside this validated slice.
