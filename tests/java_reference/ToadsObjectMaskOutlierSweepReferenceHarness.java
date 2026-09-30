@@ -1,15 +1,19 @@
 /** Selected Java float32 reference for a composed OBJECT/OUTLIER membership sweep. */
 public final class ToadsObjectMaskOutlierSweepReferenceHarness {
+    private static final String SOURCE_SHA="63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884";
     private static final int NX=4, NY=4, NZ=4, CLASSES=2, OUTLIER_CLASS=1;
     private static final float SMOOTHING=0.13f, PRIOR_FACTOR=0.61f, ZERO=1e-10f, INF=1e10f;
+    private static final float PRIOR_COEFFICIENT=0.27f;
     private static final float[] SMOOTH_PRIORS={0.7f,1.1f};
+    private static final float[] ATLAS_PRIORS={0.31f,0.47f};
+    private static final float[][] SIMILARITY={{0.0f,0.38f},{0.29f,0.0f}};
     private static float shape(int x,int y,int z,int k) { return 0.25f+0.01f*(x+2*y+3*z+k); }
     private static float initial(int x,int y,int z,int k) { return 0.12f+0.01f*(2*x+y+z+k); }
     private static float outlier(int x,int y,int z) { return 0.18f+0.01f*(x+2*y+z); }
     private static float energy(int x,int y,int z,int k) { return 0.8f+0.03f*(x+2*y+3*z+2*k); }
     private static float outlierEnergy(int x,int y,int z) { return 1.2f+0.02f*(2*x+y+z); }
 
-    private static float[][][][] update(float[][][] outlierMap, float[] objectiveOut) {
+    private static float[][][][] update(float[][][] outlierMap, float[] objectiveOut, boolean usePrior) {
         float[][][][] membership=new float[NX][NY][NZ][CLASSES];
         float[][][][] shapePrior=new float[NX][NY][NZ][CLASSES];
         float[][][][] data=new float[NX][NY][NZ][CLASSES];
@@ -43,6 +47,18 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
                 num=num+addition;
                 if(k==OUTLIER_CLASS)numO=numO+addition;
                 obj=obj+(0.5f*SMOOTH_PRIORS[k])*SMOOTHING*sum;
+                if(usePrior) {
+                    float inversePrior=0.0f;
+                    for(int m=0;m<CLASSES;m++)if(m!=k) {
+                        float term=ATLAS_PRIORS[m]*SIMILARITY[k][m];
+                        term=term*shapePrior[x][y][z][m];term=term*shapePrior[x][y][z][m];
+                        inversePrior=inversePrior+term;
+                    }
+                    float priorAddition=PRIOR_COEFFICIENT*inversePrior;
+                    num=num+priorAddition;
+                    if(k==OUTLIER_CLASS)numO=numO+priorAddition;
+                    obj=obj+(0.5f*PRIOR_COEFFICIENT)*inversePrior;
+                }
                 boolean direct=false,neighbor=false;
                 for(int s=0;s<2;s++)direct|=labels[x][y][z][s]==k;
                 for(int s=2;s<4;s++)neighbor|=labels[x][y][z][s]==k;
@@ -79,10 +95,28 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
             else if(kind==4)for(int k=0;k<CLASSES;k++)b[p++]=Float.floatToIntBits(shape(x,y,z,k));
         }return b;
     }
+    private static int[] priorTerms(boolean objective) {
+        int[] b=new int[NX*NY*NZ*CLASSES];int p=0;
+        for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<CLASSES;k++) {
+            float value=0.0f;
+            if(x>0&&x<NX-1&&y>0&&y<NY-1&&z>0&&z<NZ-1) {
+                float inversePrior=0.0f;
+                for(int m=0;m<CLASSES;m++)if(m!=k) {
+                    float term=ATLAS_PRIORS[m]*SIMILARITY[k][m];
+                    term=term*shape(x,y,z,m);term=term*shape(x,y,z,m);
+                    inversePrior=inversePrior+term;
+                }
+                value=objective?(0.5f*PRIOR_COEFFICIENT)*inversePrior:PRIOR_COEFFICIENT*inversePrior;
+            }
+            b[p++]=Float.floatToIntBits(value);
+        }return b;
+    }
     public static void main(String[] args) {
         float[][][] outlier=new float[NX][NY][NZ];float[] objective={0.0f};
-        float[][][][] updated=update(outlier,objective);
-        StringBuilder out=new StringBuilder("{\"shape\":[4,4,4],\"classes\":2,\"class_types\":[\"OBJECT\",\"OUTLIER\"]");
+        float[][][][] updated=update(outlier,objective,false);
+        float[][][] priorOutlier=new float[NX][NY][NZ];float[] priorObjective={0.0f};
+        float[][][][] priorUpdated=update(priorOutlier,priorObjective,true);
+        StringBuilder out=new StringBuilder("{\"source_sha256\":\"").append(SOURCE_SHA).append("\",\"shape\":[4,4,4],\"classes\":2,\"class_types\":[\"OBJECT\",\"OUTLIER\"]");
         out.append(",\"class_data_energy_bits\":");append(out,inputs(0));out.append(",\"outlier_data_energy_bits\":");append(out,inputs(1));
         out.append(",\"initial_memberships_bits\":");append(out,inputs(2));out.append(",\"initial_outlier_membership_bits\":");append(out,inputs(3));
         out.append(",\"shape_priors_bits\":");append(out,inputs(4));out.append(",\"closest_labels\":[");
@@ -90,6 +124,14 @@ public final class ToadsObjectMaskOutlierSweepReferenceHarness {
         out.append("],\"smoothing_prior_bits\":");append(out,new int[]{Float.floatToIntBits(SMOOTH_PRIORS[0]),Float.floatToIntBits(SMOOTH_PRIORS[1])});
         out.append(",\"smoothing\":").append(SMOOTHING).append(",\"prior_factor\":").append(PRIOR_FACTOR);
         out.append(",\"updated_bits\":");append(out,bits(updated,CLASSES));out.append(",\"updated_outlier_bits\":");append(out,bits(outlier));
-        out.append(",\"objective_bits\":").append(Float.floatToIntBits(objective[0])).append('}');System.out.println(out);
+        out.append(",\"objective_bits\":").append(Float.floatToIntBits(objective[0]));
+        out.append(",\"atlas_prior_bits\":");append(out,new int[]{Float.floatToIntBits(ATLAS_PRIORS[0]),Float.floatToIntBits(ATLAS_PRIORS[1])});
+        out.append(",\"similarity_bits\":");append(out,new int[]{Float.floatToIntBits(SIMILARITY[0][0]),Float.floatToIntBits(SIMILARITY[0][1]),Float.floatToIntBits(SIMILARITY[1][0]),Float.floatToIntBits(SIMILARITY[1][1])});
+        out.append(",\"prior_coefficient\":").append(PRIOR_COEFFICIENT);
+        out.append(",\"prior_inverse_energy_bits\":");append(out,priorTerms(false));
+        out.append(",\"prior_objective_energy_bits\":");append(out,priorTerms(true));
+        out.append(",\"prior_updated_bits\":");append(out,bits(priorUpdated,CLASSES));
+        out.append(",\"prior_updated_outlier_bits\":");append(out,bits(priorOutlier));
+        out.append(",\"prior_objective_bits\":").append(Float.floatToIntBits(priorObjective[0])).append('}');System.out.println(out);
     }
 }

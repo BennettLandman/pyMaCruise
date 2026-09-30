@@ -10,5 +10,9 @@ voxels are preserved. The fixture contains no subject images or external data.
 
 Regenerate with
 `scripts/generate_java_toads_object_mask_outlier_sweep_reference.sh`.
+The generator checks the selected `MultipleToadSegmentation.java` SHA-256
+before compiling the independent formula harness. A paired case also adds
+the atlas inverse-prior term to the ordinary and OUTLIER reciprocal energies
+and checks its half-weighted objective contribution.
 This selected method comparison does not validate TOADS topology, full
 classification evolution, or whole-algorithm equivalence.
