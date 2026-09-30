@@ -58,6 +58,18 @@ class LesionToadsGrowingPass:
     remaining_queue: tuple[ToadsHeapItem, ...]
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningInitialization:
+    """State and max-heap entries created by ``initThinningLabels``."""
+
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    class_volume: NDArray[np.float32]
+    boundary_counts: NDArray[np.int32]
+    inserted_items: tuple[ToadsHeapItem, ...]
+    queue: ToadsPriorityHeap4D
+
+
 def _lesion_score(
     ordinary_membership: np.float32,
     lesion_membership: np.float32,
@@ -144,6 +156,146 @@ def _membership_ratio_at(
     numerator = np.float32(maximum + zero)
     denominator = np.float32(current + zero)
     return np.float32(numerator / denominator)
+
+
+def initialize_lesion_toads_thinning_frontier(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    initial_skeleton: ArrayLike,
+    initial_available: ArrayLike,
+    *,
+    lesion_class: int,
+    use_lesion_max: bool = False,
+    zero: float = 1.0e-10,
+) -> LesionToadsThinningInitialization:
+    """Initialize the selected LesionTOADS thinning state and max heap.
+
+    This reproduces only ``initThinningLabels`` in
+    ``LesionToadSegmentation``. It resets class volumes, updates the interior
+    skeleton and per-class availability, then queues six-face boundaries
+    with priority ``-1 / maxMembershipRatio``. The selected Java
+    ``bestMembership`` quirk and float32 evaluation order are shared with the
+    growing-frontier adapter above. Outer planes remain as supplied because
+    the source initialization loops only over interior voxels.
+    """
+    labels = np.asarray(segmentation)
+    mems = np.asarray(memberships, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
+    black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
+    skeleton = np.asarray(initial_skeleton)
+    available = np.asarray(initial_available)
+    types = tuple(object_types)
+    if labels.ndim != 3 or any(size < 3 for size in labels.shape):
+        raise ValueError("segmentation must be a 3-D grid with every dimension at least 3")
+    if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
+        raise ValueError("segmentation labels must be integers")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 1:
+        raise ValueError("memberships must match segmentation and contain a class axis")
+    classes = mems.shape[-1]
+    if classes > 128 or len(types) != classes:
+        raise ValueError("one object type is required per Java signed-byte class")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation contains a class index outside the membership axis")
+    if lesion_mems.shape != labels.shape or black_hole_mems.shape != labels.shape:
+        raise ValueError("lesion and black-hole maps must match segmentation")
+    if skeleton.shape != labels.shape or not np.issubdtype(skeleton.dtype, np.integer):
+        raise ValueError("initial_skeleton must be an integer grid matching segmentation")
+    if available.shape != (*labels.shape, classes) or available.dtype != np.bool_:
+        raise ValueError("initial_available must be a boolean grid matching segmentation and classes")
+    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)):
+        raise ValueError("membership arrays must contain only finite values")
+    if isinstance(lesion_class, (bool, np.bool_)) or not isinstance(lesion_class, (int, np.integer)):
+        raise ValueError("lesion_class must be an integer class index")
+    if not 0 <= int(lesion_class) < classes:
+        raise ValueError("lesion_class is outside the membership class axis")
+    if not isinstance(use_lesion_max, (bool, np.bool_)):
+        raise ValueError("use_lesion_max must be boolean")
+    zero_value = np.float32(zero)
+    if not np.isfinite(zero_value) or zero_value <= np.float32(0.0):
+        raise ValueError("zero must be finite and positive")
+
+    skeleton_out = skeleton.astype(np.int16, copy=True)
+    available_out = available.copy()
+    volume = np.zeros(classes, dtype=np.float32)
+    counts = np.zeros(classes, dtype=np.int32)
+    nx, ny, nz = labels.shape
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                current = int(labels[x, y, z])
+                skeleton_out[x, y, z] = current
+                available_out[x, y, z, :] = False
+                available_out[x, y, z, current] = True
+                if types[current] in _LESION_OBJECT_TYPES:
+                    if use_lesion_max:
+                        increment = _lesion_score(
+                            mems[x, y, z, current],
+                            lesion_mems[x, y, z],
+                            black_hole_mems[x, y, z],
+                            use_lesion_max=True,
+                        )
+                    else:
+                        increment = np.float32(
+                            np.float32(mems[x, y, z, current] + lesion_mems[x, y, z])
+                            + black_hole_mems[x, y, z]
+                        )
+                else:
+                    increment = mems[x, y, z, current]
+                volume[current] = np.float32(volume[current] + increment)
+
+    heap = ToadsPriorityHeap4D(max(1, int(np.prod(labels.shape)) * classes), mode="max")
+    inserted: list[ToadsHeapItem] = []
+    face_neighbors = ((-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1))
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                current = int(labels[x, y, z])
+                if not any(
+                    labels[x + dx, y + dy, z + dz] != current
+                    for dx, dy, dz in face_neighbors
+                ):
+                    continue
+                available_out[x, y, z, current] = False
+                best = _best_membership_at(
+                    x,
+                    y,
+                    z,
+                    mems,
+                    types,
+                    lesion_mems,
+                    black_hole_mems,
+                    use_lesion_max=bool(use_lesion_max),
+                )
+                ratio = _membership_ratio_at(
+                    x,
+                    y,
+                    z,
+                    current,
+                    best,
+                    mems,
+                    types,
+                    lesion_mems,
+                    black_hole_mems,
+                    use_lesion_max=bool(use_lesion_max),
+                    zero=zero_value,
+                )
+                priority = np.float32(-np.float32(np.float32(1.0) / ratio))
+                item = ToadsHeapItem(priority, x, y, z, current)
+                heap.add(priority, x, y, z, current)
+                inserted.append(item)
+                counts[current] += 1
+
+    return LesionToadsThinningInitialization(
+        skeleton=skeleton_out,
+        available=available_out,
+        class_volume=volume,
+        boundary_counts=counts,
+        inserted_items=tuple(inserted),
+        queue=heap,
+    )
 
 
 def initialize_lesion_toads_growing_frontier(
