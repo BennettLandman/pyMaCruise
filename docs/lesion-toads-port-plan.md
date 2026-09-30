@@ -1122,6 +1122,22 @@ and the updated
 This validates the selected combined formula path, not whole-engine
 equivalence.
 
+### Completed substage: P39zzg final lesion/black-hole classification
+
+`lesion_toads_final_classification` composes the selected loop's final
+`updateClassificationFromLabels()` and `updateLesionClassifcation()` methods.
+On the committed 3×2×2 RAS fixture, a selected-method Java excerpt and Python
+match every final class label and every 0/1/2 lesion subtype, as well as the
+changed-label and lesion-voxel counts. The cases exercise strict `>` tests,
+lesion/black-hole ties, non-lesion class labels, and disabled lesion mode.
+Focused tests: 4 passed. Full suite: 598 passed with 2 expected RAS warnings
+in 87.88 seconds on implementation commit
+`2b7515c415a6f4f65371c279d611ca4c50f4c5a3`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-final-classification.md`](reports/full-pytest-2026-09-29-lesion-final-classification.md)
+and [`tests/data/synthetic/lesion_toads_final_classification/README.md`](../tests/data/synthetic/lesion_toads_final_classification/README.md).
+This is final output mapping for supplied memberships only; upstream iteration
+and plus-workflow equivalence remain open.
+
 
 ### Completed substage: P39zze OPTIMIZED_LESION in OBJECT+LESION sweep
 
