@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zzd have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zze have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION (including OPTIMIZED_LESION), BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1116,9 +1116,18 @@ This validates the selected combined formula path, not whole-engine
 equivalence.
 
 
-### Started substage: P39zze OPTIMIZED_LESION in OBJECT+LESION sweep
+### Completed substage: P39zze OPTIMIZED_LESION in OBJECT+LESION sweep
 
-The simpler OBJECT+LESION volume adapter still requires the literal LESION
-class label. Extend its source-selected alias handling to
-`OPTIMIZED_LESION`, then compare both class positions against Java fixtures.
-This validates the bounded volume formula path only.
+The OBJECT+LESION volume adapter now accepts `OPTIMIZED_LESION` and uses the
+source-selected lesion class formulas. Two Java references test middle and
+last ordinary-class positions and match every checked interior class and
+lesion float32 bit. A separate paired control shows exact output identity
+between the aliases with atlas priors and distance modulation enabled.
+Duplicate lesion classes reject. Focused suite: 8 passed. Full suite: 528
+passed with two expected RAS warnings in 78.00 seconds on implementation
+commit `312add6acbbefd7e570fa1a18c702432269bb71d`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-object-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-object-sweep.md)
+and the updated
+[`tests/data/synthetic/lesion_toads_lesion_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_sweep/README.md).
+Java fixture coverage is the smoothing/normalization slice; the separate
+operator references validate the prior and distance kernels.

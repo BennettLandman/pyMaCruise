@@ -16,3 +16,8 @@ LesionTOADS segmentation remain excluded. Regenerate with
 
 Selected source: `toads-cruise-scm-2026-09-26/VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java`,
 SHA-256 `545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99`.
+
+Two additional selected-Java fixtures replace LESION with OPTIMIZED_LESION in
+the middle and last class positions. These cover its source smoothing and
+membership normalization branch; separate prior and distance kernel fixtures
+cover those shared operations.
