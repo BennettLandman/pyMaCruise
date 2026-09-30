@@ -102,7 +102,12 @@ def _folded_inputs() -> tuple[dict, np.ndarray]:
     for x in range(nx):
         for y in range(ny):
             for z in range(nz):
-                initial[x, y, z] = (0.2 + ((x + y + z) % 5) * 0.03, 0.3 + ((x + 2 * y + z) % 7) * 0.02)
+                first_n = np.float32((x + y + z) % 5)
+                second_n = np.float32((x + 2 * y + z) % 7)
+                initial[x, y, z] = (
+                    np.float32(np.float32(0.2) + np.float32(first_n * np.float32(0.03))),
+                    np.float32(np.float32(0.3) + np.float32(second_n * np.float32(0.02))),
+                )
                 shell_value = np.float32(0.25 + 0.5 * ribbon[x, y, z])
                 shapes[x, y, z] = (shell_value, np.float32(1.0) - shell_value)
                 labels[x, y, z, 0] = (x + y + z) % 2
@@ -130,6 +135,10 @@ def _folded_inputs() -> tuple[dict, np.ndarray]:
 
 def test_object_mask_dispatch_composes_validated_kernel_on_folded_ras_fixture() -> None:
     inputs, initial = _folded_inputs()
+    reference = json.loads((FOLDED / "java_reference_object_mask.json").read_text())
+    assert reference["source_sha256"] == SEGMENTATION_SHA256
+    assert reference["shape"] == [15, 13, 11, 2]
+    assert reference["class_types"] == ["OBJECT", "MASK"]
     expected, expected_objective = toads_object_mask_membership_pass(
         inputs["image_values"],
         initial,
@@ -150,6 +159,10 @@ def test_object_mask_dispatch_composes_validated_kernel_on_folded_ras_fixture() 
     result = toads_exact_membership_dispatch(**inputs)
     np.testing.assert_array_equal(result.memberships, expected)
     assert result.objective.view(np.uint32) == expected_objective.view(np.uint32)
+    # The composed-kernel check above is a regression check; the separate
+    # pinned Java excerpt is the source comparison for this OBJECT/MASK route.
+    assert _bits(result.memberships) == reference["updated_bits"]
+    assert _bits(result.objective) == [reference["objective_bits"]]
     assert result.outlier_membership is None
     # Borders remain untouched for this ordinary two-type route as well.
     np.testing.assert_array_equal(result.memberships[0], initial[0])
