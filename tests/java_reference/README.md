@@ -200,6 +200,19 @@ coefficient loop and `registerGradientDescent` update for an accepted and an
 `tests/data/synthetic/toads_rigid_registration_update/README.md` for scope and
 limitations.
 
+## TOADS coarse-to-fine rigid registration pyramid
+
+`ToadsRigidRegistrationPyramidReferenceHarness.java` reads the committed odd-
+sized RAS NIfTI membership and atlas-prior fixtures, downsamples them with the
+preserved Java `ImageFunctions.subsample`, and transcribes the selected TOADS
+registration objective, source-faithful coefficient normalization, line
+search, and coarse-to-fine transform handoff at scales 4 and 2. Regenerate the
+committed JSON reference with
+`scripts/generate_java_toads_registration_pyramid_reference.sh`. The Python
+test compares each scale's initialization and each iteration's transform,
+energy, lambda, accepted/rejected result, and stopping state. This comparison
+does not establish complete TOADS or atlas-alignment equivalence.
+
 ## TOADS boundary-distance update
 
 `ToadsBoundaryDistancesReferenceHarness.java` transcribes

@@ -37,6 +37,12 @@ PYRAMID_FIXTURE = (
     / "java_reference.json"
 )
 PYRAMID_HARNESS_SHA256 = "3893d0fed7f3635ba1002a07c08bcf021475cd72fc95ddde68e8d78da3dc9f32"
+TOADS_REGISTRATION_PYRAMID_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "toads_registration_pyramid_optimizer"
+)
 
 
 def test_source_block_mean_subsampling_matches_java_harness() -> None:
@@ -498,6 +504,64 @@ def test_pyramid_registration_runs_scales_and_hands_transform_between_levels() -
         assert left.result.energy == right.result.energy
         assert len(left.result.iterations) <= 2
         assert np.isfinite(left.result.energy)
+
+
+def test_pyramid_registration_matches_selected_java_reference() -> None:
+    fixture_dir = TOADS_REGISTRATION_PYRAMID_FIXTURE
+    reference = json.loads((fixture_dir / "java_reference.json").read_text())
+    memberships = np.asanyarray(
+        nib.load(fixture_dir / "memberships.nii.gz").dataobj, dtype=np.float32
+    )
+    atlas = np.asanyarray(
+        nib.load(fixture_dir / "atlas_shapes.nii.gz").dataobj, dtype=np.float32
+    )
+    initial = tuple(reference["initial_transform"])
+    result = register_toads_atlas_rigid_pyramid(
+        memberships,
+        atlas,
+        levels=3,
+        image_resolutions_mm=(0.8, 1.2, 1.5),
+        template_resolutions_mm=(0.9, 1.1, 1.3),
+        initial_transform=initial,
+        max_iterations=2,
+    )
+
+    assert [level.scale for level in result.levels] == [4, 2]
+    assert len(result.levels) == len(reference["stages"])
+    np.testing.assert_array_equal(result.levels[0].initial_transform, np.asarray(initial, np.float32))
+    for actual, expected in zip(result.levels, reference["stages"], strict=True):
+        assert actual.scale == expected["scale"]
+        assert list(actual.result.transform.shape) == [6]
+        np.testing.assert_array_equal(actual.initial_transform, np.asarray(expected["initial_transform"], np.float32))
+        np.testing.assert_array_equal(actual.result.transform, np.asarray(expected["transform"], np.float32))
+        assert actual.result.energy == np.float32(expected["energy"])
+        assert actual.result.iterations[-1].lambda_value == np.float32(expected["lambda"])
+        assert actual.result.iterations[-1].relative_change == np.float32(expected["relative_change"])
+        assert len(actual.result.iterations) == len(expected["iterations"])
+        stop_reason = (
+            "energy_tolerance"
+            if actual.result.iterations[-1].relative_change <= np.float32(1e-6)
+            else "lambda_floor"
+            if actual.result.iterations[-1].lambda_value <= np.float32(1e-3)
+            else "iteration_limit"
+        )
+        assert actual.result.stop_reason == stop_reason
+        for actual_iteration, expected_iteration in zip(
+            actual.result.iterations, expected["iterations"], strict=True
+        ):
+            np.testing.assert_array_equal(
+                actual_iteration.transform,
+                np.asarray(expected_iteration["transform"], np.float32),
+            )
+            assert actual_iteration.energy == np.float32(expected_iteration["energy"])
+            assert actual_iteration.lambda_value == np.float32(expected_iteration["lambda"])
+            assert actual_iteration.relative_change == np.float32(expected_iteration["relative_change"])
+            assert actual_iteration.accepted is expected_iteration["accepted"]
+            assert actual_iteration.rejected_trials == expected_iteration["rejected_trials"]
+            assert len(expected_iteration["trials"]) == (
+                expected_iteration["rejected_trials"]
+                + int(expected_iteration["accepted"])
+            )
 
 
 def test_pyramid_registration_levels_one_is_source_noop() -> None:
