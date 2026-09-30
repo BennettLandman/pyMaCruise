@@ -265,7 +265,10 @@ the selected-method scope and limitations are listed in
 `ToadsObjectMaskOutlierMembershipPassReferenceHarness.java` combines the
 selected OBJECT, MASK, and OUTLIER data branches with field correction, PSF
 bias, six-face smoothing, atlas inverse prior, shape relation, normalization,
-and objective accumulation on a 4 x 4 x 4 phantom. Regenerate with
+and objective accumulation on a 4 x 4 x 4 phantom. It preserves the selected
+source's nested dangling-else chain: ordinary OUTLIER energy receives
+smoothing, auxiliary `numO` does not, while the separate prior branch updates
+both. It emits a probe's source-float bits to assert that behavior. Regenerate with
 `scripts/generate_java_toads_object_mask_outlier_membership_pass_reference.sh`;
 the generator verifies the selected source hash. Fixture scope is documented
 in `tests/data/synthetic/toads_object_mask_outlier_membership_pass/README.md`.

@@ -68,6 +68,15 @@ def test_supported_mixed_types_match_pinned_vandycruise_java_excerpt() -> None:
     assert _bits(result.memberships) == reference["updated_bits"]
     assert _bits(result.outlier_membership) == reference["updated_outlier_bits"]
     assert _bits(result.objective) == [reference["objective_bits"]]
+    # Selected source dangling-else semantics: ordinary OUTLIER data energy
+    # gets the six-face increment; auxiliary energy does not. The separate
+    # braced prior branch still contributes to both energies.
+    branch = _float(reference["outlier_branch_diagnostic_bits"])
+    assert branch[2] > np.float32(0.0)  # nonzero smoothing increment
+    assert np.float32(branch[0] + branch[2]) > branch[0]
+    assert branch[4] == branch[6]  # aux raw energy + prior, no smoothing
+    assert branch[4] > branch[1]
+    assert branch[5] > np.float32(0.0)  # nonzero prior increment
     np.testing.assert_array_equal(inputs["initial_memberships"], initial_before)
     np.testing.assert_array_equal(inputs["initial_outlier_membership"], outlier_before)
     # Source iteration visits only x/y/z interior: both class and auxiliary

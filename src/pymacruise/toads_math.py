@@ -918,8 +918,11 @@ def toads_object_mask_outlier_membership_sweep(
                                 neighbor_sum = np.float32(neighbor_sum + np.float32(value * value))
                         smoothing_increment = np.float32(np.float32(priors[k] * smooth) * neighbor_sum)
                         num = np.float32(num + smoothing_increment)
-                        if k == outlier_class:
-                            num_outlier = np.float32(num_outlier + smoothing_increment)
+                        # Preserve the selected Java dangling-else behavior:
+                        # its `else if (OUTLIER)` belongs to the inner
+                        # segmentation test nested under `if (LESION)`, so it
+                        # is unreachable for an OUTLIER class. The ordinary
+                        # energy is smoothed; the auxiliary energy is not.
                         smoothing_objective = np.float32(np.float32(np.float32(0.5) * priors[k]) * smooth)
                         smoothing_objective = np.float32(smoothing_objective * neighbor_sum)
                         objective_value = np.float32(objective_value + smoothing_objective)
