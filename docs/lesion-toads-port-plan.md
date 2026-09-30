@@ -1114,3 +1114,11 @@ and the updated
 [`tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md).
 This validates the selected combined formula path, not whole-engine
 equivalence.
+
+
+### Started substage: P39zze OPTIMIZED_LESION in OBJECT+LESION sweep
+
+The simpler OBJECT+LESION volume adapter still requires the literal LESION
+class label. Extend its source-selected alias handling to
+`OPTIMIZED_LESION`, then compare both class positions against Java fixtures.
+This validates the bounded volume formula path only.
