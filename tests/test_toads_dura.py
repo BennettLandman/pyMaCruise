@@ -190,6 +190,53 @@ def test_dura_removal_composes_selected_stages_on_ras_grid() -> None:
         )
 
 
+def test_dura_removal_runs_source_default_five_tgdm_passes() -> None:
+    fixture = DURA_TWO_PASS_TOPOLOGY_FIXTURE
+    wm = nib.load(str(fixture / "wm_input.nii.gz"))
+    paint = nib.load(str(fixture / "paint_mask.nii.gz"))
+    raw_gm = nib.load(str(fixture / "raw_gm.nii.gz"))
+    t1_values = np.arange(np.prod(wm.shape), dtype=np.float32).reshape(wm.shape) + 20.0
+    t1 = nib.Nifti1Image(t1_values, wm.affine)
+
+    # Omit max_iterations to exercise the selected wrapper default (5).
+    result = run_dura_removal(t1, wm, raw_gm, paint, record_passes=True)
+
+    expected_wm = nib.load(str(fixture / "java_wm_tc.nii.gz"))
+    expected_gm = nib.load(str(fixture / "java_gm_tc.nii.gz"))
+    expected_levels = dura_initial_level_sets(
+        np.asarray(expected_wm.dataobj, dtype=np.float32),
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+    )
+    expected_evolution = dura_tgdm_evolve(
+        expected_levels.outer_signed_distance,
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        expected_levels.inner_signed_distance,
+        outer_iterations=5,
+        record_passes=True,
+    )
+    assert result.evolution.completed_outer_passes == 5
+    assert len(result.evolution.pass_level_sets) == 5
+    assert expected_evolution.completed_outer_passes == 5
+    np.testing.assert_array_equal(result.evolution.level_set, expected_evolution.level_set)
+    np.testing.assert_array_equal(result.wm_topology.dataobj, expected_wm.dataobj)
+    np.testing.assert_array_equal(result.gm_topology.dataobj, expected_gm.dataobj)
+    final = apply_dura_output_mask(
+        t1_values,
+        np.asarray(expected_wm.dataobj, dtype=np.float32),
+        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        expected_evolution.level_set,
+    )
+    for actual, expected in (
+        (result.stripped_t1, final.stripped_volume),
+        (result.corrected_white_matter, final.corrected_white_matter),
+        (result.corrected_gray_matter, final.corrected_gray_matter),
+        (result.brain_mask_level_set, final.brain_mask_level_set),
+        (result.brain_mask, final.corrected_brain_mask),
+    ):
+        np.testing.assert_array_equal(actual.dataobj, expected)
+        assert nib.aff2axcodes(actual.affine) == ("R", "A", "S")
+
+
 def test_dura_first_wm_topology_call_uses_source_adapter_settings_and_ras() -> None:
     shape = (9, 10, 8)
     rng = np.random.default_rng(94021)
