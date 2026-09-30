@@ -8,6 +8,8 @@ The expanded command-line contract for current inputs, assumptions, and outputs 
 
 Full-suite evidence is linked from each roadmap row and collected in the dated reports: [September 28 runs](docs/reports/full-pytest-2026-09-28.md), [September 29 runs](docs/reports/full-pytest-2026-09-29.md), [the latest combined run](docs/reports/full-pytest-2026-09-29-followup.md), [P18cc repeated rigid registration updates](docs/reports/full-pytest-2026-09-29-toads-rigid-registration-outer-loop.md), [P18cd default Dura five-pass composition](docs/reports/full-pytest-2026-09-29-dura-default-five-pass.md), [P18ce TOADS stopping transition](docs/reports/full-pytest-2026-09-29-toads-stopping-iteration.md), [P18cf TOADS continuation transition](docs/reports/full-pytest-2026-09-29-toads-continuing-iteration.md), [P18cg populated grow-then-refresh validation](docs/reports/full-pytest-2026-09-29-toads-populated-grow-refresh.md), [P39zzf LesionTOADS topology NIfTI geometry](docs/reports/full-pytest-2026-09-29-lesion-topology-geometry.md), [P39zzg LesionTOADS final classification](docs/reports/full-pytest-2026-09-29-lesion-final-classification.md), [P39zzh LesionTOADS thinning frontier initialization](docs/reports/full-pytest-2026-09-29-lesion-thinning-init.md), [P39zzi LesionTOADS thinning event](docs/reports/full-pytest-2026-09-29-lesion-thinning-transition.md), [P39zzj LesionTOADS neighbor scheduling](docs/reports/full-pytest-2026-09-29-lesion-thinning-schedule.md), [P39zzk composed LesionTOADS event](docs/reports/full-pytest-2026-09-29-lesion-composed-thinning-event.md), [P39zzl LesionTOADS thinning queue run](docs/reports/full-pytest-2026-09-30-lesion-thinning-queue-run.md), [P39zzm selected LesionTOADS thinning pass](docs/reports/full-pytest-2026-09-30-lesion-thinning-pass.md), [P39zzn topology-changing LesionTOADS thinning](docs/reports/full-pytest-2026-09-30-lesion-topology-thinning.md), [P39zzo constrained LesionTOADS centroids](docs/reports/full-pytest-2026-09-30-lesion-centroids.md), [P39zzp weighted LesionTOADS centroids](docs/reports/full-pytest-2026-09-30-lesion-weighted-centroids.md), [P39zzq LesionTOADS variances](docs/reports/full-pytest-2026-09-30-lesion-variances.md), [P39zzr LesionTOADS channel weights](docs/reports/full-pytest-2026-09-30-lesion-channel-weights.md), [P39zzs LesionTOADS noise variance](docs/reports/full-pytest-2026-09-30-lesion-noise-variance.md), [P39zzt generic LesionTOADS centroid modes](docs/reports/full-pytest-2026-09-30-lesion-basic-centroids.md), [P39zzu OUTLIER centroid suppression](docs/reports/full-pytest-2026-09-30-lesion-outlier-centroids.md), [P39zzv optimized LesionTOADS centroids](docs/reports/full-pytest-2026-09-30-lesion-optimized-centroids.md), [P39zzw LESION/BLACKHOLE centroids](docs/reports/full-pytest-2026-09-30-lesion-auxiliary-centroids.md), [P39zzx optimized LESION/BLACKHOLE centroids](docs/reports/full-pytest-2026-09-30-lesion-optimized-auxiliary-centroids.md), and [P18cj Dura TGDM evolution](docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md), [P18cj Dura TGDM evolution](docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md), [P18ch/P18ci Dura adapters](docs/reports/full-pytest-2026-09-30-p18-dura-adapters.md), [P18cj Dura TGDM evolution](docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md), [P18cj Dura TGDM evolution](docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md), [P18ch/P18ci Dura adapters](docs/reports/full-pytest-2026-09-30-p18-dura-adapters.md), [P39zzy mixed LesionTOADS centroids](docs/reports/full-pytest-2026-09-30-lesion-mixed-centroids.md). Published-method citations and code maps are indexed in [docs/papers/README.md](docs/papers/README.md).
 
+Latest combined evidence: [P18cl RAS orientation, P18cm crop bounds, and P42 standalone CLI](docs/reports/full-pytest-2026-09-30-p18-ras-cli.md) — 640 tests passed on commit `82a0d8f`.
+
 ## Scope and target
 
 - **Primary workflow:** MaCRUISE with a T1-weighted MRI, existing multi-atlas segmentation (`MaSeg`), and a user-supplied T1-grid brain mask.
@@ -127,7 +129,16 @@ The currently implemented CLI entry point supports the implemented stages:
 pymacruise prepare-raw --t1 T1.nii.gz --maseg MaSeg.nii.gz --output-dir Raw
 pymacruise cortical-separation --maseg Seg.nii.gz --output-dir CorticalSeparation
 pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation ADD --output Sum.nii.gz
+pymacruise ace --gray GM.nii.gz --white WM.nii.gz --enhanced GM-ace.nii.gz --skeleton ACE.nii.gz --thinned-skeleton ACE-thinned.nii.gz --provenance ACE-run.json
+pymacruise gvf --input GM-ace.nii.gz --output GVF.nii.gz
+pymacruise tgdm --initial Initial.nii.gz --white WM.nii.gz --gray GM.nii.gz --ace-gray GM-ace.nii.gz --output-dir TGDM
+pymacruise dura --t1 T1.nii.gz --white WM.nii.gz --gray GM.nii.gz --white-mask WM-mask.nii.gz --output-dir Dura
+pymacruise surface-extract --level-set inner.nii.gz --output inner.vtk
+pymacruise thickness-levelset --inner inner.nii.gz --outer outer.nii.gz --output thickness.nii.gz
+pymacruise thickness-surface --inner inner.vtk --outer outer.vtk --inner-output inner-measured.vtk
 ```
+
+The seven standalone algorithm commands write optional JSON provenance sidecars; their complete contracts and exact outputs are in [docs/cli-help.md](docs/cli-help.md). Full TOADS and LesionTOADS commands remain unavailable until the integrated algorithms are ported.
 
 ### 2026-09-27 roadmap update
 
@@ -236,6 +247,14 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - **Reference data needed:** one de-identified T1 + MaSeg case, expected outputs/intermediates, and exact configuration. Add FLAIR and plus-workflow outputs for MaCRUISEplus.
 
 ## Progress log
+
+### 2026-09-30
+
+- Completed P18cl: TOADS inputs normalize to RAS with source-derived signed spacings `(-sx, -sy, +sz)`; Java and Python match three atlas-mapping landmarks exactly as float32, and the selected source ignores NIfTI world-origin translation. Full suite: 640 passed with 2 expected RAS warnings in 160.07 seconds on `82a0d8f495a837422dc17c2b4a5b30b81f6b325b`; see the [combined validation report](docs/reports/full-pytest-2026-09-30-p18-ras-cli.md). Full TOADS equivalence remains open.
+- Completed P18cm: selected `MultipleToadPreprocess` method excerpts match all six crop bounds and the existing crop/uncrop products on an asymmetric RAS synthetic phantom. The full upstream Java class cannot compile from the supplied MIPAV/JIST dependencies; the excerpt boundary and selected-source hashes are recorded in the [fixture provenance](tests/data/synthetic/toads_crop_geometry/README.md). Focused tests: 4 passed; the same full-suite commit and report apply.
+- Completed P42: added documented `ace`, `gvf`, `tgdm`, `dura`, `surface-extract`, `thickness-levelset`, and `thickness-surface` commands over existing APIs. Fresh-process tests compare each command against direct API outputs; optional provenance sidecars record paths, parameters, software version, and RAS convention. Focused CLI tests: 4 passed; full suite: 640 passed on `82a0d8f`; see [CLI reference](docs/cli-help.md) and the [validation report](docs/reports/full-pytest-2026-09-30-p18-ras-cli.md). Full TOADS and LesionTOADS commands are not advertised because those complete workflows are not implemented.
+- Started P18cn: selected-source comparison for scalar, label, and multi-channel TOADS `uncropAndBuffer` output packing. Synthetic validation will target exact flattened values and ordering; it will not claim NIfTI header or end-to-end workflow equivalence.
+- The plan now records 224/239 rows (~94%) Done, 3 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
