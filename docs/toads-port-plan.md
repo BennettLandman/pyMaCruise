@@ -615,3 +615,24 @@ TOADS iteration.
 
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
+
+### Completed substage: P18bh TOADS stopping-iteration classification transfer
+
+The selected outer loop calls `MultipleToadSegmentation.updateClassificationFromLabels()`
+when convergence or the iteration cap stops the loop. This source method
+replaces each classification byte with `templateLabel[segmentation]` and
+returns the count of changed voxels. P18bh isolates that final label transfer;
+it does not implement membership-based winner selection, growing, topology,
+or the complete outer iteration. The selected source file hash is
+`63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884`. A
+source-excerpt Java harness and the Python mapping match all output bytes and
+changed counts on a 3×2×4 phantom; input range/shape checks are covered. The
+focused comparison and input checks pass (6 tests). The full synthetic suite
+reports 535 passed with 2 expected RAS warnings in 78.80 seconds on
+implementation commit `b005798`; see
+[`docs/reports/full-pytest-2026-09-29-toads-classification-labels.md`](reports/full-pytest-2026-09-29-toads-classification-labels.md)
+and
+[`tests/data/synthetic/toads_classification_labels/README.md`](../tests/data/synthetic/toads_classification_labels/README.md).
+
+This validates the source label-transfer method only. The complete
+AlgorithmMultipleToads numerical loop and full TOADS evolution remain open.

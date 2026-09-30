@@ -149,6 +149,18 @@ using the actual 18/6 LUT and `BinaryHeap4D`. Regenerate with
 `scripts/generate_java_toads_growing_pass_reference.sh`; see
 `tests/data/synthetic/toads_growing_pass/README.md` for the phantom and limits.
 
+## TOADS classification transfer from segmentation labels
+
+`ToadsClassificationLabelsReferenceHarness.java` transcribes the selected
+`updateClassificationFromLabels` loops over a small asymmetric categorical
+volume and records the template-label lookup output plus changed-voxel count.
+Regenerate with
+`scripts/generate_java_toads_classification_labels_reference.sh`.
+
+The Python-selected-method comparison and malformed-input checks are covered
+by `tests/test_toads_classification_labels.py`; this reference does not imply
+whole-algorithm equivalence.
+
 ## TOADS rigid registration update
 
 `ToadsRigidRegistrationUpdateHarness.java` uses the supplied Java
