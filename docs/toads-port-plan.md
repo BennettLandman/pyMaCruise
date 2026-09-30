@@ -652,3 +652,19 @@ and
 [`tests/data/synthetic/toads_closest_labels/README.md`](../tests/data/synthetic/toads_closest_labels/README.md).
 This validates closest-label maps, not relation-map construction or complete
 TOADS segmentation.
+
+### Completed substage: P18bj TOADS relation-list construction
+
+`toads_build_relation_list` in `src/pymacruise/toads_relations.py` follows
+`MultipleToadSegmentation.buildRelationList`: singleton IDs, first-seen
+unordered interface sets, compact interior map IDs, relation membership, and
+the class-level union rows. The selected-method Java harness and Python match
+all map entries and relation bits for uniform, planar, and folded six-class
+synthetic volumes. Focused checks: 7 passed. Full suite: 549 passed with two
+expected RAS warnings in 77.03 seconds on implementation commit
+`3ebf1248ef891ba5ef772fe4c8232071e2fc412f`; see
+[`docs/reports/full-pytest-2026-09-29-toads-relation-list.md`](reports/full-pytest-2026-09-29-toads-relation-list.md)
+and
+[`tests/data/synthetic/toads_relation_list/README.md`](../tests/data/synthetic/toads_relation_list/README.md).
+Only relation-set construction is validated here; diffusion into interior
+voxels is a separate step.

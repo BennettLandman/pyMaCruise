@@ -169,6 +169,14 @@ It records all four signed-byte label slots on a folded asymmetric phantom at
 three marching limits. Regenerate with
 `scripts/generate_java_toads_closest_labels_reference.sh`.
 
+## TOADS relation-list construction
+
+`ToadsRelationListReferenceHarness.java` transcribes the selected
+`buildRelationList` routine and records the compact relation map, relation
+membership table, and per-class union rows for uniform, planar, and folded
+synthetic label volumes. Regenerate with
+`scripts/generate_java_toads_relation_list_reference.sh`.
+
 ## TOADS rigid registration update
 
 `ToadsRigidRegistrationUpdateHarness.java` uses the supplied Java
