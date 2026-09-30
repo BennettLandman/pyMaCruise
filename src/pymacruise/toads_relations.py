@@ -302,3 +302,81 @@ def toads_compute_relations(
         relation_membership=table,
         diffusion_iterations=iterations,
     )
+
+
+def toads_update_boundary_distances(
+    segmentation: ArrayLike,
+    boundary_distances: ArrayLike,
+    limit: int,
+) -> NDArray[np.int8]:
+    """Apply the selected source's class-wise TOADS boundary-distance update.
+
+    The method seeds distance 1 on both class sides of every interior six-face
+    transition and retains existing values. Its later diffusion excerpt is
+    intentionally preserved: `change` is reset and never set true, while
+    `Numerics.min(current_zero, neighbor_positive + 1)` remains zero. Thus the
+    source performs one no-op diffusion pass when ``limit > 0`` and produces
+    only interface seeds. This behavior is source evidence, not an improved
+    distance transform.
+    """
+    labels = np.asarray(segmentation)
+    distances = np.asarray(boundary_distances)
+    if labels.ndim != 3 or any(size == 0 for size in labels.shape):
+        raise ValueError("segmentation must be a nonempty 3-D integer array")
+    if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
+        raise ValueError("segmentation labels must be integers")
+    if distances.ndim != 4 or distances.shape[:3] != labels.shape or distances.shape[3] < 1:
+        raise ValueError("boundary_distances must match the segmentation grid and have a class axis")
+    if not np.issubdtype(distances.dtype, np.integer) or np.issubdtype(distances.dtype, np.bool_):
+        raise ValueError("boundary_distances must contain integer byte values")
+    if any(size < 3 for size in labels.shape):
+        raise ValueError("segmentation dimensions must be at least three voxels")
+    if np.any(labels < 0) or np.any(labels >= distances.shape[3]):
+        raise ValueError("segmentation contains an out-of-range class index")
+    limits = np.iinfo(np.int8)
+    if np.any(distances < limits.min) or np.any(distances > limits.max):
+        raise ValueError("boundary_distances must fit Java signed-byte range")
+    if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit < 0:
+        raise ValueError("limit must be a nonnegative integer")
+
+    class_labels = labels.astype(np.int64, copy=False)
+    output = distances.astype(np.int8, copy=True)
+    center_labels = class_labels[_INTERIOR]
+    center_distances = output[_INTERIOR]
+    for dx, dy, dz in _FACES:
+        neighbor_slices = (
+            slice(1 + dx, labels.shape[0] - 1 + dx),
+            slice(1 + dy, labels.shape[1] - 1 + dy),
+            slice(1 + dz, labels.shape[2] - 1 + dz),
+        )
+        neighbor_labels = class_labels[neighbor_slices]
+        neighbor_distances = output[neighbor_slices]
+        differs = center_labels != neighbor_labels
+        for class_index in range(output.shape[3]):
+            center_side = differs & (neighbor_labels == class_index)
+            neighbor_side = differs & (center_labels == class_index)
+            center_distances[..., class_index][center_side] = np.int8(1)
+            neighbor_distances[..., class_index][neighbor_side] = np.int8(1)
+
+    change = True
+    for _ in range(1, 5 * int(limit)):
+        if not change:
+            break
+        for class_index in range(output.shape[3]):
+            change = False
+            current = output[..., class_index]
+            temp = current[_INTERIOR].copy()
+            active = (center_labels != class_index) & (temp == 0)
+            for dx, dy, dz in _FACES:
+                neighbor_slices = (
+                    slice(1 + dx, labels.shape[0] - 1 + dx),
+                    slice(1 + dy, labels.shape[1] - 1 + dy),
+                    slice(1 + dz, labels.shape[2] - 1 + dz),
+                )
+                neighbor_distance = current[neighbor_slices]
+                positive = active & (neighbor_distance > 0)
+                candidate = neighbor_distance.astype(np.int16) + 1
+                temp[positive] = np.minimum(temp[positive].astype(np.int16), candidate[positive]).astype(np.int8)
+            current[_INTERIOR] = temp
+
+    return output
