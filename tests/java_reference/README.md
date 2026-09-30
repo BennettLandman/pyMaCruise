@@ -229,3 +229,10 @@ Java source checksums are enforced by the script.
 DIRECT/NEIGHBOR/PRIOR tier selection and the exact-zero shape-prior exclusion
 on an asymmetric synthetic table. Regenerate with
 `scripts/generate_java_toads_relation_tiers_reference.sh`.
+
+## TOADS relation factor composition
+
+`ToadsRelationFactorCompositionReferenceHarness.java` composes direct,
+neighbor, and prior support weights with the exact-zero prior exclusion and
+records float32 bits for multiple prior strengths. Regenerate with
+`scripts/generate_java_toads_relation_factor_composition_reference.sh`.

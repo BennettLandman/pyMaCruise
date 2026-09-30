@@ -748,3 +748,19 @@ warnings, in 77.40s on implementation commit
 and [`tests/data/synthetic/toads_relation_tiers/README.md`](../tests/data/synthetic/toads_relation_tiers/README.md).
 This is relation selection only; class likelihood, membership update, and
 normalization remain open.
+
+### Completed substage: P18bp TOADS per-class relation weights
+
+`toads_membership_relation_factors` combines the validated tier, shape, and
+neighbor helpers into the per-class weight applied to reciprocal energy:
+direct classes receive 1, neighbor classes use the bounded neighbor factor,
+and prior classes use the capped shape factor. A prior-tier class with exact
+zero shape receives zero weight to reflect the source's earlier short-circuit.
+The selected Java formula harness and Python match every float32 weight bit on
+an asymmetric synthetic input over five prior strengths. Focused checks: 2
+passed. Full suite: 576 passed, 2 expected RAS warnings, in 77.65s on
+implementation commit `197fcd7b1fc3082ccdd166ad6a8e4d94558c580f`; see
+[`docs/reports/full-pytest-2026-09-29-toads-relation-factor-composition.md`](reports/full-pytest-2026-09-29-toads-relation-factor-composition.md)
+and [`tests/data/synthetic/toads_relation_factor_composition/README.md`](../tests/data/synthetic/toads_relation_factor_composition/README.md).
+This validates the weight composition only; exact membership energies and
+normalization remain open.
