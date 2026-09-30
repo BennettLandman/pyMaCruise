@@ -53,3 +53,105 @@ The full-pipeline configuration file, restart behavior, and final output
 manifest will be specified when P34 and P42a are implemented. See
 [`io-contract.md`](io-contract.md) for profile-level input/output semantics and
 [`toads-port-plan.md`](toads-port-plan.md) for the TOADS blocker plan.
+
+## Supported standalone scientific tools
+
+Image inputs and outputs for these commands use `.nii.gz`. The image APIs
+normalize inputs to RAS and warn when they reorient an input. Surface
+coordinates are RAS+ millimetres and use tagged ASCII legacy VTK. These
+commands expose selected standalone stages; they do not assemble the complete
+base MaCRUISE or LesionTOADS pipelines.
+
+### `pymacruise ace`
+
+```text
+pymacruise ace --gray GM.nii.gz --white WM.nii.gz \
+  --enhanced GM-enhanced.nii.gz --skeleton ACE-skeleton.nii.gz \
+  --thinned-skeleton ACE-skeleton-thinned.nii.gz [--atlas-csf CSF.nii.gz]
+```
+
+Inputs are aligned 3D gray/white matter membership or intensity images; the
+optional CSF atlas image must share their physical grid. Writes enhanced gray
+matter and both ACE skeleton products. `--diffusion-iterations` defaults to
+25. This exposes the current ACE stage, not all multi-atlas MaACE options or
+the complete MaCRUISE workflow.
+
+### `pymacruise gvf`
+
+```text
+pymacruise gvf --input IMAGE.nii.gz --output GVF.nii.gz \
+  [--lambda VALUE] [--max-iterations N] [--solver-tolerance VALUE]
+```
+
+Reads a finite 3D scalar image and writes a RAS-oriented, component-last
+three-vector NIfTI image. Defaults are lambda 1.0, 200 iterations, and solver
+tolerance 1e-6.
+
+### `pymacruise tgdm`
+
+```text
+pymacruise tgdm --initial INITIAL.nii.gz --white WM.nii.gz \
+  --gray GM.nii.gz --ace-gray GM-ACE.nii.gz --output-dir DIR \
+  [--brain-mask MASK.nii.gz] [--ace-skeleton SKELETON.nii.gz] [--gvf GVF.nii.gz]
+```
+
+The four required finite 3D scalar images and each supplied optional image
+must share one physical grid. Optional GVF is a component-last vector image.
+Writes `initial_level_set.nii.gz`, `tissue_sign.nii.gz`,
+`initial_inner.nii.gz`, `inner.nii.gz`, `central.nii.gz`, and `outer.nii.gz`,
+all on the RAS grid. This is the nested TGDM stage, not full TOADS or MaCRUISE.
+
+### `pymacruise dura`
+
+```text
+pymacruise dura --t1 T1.nii.gz --white WM.nii.gz --gray GM.nii.gz \
+  --white-mask WM-mask.nii.gz --output-dir DIR [--max-iterations N]
+```
+
+The T1, white/gray membership, and original white-matter mask must be finite
+3D images on one physical grid. `--max-iterations` defaults to 5. Writes
+RAS-oriented `stripped_t1.nii.gz`, `corrected_white_matter.nii.gz`,
+`corrected_gray_matter.nii.gz`, `brain_mask_level_set.nii.gz`,
+`brain_mask.nii.gz`, `wm_topology.nii.gz`, and `gm_topology.nii.gz`.
+
+### `pymacruise surface-extract`
+
+```text
+pymacruise surface-extract --level-set LEVELSET.nii.gz --output SURFACE.vtk [--level VALUE]
+```
+
+Reads a finite 3D scalar level set and writes a triangular RAS+ millimetre
+surface. The isovalue defaults to zero. The VTK header declares coordinate
+frame and units.
+
+### `pymacruise thickness-levelset`
+
+```text
+pymacruise thickness-levelset --inner INNER.nii.gz --outer OUTER.nii.gz \
+  --output THICKNESS.nii.gz [--iso-level VALUE]
+```
+
+Inputs must share one physical RAS grid. Writes the voxelwise absolute
+level-set difference in millimetres and prints mean, sample standard
+deviation, and crossing-voxel count for the selected iso-level (default 0).
+
+### `pymacruise thickness-surface`
+
+```text
+pymacruise thickness-surface --inner INNER.vtk --outer OUTER.vtk \
+  --inner-output INNER-MEASURED.vtk [--central CENTRAL.vtk \
+  --central-output CENTRAL-MEASURED.vtk]
+```
+
+Inputs must be triangular ASCII legacy VTK with a declared RAS/LPS frame.
+Writes closest-surface point measurements into output meshes and prints
+summary statistics. Supply `--central` and `--central-output` together.
+
+## Not currently exposed as complete tools
+
+There is no full TOADS command and no full LesionTOADS command. The repository
+contains selected supporting stages and synthetic TOADS-like or
+LesionTOADS-related components, but these do not constitute either complete
+algorithm. The TOADS/SPECTRE/BET port-vs-dependency decision remains the
+tracked blocker for the complete TOADS workflow. These standalone interfaces
+are not substitutes for either full pipeline.

@@ -463,8 +463,8 @@ def rigid_image_to_template_jacobian(
         raise ValueError("transform_parameters must contain six finite rigid parameters")
     if center.shape != (3,) or not np.isfinite(center).all():
         raise ValueError("image_center_xyz must contain three finite values")
-    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res <= 0):
-        raise ValueError("image_resolutions_mm must contain three positive finite values")
+    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res == 0):
+        raise ValueError("image_resolutions_mm must contain three finite nonzero signed values")
     if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
         raise ValueError("template_resolutions_mm must contain three positive finite values")
     if not np.isfinite(scale_value) or scale_value <= 0:

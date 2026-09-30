@@ -24,6 +24,65 @@ class ToadsIntensityResult:
     masked_voxels: int
 
 
+@dataclass(frozen=True)
+class ToadsRASGeometry:
+    """RAS-grid geometry expressed in the selected MIPAV axis convention."""
+
+    image: nib.spatialimages.SpatialImage
+    source_orientation_codes: tuple[str, str, str]
+    image_orientation: int
+    axis_orientation_codes: tuple[int, int, int]
+    orientation_signs: tuple[float, float, float]
+    signed_image_resolutions_mm: tuple[float, float, float]
+    initial_transform: tuple[float, float, float, float, float, float]
+
+
+def toads_ras_geometry(
+    image: nib.spatialimages.SpatialImage,
+    *,
+    source_name: str = "TOADS image",
+) -> ToadsRASGeometry:
+    """Normalize an image to RAS and reproduce axial MIPAV direction signs.
+
+    The selected ``MultipleToadPreprocess`` axial constructor initializes zero
+    rotation/translation, assigns MIPAV axis directions from image metadata,
+    and returns ``resolution / direction_sign`` to the atlas registration
+    (selected source: ``MultipleToadPreprocess.java`` constructor and
+    ``getSignedImageResolutions``). For a RAS voxel grid those directions are
+    L→R, P→A, and I→S, which produce signed spacings ``(-sx, -sy, +sz)``.
+    ``ParametricTransform.imageToTemplate`` uses voxel centers and these
+    signed spacings; its source inputs have no NIfTI world-origin translation,
+    so that origin does not affect the atlas map. Oblique/sheared grids are
+    rejected because the source model only represents axis-aligned spacing
+    and signs.
+    """
+    source_codes = tuple(nib.aff2axcodes(image.affine))
+    normalized = normalize_image_to_ras(image, source_name=source_name)
+    if len(normalized.shape) != 3:
+        raise ValueError("TOADS spatial geometry requires a 3D single-volume image")
+    if nib.aff2axcodes(normalized.affine) != ("R", "A", "S"):
+        raise ValueError("TOADS image could not be represented on an RAS voxel grid")
+    zooms = np.asarray(nib.affines.voxel_sizes(normalized.affine), dtype=np.float64)
+    directions = normalized.affine[:3, :3] / zooms[np.newaxis, :]
+    if not np.allclose(directions, np.eye(3), rtol=0, atol=1e-6):
+        raise ValueError("TOADS source registration does not support oblique or sheared RAS grids")
+    if not np.isfinite(zooms).all() or np.any(zooms <= 0):
+        raise ValueError("TOADS image voxel sizes must be finite and positive")
+
+    # MIPAV FileInfoBase enums: AXIAL=0; L2R=2; P2A=3; I2S=5.
+    orientation_signs = (-1.0, -1.0, 1.0)
+    signed = tuple(float(value * sign) for value, sign in zip(zooms, orientation_signs, strict=True))
+    return ToadsRASGeometry(
+        normalized,
+        source_codes,  # type: ignore[arg-type]
+        0,
+        (2, 3, 5),
+        orientation_signs,
+        signed,
+        (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    )
+
+
 def robust_intensity_bounds(
     values: np.ndarray,
     *,

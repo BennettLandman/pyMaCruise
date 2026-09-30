@@ -7,7 +7,11 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from pymacruise.toads_preprocessing import prepare_toads_intensity, robust_intensity_bounds
+from pymacruise.toads_preprocessing import (
+    prepare_toads_intensity,
+    robust_intensity_bounds,
+    toads_ras_geometry,
+)
 
 
 FIXTURES = Path(__file__).parent / "data" / "synthetic" / "toads_preprocessing"
@@ -70,3 +74,93 @@ def test_toads_non_ras_inputs_warn_and_preserve_normalized_values() -> None:
 
     assert nib.aff2axcodes(actual.image.affine) == ("R", "A", "S")
     np.testing.assert_array_equal(actual.image.dataobj, expected.image.dataobj)
+
+
+def test_toads_ras_geometry_maps_mipav_directions_to_signed_spacing() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    geometry = toads_ras_geometry(t1)
+
+    assert nib.aff2axcodes(geometry.image.affine) == ("R", "A", "S")
+    assert geometry.source_orientation_codes == ("R", "A", "S")
+    assert geometry.image_orientation == 0  # MIPAV FileInfoBase.AXIAL
+    assert geometry.axis_orientation_codes == (2, 3, 5)  # L2R, P2A, I2S
+    assert geometry.orientation_signs == (-1.0, -1.0, 1.0)
+    zooms = nib.affines.voxel_sizes(t1.affine)
+    np.testing.assert_array_equal(
+        geometry.signed_image_resolutions_mm,
+        np.asarray((-zooms[0], -zooms[1], zooms[2]), dtype=np.float64),
+    )
+    assert geometry.initial_transform == (0.0,) * 6
+
+
+def test_toads_ras_geometry_registration_is_world_origin_independent() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    shifted_affine = t1.affine.copy()
+    shifted_affine[:3, 3] += np.asarray((31.0, -17.0, 8.5))
+    shifted = nib.Nifti1Image(np.asanyarray(t1.dataobj), shifted_affine)
+
+    original = toads_ras_geometry(t1)
+    translated = toads_ras_geometry(shifted)
+
+    np.testing.assert_array_equal(
+        translated.signed_image_resolutions_mm,
+        original.signed_image_resolutions_mm,
+    )
+    assert translated.initial_transform == original.initial_transform
+    # NIfTI world origins remain in output metadata, but the selected source
+    # mapping receives only dimensions and signed spacings.
+    np.testing.assert_array_equal(
+        translated.image.affine[:3, 3], original.image.affine[:3, 3] + (31.0, -17.0, 8.5)
+    )
+
+
+def test_toads_ras_geometry_reorients_before_deriving_mipav_directions() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    flip = np.diag((-1.0, -1.0, 1.0, 1.0))
+    flip[0, 3] = t1.shape[0] - 1
+    flip[1, 3] = t1.shape[1] - 1
+    non_ras = nib.Nifti1Image(
+        np.asanyarray(t1.dataobj)[::-1, ::-1, :], t1.affine @ flip
+    )
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        geometry = toads_ras_geometry(non_ras)
+
+    assert geometry.source_orientation_codes == ("L", "P", "S")
+    assert nib.aff2axcodes(geometry.image.affine) == ("R", "A", "S")
+    assert geometry.orientation_signs == (-1.0, -1.0, 1.0)
+    np.testing.assert_array_equal(geometry.image.dataobj, t1.dataobj)
+
+
+@pytest.mark.parametrize("target_codes", [("A", "R", "S"), ("I", "L", "A")])
+def test_toads_ras_geometry_reorients_permuted_axis_orders(
+    target_codes: tuple[str, str, str],
+) -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    transform = nib.orientations.ornt_transform(
+        nib.orientations.axcodes2ornt(("R", "A", "S")),
+        nib.orientations.axcodes2ornt(target_codes),
+    )
+    data = nib.orientations.apply_orientation(np.asanyarray(t1.dataobj), transform)
+    affine = t1.affine @ nib.orientations.inv_ornt_aff(transform, t1.shape)
+    non_ras = nib.Nifti1Image(data, affine)
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        geometry = toads_ras_geometry(non_ras)
+
+    assert geometry.source_orientation_codes == target_codes
+    assert nib.aff2axcodes(geometry.image.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(geometry.image.dataobj, t1.dataobj)
+    np.testing.assert_array_equal(
+        geometry.signed_image_resolutions_mm,
+        toads_ras_geometry(t1).signed_image_resolutions_mm,
+    )
+
+
+def test_toads_ras_geometry_rejects_oblique_affines() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    affine = t1.affine.copy()
+    affine[0, 1] = 0.1
+    oblique = nib.Nifti1Image(np.asanyarray(t1.dataobj), affine)
+    with pytest.raises(ValueError, match="oblique or sheared"):
+        toads_ras_geometry(oblique)

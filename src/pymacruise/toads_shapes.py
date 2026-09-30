@@ -65,7 +65,7 @@ def compute_toad_shape_bounds(
     if not np.isfinite(values).all():
         raise ValueError("TOADS shape prior must contain only finite values")
     image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
-    image_res = _triple_float(image_resolutions_mm, "image_resolutions_mm", positive=True)
+    image_res = _signed_spacing(image_resolutions_mm, "image_resolutions_mm")
     template_res = _triple_float(
         template_resolutions_mm, "template_resolutions_mm", positive=True
     )
@@ -194,7 +194,7 @@ def sample_toad_shape_prior(
     if not isinstance(class_index, (int, np.integer)) or class_index < 0:
         raise ValueError("class_index must be a nonnegative integer")
 
-    image_res = _triple_float(image_resolutions_mm, "image_resolutions_mm", positive=True)
+    image_res = _signed_spacing(image_resolutions_mm, "image_resolutions_mm")
     template_res = _triple_float(
         template_resolutions_mm, "template_resolutions_mm", positive=True
     )
@@ -332,4 +332,14 @@ def _triple_float(
         raise ValueError(f"{name} must contain three finite values")
     if positive and np.any(array <= 0):
         raise ValueError(f"{name} values must be positive")
+    return tuple(np.float32(value) for value in array)
+
+
+def _signed_spacing(
+    values: tuple[float, float, float], name: str
+) -> tuple[np.float32, np.float32, np.float32]:
+    """Validate signed axis spacing used by MIPAV's orientation-aware map."""
+    array = np.asarray(values, dtype=np.float32)
+    if array.shape != (3,) or not np.isfinite(array).all() or np.any(array == 0):
+        raise ValueError(f"{name} must contain three finite nonzero signed values")
     return tuple(np.float32(value) for value in array)

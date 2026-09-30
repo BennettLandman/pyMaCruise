@@ -666,8 +666,8 @@ def _vector_context(
     template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
     if params.shape != (6,) or not np.isfinite(params).all():
         raise ValueError("transform must contain six finite values")
-    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res <= 0):
-        raise ValueError("image_resolutions_mm must contain three positive finite values")
+    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res == 0):
+        raise ValueError("image_resolutions_mm must contain three finite nonzero signed values")
     if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
         raise ValueError("template_resolutions_mm must contain three positive finite values")
     scale_value = np.float32(scale)

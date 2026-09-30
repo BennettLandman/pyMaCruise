@@ -37,6 +37,14 @@ PYRAMID_FIXTURE = (
     / "java_reference.json"
 )
 PYRAMID_HARNESS_SHA256 = "3893d0fed7f3635ba1002a07c08bcf021475cd72fc95ddde68e8d78da3dc9f32"
+RAS_MAPPING_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "toads_preprocessing"
+    / "ras_mapping_java_reference.json"
+)
+RAS_MAPPING_HARNESS_SHA256 = "0c79963fd337053f7a977f44e22202dc89d9738d515821f667611f4752e05128"
 TOADS_REGISTRATION_PYRAMID_FIXTURE = (
     Path(__file__).parent
     / "data"
@@ -173,6 +181,28 @@ def test_transform_dependent_registration_fields_compose_source_kernels() -> Non
         bbox_high_xyz=tuple(highs[1]),
     )
     assert fields.priors[point + (1,)] != segmentation_sample.value
+
+
+def test_ras_signed_spacing_landmarks_match_selected_java_mapping() -> None:
+    reference_root = Path(__file__).parent / "java_reference"
+    harness = reference_root / "ToadsOrientationMappingHarness.java"
+    assert hashlib.sha256(harness.read_bytes()).hexdigest() == RAS_MAPPING_HARNESS_SHA256
+    reference = json.loads(RAS_MAPPING_FIXTURE.read_text())
+    dims = (7, 6, 5)
+    atlas_dims = (11, 10, 9)
+    fields = sample_toads_registration_fields(
+        np.ones(atlas_dims + (2,), dtype=np.float32),
+        input_dimensions_xyz=dims,
+        image_resolutions_mm=tuple(reference["signed_resolutions"]),
+        template_resolutions_mm=(0.8, 0.9, 1.1),
+        transform=(0.0,) * 6,
+        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
+        class_bounds_high_xyz=np.tile(np.asarray(dims), (2, 1)),
+    )
+    for point, expected in zip(((0, 0, 0), (3, 2, 1), (6, 5, 4)), reference["points"], strict=True):
+        np.testing.assert_array_equal(
+            fields.template_coordinates_xyz[point], np.asarray(expected, dtype=np.float32)
+        )
 
 
 def test_rigid_registration_jacobian_field_matches_single_voxel_kernel() -> None:
