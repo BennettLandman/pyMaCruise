@@ -16,7 +16,8 @@ centroid update for several blend factors, and P39zzq validates the selected
 class/auxiliary variance update with its source branch behavior. P39zzr
 validates selected diagonal-covariance channel weights and fallback behavior,
 P39zzs validates pooled noise standard deviations, and P39zzt validates
-generic centroid update modes.
+generic centroid update modes. P39zzu validates source OUTLIER suppression in
+the generic class-centroid accumulators.
 
 ## Selected workflow and source
 
@@ -1317,3 +1318,21 @@ and the shared
 [`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
 This validates generic centroid updates on supplied labels and memberships,
 not specialized centroids or full LesionTOADS iteration.
+
+### Completed substage: P39zzu OUTLIER centroid suppression
+
+The generic centroid helper now applies the source OUTLIER adjustment
+`mem = classMembership × (1 − outlierMembership)` before squaring and
+accumulating. Its 5×4×3 RAS `.nii.gz` fixture contains two hard-labeled
+OUTLIER classes and a map cycling through exact values 0, 0.25, 0.5, 0.75,
+and 1. Raw float32 outputs match the selected Java method in all five centroid
+modes, with and without field correction. Controls show OBJECT and OUTMASK
+continue through the ordinary accumulator; absent class support, malformed
+maps, and nonfinite maps are covered. Focused tests: 2 passed. Full suite:
+620 passed with 2 expected RAS warnings in 110.09 seconds on implementation
+commit `c87cbce7ad2023529cd64a4c018047815a34a05f`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-outlier-centroids.md`](reports/full-pytest-2026-09-30-lesion-outlier-centroids.md)
+and the
+[`tests/data/synthetic/lesion_outlier_centroids/README.md`](../tests/data/synthetic/lesion_outlier_centroids/README.md).
+This validates OUTLIER centroid accumulation only, not outlier-map
+estimation or full LesionTOADS iteration.
