@@ -266,7 +266,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Started P39zzzzg: validate the available LesionTOADS membership-derived lesion-classification output map, which has no selected-plugin caller.
 - Started P18ct: validate selected TOADS class-pair similarity dispatch, including mixed lesion/non-lesion coefficient behavior.
 - Started P39zzzzh: port the active default LesionTOADS classification update from ordinary/lesion memberships.
-- The plan now records 237/254 rows (~93%) Done, 5 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P18cu: port selected base-TOADS classification output generation and its wrapper packing.
+- The plan now records 237/255 rows (~93%) Done, 6 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
