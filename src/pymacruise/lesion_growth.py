@@ -106,6 +106,30 @@ class LesionToadsThinningQueueStep:
     inserted_neighbors: tuple[ToadsHeapItem, ...]
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningQueueEvent:
+    """Compact trace record for one outer-loop heap item."""
+
+    popped_item: ToadsHeapItem
+    processed: bool
+    candidate_label: int | None
+    topology_accepted: bool | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+@dataclass(frozen=True)
+class LesionToadsThinningQueueRun:
+    """Final volume state, event trace, and unconsumed max-heap."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volume: NDArray[np.float32]
+    events: tuple[LesionToadsThinningQueueEvent, ...]
+    queue: ToadsPriorityHeap4D
+
+
 def process_next_lesion_toads_thinning_item(
     segmentation: ArrayLike,
     skeleton: ArrayLike,
@@ -124,6 +148,7 @@ def process_next_lesion_toads_thinning_item(
     lesion_class: int,
     use_lesion_max: bool = False,
     empty_label: int = -1,
+    _in_place: bool = False,
 ) -> LesionToadsThinningQueueStep:
     """Apply one popped item, its topology-constrained update, and scheduling.
 
@@ -168,11 +193,11 @@ def process_next_lesion_toads_thinning_item(
     if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_mems, shapes, order_map, volumes, minimums)):
         raise ValueError("all membership, ordering, and volume values must be finite")
 
-    updated_labels = labels.astype(np.int16, copy=True)
-    updated_skeleton = skel.astype(np.int16, copy=True)
-    updated_available = state.copy()
-    updated_ordering = order_map.copy()
-    updated_volumes = volumes.copy()
+    updated_labels = labels.astype(np.int16, copy=not _in_place)
+    updated_skeleton = skel.astype(np.int16, copy=not _in_place)
+    updated_available = state.copy() if not _in_place else state
+    updated_ordering = order_map.copy() if not _in_place else order_map
+    updated_volumes = volumes.copy() if not _in_place else volumes
     popped = queue.pop_first()
     x, y, z, processing_class = popped.x, popped.y, popped.z, popped.label
     transition: LesionToadsThinningTransition | None = None
@@ -227,12 +252,96 @@ def process_next_lesion_toads_thinning_item(
                 minimums[processing_class],
                 limit,
                 use_lesion_max=use_lesion_max,
+                _in_place=_in_place,
             )
             updated_available = scheduled.available
             inserted = scheduled.inserted_items
     return LesionToadsThinningQueueStep(
         updated_labels, updated_skeleton, updated_available, updated_ordering,
         updated_volumes, popped, transition, inserted,
+    )
+
+
+def run_lesion_toads_thinning_queue(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    transformed_shape: ArrayLike,
+    available: ArrayLike,
+    ordering: ArrayLike,
+    class_volume: ArrayLike,
+    minimum_class_volume: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    limit: float,
+    *,
+    lesion_class: int,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+) -> LesionToadsThinningQueueRun:
+    """Run the selected ``propagateThinning`` outer heap/limit loop.
+
+    The input heap is consumed in place. Array state is copied once, then the
+    event helper updates those working arrays in place so volume-scale runs do
+    not copy full images for every popped item. As in Java, the loop starts
+    with ``val=0`` and tests the *previous* popped priority; an item crossing
+    ``-limit`` is therefore processed, and the following loop check stops.
+    Frontier initialization and ``max(100, volumeRatio*volume)`` setup remain
+    separate so this runner accepts the already initialized/source-configured
+    state explicitly.
+    """
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    limit32 = np.float32(limit)
+    if not np.isfinite(limit32) or limit32 < np.float32(0.0):
+        raise ValueError("limit must be finite and nonnegative")
+    labels = np.asarray(segmentation).astype(np.int16, copy=True)
+    skel = np.asarray(skeleton).astype(np.int16, copy=True)
+    available_state = np.asarray(available, dtype=np.bool_).copy()
+    ordering_state = np.asarray(ordering, dtype=np.float32).copy()
+    volumes = np.asarray(class_volume, dtype=np.float32).copy()
+    previous_priority = np.float32(0.0)
+    events: list[LesionToadsThinningQueueEvent] = []
+    while queue and previous_priority > np.float32(-limit32):
+        step = process_next_lesion_toads_thinning_item(
+            labels,
+            skel,
+            memberships,
+            object_types,
+            lesion_membership,
+            black_hole_membership,
+            transformed_shape,
+            available_state,
+            ordering_state,
+            volumes,
+            minimum_class_volume,
+            queue,
+            limit32,
+            lesion_class=lesion_class,
+            use_lesion_max=use_lesion_max,
+            empty_label=empty_label,
+            _in_place=True,
+        )
+        summary = step.transition
+        events.append(
+            LesionToadsThinningQueueEvent(
+                step.popped_item,
+                bool(summary is not None and summary.processed),
+                None if summary is None else summary.candidate_label,
+                None if summary is None else summary.topology_accepted,
+                step.inserted_neighbors,
+            )
+        )
+        labels = step.segmentation
+        skel = step.skeleton
+        available_state = step.available
+        ordering_state = step.ordering
+        volumes = step.class_volume
+        previous_priority = np.float32(step.popped_item.value)
+    return LesionToadsThinningQueueRun(
+        labels, skel, available_state, ordering_state, volumes, tuple(events), queue
     )
 
 
@@ -252,6 +361,7 @@ def schedule_lesion_toads_thinning_neighbors(
     *,
     use_lesion_max: bool = False,
     zero: float = 1.0e-10,
+    _in_place: bool = False,
 ) -> LesionToadsThinningSchedule:
     """Schedule eligible face neighbors using LesionTOADS membership scores.
 
@@ -298,7 +408,7 @@ def schedule_lesion_toads_thinning_neighbors(
             or zero32 <= np.float32(0.0) or limit32 < np.float32(0.0)):
         raise ValueError("priority/volume/limit must be finite; ZERO must be positive and limit nonnegative")
 
-    updated = state.copy()
+    updated = state.copy() if not _in_place else state
     inserted: list[ToadsHeapItem] = []
     # This nested order is the source caller's six face sequence and controls
     # equal-priority insertions into Java's non-stable binary heap.
