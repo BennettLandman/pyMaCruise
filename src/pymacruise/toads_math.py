@@ -195,6 +195,47 @@ def toads_object_intensity_energy(
     return energy
 
 
+def toads_mask_intensity_energy(
+    image_values: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    image_variances: ArrayLike,
+) -> NDArray[np.float32]:
+    """Compute selected exact-membership MASK distance energies.
+
+    `maskDistance(image, 0)` is a binary mismatch cost: exact positive or
+    negative nonzero intensity contributes one, while either signed zero
+    contributes zero. Modality/class variance weights and accumulation retain
+    the selected Java float32 order. This is the MASK data term only.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    mod_weights = np.asarray(modality_weights, dtype=np.float32)
+    var_weights = np.asarray(class_variance_weights, dtype=np.float32)
+    var_images = np.asarray(image_variances, dtype=np.float32)
+    if images.ndim != 4 or images.shape[-1] < 1 or not np.isfinite(images).all():
+        raise ValueError("image_values must be finite 4-D with a modality axis")
+    channels = images.shape[-1]
+    if var_weights.ndim != 2 or var_weights.shape[0] != channels or var_weights.shape[1] < 1:
+        raise ValueError("class_variance_weights must have shape (modality, class)")
+    classes = var_weights.shape[1]
+    if mod_weights.shape != (channels,) or var_images.shape != (channels,):
+        raise ValueError("modality weights and image variances must match modality count")
+    if not all(np.isfinite(value).all() for value in (mod_weights, var_weights, var_images)):
+        raise ValueError("MASK energy weights must be finite")
+
+    distance = (images != np.float32(0.0)).astype(np.float32)
+    energy = np.zeros(images.shape[:-1] + (classes,), dtype=np.float32)
+    for class_index in range(classes):
+        for channel in range(channels):
+            weight = np.float32(mod_weights[channel] * var_weights[channel, class_index])
+            weight = np.float32(weight * var_images[channel])
+            contribution = np.asarray(weight * distance[..., channel], dtype=np.float32)
+            energy[..., class_index] = np.asarray(
+                energy[..., class_index] + contribution, dtype=np.float32
+            )
+    return energy
+
+
 def toads_psf_ridge_bias(
     image_values: ArrayLike,
     segmentation: ArrayLike,
