@@ -13,7 +13,8 @@ rejected topology-driven label changes, and P39zzo matches the constrained
 centroid updater with and without field correction; upstream membership
 estimation remains unported. P39zzp also validates the selected weighted
 centroid update for several blend factors, and P39zzq validates the selected
-class/auxiliary variance update with its source branch behavior.
+class/auxiliary variance update with its source branch behavior. P39zzr
+validates selected diagonal-covariance channel weights and fallback behavior.
 
 ## Selected workflow and source
 
@@ -1259,3 +1260,21 @@ and
 [`tests/data/synthetic/lesion_variances/README.md`](../tests/data/synthetic/lesion_variances/README.md).
 This validates the variance method for fixed maps only; membership iteration,
 centroid-category assignment, and channel weights remain open.
+
+### Completed substage: P39zzr diagonal channel weights
+
+`compute_lesion_toads_channel_weights` ports selected
+`computeChannelWeights()` behavior. For `Diagonal Covariance`, it accumulates
+OBJECT, OUTLIER, LESION/OPTIMIZED_LESION, and BLACKHOLE terms, applies the
+source `INF=1e10` when a channel numerator is nonpositive, then normalizes
+weights over channels. It retains the unsquared linear lesion-related
+residual sum and ignores MASK/OUTMASK types in this method. Other norm types
+return uniform channel weights. The committed 5×4×3 RAS phantom matches raw
+float32 Java values for diagonal mode with and without field correction,
+uniform mode, and empty-contributor normalization. Focused tests: 2 passed.
+Full suite: 614 passed with 2 expected RAS warnings in 90.66 seconds on
+implementation commit `79ad6140610123725a1d758e4602aac8592a9b19`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-channel-weights.md`](reports/full-pytest-2026-09-30-lesion-channel-weights.md)
+and
+[`tests/data/synthetic/lesion_channel_weights/README.md`](../tests/data/synthetic/lesion_channel_weights/README.md).
+This validates only channel weighting for fixed statistics and memberships.
