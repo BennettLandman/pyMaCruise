@@ -236,6 +236,56 @@ def toads_mask_intensity_energy(
     return energy
 
 
+def toads_outlier_intensity_energy(
+    image_values: ArrayLike,
+    centroids: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    image_variances: ArrayLike,
+    outlier_value: float,
+    *,
+    intensity_field: ArrayLike | None = None,
+    psf_bias: ArrayLike | None = None,
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    """Compute the selected exact-membership ``OUTLIER`` data terms.
+
+    VandyCRUISE's ``computeExactMemberships`` maintains two accumulators for
+    an OUTLIER class: the ordinary centroid residual energy and an outlier
+    energy weighted by the class/modality variance factors. The source scalar
+    outlier value is repeated for each modality. This returns those two maps
+    separately; smoothing, atlas priors, mixture with current outlier
+    membership, reciprocal inversion, and normalization are later steps.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    means = np.asarray(centroids, dtype=np.float32)
+    mod_weights = np.asarray(modality_weights, dtype=np.float32)
+    var_weights = np.asarray(class_variance_weights, dtype=np.float32)
+    var_images = np.asarray(image_variances, dtype=np.float32)
+    outlier = np.float32(outlier_value)
+    if not np.isfinite(outlier):
+        raise ValueError("outlier_value must be finite")
+    residual_energy = toads_object_intensity_energy(
+        images,
+        means,
+        mod_weights,
+        var_weights,
+        var_images,
+        intensity_field=intensity_field,
+        psf_bias=psf_bias,
+    )
+    channels = images.shape[-1]
+    outlier_energy = np.zeros(images.shape[:-1] + (means.shape[1],), dtype=np.float32)
+    for class_index in range(means.shape[1]):
+        for channel in range(channels):
+            weight = np.float32(mod_weights[channel] * var_weights[channel, class_index])
+            weight = np.float32(weight * var_images[channel])
+            contribution = np.float32(weight * outlier)
+            outlier_energy[..., class_index] = np.asarray(
+                outlier_energy[..., class_index] + contribution, dtype=np.float32
+            )
+    return residual_energy, outlier_energy
+
+
 def toads_psf_ridge_bias(
     image_values: ArrayLike,
     segmentation: ArrayLike,
