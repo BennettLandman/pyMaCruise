@@ -222,3 +222,10 @@ scope is documented in
 float32 bits over boundary/clamp edge cases. Regenerate with
 `scripts/generate_java_toads_relation_factors_reference.sh`; both selected
 Java source checksums are enforced by the script.
+
+## TOADS membership relation tiers
+
+`ToadsRelationTierReferenceHarness.java` records selected exact-membership
+DIRECT/NEIGHBOR/PRIOR tier selection and the exact-zero shape-prior exclusion
+on an asymmetric synthetic table. Regenerate with
+`scripts/generate_java_toads_relation_tiers_reference.sh`.

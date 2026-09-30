@@ -732,3 +732,19 @@ on implementation commit `f4e28fe095c1bcf6884a8a1b6e46bb0efcbe3c0c`; see
 and [`tests/data/synthetic/toads_relation_factors/README.md`](../tests/data/synthetic/toads_relation_factors/README.md).
 The larger membership update, approximate mode, and TOADS evolution remain
 open.
+
+### Completed substage: P18bo TOADS membership relation tiers
+
+`toads_membership_relation_tiers` maps each class to the source's DIRECT,
+NEIGHBOR, or PRIOR code using closest-label slots 0/1, 2/3, or neither,
+respectively. It separately returns the early-zero eligibility decision for
+prior-tier classes with exactly zero transformed shape. The selected Java
+excerpt and Python match all tier codes and eligibility bits on a synthetic
+asymmetric table covering overlapping/duplicate labels and shape values at
+zero. Focused checks: 2 passed. Full suite: 574 passed, 2 expected RAS
+warnings, in 77.40s on implementation commit
+`ab69fd79f2efcdafb7cbd5270fd48a3e320842ca`; see
+[`docs/reports/full-pytest-2026-09-29-toads-relation-tiers.md`](reports/full-pytest-2026-09-29-toads-relation-tiers.md)
+and [`tests/data/synthetic/toads_relation_tiers/README.md`](../tests/data/synthetic/toads_relation_tiers/README.md).
+This is relation selection only; class likelihood, membership update, and
+normalization remain open.
