@@ -32,8 +32,20 @@ def compute_lesion_toads_data_energy_maps(
     black_hole_centroid: ArrayLike,
     channel_weights: ArrayLike,
     class_types: Sequence[str],
+    *,
+    use_field: bool = False,
+    intensity_fields: ArrayLike | None = None,
+    structure_names: Sequence[str | None] | None = None,
+    t1_channel: int = -1,
+    has_mprage: bool = False,
+    csf_power_exponent: float | None = None,
+    cached_csf_power_exponent: float | None = None,
+    flair_channel: int = -1,
+    use_lesion_weight: bool = False,
+    lesion_power_exponent: float | None = None,
+    cached_lesion_power_exponent: float | None = None,
 ) -> LesionToadsDataEnergyMaps:
-    """Compute raw unfielded OBJECT/LESION/BLACKHOLE energies over a volume.
+    """Compute raw OBJECT/LESION/BLACKHOLE energies over a volume.
 
     ``images`` is ``(x, y, z, channels)`` and ``class_centroids`` is
     ``(classes, channels)``. Only the selected Java interior (indices
@@ -44,15 +56,27 @@ def compute_lesion_toads_data_energy_maps(
     black-hole energy slot. A later LESION therefore leaves the most recent
     black-hole value intact.
 
-    This fixed-input adapter does not model topology/relation skips, fields,
-    Sulcal-CSF or PowerTable behavior, FLAIR weighting, spatial energy terms,
-    inversion, membership normalization, or objective reduction.
+    Per-channel ``intensity_fields`` are applied before residuals when
+    ``use_field`` is true. Exact-name OBJECT ``Sulcal-CSF`` routes through the
+    selected T1/MPRAGE branch in the scalar helper; when unfielded, that helper
+    also preserves the source's subsequent generic multichannel accumulation.
+    LESION's optional FLAIR PowerTable term is likewise delegated to the
+    validated scalar helper. This adapter still excludes topology/relation
+    skips, spatial energy terms, inversion, membership normalization, and
+    objective reduction.
     """
     values = np.asarray(images, dtype=np.float32)
     centroids = np.asarray(class_centroids, dtype=np.float32)
     lesion = np.asarray(lesion_centroid, dtype=np.float32)
     black_hole = np.asarray(black_hole_centroid, dtype=np.float32)
     weights = np.asarray(channel_weights, dtype=np.float32)
+
+    if not isinstance(use_field, (bool, np.bool_)):
+        raise ValueError("use_field must be boolean")
+    if not isinstance(has_mprage, (bool, np.bool_)):
+        raise ValueError("has_mprage must be boolean")
+    if not isinstance(use_lesion_weight, (bool, np.bool_)):
+        raise ValueError("use_lesion_weight must be boolean")
 
     if values.ndim != 4 or min(values.shape[:3], default=0) < 3 or values.shape[3] < 1:
         raise ValueError("images must have shape (x>=3, y>=3, z>=3, channels>=1)")
@@ -61,6 +85,25 @@ def compute_lesion_toads_data_energy_maps(
     channels = values.shape[3]
     if centroids.shape[1] != channels:
         raise ValueError("class_centroids channel count must match images")
+    if intensity_fields is None:
+        fields = None
+    else:
+        fields = np.asarray(intensity_fields, dtype=np.float32)
+        if fields.shape != values.shape:
+            raise ValueError("intensity_fields must match images shape")
+        if not np.isfinite(fields).all():
+            raise ValueError("intensity_fields must contain only finite values")
+    if use_field and fields is None:
+        raise ValueError("intensity_fields are required when use_field is true")
+    if structure_names is None:
+        names: tuple[str | None, ...] = (None,) * centroids.shape[0]
+    else:
+        names = tuple(structure_names)
+        if len(names) != centroids.shape[0] or any(name is not None and not isinstance(name, str) for name in names):
+            raise ValueError("structure_names must contain one string or None per class")
+    for name, channel in (("t1_channel", t1_channel), ("flair_channel", flair_channel)):
+        if isinstance(channel, (bool, np.bool_)) or not isinstance(channel, (int, np.integer)) or not -1 <= int(channel) < channels:
+            raise ValueError(f"{name} must be -1 or a valid channel index")
     for name, vector in (
         ("lesion_centroid", lesion),
         ("black_hole_centroid", black_hole),
@@ -107,6 +150,17 @@ def compute_lesion_toads_data_energy_maps(
                         black_hole,
                         weights,
                         object_type=object_type,
+                        use_field=use_field,
+                        intensity_field=None if fields is None else fields[x, y, z, :],
+                        flair_channel=flair_channel,
+                        use_lesion_weight=use_lesion_weight,
+                        lesion_power_exponent=lesion_power_exponent,
+                        cached_lesion_power_exponent=cached_lesion_power_exponent,
+                        structure_name=names[k],
+                        t1_channel=t1_channel,
+                        has_mprage=has_mprage,
+                        csf_power_exponent=csf_power_exponent,
+                        cached_csf_power_exponent=cached_csf_power_exponent,
                     )
                     class_energy[x, y, z, k] = result.class_energy
                     if object_type in {"lesion", "blackhole"}:
