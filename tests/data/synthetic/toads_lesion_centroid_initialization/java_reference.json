@@ -1,0 +1,2 @@
+{"source_sha256":{"AlgorithmMultipleToads.java":"b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d","MultipleToadPreprocess.java":"31296a4c154ac5366dcd78aa7e5da28bb1c56163f1e230cc451cb3e4feb071e7"},"cases":[
+{"low":[1.25, 2.75, 0.125],"high":[5.75, 9.5, 2.125],"prior":[0.2, 0.7, 0.9],"centroid_bits":[1056218954, 1066254214, 1064724070]},{"low":[0.001, -1.25, 20.0],"high":[0.005, 1.25, 20.75],"prior":[0.0, 0.5, 1.2],"centroid_bits":[1048576001, 0, 1105129199]}]}
