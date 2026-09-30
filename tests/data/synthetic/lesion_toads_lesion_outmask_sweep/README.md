@@ -17,3 +17,8 @@ no-atlas-prior control exactly. Regenerate with
 Selected source:
 `toads-cruise-scm-2026-09-26/VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java`,
 SHA-256 `545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99`.
+
+Additional Java references cover `OPTIMIZED_LESION` before and after OUTMASK.
+They preserve the source's left-to-right prior outlier update
+`shapeFactor(shape[k]) * outlierMembership * numO`, whose float32 result can
+differ by one bit if the final two multiplications are reversed.

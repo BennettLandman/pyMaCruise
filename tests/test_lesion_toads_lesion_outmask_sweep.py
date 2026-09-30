@@ -9,9 +9,8 @@ import pytest
 from pymacruise.lesion_membership import run_lesion_toads_lesion_outmask_smoothing_sweep
 
 
-REFERENCE = Path(__file__).parent / "data/synthetic/lesion_toads_lesion_outmask_sweep/java_reference.json"
+REFERENCE_ROOT = Path(__file__).parent / "data/synthetic/lesion_toads_lesion_outmask_sweep"
 SOURCE_SHA256 = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
-CLASS_TYPES = ("OBJECT", "LESION", "OUTMASK", "OBJECT")
 RELATIONS = ("direct", "prior", "prior", "direct")
 SMOOTHING_PRIORS = np.asarray([0.25, 0.5, 0.75, 0.375], dtype=np.float32)
 ATLAS_PRIORS = np.asarray([0.5, 0.75, 1.25, 0.875], dtype=np.float32)
@@ -22,7 +21,13 @@ CLASS_SIMILARITIES = np.asarray(
 LESION_SIMILARITIES = np.asarray([0.25, 0.0, 0.5, 0.375], dtype=np.float32)
 
 
-def _inputs(shape: tuple[int, int, int], classes: int):
+CLASS_ORDERS = {
+    "lesion-before-outmask": ("OBJECT", "OPTIMIZED_LESION", "OUTMASK", "OBJECT"),
+    "outmask-before-lesion": ("OBJECT", "OUTMASK", "OPTIMIZED_LESION", "OBJECT"),
+}
+
+
+def _inputs(shape: tuple[int, int, int], classes: int, class_types):
     x, y, z = np.indices(shape, dtype=np.float32)
     memberships = np.empty((*shape, classes), dtype=np.float32)
     data = np.empty_like(memberships)
@@ -39,11 +44,12 @@ def _inputs(shape: tuple[int, int, int], classes: int):
     outlier[1, 1, 1] = 1.0
     if shape[0] > 3 and shape[1] > 2 and shape[2] > 4:
         outlier[3, 2, 4] = 0.0
-    shapes[2, 2, 2, 1] = 0.0
+    lesion_class = next(index for index, kind in enumerate(class_types) if kind in {"LESION", "OPTIMIZED_LESION"})
+    shapes[2, 2, 2, lesion_class] = 0.0
     return memberships, lesion, outlier, data, lesion_data, outmask_data, shapes
 
 
-def _run(inputs, *, include_priors: bool, coefficient: float = 0.65):
+def _run(inputs, class_types, *, include_priors: bool, coefficient: float = 0.65):
     prior_arguments = {}
     if include_priors:
         prior_arguments = {
@@ -55,7 +61,7 @@ def _run(inputs, *, include_priors: bool, coefficient: float = 0.65):
     return run_lesion_toads_lesion_outmask_smoothing_sweep(
         *inputs,
         SMOOTHING_PRIORS,
-        CLASS_TYPES,
+        class_types,
         RELATIONS,
         smoothing=0.2,
         **prior_arguments,
@@ -66,12 +72,23 @@ def _bits(values: np.ndarray) -> list[int]:
     return np.asarray(values, dtype=np.float32).view(np.uint32).astype(np.uint64).tolist()
 
 
-def test_lesion_outmask_sweep_matches_selected_java_volume_reference() -> None:
-    reference = json.loads(REFERENCE.read_text())
+@pytest.mark.parametrize(
+    ("reference_name", "order_name", "class_types"),
+    (
+        ("java_reference.json", "lesion-before-outmask", ("OBJECT", "LESION", "OUTMASK", "OBJECT")),
+        ("java_reference_optimized_outmask_last.json", "lesion-before-outmask", CLASS_ORDERS["lesion-before-outmask"]),
+        ("java_reference_optimized_outmask_first.json", "outmask-before-lesion", CLASS_ORDERS["outmask-before-lesion"]),
+    ),
+)
+def test_lesion_outmask_sweep_matches_selected_java_volume_reference(reference_name, order_name, class_types) -> None:
+    reference = json.loads((REFERENCE_ROOT / reference_name).read_text())
     assert reference["source_sha256"] == SOURCE_SHA256
-    inputs = _inputs(tuple(reference["shape"]), reference["classes"])
+    if "class_order" in reference:
+        assert reference["class_order"] == order_name
+        assert reference["optimized_lesion"] is ("OPTIMIZED_LESION" in class_types)
+    inputs = _inputs(tuple(reference["shape"]), reference["classes"], class_types)
     original_classes, original_lesion, original_outlier = (array.copy() for array in inputs[:3])
-    result = _run(inputs, include_priors=True)
+    result = _run(inputs, class_types, include_priors=True)
     for expected in reference["voxels"]:
         point = tuple(expected["coordinate"])
         assert _bits(result.class_memberships[point]) == expected["class_bits"]
@@ -87,21 +104,36 @@ def test_lesion_outmask_sweep_matches_selected_java_volume_reference() -> None:
 
 
 def test_zero_prior_combined_sweep_matches_prior_enabled_zero_control() -> None:
-    inputs = _inputs((5, 4, 6), 4)
-    no_atlas_prior = _run(inputs, include_priors=False)
-    zero_atlas_prior = _run(inputs, include_priors=True, coefficient=0.0)
+    class_types = ("OBJECT", "LESION", "OUTMASK", "OBJECT")
+    inputs = _inputs((5, 4, 6), 4, class_types)
+    no_atlas_prior = _run(inputs, class_types, include_priors=False)
+    zero_atlas_prior = _run(inputs, class_types, include_priors=True, coefficient=0.0)
     np.testing.assert_array_equal(no_atlas_prior.class_memberships, zero_atlas_prior.class_memberships)
     np.testing.assert_array_equal(no_atlas_prior.lesion_membership, zero_atlas_prior.lesion_membership)
     np.testing.assert_array_equal(no_atlas_prior.outlier_membership, zero_atlas_prior.outlier_membership)
 
 
 def test_lesion_outmask_sweep_rejects_duplicate_auxiliary_types() -> None:
-    inputs = _inputs((3, 3, 3), 4)
-    with pytest.raises(ValueError, match="exactly one LESION and one OUTMASK"):
+    class_types = ("OBJECT", "LESION", "OUTMASK", "OUTMASK")
+    inputs = _inputs((3, 3, 3), 4, class_types)
+    with pytest.raises(ValueError, match="exactly one LESION or OPTIMIZED_LESION and one OUTMASK"):
         run_lesion_toads_lesion_outmask_smoothing_sweep(
             *inputs,
             SMOOTHING_PRIORS,
-            ("OBJECT", "LESION", "OUTMASK", "OUTMASK"),
+            class_types,
+            RELATIONS,
+            smoothing=0.2,
+        )
+
+
+def test_lesion_outmask_sweep_rejects_duplicate_lesion_aliases() -> None:
+    class_types = ("OBJECT", "LESION", "OPTIMIZED_LESION", "OUTMASK")
+    inputs = _inputs((3, 3, 3), 4, class_types)
+    with pytest.raises(ValueError, match="exactly one LESION or OPTIMIZED_LESION"):
+        run_lesion_toads_lesion_outmask_smoothing_sweep(
+            *inputs,
+            SMOOTHING_PRIORS,
+            class_types,
             RELATIONS,
             smoothing=0.2,
         )

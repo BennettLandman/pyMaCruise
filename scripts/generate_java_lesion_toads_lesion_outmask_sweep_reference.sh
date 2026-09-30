@@ -12,3 +12,5 @@ classes="$(mktemp -d)"
 trap 'rm -rf "${classes}"' EXIT
 javac -d "${classes}" "${repo_root}/tests/java_reference/LesionToadsLesionOutmaskSweepReferenceHarness.java"
 java -cp "${classes}" LesionToadsLesionOutmaskSweepReferenceHarness > "${repo_root}/tests/data/synthetic/lesion_toads_lesion_outmask_sweep/java_reference.json"
+java -cp "${classes}" LesionToadsLesionOutmaskSweepReferenceHarness optimized-outmask-last > "${repo_root}/tests/data/synthetic/lesion_toads_lesion_outmask_sweep/java_reference_optimized_outmask_last.json"
+java -cp "${classes}" LesionToadsLesionOutmaskSweepReferenceHarness optimized-outmask-first > "${repo_root}/tests/data/synthetic/lesion_toads_lesion_outmask_sweep/java_reference_optimized_outmask_first.json"

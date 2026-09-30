@@ -1130,7 +1130,7 @@ def run_lesion_toads_lesion_outmask_smoothing_sweep(
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsLesionOutmaskSweepResult:
-    """Sweep OBJECT, LESION, and OUTMASK classes with shared auxiliaries.
+    """Sweep OBJECT, LESION or OPTIMIZED_LESION, and OUTMASK classes.
 
     The function composes the selected lesion and outmask smoothing/prior
     terms in one source-ordered x/y/z pass. It updates the lesion and outlier
@@ -1151,10 +1151,10 @@ def run_lesion_toads_lesion_outmask_smoothing_sweep(
     classes = current.shape[3]
     types = tuple(class_types)
     relations = tuple(relation_types)
-    if len(types) != classes or types.count("LESION") != 1 or types.count("OUTMASK") != 1 or any(
-        kind not in {"OBJECT", "LESION", "OUTMASK"} for kind in types
+    if len(types) != classes or sum(kind in {"LESION", "OPTIMIZED_LESION"} for kind in types) != 1 or types.count("OUTMASK") != 1 or any(
+        kind not in {"OBJECT", "LESION", "OPTIMIZED_LESION", "OUTMASK"} for kind in types
     ):
-        raise ValueError("class_types must contain OBJECT classes and exactly one LESION and one OUTMASK class")
+        raise ValueError("class_types must contain OBJECT classes and exactly one LESION or OPTIMIZED_LESION and one OUTMASK class")
     if len(relations) != classes or any(value not in {"direct", "prior"} for value in relations):
         raise ValueError("relation_types must contain one 'direct' or 'prior' value per class")
     if data.shape != current.shape or shapes.shape != current.shape:
@@ -1246,7 +1246,7 @@ def run_lesion_toads_lesion_outmask_smoothing_sweep(
 
     zero_map = np.zeros(spatial_shape, dtype=np.float32)
     zero_similarity = np.zeros(classes, dtype=np.float32)
-    lesion_class = types.index("LESION")
+    lesion_class = max(k for k, kind in enumerate(types) if kind in {"LESION", "OPTIMIZED_LESION"})
     outmask_class = types.index("OUTMASK")
     for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, zero_map):
         x, y, z = neighborhood.coordinate
@@ -1295,7 +1295,7 @@ def run_lesion_toads_lesion_outmask_smoothing_sweep(
                         black_hole_energy=0.0,
                         has_lesion=True,
                         lesion_class_index=lesion_class,
-                        lesion_class_type="LESION",
+                        lesion_class_type=types[lesion_class],
                     )
                     class_term = np.float32(prior_update.class_membership_data_term)
                     lesion_term = np.float32(prior_update.lesion_membership_data_term)
