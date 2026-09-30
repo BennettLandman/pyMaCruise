@@ -9,8 +9,9 @@ compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
 include atlas sampling, transform optimization, or segmentation. This
 document tracks algorithm scope and source contracts; it does not claim a
 full LesionTOADS port. P39zzn also matches repeated thinning with accepted and
-rejected topology-driven label changes on a synthetic volume; upstream
-membership estimation remains unported.
+rejected topology-driven label changes, and P39zzo matches the constrained
+centroid updater with and without field correction; upstream membership
+estimation remains unported.
 
 ## Selected workflow and source
 
@@ -1195,3 +1196,23 @@ and
 This is a fixed-input thinning-stage comparison; atlas sampling,
 registration, upstream membership estimation, and full LesionTOADS remain
 outside this validated slice.
+
+### Completed substage: P39zzo constrained centroids
+
+`compute_constrained_lesion_toads_centroids` ports the selected
+`computeConstrainedCentroids()` method. It scans channels and classes in
+source order and visits assigned voxels in x/y/z order, using membership
+squared as the weight. With field correction enabled, each sample is
+`field * image` before the weighted accumulation. It then applies the source
+45% lower/upper bands using the neighboring centroids and the `-1e10` initial
+sentinel. On the committed 5×4×3 RAS fixture, selected-method Java and Python
+match raw float32 centroid bits with and without fields, including upper
+clamps and an empty class whose zero mean is clamped to its lower band.
+Focused tests: 2 passed. Full suite: 609 passed with 2 expected RAS warnings
+in 79.97 seconds on implementation commit
+`68dab53f1f851dcc46053fc4c0c317c6cff28f07`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-centroids.md`](reports/full-pytest-2026-09-30-lesion-centroids.md)
+and
+[`tests/data/synthetic/lesion_constrained_centroids/README.md`](../tests/data/synthetic/lesion_constrained_centroids/README.md).
+This validates centroid updating only; other centroid categories,
+variances/channel weights, and membership iteration remain open.
