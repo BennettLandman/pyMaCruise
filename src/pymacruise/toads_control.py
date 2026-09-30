@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
 @dataclass(frozen=True)
@@ -68,3 +69,43 @@ def toads_iteration_control(
         update_classification=stop,
         refresh_relations=not stop,
     )
+
+
+def toads_classification_from_labels(
+    segmentation: ArrayLike,
+    template_labels: ArrayLike,
+    previous_classification: ArrayLike,
+) -> tuple[NDArray[np.int8], int]:
+    """Map segmentation class indices to source signed-byte output labels.
+
+    This follows ``MultipleToadSegmentation.updateClassificationFromLabels``:
+    visit every voxel, assign ``templateLabel[segmentation]``, and count
+    changed output bytes. Membership winner selection is a separate source
+    method and is intentionally not performed here.
+    """
+    labels = np.asarray(segmentation)
+    template = np.asarray(template_labels)
+    previous = np.asarray(previous_classification)
+    if labels.ndim != 3 or any(size == 0 for size in labels.shape):
+        raise ValueError("segmentation must be a nonempty 3-D integer array")
+    if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
+        raise ValueError("segmentation labels must be integers")
+    if template.ndim != 1 or template.size == 0:
+        raise ValueError("template_labels must be a nonempty one-dimensional array")
+    if not np.issubdtype(template.dtype, np.integer) or np.issubdtype(template.dtype, np.bool_):
+        raise ValueError("template_labels must be integers")
+    if previous.shape != labels.shape:
+        raise ValueError("previous_classification must match segmentation")
+    if not np.issubdtype(previous.dtype, np.integer) or np.issubdtype(previous.dtype, np.bool_):
+        raise ValueError("previous_classification must contain integer byte labels")
+    if np.any(labels < 0) or np.any(labels >= template.size):
+        raise ValueError("segmentation contains an out-of-range template-label index")
+    byte_limits = np.iinfo(np.int8)
+    if np.any(template < byte_limits.min) or np.any(template > byte_limits.max):
+        raise ValueError("template_labels must fit in Java signed-byte range")
+    if np.any(previous < byte_limits.min) or np.any(previous > byte_limits.max):
+        raise ValueError("previous_classification must fit in Java signed-byte range")
+
+    output = template[labels].astype(np.int8, copy=False)
+    changed = int(np.count_nonzero(previous != output))
+    return output, changed
