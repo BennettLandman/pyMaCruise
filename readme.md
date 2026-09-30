@@ -264,7 +264,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Completed P39zzzd: ordinary GM class memberships now apply the source's exact ventricle-distance gate and DIRECT/PRIOR formula order. Float32 normalized outputs match the pinned Java excerpt; focused test: 2 passed.
 - Completed P39zzzze and P39zzzzf: LesionTOADS CRUISE-input and Dura-removal output adapters match four-channel Java references on synthetic RAS NIfTIs. These preserve source aliases, accumulation rules, exclusions, and the historical `CerebellarGM)` predicate. Focused tests: 5 passed across both adapters.
 - Started P39zzzzg: validate the available LesionTOADS membership-derived lesion-classification output map, which has no selected-plugin caller.
-- The plan now records 237/252 rows (~94%) Done, 3 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P18ct: validate selected TOADS class-pair similarity dispatch, including mixed lesion/non-lesion coefficient behavior.
+- The plan now records 237/253 rows (~94%) Done, 4 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
