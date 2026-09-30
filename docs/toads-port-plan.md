@@ -597,13 +597,21 @@ harness reference exactly; see [the P18bc report](reports/toads-growing-pass-202
 This remains source-slice evidence only and does not establish full TOADS
 segmentation, atlas alignment, or real-data parity.
 
-### Started substage: P18bg AlgorithmMultipleToads loop control
+### Completed substage: P18bg AlgorithmMultipleToads loop control
 
-Implement the source outer-loop convergence and iteration-limit decisions,
-including its conditional growing pass on a stopping iteration, final
-classification update, and relation refresh only when continuing. Keep the
-energy-ratio float32 order and stage order explicit. This is control-flow
-validation, not a complete TOADS iteration.
+The Python `toads_iteration_control` helper matches a Java control-flow
+excerpt for the source float32 energy-ratio formula, convergence and maximum
+iteration checks, optional growing when stopping, final classification update,
+and relation refresh only while continuing. Five cases cover continuation,
+convergence, and iteration limit with `doGrowing` enabled and disabled.
+Focused test: 1 passed. Full suite: 529 passed with two expected RAS warnings
+in 77.99 seconds on implementation commit
+`d1e8721e034524062995039724ed93dfbdc18155`; see
+[`docs/reports/full-pytest-2026-09-29-toads-loop-control.md`](reports/full-pytest-2026-09-29-toads-loop-control.md)
+and
+[`tests/data/synthetic/toads_iteration_control/README.md`](../tests/data/synthetic/toads_iteration_control/README.md).
+This validates only the loop's post-membership control decisions, not a full
+TOADS iteration.
 
 The next TOADS work must continue through source-backed stages and must not
 present these formula slices as an end-to-end segmentation.
