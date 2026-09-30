@@ -244,6 +244,16 @@ with `scripts/generate_java_toads_object_mask_outlier_sweep_reference.sh`;
 the selected-method scope and limitations are listed in
 `tests/data/synthetic/toads_object_mask_outlier_sweep/README.md`.
 
+## TOADS OBJECT/MASK/OUTLIER membership pass
+
+`ToadsObjectMaskOutlierMembershipPassReferenceHarness.java` combines the
+selected OBJECT, MASK, and OUTLIER data branches with field correction, PSF
+bias, six-face smoothing, atlas inverse prior, shape relation, normalization,
+and objective accumulation on a 4 x 4 x 4 phantom. Regenerate with
+`scripts/generate_java_toads_object_mask_outlier_membership_pass_reference.sh`;
+the generator verifies the selected source hash. Fixture scope is documented
+in `tests/data/synthetic/toads_object_mask_outlier_membership_pass/README.md`.
+
 ## TOADS MASK intensity energy
 
 `ToadsMaskIntensityEnergyReferenceHarness.java` records the selected binary

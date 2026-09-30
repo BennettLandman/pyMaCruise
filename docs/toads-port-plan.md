@@ -762,3 +762,19 @@ expected RAS warnings, in 78.37s on implementation commit
 and [`tests/data/synthetic/toads_mask_intensity_energy/README.md`](../tests/data/synthetic/toads_mask_intensity_energy/README.md).
 This is the MASK data term only; mixed object types and full TOADS evolution
 remain open.
+
+### Completed substages: P18by, P18bz, and P18ca exact-membership compositions
+
+`toads_object_mask_outlier_membership_sweep` composes class and scalar
+OUTLIER energies, the source-ordered smoothing and relation factors, inverse
+reciprocals, normalization of both class and outlier maps, and objective
+accumulation. P18bz adds and validates the selected atlas inverse-prior and
+half-weighted objective terms. P18ca adds
+`toads_object_mask_outlier_membership_pass`, which dispatches the selected
+OBJECT residual, MASK mismatch, and paired OUTLIER intensity terms into that
+sweep. The selected Java formula harness matches every tested float32 bit on
+the committed synthetic phantoms, including field correction, PSF bias, and
+atlas priors. Full-suite evidence and exact implementation commits are linked
+from P18by–P18ca in [`plan.md`](../plan.md). These compositions still do not
+perform TOADS deformation, topology-gated growth/thinning in the complete
+outer loop, or final segmentation transfer.
