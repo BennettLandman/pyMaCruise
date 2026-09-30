@@ -717,54 +717,6 @@ for 565 passed and 2 expected RAS warnings in 77.82s on implementation commit
 refresh only; approximate-membership mode and TOADS segmentation evolution
 remain open.
 
-### Completed substage: P18bn TOADS distance, shape, and neighbor factors
-
-`toads_distance_factor`, `toads_shape_factor`, and `toads_neighbor_factor` in
-`src/pymacruise/toads_relations.py` reproduce the selected
-`MultipleToadSegmentation` helpers used during exact membership updates. The
-implementation retains float32 operation order and the selected
-`Numerics.min`/`bounded` comparison semantics. The selected-method Java
-fixture and Python match float32 bits for signed-byte boundary distances,
-positive marching limits, shape thresholds, and prior strengths. Focused
-checks: 7 passed. Full suite: 572 passed, 2 expected RAS warnings, in 77.29s
-on implementation commit `f4e28fe095c1bcf6884a8a1b6e46bb0efcbe3c0c`; see
-[`docs/reports/full-pytest-2026-09-29-toads-relation-factors.md`](reports/full-pytest-2026-09-29-toads-relation-factors.md)
-and [`tests/data/synthetic/toads_relation_factors/README.md`](../tests/data/synthetic/toads_relation_factors/README.md).
-The larger membership update, approximate mode, and TOADS evolution remain
-open.
-
-### Completed substage: P18bo TOADS membership relation tiers
-
-`toads_membership_relation_tiers` maps each class to the source's DIRECT,
-NEIGHBOR, or PRIOR code using closest-label slots 0/1, 2/3, or neither,
-respectively. It separately returns the early-zero eligibility decision for
-prior-tier classes with exactly zero transformed shape. The selected Java
-excerpt and Python match all tier codes and eligibility bits on a synthetic
-asymmetric table covering overlapping/duplicate labels and shape values at
-zero. Focused checks: 2 passed. Full suite: 574 passed, 2 expected RAS
-warnings, in 77.40s on implementation commit
-`ab69fd79f2efcdafb7cbd5270fd48a3e320842ca`; see
-[`docs/reports/full-pytest-2026-09-29-toads-relation-tiers.md`](reports/full-pytest-2026-09-29-toads-relation-tiers.md)
-and [`tests/data/synthetic/toads_relation_tiers/README.md`](../tests/data/synthetic/toads_relation_tiers/README.md).
-This is relation selection only; class likelihood, membership update, and
-normalization remain open.
-
-### Completed substage: P18bp TOADS per-class relation weights
-
-`toads_membership_relation_factors` combines the validated tier, shape, and
-neighbor helpers into the per-class weight applied to reciprocal energy:
-direct classes receive 1, neighbor classes use the bounded neighbor factor,
-and prior classes use the capped shape factor. A prior-tier class with exact
-zero shape receives zero weight to reflect the source's earlier short-circuit.
-The selected Java formula harness and Python match every float32 weight bit on
-an asymmetric synthetic input over five prior strengths. Focused checks: 2
-passed. Full suite: 576 passed, 2 expected RAS warnings, in 77.65s on
-implementation commit `197fcd7b1fc3082ccdd166ad6a8e4d94558c580f`; see
-[`docs/reports/full-pytest-2026-09-29-toads-relation-factor-composition.md`](reports/full-pytest-2026-09-29-toads-relation-factor-composition.md)
-and [`tests/data/synthetic/toads_relation_factor_composition/README.md`](../tests/data/synthetic/toads_relation_factor_composition/README.md).
-This validates the weight composition only; exact membership energies and
-normalization remain open.
-
 ### Completed substage: P18bq TOADS ordinary OBJECT intensity energy
 
 `toads_object_intensity_energy` reproduces the selected ordinary OBJECT

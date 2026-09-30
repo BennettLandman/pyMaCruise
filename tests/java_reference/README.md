@@ -215,28 +215,6 @@ Regenerate with
 scope is documented in
 `tests/data/synthetic/toads_relation_state_refresh/README.md`.
 
-## TOADS relation factors
-
-`ToadsRelationFactorsReferenceHarness.java` transcribes the selected
-`distanceFactor`, `shapeFactor`, and `neighborFactor` operations and records
-float32 bits over boundary/clamp edge cases. Regenerate with
-`scripts/generate_java_toads_relation_factors_reference.sh`; both selected
-Java source checksums are enforced by the script.
-
-## TOADS membership relation tiers
-
-`ToadsRelationTierReferenceHarness.java` records selected exact-membership
-DIRECT/NEIGHBOR/PRIOR tier selection and the exact-zero shape-prior exclusion
-on an asymmetric synthetic table. Regenerate with
-`scripts/generate_java_toads_relation_tiers_reference.sh`.
-
-## TOADS relation factor composition
-
-`ToadsRelationFactorCompositionReferenceHarness.java` composes direct,
-neighbor, and prior support weights with the exact-zero prior exclusion and
-records float32 bits for multiple prior strengths. Regenerate with
-`scripts/generate_java_toads_relation_factor_composition_reference.sh`.
-
 ## TOADS ordinary OBJECT intensity energy
 
 `ToadsObjectIntensityEnergyReferenceHarness.java` records the selected
