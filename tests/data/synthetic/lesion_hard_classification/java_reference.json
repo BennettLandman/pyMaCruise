@@ -1,0 +1,1 @@
+{"source_method":"LesionToadSegmentation.generateClassification","source_sha256":"545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99","template_labels":[10,20,30,99],"lesion_class":3,"labels":[99,10,0,0,99,10,10,99,20,0]}
