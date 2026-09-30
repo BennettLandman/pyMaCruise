@@ -1,6 +1,6 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zzc have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
+**Status:** P39 is Started. P39a–P39zzd have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, and volume membership sweeps through OBJECT+LESION, BLACKHOLE prior/distance handling, and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
 atlas loading/sampling, registration derivatives, and selected registration
 coefficient slices on synthetic/reference data, as well as LesionTOADS growing
 queue exhaustion with pre-supplied memberships and P39t validates the
@@ -1098,10 +1098,19 @@ This validates the selected combined formula branch, not whole-engine
 equivalence.
 
 
-### Started substage: P39zzd OPTIMIZED_LESION in LESION+OUTMASK sweep
+### Completed substage: P39zzd OPTIMIZED_LESION in LESION+OUTMASK sweep
 
-The dedicated LESION+OUTMASK adapter predates the three-auxiliary adapter and
-still accepts only `LESION`. Extend this selected source path to accept
-`OPTIMIZED_LESION`, while preserving source-order class selection, lesion-map
-updates, OUTMASK blending, distance handling, and normalization. Validate both
-class orders against Java synthetic references.
+The dedicated LESION+OUTMASK adapter now accepts `OPTIMIZED_LESION` and routes
+its class, smoothing, prior, distance, conversion, and normalization behavior
+through the shared lesion formulas. Two selected-Java synthetic fixtures cover
+both class orders relative to OUTMASK and match every interior class, lesion,
+and outlier membership bit. The fixtures also verify the source's
+left-to-right prior outlier multiplication order; duplicate lesion aliases
+reject. Focused suite: 15 passed. Full suite: 524 passed with two expected RAS
+warnings in 84.97 seconds on implementation commit
+`6fecb9cdf48573d6b61598c009c325a38249a699`; see
+[`docs/reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-outmask-sweep.md`](reports/full-pytest-2026-09-29-lesion-toads-optimized-lesion-outmask-sweep.md)
+and the updated
+[`tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md`](../tests/data/synthetic/lesion_toads_lesion_outmask_sweep/README.md).
+This validates the selected combined formula path, not whole-engine
+equivalence.
