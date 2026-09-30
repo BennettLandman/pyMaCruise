@@ -376,7 +376,7 @@ passed 11 tests. The later folded-cortex case is separately gated against the
 owner-approved Dice and mesh-distance thresholds. P18 remains Started pending
 the whole-evolution original-JIST comparison and remaining wrapper stages.
 
-### Started substage: Dura wrapper output-mask application
+### Completed substage: Dura wrapper output-mask application
 
 `apply_dura_output_mask` uses NumPy masking for the source wrapper's final
 voxelwise output loop. This is generic array work, so the Python port uses
@@ -386,11 +386,15 @@ zeros original/WM/GM values there, creates an 8-bit inside mask, and applies
 `level_set_translation` only after the threshold decision. The synthetic test
 includes values exactly on both sides of the threshold, a translation that
 would change the mask if applied first, and verifies inputs are not mutated.
-The focused Dura test module then passed 14 tests. This validates only this
-voxelwise output adapter; topology correction, end-to-end input construction,
-physical headers, and the entire removal wrapper remain open.
+The boundary-order focused test passes. The full suite passed 628 tests with 2
+expected RAS warnings in 109.34 seconds on tested commit
+`ce00bbcdfe42c69c8136854b310a3d28d267f149`; see
+[`docs/reports/full-pytest-2026-09-30-p18-dura-adapters.md`](reports/full-pytest-2026-09-30-p18-dura-adapters.md).
+This validates only this voxelwise output adapter; topology correction,
+end-to-end input construction, physical headers, and the entire removal
+wrapper remain open.
 
-### Started substage: Dura initial surfaces
+### Completed substage: Dura initial surfaces
 
 `dura_initial_level_sets` forms the inner field as `0.5 - WM/255` and the
 outer field as `membership - GM/255`, preserving float32 operation order, then
@@ -403,11 +407,13 @@ The source wrapper SHA-256 is
 reference JAR `DistanceField.class` SHA-256 is recorded in the fixture. The
 generator is `scripts/generate_java_dura_initial_levelsets_reference.sh` and
 accepts the original jar through `JIST_TEST_JAR`; the jar is only a development
-oracle, not a runtime dependency. The focused Dura test module passes 23
-tests, including the nested and larger folded-cortex TGDM comparisons and
-five exact selected-Java topology-correction fixture calls.
+oracle, not a runtime dependency. The exact initial-field Java comparison
+passes. The full suite passed 628 tests with 2 expected RAS warnings in
+109.34 seconds on tested commit
+`ce00bbcdfe42c69c8136854b310a3d28d267f149`; see
+[`docs/reports/full-pytest-2026-09-30-p18-dura-adapters.md`](reports/full-pytest-2026-09-30-p18-dura-adapters.md).
 This validates initial arithmetic/distance construction only, not the two
-topology-correction algorithms or the complete dura workflow.
+topology-correction algorithms or the complete Dura workflow.
 
 ### Completed substage: first Dura WM topology correction
 
