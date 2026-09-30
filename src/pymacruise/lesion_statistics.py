@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from .toads_math import toads_powertable_lookup
+
 
 def compute_constrained_lesion_toads_centroids(
     images: ArrayLike,
@@ -539,18 +541,24 @@ def compute_lesion_toads_basic_centroids(
     smoothness: float = 0.0,
     centroid_links: ArrayLike | None = None,
     prior_centroids: ArrayLike | None = None,
+    power_exponents: ArrayLike | None = None,
+    modalities: tuple[str, ...] | list[str] | None = None,
+    zero_threshold: float = 1.0e-10,
 ) -> NDArray[np.float32]:
     """Update generic LesionTOADS class centroids for supplied hard labels.
 
     This ports the generic selected ``computeCentroids()`` branch: class
     accumulators use squared memberships and optional field-corrected samples;
     OUTLIER classes first scale class membership by one minus the supplied
-    outlier membership map. ``linked`` combines accumulators for classes sharing a link id, ``damped``
-    blends with the previous centroid, and ``prior`` adds the source's
-    ``smoothness * 1e4`` prior weight. The source RAYLEIGH second-moment rule
-    is used in ``none``, ``linked``, ``damped`` and fallback modes. LESION,
-    BLACKHOLE, and PowerTable-optimized categories have additional source
-    branches, so this generic helper rejects them for dedicated ports.
+    outlier membership map. Optimized CSF/GM/WM classes use the source
+    PowerTable residual weight; optimized CSF is gated to the T1_MPRAGE
+    modality. ``linked`` combines accumulators for classes sharing a link id,
+    ``damped`` blends with the previous centroid, and ``prior`` adds the
+    source's ``smoothness * 1e4`` prior weight. The source RAYLEIGH
+    second-moment rule is used in ``none``, ``linked``, ``damped`` and fallback
+    modes. LESION, BLACKHOLE, and optimized lesion/black-hole categories have
+    additional source branches, so this helper rejects them for dedicated
+    ports.
 
     Accumulation follows source channel/class/x/y/z order and explicitly
     rounds intermediate values to float32 to match Java ``float`` arithmetic.
@@ -573,6 +581,8 @@ def compute_lesion_toads_basic_centroids(
     if len(types) != classes or any(not isinstance(item, str) for item in types):
         raise ValueError("object_types must provide one string per membership class")
     allowed_types = {"object", "mask", "outlier", "outmask", "rayleigh"}
+    optimized_types = {"optimized_csf", "optimized_gm", "optimized_wm"}
+    allowed_types |= optimized_types
     if any(item not in allowed_types for item in types):
         raise ValueError("object_types include a category requiring a specialized centroid update")
     if "outlier" in types and outlier_values is None:
@@ -598,6 +608,24 @@ def compute_lesion_toads_basic_centroids(
     if not np.isfinite(blend):
         raise ValueError("smoothness must be finite")
 
+    powers = None if power_exponents is None else np.asarray(power_exponents, dtype=np.float32)
+    optimized_present = any(kind in optimized_types for kind in types)
+    modality_names = None if modalities is None else tuple(modalities)
+    if optimized_present:
+        if powers is None or powers.shape != (channels, classes):
+            raise ValueError("power_exponents must have shape (channels, classes) for optimized classes")
+        if not np.isfinite(powers).all():
+            raise ValueError("power_exponents must be finite")
+        if modality_names is None or len(modality_names) != channels or any(
+            not isinstance(name, str) for name in modality_names
+        ):
+            raise ValueError("modalities must provide one string per image channel for optimized classes")
+        zero = np.float32(zero_threshold)
+        if not np.isfinite(zero) or zero < np.float32(0.0):
+            raise ValueError("zero_threshold must be finite and nonnegative")
+    else:
+        zero = np.float32(zero_threshold)
+
     normalized_mode = mode.lower() if isinstance(mode, str) else ""
     if not normalized_mode:
         raise ValueError("mode must be a nonempty string")
@@ -616,6 +644,33 @@ def compute_lesion_toads_basic_centroids(
 
     result = initial.copy()
     rayleigh_types = {index for index, kind in enumerate(types) if kind == "rayleigh"}
+    optimized_factors: dict[tuple[int, int], NDArray[np.float32]] = {}
+    if optimized_present:
+        assert powers is not None and modality_names is not None
+        corrected_values = values if field_values is None else np.asarray(field_values * values, dtype=np.float32)
+        for channel in range(channels):
+            for class_index, kind in enumerate(types):
+                uses_table = kind in {"optimized_gm", "optimized_wm"} or (
+                    kind == "optimized_csf" and modality_names[channel] == "T1_MPRAGE"
+                )
+                if not uses_table:
+                    continue
+                residual = np.asarray(
+                    corrected_values[..., channel] - initial[channel, class_index],
+                    dtype=np.float32,
+                )
+                distance = np.asarray(residual * residual, dtype=np.float32)
+                factor = np.ones(spatial, dtype=np.float32)
+                above_zero = distance > zero
+                if np.any(above_zero):
+                    exponent = float(powers[channel, class_index])
+                    powered = toads_powertable_lookup(
+                        distance[above_zero], exponent, cached_exponent=exponent
+                    )
+                    factor[above_zero] = np.asarray(
+                        powered / distance[above_zero].astype(np.float64), dtype=np.float32
+                    )
+                optimized_factors[(channel, class_index)] = factor
     one = np.float32(1.0)
     two = np.float32(2.0)
     for channel in range(channels):
@@ -637,16 +692,27 @@ def compute_lesion_toads_basic_centroids(
                         if field_values is not None:
                             sample = np.float32(field_values[x, y, z, channel] * sample)
                         square = np.float32(membership * membership)
-                        if class_index in rayleigh_types:
+                        optimized_factor_map = optimized_factors.get((channel, class_index))
+                        if optimized_factor_map is not None:
+                            factor = optimized_factor_map[x, y, z]
+                            weighted = np.float32(
+                                np.float32(np.float32(factor * membership) * membership) * sample
+                            )
+                            weighted_square = np.float32(
+                                np.float32(factor * membership) * membership
+                            )
+                        elif class_index in rayleigh_types:
                             sample_term = np.float32(sample * sample)
+                            weighted = np.float32(square * sample_term)
+                            weighted_square = square
                         else:
-                            sample_term = sample
-                        weighted = np.float32(square * sample_term)
+                            weighted = np.float32(square * sample)
+                            weighted_square = square
                         numerators[class_index] = np.float32(
                             numerators[class_index] + weighted
                         )
                         denominators[class_index] = np.float32(
-                            denominators[class_index] + square
+                            denominators[class_index] + weighted_square
                         )
 
         for class_index in range(classes):

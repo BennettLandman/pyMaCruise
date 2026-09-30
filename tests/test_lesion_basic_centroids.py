@@ -85,7 +85,9 @@ def test_generic_centroids_reject_bad_grids_modes_and_special_types() -> None:
         compute_lesion_toads_basic_centroids(
             images, memberships, labels, INITIAL, TYPES, mode="prior"
         )
-    for kind in ("lesion", "blackhole", "optimized_lesion", "optimized_gm"):
+    for kind in (
+        "lesion", "blackhole", "optimized_lesion", "optimized_blackhole",
+    ):
         unsupported = ("object", kind, "mask", "object")
         with pytest.raises(ValueError, match="specialized"):
             compute_lesion_toads_basic_centroids(images, memberships, labels, INITIAL, unsupported)
