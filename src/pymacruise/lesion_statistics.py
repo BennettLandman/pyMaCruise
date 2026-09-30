@@ -779,8 +779,8 @@ class LesionToadsAuxiliaryCentroids:
     """Class, lesion, and black-hole centroids from a selected update."""
 
     class_centroids: NDArray[np.float32]
-    lesion_centroids: NDArray[np.float32]
-    black_hole_centroids: NDArray[np.float32]
+    lesion_centroids: NDArray[np.float32] | None
+    black_hole_centroids: NDArray[np.float32] | None
 
 
 def compute_lesion_toads_auxiliary_centroids(
@@ -1026,3 +1026,289 @@ def compute_lesion_toads_auxiliary_centroids(
             if black_den > np.float32(0.0) else np.float32(0.0)
         )
     return LesionToadsAuxiliaryCentroids(class_result, lesion_result, black_result)
+
+
+def compute_lesion_toads_centroids(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    segmentation: ArrayLike,
+    centroids: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    *,
+    fields: ArrayLike | None = None,
+    outlier_membership: ArrayLike | None = None,
+    lesion_membership: ArrayLike | None = None,
+    black_hole_membership: ArrayLike | None = None,
+    lesion_centroids: ArrayLike | None = None,
+    black_hole_centroids: ArrayLike | None = None,
+    mode: str = "none",
+    smoothness: float = 0.0,
+    centroid_links: ArrayLike | None = None,
+    prior_centroids: ArrayLike | None = None,
+    tissue_power_exponents: ArrayLike | None = None,
+    modalities: tuple[str, ...] | list[str] | None = None,
+    lesion_power_exponents: ArrayLike | None = None,
+    optimized_auxiliary_power_exponents: ArrayLike | None = None,
+    zero_threshold: float = 1.0e-10,
+) -> LesionToadsAuxiliaryCentroids:
+    """Update mixed LesionTOADS class and auxiliary centroids in one pass.
+
+    This combines the category-specific branches selected from
+    ``LesionToadSegmentation.computeCentroids()`` so linked centroid modes
+    operate over one shared class set. It supports generic, OUTLIER,
+    RAYLEIGH, optimized CSF/GM/WM, ordinary LESION/BLACKHOLE, and optimized
+    LESION/BLACKHOLE classes. Category-specific PowerTable argument sources,
+    float32 accumulation order, winner/tie routing, and the source's unlinked
+    auxiliary centroid updates are kept explicit. The result's auxiliary
+    arrays are ``None`` when no auxiliary class type is present.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    weights = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    initial = np.asarray(centroids, dtype=np.float32)
+    types = tuple(item.lower() if isinstance(item, str) else item for item in object_types)
+    field_values = None if fields is None else np.asarray(fields, dtype=np.float32)
+    outlier_values = (
+        None if outlier_membership is None
+        else np.asarray(outlier_membership, dtype=np.float32)
+    )
+    lesion_map = None if lesion_membership is None else np.asarray(lesion_membership, dtype=np.float32)
+    black_map = None if black_hole_membership is None else np.asarray(black_hole_membership, dtype=np.float32)
+    old_lesion = None if lesion_centroids is None else np.asarray(lesion_centroids, dtype=np.float32)
+    old_black = None if black_hole_centroids is None else np.asarray(black_hole_centroids, dtype=np.float32)
+    if values.ndim != 4 or any(size < 1 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    spatial, channels = values.shape[:3], values.shape[3]
+    if weights.ndim != 4 or weights.shape[:3] != spatial or weights.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and have at least one class")
+    classes = weights.shape[3]
+    if labels.shape != spatial or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be an integer grid matching the images")
+    if initial.shape != (channels, classes):
+        raise ValueError("centroids must have shape (channels, classes)")
+    if len(types) != classes or any(not isinstance(item, str) for item in types):
+        raise ValueError("object_types must provide one string per membership class")
+    allowed = {
+        "object", "mask", "outmask", "outlier", "rayleigh", "optimized_csf",
+        "optimized_gm", "optimized_wm", "lesion", "blackhole",
+        "optimized_lesion", "optimized_blackhole",
+    }
+    if any(kind not in allowed for kind in types):
+        raise ValueError("object_types contain an unsupported LesionTOADS category")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must index the membership classes")
+    if field_values is not None and field_values.shape != values.shape:
+        raise ValueError("fields must match the image grid and channel count")
+    if "outlier" in types and (outlier_values is None or outlier_values.shape != spatial):
+        raise ValueError("OUTLIER classes require an outlier map matching the image grid")
+    if outlier_values is not None and outlier_values.shape != spatial:
+        raise ValueError("outlier_membership must match the image grid")
+    auxiliary_types = {"lesion", "blackhole", "optimized_lesion", "optimized_blackhole"}
+    has_auxiliary = any(kind in auxiliary_types for kind in types)
+    if has_auxiliary:
+        if lesion_map is None or black_map is None or lesion_map.shape != spatial or black_map.shape != spatial:
+            raise ValueError("auxiliary class types require lesion and black-hole maps matching the image grid")
+        if old_lesion is None or old_black is None or old_lesion.shape != (channels,) or old_black.shape != (channels,):
+            raise ValueError("auxiliary class types require one lesion and black-hole centroid per channel")
+    if not has_auxiliary and any(item is not None for item in (lesion_map, black_map, old_lesion, old_black)):
+        raise ValueError("auxiliary maps and centroids require LESION/BLACKHOLE object types")
+
+    optimized_tissue_types = {"optimized_csf", "optimized_gm", "optimized_wm"}
+    has_optimized_tissue = any(kind in optimized_tissue_types for kind in types)
+    tissue_powers = None if tissue_power_exponents is None else np.asarray(tissue_power_exponents, dtype=np.float32)
+    modality_names = None if modalities is None else tuple(modalities)
+    if has_optimized_tissue:
+        if tissue_powers is None or tissue_powers.shape != (channels, classes):
+            raise ValueError("tissue_power_exponents must have shape (channels, classes)")
+        if modality_names is None or len(modality_names) != channels or any(not isinstance(name, str) for name in modality_names):
+            raise ValueError("modalities must provide one string per image channel")
+    ordinary_auxiliary = any(kind in {"lesion", "blackhole"} for kind in types)
+    lesion_powers = None if lesion_power_exponents is None else np.asarray(lesion_power_exponents, dtype=np.float32)
+    if ordinary_auxiliary and (lesion_powers is None or lesion_powers.shape != (channels,)):
+        raise ValueError("lesion_power_exponents must have one value per channel for ordinary auxiliary classes")
+    optimized_auxiliary = any(kind in {"optimized_lesion", "optimized_blackhole"} for kind in types)
+    optimized_aux_powers = (
+        None if optimized_auxiliary_power_exponents is None
+        else np.asarray(optimized_auxiliary_power_exponents, dtype=np.float32)
+    )
+    if optimized_auxiliary and (
+        optimized_aux_powers is None or optimized_aux_powers.shape != (channels,)
+    ):
+        raise ValueError("optimized_auxiliary_power_exponents must have one value per channel")
+    finite = [values, weights, initial]
+    finite.extend(
+        item for item in (
+            field_values, outlier_values, lesion_map, black_map, old_lesion,
+            old_black, tissue_powers, lesion_powers, optimized_aux_powers,
+        ) if item is not None
+    )
+    if not all(np.isfinite(item).all() for item in finite):
+        raise ValueError("images, maps, centroids, and exponents must be finite")
+    if not np.isfinite(np.float32(smoothness)):
+        raise ValueError("smoothness must be finite")
+    blend = np.float32(smoothness)
+    zero = np.float32(zero_threshold)
+    if not np.isfinite(zero) or zero < np.float32(0.0):
+        raise ValueError("zero_threshold must be finite and nonnegative")
+    normalized_mode = mode.lower() if isinstance(mode, str) else ""
+    if not normalized_mode:
+        raise ValueError("mode must be a nonempty string")
+    links = None if centroid_links is None else np.asarray(centroid_links)
+    if normalized_mode == "linked":
+        if links is None or links.shape != (channels, classes) or not np.issubdtype(links.dtype, np.integer):
+            raise ValueError("centroid_links must be an integer (channels, classes) map in linked mode")
+    priors = None if prior_centroids is None else np.asarray(prior_centroids, dtype=np.float32)
+    if normalized_mode == "prior":
+        if priors is None or priors.shape != (channels, classes) or not np.isfinite(priors).all():
+            raise ValueError("prior_centroids must be finite with shape (channels, classes) in prior mode")
+
+    def _factor_map(distance: NDArray[np.float32], exponent: float) -> NDArray[np.float32]:
+        factor = np.ones(spatial, dtype=np.float32)
+        selected = distance > zero
+        if np.any(selected):
+            powered = toads_powertable_lookup(
+                distance[selected], exponent, cached_exponent=exponent
+            )
+            factor[selected] = np.asarray(
+                powered / distance[selected].astype(np.float64), dtype=np.float32
+            )
+        return factor
+
+    result = initial.copy()
+    lesion_result = None if old_lesion is None else old_lesion.copy()
+    black_result = None if old_black is None else old_black.copy()
+    rayleigh_indices = {index for index, kind in enumerate(types) if kind == "rayleigh"}
+    for channel in range(channels):
+        corrected = values[..., channel] if field_values is None else np.asarray(
+            field_values[..., channel] * values[..., channel], dtype=np.float32
+        )
+        ordinary_lesion_factor = None
+        if ordinary_auxiliary:
+            residual = np.asarray(corrected - old_lesion[channel], dtype=np.float32)
+            lesion_distance = np.asarray(residual * residual, dtype=np.float32)
+            ordinary_lesion_factor = _factor_map(lesion_distance, float(lesion_powers[channel]))
+        numerators = np.zeros(classes, dtype=np.float32)
+        denominators = np.zeros(classes, dtype=np.float32)
+        lesion_num = np.float32(0.0)
+        lesion_den = np.float32(0.0)
+        black_num = np.float32(0.0)
+        black_den = np.float32(0.0)
+        for class_index, kind in enumerate(types):
+            tissue_factor = None
+            if kind in optimized_tissue_types:
+                table_applies = kind != "optimized_csf" or modality_names[channel] == "T1_MPRAGE"
+                if table_applies:
+                    residual = np.asarray(corrected - initial[channel, class_index], dtype=np.float32)
+                    distance = np.asarray(residual * residual, dtype=np.float32)
+                    tissue_factor = _factor_map(distance, float(tissue_powers[channel, class_index]))
+            optimized_aux_factor = None
+            if kind in {"optimized_lesion", "optimized_blackhole"}:
+                selected_membership = np.maximum(
+                    np.maximum(weights[..., class_index], lesion_map), black_map
+                )
+                distance = np.asarray(
+                    np.asarray(selected_membership * selected_membership, dtype=np.float32)
+                    * corrected,
+                    dtype=np.float32,
+                )
+                optimized_aux_factor = _factor_map(
+                    distance, float(optimized_aux_powers[channel])
+                )
+            for x in range(spatial[0]):
+                for y in range(spatial[1]):
+                    for z in range(spatial[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = weights[x, y, z, class_index]
+                        sample = corrected[x, y, z]
+                        if kind in auxiliary_types:
+                            lesion_value = lesion_map[x, y, z]
+                            black_value = black_map[x, y, z]
+                            winner = max(membership, lesion_value, black_value)
+                            factor = np.float32(1.0)
+                            optimized_kind = kind in {"optimized_lesion", "optimized_blackhole"}
+                            if optimized_kind:
+                                factor = optimized_aux_factor[x, y, z]
+                            elif winner != membership and winner == lesion_value:
+                                factor = ordinary_lesion_factor[x, y, z]
+                            if winner == membership:
+                                weighted = np.float32(np.float32(factor * membership) * membership)
+                                numerators[class_index] = np.float32(
+                                    numerators[class_index] + np.float32(weighted * sample)
+                                )
+                                denominators[class_index] = np.float32(denominators[class_index] + weighted)
+                            elif winner == lesion_value:
+                                weighted = np.float32(np.float32(factor * lesion_value) * lesion_value)
+                                lesion_num = np.float32(lesion_num + np.float32(weighted * sample))
+                                lesion_den = np.float32(lesion_den + weighted)
+                            else:
+                                weighted = np.float32(np.float32(factor * black_value) * black_value)
+                                black_num = np.float32(black_num + np.float32(weighted * sample))
+                                black_den = np.float32(black_den + weighted)
+                            continue
+                        if kind == "outlier":
+                            membership = np.float32(
+                                membership * np.float32(np.float32(1.0) - outlier_values[x, y, z])
+                            )
+                        square = np.float32(membership * membership)
+                        factor = np.float32(1.0) if tissue_factor is None else tissue_factor[x, y, z]
+                        weighted = np.float32(np.float32(factor * membership) * membership) if tissue_factor is not None else square
+                        sample_term = np.float32(weighted * sample)
+                        if class_index in rayleigh_indices:
+                            sample_term = np.float32(sample_term * sample)
+                        numerators[class_index] = np.float32(
+                            numerators[class_index] + sample_term
+                        )
+                        denominators[class_index] = np.float32(denominators[class_index] + weighted)
+
+        for class_index in range(classes):
+            numerator, denominator = numerators[class_index], denominators[class_index]
+            if normalized_mode == "linked":
+                nsum, dsum = numerator, denominator
+                for linked_class in range(classes):
+                    if linked_class != class_index and links[channel, class_index] == links[channel, linked_class]:
+                        nsum = np.float32(nsum + np.float32(blend * numerators[linked_class]))
+                        dsum = np.float32(dsum + np.float32(blend * denominators[linked_class]))
+                if dsum > np.float32(0.0):
+                    result[channel, class_index] = np.float32(nsum / dsum)
+                else:
+                    result[channel, class_index] = np.float32(0.0)
+            elif normalized_mode == "damped":
+                if denominator > np.float32(0.0):
+                    retained = np.float32(
+                        np.float32(np.float32(np.float32(1.0) - blend) * numerator) / denominator
+                    )
+                    result[channel, class_index] = np.float32(
+                        retained + np.float32(blend * result[channel, class_index])
+                    )
+            elif normalized_mode == "prior":
+                prior_weight = np.float32(blend * np.float32(1.0e4))
+                nsum = np.float32(numerator + np.float32(prior_weight * priors[channel, class_index]))
+                dsum = np.float32(denominator + prior_weight)
+                result[channel, class_index] = np.float32(nsum / dsum) if dsum > np.float32(0.0) else np.float32(0.0)
+            elif denominator > np.float32(0.0):
+                # The selected Java method applies the Rayleigh square-root
+                # conversion only in centroidMode == "none"; linked, damped,
+                # prior, and fallback retain their own raw-ratio expressions.
+                if class_index in rayleigh_indices and normalized_mode == "none":
+                    result[channel, class_index] = np.float32(
+                        np.sqrt(np.float64(np.float32(numerator / np.float32(np.float32(2.0) * denominator))))
+                    )
+                else:
+                    result[channel, class_index] = np.float32(numerator / denominator)
+            else:
+                result[channel, class_index] = np.float32(0.0)
+
+        if has_auxiliary:
+            if lesion_den > np.float32(0.0):
+                lesion_result[channel] = np.float32(
+                    np.float32(np.float32(0.2) * np.float32(lesion_num / lesion_den))
+                    + np.float32(np.float32(0.8) * old_lesion[channel])
+                )
+            else:
+                lesion_result[channel] = np.float32(0.0)
+            black_result[channel] = (
+                np.float32(black_num / black_den)
+                if black_den > np.float32(0.0) else np.float32(0.0)
+            )
+    return LesionToadsAuxiliaryCentroids(result, lesion_result, black_result)
