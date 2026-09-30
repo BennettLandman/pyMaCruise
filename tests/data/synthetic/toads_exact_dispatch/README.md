@@ -1,0 +1,21 @@
+# TOADS exact-dispatch folded RAS fixture
+
+`images.nii.gz` is a deterministic 15 × 13 × 11, two-channel float32 phantom.
+`folded_ribbon.nii.gz` marks a five-fold, asymmetric cortical shell. Both
+files have a millimetre RAS affine with anisotropic 1.1 × 1.2 × 1.3 mm voxels.
+They contain synthetic values only and are regenerated with
+`scripts/generate_toads_exact_dispatch_fixture.py`.
+
+The image channels include nonzero shell intensities and sparse zeros outside
+the shell, so both ordinary residual and MASK mismatch paths can be exercised.
+The geometry file is used by the fixed-input dispatcher test to construct
+deterministic shape and closest-label maps. It does not model a subject or
+validate the complete TOADS segmentation workflow.
+
+The mixed OBJECT/MASK/OUTLIER bitwise reference used by the dispatcher test is
+the already pinned `MultipleToadSegmentation.computeExactMemberships` excerpt
+in `tests/java_reference/ToadsObjectMaskOutlierMembershipPassReferenceHarness.java`;
+its expected output is in
+`tests/data/synthetic/toads_object_mask_outlier_membership_pass/java_reference.json`.
+Both pin the selected VandyCRUISE source SHA-256
+`63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884`.
