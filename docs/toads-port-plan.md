@@ -353,8 +353,13 @@ surface tolerances. See
 metrics. Regenerate the actual-JIST references using
 `scripts/generate_java_dura_original_jist_reference.sh`.
 
-Attached dura, outer masks, the two pre-evolution topology corrections, and
-post-evolution end-to-end wrapper behavior remain open before P18 can be Done.
+The selected `run_dura_removal` wrapper now composes the two topology calls,
+level-set/distance initialization, dynamic-pressure TGDM, and final output
+masking on a checked native T1 RAS grid. A synthetic 9³ composition test runs
+one outer TGDM pass and matches its intermediate topology fields to the Java
+two-pass harness, then checks assembled products against the validated stage
+sequence. Full default five-pass/folded-case wrapper acceptance and integrated
+TOADS segmentation remain open.
 
 The reference fixture is `tests/data/synthetic/dura_tgdm_full_evolution/java_reference.json`;
 its generator and Java harness are under `scripts/` and `tests/java_reference/`.
@@ -494,12 +499,13 @@ phantom, and regeneration details.
 
 The Python repository now contains selected TOADS preprocessing, atlas
 sampling/registration kernels, optimized CSF/GM/WM per-voxel intensity
-likelihood and membership-update terms, and the selected damped centroid
-update. The centroid slice matches the actual Java `PowerTable`-weighted
-reference on synthetic fixtures in both field modes. It still has no complete
-TOADS segmentation or dura-removal workflow in `src/pymacruise/`. P34 requires
-a real base workflow and cannot be validated by wiring synthetic TOADS-like
-inputs through substitute behavior.
+likelihood and membership-update terms, selected mixed OBJECT/MASK/OUTLIER
+membership passes, and the selected damped centroid update. The selected
+Dura removal stages are also composed in a callable RAS-grid adapter and
+validated on synthetic inputs. Full TOADS segmentation and accepted
+end-to-end Dura equivalence remain incomplete. P34 requires the base workflow
+to run and meet its output criteria; selected-method synthetic slices alone
+do not unblock it.
 Therefore P34 remains **Blocked** until the selected source algorithms are
 ported and their reference comparison passes. The P18ae data-term slice is
 described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md),
