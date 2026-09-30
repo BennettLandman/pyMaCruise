@@ -265,7 +265,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Started P18cr: validate ordinary-OBJECT assigned-class variance using the selected full-grid float32 accumulation, field correction, and zero-support behavior.
 - Started P39zzzze: map selected LesionTOADS membership and label arrays into the four source-ordered CRUISE input channels.
 - Started P18cs: validate the ordinary-OBJECT image-wide variance update and normalized modality weights using the selected source arithmetic.
-- The plan now records 231/250 rows (~92%) Done, 7 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P39zzzzf: port the separate LesionTOADS “dura removal inputs” output adapter, including its source-name aliases and spelling quirk.
+- The plan now records 231/251 rows (~92%) Done, 8 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
