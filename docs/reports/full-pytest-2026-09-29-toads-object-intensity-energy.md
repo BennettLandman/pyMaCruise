@@ -1,8 +1,10 @@
 # P18bq full-suite evidence: TOADS OBJECT intensity energy
 
-- Implementation commit tested: `dd26e5ce978514c0df75f022bf8a7bf370d1ea71`
+- Implementation commit: `dd26e5ce978514c0df75f022bf8a7bf370d1ea71`
+- Cleaned repository commit tested by the recorded full-suite run:
+  `54e84e3c1dc2dd8796174b3e80cf31e0eddc6c1b`
 - Command: `.venv/bin/pytest -q`
-- Result: **578 passed, 2 warnings in 78.57s**
+- Result: **567 passed, 2 warnings in 85.62s**
 - Warnings: expected input-orientation warnings from synthetic Dura topology
   tests; the LPS test volume and paint mask are reoriented to RAS.
 - Focused result: `tests/test_toads_object_intensity_energy.py` — **2
