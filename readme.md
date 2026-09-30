@@ -263,7 +263,8 @@ Validation is required at image, algorithm-stage, scientific surface, and full-p
 - Started P18cq: port the selected ordinary-OBJECT base-TOADS centroid accumulator and active damped update as an isolated Java-compared statistics stage.
 - Started P39zzzd: port the ordinary GM-class ventricle-distance attenuation branch and its normalization behavior from selected LesionTOADS membership routing.
 - Started P18cr: validate ordinary-OBJECT assigned-class variance using the selected full-grid float32 accumulation, field correction, and zero-support behavior.
-- The plan now records 231/248 rows (~93%) Done, 5 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
+- Started P39zzzze: map selected LesionTOADS membership and label arrays into the four source-ordered CRUISE input channels.
+- The plan now records 231/249 rows (~93%) Done, 6 Started, 1 Blocked, and 11 Not started. Effort-weighted completion remains approximately 66%; TOADS/plus integration and final equivalence remain the largest open work.
 
 ### 2026-09-29
 
