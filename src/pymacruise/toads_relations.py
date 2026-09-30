@@ -137,6 +137,38 @@ def toads_neighbor_factor(shape: ArrayLike, prior_factor: float) -> NDArray[np.f
     return np.asarray(lower_bounded, dtype=np.float32)
 
 
+def toads_membership_relation_tiers(
+    closest_labels: ArrayLike,
+    transformed_shapes: ArrayLike,
+) -> tuple[NDArray[np.int8], NDArray[np.bool_]]:
+    """Classify per-voxel classes as direct, neighbor, or prior support.
+
+    The returned byte codes match `computeExactMemberships`: direct=2 for
+    closest-label slots 0/1, neighbor=1 for slots 2/3, and prior=3 otherwise.
+    The paired eligibility mask marks prior-tier classes as excluded only
+    when the transformed shape value is exactly zero, matching the source's
+    early zero assignment before computing that class's energy.
+    """
+    labels = np.asarray(closest_labels)
+    shapes = np.asarray(transformed_shapes, dtype=np.float32)
+    if labels.ndim != 4 or labels.shape[-1] != 4 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("closest_labels must be an integer grid with four slots")
+    if shapes.ndim != 4 or shapes.shape[:3] != labels.shape[:3] or shapes.shape[-1] < 1:
+        raise ValueError("transformed_shapes must match the closest-label grid and have classes")
+    if not np.isfinite(shapes).all():
+        raise ValueError("transformed_shapes must be finite")
+    if np.any(labels < -1) or np.any(labels >= shapes.shape[-1]):
+        raise ValueError("closest_labels must contain only the -1 sentinel or valid class indices")
+
+    direct = np.any(labels[..., :2, None] == np.arange(shapes.shape[-1]), axis=-2)
+    neighbor = np.any(labels[..., 2:, None] == np.arange(shapes.shape[-1]), axis=-2) & ~direct
+    relation_types = np.full(shapes.shape, 3, dtype=np.int8)
+    relation_types[neighbor] = np.int8(1)
+    relation_types[direct] = np.int8(2)
+    eligible = ~((relation_types == 3) & (shapes == np.float32(0.0)))
+    return relation_types, eligible
+
+
 def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
     """Build the selected source's four-slot closest-label map.
 
