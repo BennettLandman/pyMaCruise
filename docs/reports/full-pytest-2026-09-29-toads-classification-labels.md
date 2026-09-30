@@ -1,7 +1,7 @@
 # Full pytest evidence: P18bh TOADS label classification transfer
 
 - Date: 2026-09-29
-- Implementation commit tested: `b005798`
+- Implementation commit tested: `b00579842e96ae782a1bcc29e2641ced6318e4cf`
 - Command: `.venv/bin/python -m pytest -q`
 - Result: **535 passed**, 2 expected RAS orientation warnings, in 78.80 seconds.
 - Focused classification transfer and validation checks: 6 passed.
