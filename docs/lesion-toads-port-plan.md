@@ -22,6 +22,8 @@ for optimized CSF/GM/WM centroids, and P39zzw validates ordinary LESION and
 BLACKHOLE centroid routing.
 P39zzx validates its optimized LESION/BLACKHOLE variant and its separate
 PowerTable factor source.
+P39zzy combines the validated categories in one selected `computeCentroids()`
+pass and validates cross-category linked updates.
 
 ## Selected workflow and source
 
@@ -1405,3 +1407,24 @@ with 2 expected RAS warnings in 111.20 seconds on implementation commit
 and
 [`tests/data/synthetic/lesion_optimized_auxiliary_centroids/README.md`](../tests/data/synthetic/lesion_optimized_auxiliary_centroids/README.md).
 This validates optimized auxiliary centroid routing for fixed maps only.
+
+### Completed substage: P39zzy mixed LesionTOADS centroid categories
+
+`compute_lesion_toads_centroids` integrates the selected generic, OUTLIER,
+RAYLEIGH, optimized CSF/GM/WM, ordinary LESION/BLACKHOLE, and optimized
+LESION/BLACKHOLE accumulator branches in one shared class vector. It preserves
+category-specific PowerTable inputs, field-corrected samples, class-first
+auxiliary tie precedence, class/channel/voxel float32 accumulation, and
+cross-category linked groups. The selected source applies the Rayleigh
+square-root conversion only for centroid mode `none`; linked, damped, prior,
+and fallback modes retain their direct expressions. The committed 6×5×4 RAS
+fixture carries all categories, two channels and fields, both auxiliary maps,
+and an intentionally absent class. Selected Java and Python outputs match
+raw float32 bits for class, lesion, and black-hole centroids for all five
+modes with and without fields. Focused centroid suites: 12 passed. Full
+suite: 628 passed with 2 expected RAS warnings in 118.15 seconds on
+implementation commit `fbecc45a357576d0c5a583d366d4dc5e1c3d6087`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-mixed-centroids.md`](reports/full-pytest-2026-09-30-lesion-mixed-centroids.md)
+and [`tests/data/synthetic/lesion_mixed_centroids/README.md`](../tests/data/synthetic/lesion_mixed_centroids/README.md).
+This validates a mixed fixed-map centroid update, not the enclosing
+LesionTOADS membership iteration.
