@@ -1,0 +1,58 @@
+{
+  "source": "fixed state from selected 11-class Java reference sweep; registration output is supplied, not recomputed",
+  "membership_source_case": 5,
+  "membership_objective_bits": 1047831091,
+  "registration_transform_bits": [
+    1016296636,
+    3157539160,
+    1004888130,
+    1051931443,
+    3194046382,
+    1042536202
+  ],
+  "template_labels": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "grow_candidate_xyz": [
+    4,
+    3,
+    3
+  ],
+  "true_ras_affine": [
+    [
+      0.9,
+      0.0,
+      0.0,
+      12.5
+    ],
+    [
+      0.0,
+      1.2,
+      0.0,
+      -31.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.45,
+      8.25
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "axes": "XYZ; RAS+"
+}
