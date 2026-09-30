@@ -17,7 +17,8 @@ class/auxiliary variance update with its source branch behavior. P39zzr
 validates selected diagonal-covariance channel weights and fallback behavior,
 P39zzs validates pooled noise standard deviations, and P39zzt validates
 generic centroid update modes. P39zzu validates source OUTLIER suppression in
-the generic class-centroid accumulators.
+the generic class-centroid accumulators, and P39zzv validates PowerTable
+weights for optimized CSF/GM/WM centroids.
 
 ## Selected workflow and source
 
@@ -1309,8 +1310,8 @@ source modes that apply it. The 5×4×3 RAS variance phantom compares raw Java
 float32 bits for two channels across all modes with and without fields. Its
 classes cover ordinary OBJECT/MASK and RAYLEIGH categories plus an absent
 class; link groups vary by channel, and the damped mode keeps the old centroid
-for the empty class. LESION, BLACKHOLE, and PowerTable-optimized types reject
-until their specialized branches are ported. Focused tests: 2 passed. Full
+for the empty class. LESION/BLACKHOLE and optimized LESION/BLACKHOLE types
+reject until their specialized branches are ported. Focused tests: 2 passed. Full
 suite: 618 passed with 2 expected RAS warnings in 123.29 seconds on
 implementation commit `8275a1370ab76c8c5beab68518d65ab0372b6771`; see
 [`docs/reports/full-pytest-2026-09-30-lesion-basic-centroids.md`](reports/full-pytest-2026-09-30-lesion-basic-centroids.md)
@@ -1336,3 +1337,25 @@ and the
 [`tests/data/synthetic/lesion_outlier_centroids/README.md`](../tests/data/synthetic/lesion_outlier_centroids/README.md).
 This validates OUTLIER centroid accumulation only, not outlier-map
 estimation or full LesionTOADS iteration.
+
+### Completed substage: P39zzv optimized tissue centroids
+
+`compute_lesion_toads_basic_centroids` now applies the selected
+`PowerTable.lookup(distance, exponent) / distance` weight for optimized GM
+and WM classes and for optimized CSF only on the T1_MPRAGE channel. A CSF
+class on FLAIR follows the generic accumulator. The method reuses the
+source-compatible Python PowerTable implementation and preserves float32
+residuals, factor narrowing, weighted accumulator order, field correction,
+and each selected centroid update mode. The 5×4×3 RAS `.nii.gz` fixture
+covers an exact zero residual, a squared residual below ZERO, cached table
+lookup, direct out-of-range lookup, both CSF modality paths, an absent class,
+and two channels. The harness compiles the preserved upstream Java
+`PowerTable.java`; the source method and Python outputs match raw float32
+centroid bits with and without fields for `none`, `linked`, `damped`, `prior`,
+and fallback. Focused tests: 2 passed. Full suite: 622 passed with 2 expected
+RAS warnings in 113.80 seconds on implementation commit
+`92d6eb71e420986a404442c2b7a4dcdb6e3bce76`; see
+[`docs/reports/full-pytest-2026-09-30-lesion-optimized-centroids.md`](reports/full-pytest-2026-09-30-lesion-optimized-centroids.md)
+and
+[`tests/data/synthetic/lesion_optimized_centroids/README.md`](../tests/data/synthetic/lesion_optimized_centroids/README.md).
+This validates the optimized tissue centroid branch for supplied maps only.
