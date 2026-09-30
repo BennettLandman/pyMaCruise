@@ -1031,6 +1031,97 @@ def toads_object_mask_membership_pass(
     )
 
 
+def toads_object_mask_outlier_membership_pass(
+    image_values: ArrayLike,
+    initial_memberships: ArrayLike,
+    initial_outlier_membership: ArrayLike,
+    centroids: ArrayLike,
+    modality_weights: ArrayLike,
+    class_variance_weights: ArrayLike,
+    image_variances: ArrayLike,
+    outlier_value: float,
+    transformed_shapes: ArrayLike,
+    closest_labels: ArrayLike,
+    smoothing_priors: ArrayLike,
+    centroid_similarity: ArrayLike,
+    atlas_shape_priors: ArrayLike,
+    smoothing: float,
+    prior_factor: float,
+    prior_coefficient: float,
+    *,
+    class_types: tuple[str, ...] | list[str],
+    intensity_field: ArrayLike | None = None,
+    psf_bias: ArrayLike | None = None,
+    zero_threshold: float = 1e-10,
+    infinite_reciprocal: float = 1e10,
+) -> tuple[NDArray[np.float32], NDArray[np.float32], np.float32]:
+    """Compose the selected OBJECT/MASK/OUTLIER membership pass.
+
+    Reuses the separate source-matched OBJECT residual, MASK mismatch, and
+    paired OUTLIER energies, then applies the shared inverse-shape prior and
+    exact-membership class/outlier sweep. The class type list must contain
+    exactly one OUTLIER; topology, deformation, and outer-loop convergence
+    remain separate stages.
+    """
+    types = tuple(class_types)
+    if types.count("OUTLIER") != 1 or any(
+        kind not in {"OBJECT", "MASK", "OUTLIER"} for kind in types
+    ):
+        raise ValueError("class_types must contain OBJECT/MASK classes and exactly one OUTLIER class")
+    object_energy = toads_object_intensity_energy(
+        image_values,
+        centroids,
+        modality_weights,
+        class_variance_weights,
+        image_variances,
+        intensity_field=intensity_field,
+        psf_bias=psf_bias,
+    )
+    mask_energy = toads_mask_intensity_energy(
+        image_values, modality_weights, class_variance_weights, image_variances
+    )
+    outlier_residual, outlier_energy_by_class = toads_outlier_intensity_energy(
+        image_values,
+        centroids,
+        modality_weights,
+        class_variance_weights,
+        image_variances,
+        outlier_value,
+        intensity_field=intensity_field,
+        psf_bias=psf_bias,
+    )
+    if len(types) != object_energy.shape[-1]:
+        raise ValueError("class_types must match the number of classes")
+    class_energy = np.empty_like(object_energy)
+    outlier_class = types.index("OUTLIER")
+    for class_index, kind in enumerate(types):
+        if kind == "OBJECT":
+            class_energy[..., class_index] = object_energy[..., class_index]
+        elif kind == "MASK":
+            class_energy[..., class_index] = mask_energy[..., class_index]
+        else:
+            class_energy[..., class_index] = outlier_residual[..., class_index]
+    prior_inverse, prior_objective = toads_inverse_shape_prior_energy(
+        transformed_shapes, atlas_shape_priors, centroid_similarity, prior_coefficient
+    )
+    return toads_object_mask_outlier_membership_sweep(
+        class_energy,
+        outlier_energy_by_class[..., outlier_class],
+        initial_memberships,
+        initial_outlier_membership,
+        types,
+        transformed_shapes,
+        closest_labels,
+        smoothing_priors,
+        smoothing,
+        prior_factor,
+        prior_inverse_energy=prior_inverse,
+        prior_objective_energy=prior_objective,
+        zero_threshold=zero_threshold,
+        infinite_reciprocal=infinite_reciprocal,
+    )
+
+
 def toads_object_membership_pass(
     image_values: ArrayLike,
     initial_memberships: ArrayLike,
