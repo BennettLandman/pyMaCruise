@@ -4,9 +4,9 @@ public final class ToadsBoundaryDistancesReferenceHarness {
         "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884";
     private static final int[][] FACES = {{-1,0,0},{0,-1,0},{0,0,-1},{0,0,1},{0,1,0},{1,0,0}};
 
-    private static final class Outcome { byte[][][][] distances; int passes; }
+    static final class Outcome { byte[][][][] distances; int passes; }
 
-    private static Outcome compute(byte[][][] labels, byte[][][][] initial, int classes, int limit) {
+    static Outcome compute(byte[][][] labels, byte[][][][] initial, int classes, int limit) {
         int nx = labels.length, ny = labels[0].length, nz = labels[0][0].length;
         byte[][][][] boundaryDist = new byte[nx][ny][nz][classes];
         for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) for (int z = 0; z < nz; z++)
@@ -45,7 +45,7 @@ public final class ToadsBoundaryDistancesReferenceHarness {
         Outcome outcome = new Outcome(); outcome.distances = boundaryDist; outcome.passes = passes; return outcome;
     }
 
-    private static byte[][][][] initial(int nx, int ny, int nz, int classes, boolean prepopulated) {
+    static byte[][][][] initial(int nx, int ny, int nz, int classes, boolean prepopulated) {
         byte[][][][] result = new byte[nx][ny][nz][classes];
         if (prepopulated) for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) for (int z = 0; z < nz; z++)
             for (int k = 0; k < classes; k++) result[x][y][z][k] = (byte)((x + 2*y + 3*z + k) % 4);

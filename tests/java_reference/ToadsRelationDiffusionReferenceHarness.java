@@ -3,12 +3,12 @@ public final class ToadsRelationDiffusionReferenceHarness {
     private static final String SOURCE_SHA =
         "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884";
 
-    private static final class Outcome {
+    static final class Outcome {
         short[][][] map;
         int iterations;
     }
 
-    private static float[][][][] memberships(int nx, int ny, int nz, int classes, boolean zero) {
+    static float[][][][] memberships(int nx, int ny, int nz, int classes, boolean zero) {
         float[][][][] result = new float[nx][ny][nz][classes];
         for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) for (int z = 0; z < nz; z++)
             for (int k = 0; k < classes; k++) {
@@ -18,7 +18,7 @@ public final class ToadsRelationDiffusionReferenceHarness {
         return result;
     }
 
-    private static Outcome computeRelations(byte[][][] segmentation, int classes,
+    static Outcome computeRelations(byte[][][] segmentation, int classes,
             float[][][][] memberships, int limit) {
         int nx = segmentation.length, ny = segmentation[0].length, nz = segmentation[0][0].length;
         ToadsRelationListReferenceHarness.Result initialized =

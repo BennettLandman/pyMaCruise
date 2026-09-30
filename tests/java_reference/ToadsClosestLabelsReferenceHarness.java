@@ -15,9 +15,10 @@ public final class ToadsClosestLabelsReferenceHarness {
         return labels;
     }
 
-    private static byte[][][][] closestLabels(byte[][][] segmentation, int limit) {
-        byte[][][][] closestLabel = new byte[NX][NY][NZ][4];
-        byte[][][][] tmpLabel = new byte[NX][NY][NZ][4];
+    static byte[][][][] closestLabels(byte[][][] segmentation, int limit) {
+        int nx = segmentation.length, ny = segmentation[0].length, nz = segmentation[0][0].length;
+        byte[][][][] closestLabel = new byte[nx][ny][nz][4];
+        byte[][][][] tmpLabel = new byte[nx][ny][nz][4];
         for (int x = 0; x < NX; x++) for (int y = 0; y < NY; y++) for (int z = 0; z < NZ; z++) {
             closestLabel[x][y][z][0] = segmentation[x][y][z];
             closestLabel[x][y][z][1] = EMPTY;
@@ -25,7 +26,7 @@ public final class ToadsClosestLabelsReferenceHarness {
             closestLabel[x][y][z][3] = EMPTY;
             for (int n = 0; n < 4; n++) tmpLabel[x][y][z][n] = closestLabel[x][y][z][n];
         }
-        for (int x = 1; x < NX - 1; x++) for (int y = 1; y < NY - 1; y++) for (int z = 1; z < NZ - 1; z++) {
+        for (int x = 1; x < nx - 1; x++) for (int y = 1; y < ny - 1; y++) for (int z = 1; z < nz - 1; z++) {
             for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) for (int l = -1; l <= 1; l++) {
                 if (i * i + j * j + l * l == 1 && segmentation[x+i][y+j][z+l] != segmentation[x][y][z]) {
                     byte label = segmentation[x+i][y+j][z+l];
@@ -40,7 +41,7 @@ public final class ToadsClosestLabelsReferenceHarness {
             for (int n = 0; n < 4; n++) tmpLabel[x][y][z][n] = closestLabel[x][y][z][n];
         }
         for (int t = 1; t < 5 * limit; t++) {
-            for (int x = 1; x < NX - 1; x++) for (int y = 1; y < NY - 1; y++) for (int z = 1; z < NZ - 1; z++) {
+            for (int x = 1; x < nx - 1; x++) for (int y = 1; y < ny - 1; y++) for (int z = 1; z < nz - 1; z++) {
                 if (tmpLabel[x][y][z][1] == EMPTY) {
                     for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) for (int l = -1; l <= 1; l++) {
                         if (i*i+j*j+l*l == 1 && closestLabel[x+i][y+j][z+l][1] != EMPTY
@@ -77,7 +78,7 @@ public final class ToadsClosestLabelsReferenceHarness {
                     }
                 }
             }
-            for (int x = 1; x < NX - 1; x++) for (int y = 1; y < NY - 1; y++) for (int z = 1; z < NZ - 1; z++)
+            for (int x = 1; x < nx - 1; x++) for (int y = 1; y < ny - 1; y++) for (int z = 1; z < nz - 1; z++)
                 for (int n = 0; n < 4; n++) closestLabel[x][y][z][n] = tmpLabel[x][y][z][n];
         }
         return closestLabel;

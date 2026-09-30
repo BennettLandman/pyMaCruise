@@ -32,6 +32,59 @@ class ToadsRelationList:
         return int(self.relation_membership.shape[1])
 
 
+@dataclass(frozen=True)
+class ToadsRelationState:
+    """Composed relation, boundary-distance, and closest-label state."""
+
+    relation: ToadsRelationList
+    boundary_distances: NDArray[np.int8]
+    closest_labels: NDArray[np.int8]
+    boundary_diffusion_passes: int
+    closest_label_passes: int
+
+
+def toads_refresh_relation_state(
+    segmentation: ArrayLike,
+    memberships: ArrayLike,
+    boundary_distances: ArrayLike,
+    limit: int,
+) -> ToadsRelationState:
+    """Refresh the selected source's three related state products in order.
+
+    ``AlgorithmMultipleToads`` invokes ``computeRelations``, then
+    ``computeBoundaryDistances``, then ``computeClosestLabels`` after a
+    segmentation update. This helper preserves that order, passes through the
+    caller's carried boundary-distance state, and evaluates all products from
+    the same validated segmentation snapshot. The boundary pass count follows
+    the selected source's reset ``change`` flag (one pass when ``limit > 0``);
+    closest labels execute the fixed ``5*limit - 1`` passes when positive.
+    """
+    labels = np.asarray(segmentation)
+    membership_values = np.asarray(memberships)
+    distances = np.asarray(boundary_distances)
+    if labels.ndim != 3:
+        raise ValueError("segmentation must be a 3-D array")
+    if membership_values.ndim != 4 or membership_values.shape[:3] != labels.shape:
+        raise ValueError("memberships must match the segmentation grid and have a class axis")
+    if distances.ndim != 4 or distances.shape[:3] != labels.shape:
+        raise ValueError("boundary_distances must match the segmentation grid and have a class axis")
+    if distances.shape[3] != membership_values.shape[3]:
+        raise ValueError("memberships and boundary_distances must have the same class count")
+    if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit < 0:
+        raise ValueError("limit must be a nonnegative integer")
+
+    relation = toads_compute_relations(labels, membership_values, int(limit))
+    updated_distances = toads_update_boundary_distances(labels, distances, int(limit))
+    closest = toads_closest_labels(labels, int(limit))
+    return ToadsRelationState(
+        relation=relation,
+        boundary_distances=updated_distances,
+        closest_labels=closest,
+        boundary_diffusion_passes=int(limit > 0),
+        closest_label_passes=max(0, 5 * int(limit) - 1),
+    )
+
+
 def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
     """Build the selected source's four-slot closest-label map.
 
