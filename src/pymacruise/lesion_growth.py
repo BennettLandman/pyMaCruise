@@ -92,6 +92,150 @@ class LesionToadsThinningSchedule:
     inserted_items: tuple[ToadsHeapItem, ...]
 
 
+@dataclass(frozen=True)
+class LesionToadsThinningQueueStep:
+    """Whole-volume state after one selected LesionTOADS heap pop."""
+
+    segmentation: NDArray[np.int16]
+    skeleton: NDArray[np.int16]
+    available: NDArray[np.bool_]
+    ordering: NDArray[np.float32]
+    class_volume: NDArray[np.float32]
+    popped_item: ToadsHeapItem
+    transition: LesionToadsThinningTransition | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+def process_next_lesion_toads_thinning_item(
+    segmentation: ArrayLike,
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    object_types: tuple[str, ...] | list[str],
+    lesion_membership: ArrayLike,
+    black_hole_membership: ArrayLike,
+    transformed_shape: ArrayLike,
+    available: ArrayLike,
+    ordering: ArrayLike,
+    class_volume: ArrayLike,
+    minimum_class_volume: ArrayLike,
+    queue: ToadsPriorityHeap4D,
+    limit: float,
+    *,
+    lesion_class: int,
+    use_lesion_max: bool = False,
+    empty_label: int = -1,
+) -> LesionToadsThinningQueueStep:
+    """Apply one popped item, its topology-constrained update, and scheduling.
+
+    The supplied max heap is popped in place. Image and scalar state are copied
+    before edits, and a stale/out-of-grid item is discarded with no image
+    changes. This composes a single event only; it does not initialize the
+    frontier or run the outer queue/limit loop.
+    """
+    labels = np.asarray(segmentation)
+    skel = np.asarray(skeleton)
+    mems = np.asarray(memberships, dtype=np.float32)
+    lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
+    black_mems = np.asarray(black_hole_membership, dtype=np.float32)
+    shapes = np.asarray(transformed_shape, dtype=np.float32)
+    state = np.asarray(available)
+    order_map = np.asarray(ordering, dtype=np.float32)
+    volumes = np.asarray(class_volume, dtype=np.float32)
+    minimums = np.asarray(minimum_class_volume, dtype=np.float32)
+    if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be a 3-D integer grid")
+    if skel.shape != labels.shape or not np.issubdtype(skel.dtype, np.integer):
+        raise ValueError("skeleton must be an integer grid matching segmentation")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or mems.shape[-1] < 2:
+        raise ValueError("memberships must be 4-D and match segmentation")
+    classes = mems.shape[-1]
+    if len(tuple(object_types)) != classes:
+        raise ValueError("one object type is required per membership class")
+    if lesion_mems.shape != labels.shape or black_mems.shape != labels.shape:
+        raise ValueError("lesion and black-hole maps must match segmentation")
+    if shapes.shape != mems.shape:
+        raise ValueError("transformed_shape must match memberships")
+    if state.shape != (*labels.shape, classes) or state.dtype != np.bool_:
+        raise ValueError("available must be a boolean grid matching segmentation and classes")
+    if order_map.shape != labels.shape:
+        raise ValueError("ordering must match segmentation")
+    if volumes.shape != (classes,) or minimums.shape != (classes,):
+        raise ValueError("class volume arrays must match membership classes")
+    if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
+        raise ValueError("queue must be a TOADS max heap")
+    if not queue:
+        raise ValueError("cannot process an empty LesionTOADS thinning queue")
+    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_mems, shapes, order_map, volumes, minimums)):
+        raise ValueError("all membership, ordering, and volume values must be finite")
+
+    updated_labels = labels.astype(np.int16, copy=True)
+    updated_skeleton = skel.astype(np.int16, copy=True)
+    updated_available = state.copy()
+    updated_ordering = order_map.copy()
+    updated_volumes = volumes.copy()
+    popped = queue.pop_first()
+    x, y, z, processing_class = popped.x, popped.y, popped.z, popped.label
+    transition: LesionToadsThinningTransition | None = None
+    inserted: tuple[ToadsHeapItem, ...] = ()
+    in_bounds = (
+        1 <= x < labels.shape[0] - 1
+        and 1 <= y < labels.shape[1] - 1
+        and 1 <= z < labels.shape[2] - 1
+    )
+    if (
+        in_bounds
+        and 0 <= processing_class < classes
+        and updated_skeleton[x, y, z] == processing_class
+        and updated_volumes[processing_class] > minimums[processing_class]
+    ):
+        slices = (slice(x - 1, x + 2), slice(y - 1, y + 2), slice(z - 1, z + 2))
+        transition = lesion_toads_thinning_voxel_transition(
+            updated_labels[slices],
+            updated_skeleton[slices],
+            mems[x, y, z, :],
+            object_types,
+            lesion_mems[slices],
+            black_mems[slices],
+            shapes[slices],
+            updated_volumes,
+            minimums,
+            updated_available[x, y, z, :],
+            updated_ordering[x, y, z],
+            popped.value,
+            lesion_class=lesion_class,
+            processing_class=processing_class,
+            use_lesion_max=use_lesion_max,
+            empty_label=empty_label,
+        )
+        updated_labels[x, y, z] = transition.segmentation_label
+        updated_skeleton[x, y, z] = transition.skeleton_label
+        updated_available[x, y, z, :] = transition.available_at_center
+        updated_ordering[x, y, z] = transition.ordering_at_center
+        updated_volumes = transition.class_volume.copy()
+        if transition.processed:
+            scheduled = schedule_lesion_toads_thinning_neighbors(
+                mems,
+                object_types,
+                lesion_mems,
+                black_mems,
+                updated_available,
+                queue,
+                (x, y, z),
+                processing_class,
+                popped.value,
+                updated_volumes[processing_class],
+                minimums[processing_class],
+                limit,
+                use_lesion_max=use_lesion_max,
+            )
+            updated_available = scheduled.available
+            inserted = scheduled.inserted_items
+    return LesionToadsThinningQueueStep(
+        updated_labels, updated_skeleton, updated_available, updated_ordering,
+        updated_volumes, popped, transition, inserted,
+    )
+
+
 def schedule_lesion_toads_thinning_neighbors(
     memberships: ArrayLike,
     object_types: tuple[str, ...] | list[str],
