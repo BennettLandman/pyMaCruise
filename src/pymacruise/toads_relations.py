@@ -85,6 +85,58 @@ def toads_refresh_relation_state(
     )
 
 
+def toads_distance_factor(boundary_distances: ArrayLike, marching_limit: float) -> NDArray[np.float32]:
+    """Return the source ``1 / (1 + boundaryDist / limit)`` factor.
+
+    The input is the signed-byte per-class field produced by
+    ``computeBoundaryDistances``. Float32 division and addition follow Java's
+    field types and operation order. The selected class accepts only a
+    positive finite marching limit for this helper.
+    """
+    distances = np.asarray(boundary_distances)
+    if not np.issubdtype(distances.dtype, np.integer) or np.issubdtype(distances.dtype, np.bool_):
+        raise ValueError("boundary_distances must contain integer signed-byte values")
+    bounds = np.iinfo(np.int8)
+    if np.any(distances < bounds.min) or np.any(distances > bounds.max):
+        raise ValueError("boundary_distances must fit Java signed-byte range")
+    limit = float(marching_limit)
+    if not np.isfinite(limit) or limit <= 0.0:
+        raise ValueError("marching_limit must be finite and positive")
+    distance_values = distances.astype(np.float32)
+    limit_value = np.float32(limit)
+    quotient = np.asarray(distance_values / limit_value, dtype=np.float32)
+    denominator = np.asarray(np.float32(1.0) + quotient, dtype=np.float32)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        return np.asarray(np.float32(1.0) / denominator, dtype=np.float32)
+
+
+def toads_shape_factor(shape: ArrayLike, prior_factor: float) -> NDArray[np.float32]:
+    """Return the selected ``min(1, 2*priorFactor*shape)`` prior factor."""
+    values = np.asarray(shape, dtype=np.float32)
+    prior = float(prior_factor)
+    if not np.isfinite(values).all() or not np.isfinite(prior):
+        raise ValueError("shape and prior_factor must be finite")
+    scaled = np.asarray(np.float32(2.0) * np.float32(prior), dtype=np.float32)
+    scaled = np.asarray(scaled * values, dtype=np.float32)
+    # Match Numerics.min(a,b): it returns b when a < b is false.
+    return np.asarray(np.where(np.float32(1.0) < scaled, np.float32(1.0), scaled), dtype=np.float32)
+
+
+def toads_neighbor_factor(shape: ArrayLike, prior_factor: float) -> NDArray[np.float32]:
+    """Return selected ``bounded(2*priorFactor*shape, 0.25, 1)`` semantics."""
+    values = np.asarray(shape, dtype=np.float32)
+    prior = float(prior_factor)
+    if not np.isfinite(values).all() or not np.isfinite(prior):
+        raise ValueError("shape and prior_factor must be finite")
+    scaled = np.asarray(np.float32(2.0) * np.float32(prior), dtype=np.float32)
+    scaled = np.asarray(scaled * values, dtype=np.float32)
+    # Numerics.bounded is max(low, min(value, high)), using comparisons whose
+    # NaN behavior differs from np.clip; finite inputs keep this source-exact.
+    upper_bounded = np.where(scaled < np.float32(1.0), scaled, np.float32(1.0))
+    lower_bounded = np.where(np.float32(0.25) > upper_bounded, np.float32(0.25), upper_bounded)
+    return np.asarray(lower_bounded, dtype=np.float32)
+
+
 def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
     """Build the selected source's four-slot closest-label map.
 
