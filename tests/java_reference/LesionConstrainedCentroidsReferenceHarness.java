@@ -12,7 +12,7 @@ public final class LesionConstrainedCentroidsReferenceHarness {
         float[][] centroid=new float[NC][C];for(int c=0;c<NC;c++)centroid[c]=INITIAL[c].clone();
         float factor=0.45f;
         for(int c=0;c<NC;c++){
-            float prev=-Float.MAX_VALUE;
+            float prev=-1.0e10f;
             for(int k=0;k<C;k++){
                 float num=0.0f,den=0.0f;
                 for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)if(seg[x][y][z]==k){

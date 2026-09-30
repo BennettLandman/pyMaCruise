@@ -54,7 +54,7 @@ def compute_constrained_lesion_toads_centroids(
 
     result = initial.copy()
     for channel in range(channels):
-        previous = np.float32(-np.inf)
+        previous = np.float32(-1.0e10)
         for class_index in range(classes):
             numerator = np.float32(0.0)
             denominator = np.float32(0.0)
