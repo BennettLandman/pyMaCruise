@@ -78,6 +78,27 @@
     ],
     "result": "Returned arrays, float bits, product names and source order match the selected Java route excerpts across all 12 route/flag combinations."
   },
+  "terminal_output_materialization": {
+    "source_order": "After cleanup and route dispatch, AlgorithmLesionToads uncrops each returned scalar or channel array into original-grid buffers before ModelImage creation.",
+    "synthetic_original_grid": {
+      "shape_xyz": [18, 16, 20],
+      "crop_bounds_inclusive_xyz": [1, 13, 0, 12, 5, 17],
+      "padding": 2,
+      "crop_shape_xyz": [17, 17, 17],
+      "orientation": "RAS"
+    },
+    "outputs_compared": [
+      "classification byte",
+      "membership-derived classification byte",
+      "lesion subtype short",
+      "four-channel dura-removal float memberships"
+    ],
+    "result": "Actual fourth-pass terminal route products are copied to the full synthetic grid and match selected LesionToadPreprocess Java buffer excerpts exactly, including x-fast voxel order and zero background.",
+    "limitations": "This validates numeric buffer materialization only; ModelImage metadata, filenames, file writing, and NIfTI serialization are not covered.",
+    "lesion_preprocess_source_sha256": "72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08",
+    "java_method_harness": "tests/java_reference/LesionOutputUncropBufferReferenceHarness.java",
+    "java_method_harness_sha256": "494bd98c955070af5eeb3e2acd84781b249d6458470f7393e63ea33107eec6ef"
+  },
   "java_reference": {
     "kind": "Hand-coded selected Java formula excerpts using the pinned upstream ParametricTransform, RotationMatrix, ImageFunctions, Numerics and wrapper control sources; not execution of the full wrapper/class.",
     "registration_harness": "tests/java_reference/LesionSecondPassRegistrationReferenceHarness.java",

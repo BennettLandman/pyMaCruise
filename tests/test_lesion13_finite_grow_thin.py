@@ -23,6 +23,8 @@ from pymacruise.lesion_registered_shapes import transform_registered_lesion_shap
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from pymacruise.lesion_shapes import lesion_registration_volume_coefficients, sample_lesion_shape_prior
 from pymacruise.lesion_post_loop_outputs import lesion_toads_post_loop_outputs
+from pymacruise.lesion_preprocessing_uncrop import LESION_PREPROCESS_SOURCE_SHA256
+from pymacruise.toads_crop import uncrop_toads_buffer
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
     HEAP,
@@ -69,6 +71,8 @@ OUTPUT_ROUTE_HARNESS_SHA256 = "ca1dd209040a84c7f0091fdf3f2f33e6ff3d9d4e3ab3ce6a9
 DURA_DISPATCH_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationDuraDispatchReferenceHarness.java"
 DURA_DISPATCH_HARNESS_SHA256 = "e130a953be23c9ecdf6cb3fce95555732050589910a0199f79854e8de23208c7"
 TERMINAL_OUTPUT_HARNESS_SHA256 = "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76"
+OUTPUT_UNCROP_HARNESS = Path(__file__).parent / "java_reference/LesionOutputUncropBufferReferenceHarness.java"
+OUTPUT_UNCROP_HARNESS_SHA256 = "494bd98c955070af5eeb3e2acd84781b249d6458470f7393e63ea33107eec6ef"
 LESION_ATLAS_NAMES = (
     "Background", "Sulcal-CSF", "Ventricles", "Cerebellum-GM", "Cerebrum-GM",
     "Caudate", "Thalamus", "Putamen", "Brainstem", "Cerebellum-WM",
@@ -1991,12 +1995,16 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert hashlib.sha256(OUTPUT_HARNESS.read_bytes()).hexdigest() == TERMINAL_OUTPUT_HARNESS_SHA256
     assert hashlib.sha256(OUTPUT_ROUTE_HARNESS.read_bytes()).hexdigest() == OUTPUT_ROUTE_HARNESS_SHA256
     assert hashlib.sha256(DURA_DISPATCH_HARNESS.read_bytes()).hexdigest() == DURA_DISPATCH_HARNESS_SHA256
+    assert hashlib.sha256(OUTPUT_UNCROP_HARNESS.read_bytes()).hexdigest() == OUTPUT_UNCROP_HARNESS_SHA256
+    assert LESION_PREPROCESS_SOURCE_SHA256 == "72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08"
     assert third_fixture["java_reference"]["terminal_output_harness_sha256"] == TERMINAL_OUTPUT_HARNESS_SHA256
     assert third_fixture["java_reference"]["route_harnesses"]["class+member_and_cruise_sha256"] == OUTPUT_ROUTE_HARNESS_SHA256
     assert third_fixture["java_reference"]["route_harnesses"]["dura_removal_sha256"] == DURA_DISPATCH_HARNESS_SHA256
+    assert third_fixture["terminal_output_materialization"]["java_method_harness_sha256"] == OUTPUT_UNCROP_HARNESS_SHA256
+    assert third_fixture["terminal_output_materialization"]["lesion_preprocess_source_sha256"] == LESION_PREPROCESS_SOURCE_SHA256
     subprocess.run([
         javac, "-d", str(classes_dir), str(OUTPUT_HARNESS),
-        str(OUTPUT_ROUTE_HARNESS), str(DURA_DISPATCH_HARNESS),
+        str(OUTPUT_ROUTE_HARNESS), str(DURA_DISPATCH_HARNESS), str(OUTPUT_UNCROP_HARNESS),
     ], check=True, capture_output=True, text=True)
     terminal_output_input = tmp_path / "terminal-output-state.bin"
     terminal_output_input.write_bytes(b"".join([
@@ -2104,6 +2112,60 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
                         value for channel in expected_products[-4:] for value in channel["values"]
                     ]
                     assert _flat_float_bits(routed.products[-1].values) == expected_channel_bits
+
+                # Materialize one complete terminal dura-route bundle with
+                # the selected LesionToadPreprocess scalar/channel overloads.
+                # The 17^3 crop is placed asymmetrically in a larger RAS grid;
+                # clipping at all three low/high faces tests the original-grid
+                # copy bounds and Java x-fast buffer layout.
+                if mode == "dura removal inputs" and from_membership and include_lesion:
+                    full_shape = (18, 16, 20)
+                    output_bounds = (1, 13, 0, 12, 5, 17)
+                    output_padding = 2
+                    assert tuple(
+                        output_bounds[2 * axis + 1] - output_bounds[2 * axis] + 1 + 2 * output_padding
+                        for axis in range(3)
+                    ) == tuple(seg.shape)
+                    java_type_by_dtype = {
+                        np.dtype(np.int8): 0,
+                        np.dtype(np.int16): 1,
+                        np.dtype(np.float32): 2,
+                    }
+                    for product in routed.products:
+                        values = np.asarray(product.values)
+                        values = values[None, ...] if values.ndim == 3 else values
+                        assert values.ndim == 4 and values.shape[1:] == tuple(seg.shape)
+                        java_type = java_type_by_dtype[values.dtype]
+                        java_channels = values.shape[0]
+                        if java_type in (0, 1):
+                            assert java_channels == 1
+                            payload = values[0].astype(np.int8 if java_type == 0 else ">i2").tobytes(order="C")
+                            output_dtype = np.int8 if java_type == 0 else ">i2"
+                        else:
+                            payload = values.astype(">f4").tobytes(order="C")
+                            output_dtype = ">f4"
+                        java_buffer = subprocess.run(
+                            [
+                                java, "-cp", str(classes_dir), "LesionOutputUncropBufferReferenceHarness",
+                                str(java_type), str(java_channels), *(str(value) for value in full_shape),
+                                *(str(value) for value in output_bounds), str(output_padding),
+                            ],
+                            input=payload,
+                            check=True,
+                            capture_output=True,
+                        ).stdout
+                        actual_buffer = uncrop_toads_buffer(
+                            product.values,
+                            full_shape,
+                            output_bounds,
+                            output_padding,
+                            np.int8(0) if java_type == 0 else np.int16(0) if java_type == 1 else np.float32(0),
+                        )
+                        expected_buffer = np.frombuffer(java_buffer, dtype=output_dtype)
+                        if java_type == 2:
+                            assert _flat_float_bits(actual_buffer) == expected_buffer.view(">u4").astype(np.uint32).tolist()
+                        else:
+                            np.testing.assert_array_equal(actual_buffer, expected_buffer)
 
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
