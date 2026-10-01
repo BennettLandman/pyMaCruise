@@ -1,0 +1,16 @@
+{
+  "trace_steps": [
+    30,
+    30,
+    30,
+    30,
+    30
+  ],
+  "trace_levelset_sha256": [
+    "2c2abc9fe3119663d6b038ea92efc2b9f5d70f63b56a809bf5ea38be1c0a2c47",
+    "d010546a5bf6abd1cfc291abc896004496d5f38929db5be1159cfd08d5c27014",
+    "4b74102adf6dab75b077d49c466022e6320a2163445c79a21a3ce70b87500aae",
+    "18043c2905638557f3ee0b7d3874d42377d5e6bec4f96b63fe3567d093a1711e",
+    "546cd5261f58888a520b5933f76eb38ce4d037b8d97a2ab3961e7fa85b4adfbf"
+  ]
+}

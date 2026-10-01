@@ -167,8 +167,8 @@ def run_dura_removal(
     )
     final = apply_dura_output_mask(
         np.asanyarray(t1.dataobj),
-        wm_values,
-        gm_values,
+        np.asanyarray(raw_wm.dataobj),
+        np.asanyarray(raw_gm.dataobj),
         evolution.level_set,
         mask_translation=mask_translation,
         level_set_translation=level_set_translation,

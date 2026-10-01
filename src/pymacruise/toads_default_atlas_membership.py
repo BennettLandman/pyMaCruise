@@ -88,18 +88,19 @@ def toads_default_atlas_membership_pass(
     variances = np.asarray(class_variance_weights, dtype=np.float32)
     shapes = np.asarray(transformed_shapes, dtype=np.float32)
     labels = np.asarray(closest_labels)
-    if images.ndim != 4 or images.shape[-1] != 2 or min(images.shape[:3]) < 3:
-        raise ValueError("image_values must have shape (x>=3,y>=3,z>=3,2)")
+    if images.ndim != 4 or images.shape[-1] < 1 or min(images.shape[:3]) < 3:
+        raise ValueError("image_values must have shape (x>=3,y>=3,z>=3,channel>=1)")
     spatial = images.shape[:3]
+    channels = images.shape[-1]
     classes = len(types)
     if initial.shape != spatial + (classes,) or not np.isfinite(initial).all():
         raise ValueError("initial_memberships must match the 11-class image grid")
-    if centers.shape != (2, classes) or not np.isfinite(centers).all():
-        raise ValueError("centroids must be finite with shape (2,11)")
+    if centers.shape != (channels, classes) or not np.isfinite(centers).all():
+        raise ValueError("centroids must be finite with shape (channel,11)")
     if exponents.shape != centers.shape or not np.isfinite(exponents).all():
-        raise ValueError("exponent_by_channel_class must be finite with shape (2,11)")
+        raise ValueError("exponent_by_channel_class must be finite with shape (channel,11)")
     if variances.shape != centers.shape or not np.isfinite(variances).all():
-        raise ValueError("class_variance_weights must be finite with shape (2,11)")
+        raise ValueError("class_variance_weights must be finite with shape (channel,11)")
     if shapes.shape != initial.shape or not np.isfinite(shapes).all():
         raise ValueError("transformed_shapes must be finite and match initial_memberships")
     if labels.shape != spatial + (4,) or not np.issubdtype(labels.dtype, np.integer):
@@ -109,8 +110,8 @@ def toads_default_atlas_membership_pass(
     smooth_prior = np.asarray(smoothing_priors, dtype=np.float32)
     similarity = np.asarray(centroid_similarity, dtype=np.float32)
     shape_prior = np.asarray(atlas_shape_priors, dtype=np.float32)
-    if modality.shape != (2,) or image_var.shape != (2,):
-        raise ValueError("modality_weights and image_variances must have shape (2,)")
+    if modality.shape != (channels,) or image_var.shape != (channels,):
+        raise ValueError("modality_weights and image_variances must match the channel count")
     if smooth_prior.shape != (classes,) or not np.isfinite(smooth_prior).all():
         raise ValueError("smoothing_priors must have 11 finite values")
     if similarity.shape != (classes, classes) or not np.isfinite(similarity).all():
@@ -122,7 +123,7 @@ def toads_default_atlas_membership_pass(
     for kind in _OPTIMIZED_TYPES:
         columns = [i for i, value in enumerate(types) if value == kind]
         if len(columns) > 1 and not np.array_equal(
-            exponents[:, columns], np.broadcast_to(exponents[:, columns[0], None], (2, len(columns)))
+            exponents[:, columns], np.broadcast_to(exponents[:, columns[0], None], (channels, len(columns)))
         ):
             raise ValueError(f"all {kind} classes must share category/channel exponents")
 

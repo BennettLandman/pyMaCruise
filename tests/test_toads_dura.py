@@ -163,8 +163,8 @@ def test_dura_removal_composes_selected_stages_on_ras_grid() -> None:
     np.testing.assert_array_equal(result.evolution.level_set, expected_evolution.level_set)
     expected_outputs = apply_dura_output_mask(
         t1_values,
-        np.asarray(expected_wm.dataobj, dtype=np.float32),
-        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        np.asarray(wm.dataobj, dtype=np.float32),
+        np.asarray(raw_gm.dataobj, dtype=np.float32),
         expected_evolution.level_set,
     )
     for actual, expected in (
@@ -222,8 +222,8 @@ def test_dura_removal_runs_source_default_five_tgdm_passes() -> None:
     np.testing.assert_array_equal(result.gm_topology.dataobj, expected_gm.dataobj)
     final = apply_dura_output_mask(
         t1_values,
-        np.asarray(expected_wm.dataobj, dtype=np.float32),
-        np.asarray(expected_gm.dataobj, dtype=np.float32),
+        np.asarray(wm.dataobj, dtype=np.float32),
+        np.asarray(raw_gm.dataobj, dtype=np.float32),
         expected_evolution.level_set,
     )
     for actual, expected in (
