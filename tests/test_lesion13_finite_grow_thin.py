@@ -18,6 +18,7 @@ from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iter
 from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after_next_iteration_thinning
 from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm_membership_update
 from pymacruise.lesion_next_iteration_registration import register_after_next_gm_membership_update
+from pymacruise.lesion_next_iteration_branch import continue_after_next_iteration_registration
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
@@ -46,6 +47,8 @@ POWER_TABLE = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medi
 MEMBERSHIP_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStandard13MembershipReferenceHarness.java"
 RATIO_HARNESS = Path(__file__).parent / "java_reference/LesionDynamicEnergyRatioReferenceHarness.java"
 REGISTRATION_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningRegistrationReferenceHarness.java"
+BRANCH_HARNESS = Path(__file__).parent / "java_reference/LesionNextIterationBranchReferenceHarness.java"
+OUTPUT_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationOutputsReferenceHarness.java"
 JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
 MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
 TYPES = tuple(SPEC["object_types"])
@@ -392,6 +395,8 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert nib.aff2axcodes(registration_image_input.affine) == ("R", "A", "S")
     assert hashlib.sha256(REGISTRATION_INPUT.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["fixture_sha256"]
     assert hashlib.sha256(REGISTRATION_HARNESS.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["harness_sha256"]
+    assert hashlib.sha256(BRANCH_HARNESS.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["branch_harness_sha256"]
+    assert hashlib.sha256(OUTPUT_HARNESS.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["output_harness_sha256"]
     reference_sources = {
         "ParametricTransform.java": JAVA_UPSTREAM / "methods/ParametricTransform.java",
         "RotationMatrix.java": JAVA_UPSTREAM / "structures/RotationMatrix.java",
@@ -461,6 +466,95 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
         assert bounds.lower_xyz == tuple(expected["lower"])
         assert bounds.upper_xyz == tuple(expected["upper"])
         assert bounds.support_count == expected["support_count"]
+
+    # Continue in source order through convergence/iteration checks, growing,
+    # and relation refresh. A low threshold and nonterminal iteration select
+    # the continuing branch using this same finite source ratio.
+    template_labels = np.arange(10, 10 + CLASSES, dtype=np.int8)
+    after_registration = continue_after_next_iteration_registration(
+        registration,
+        segmentation=thinned.run.segmentation,
+        skeleton=thinned.run.skeleton,
+        ordering=thinned.run.ordering,
+        class_volume=thinned.run.class_volume,
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=1,
+        n_iter_max=3,
+        max_distance=0.1,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+    )
+    continued = after_registration.branch
+    assert after_registration.stage_order[-4:] == (
+        "convergence_check", "iteration_limit_check", "propagateGrowing", "computeRelations"
+    )
+    assert not continued.stop and continued.run_growing
+    assert continued.growing is not None and continued.relations is not None
+    assert after_registration.stage_order[-2:] == ("propagateGrowing", "computeRelations")
+
+    control_input = tmp_path / "post-registration-control.bin"
+    control_input.write_bytes(struct.pack(
+        ">3f2i?",
+        float(update.energy_ratio.previous_energy),
+        float(update.membership.objective),
+        0.1,
+        1,
+        3,
+        False,
+    ))
+    subprocess.run([javac, "-d", str(classes_dir), str(NUMERICS), str(BRANCH_HARNESS)], check=True, capture_output=True, text=True)
+    java_control = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionNextIterationBranchReferenceHarness", str(control_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_control["source_sha256"] == REFERENCE["wrapper_source_sha256"]
+    assert java_control["ratio_bits"] == f"{int(update.energy_ratio.energy_ratio.view(np.uint32)):08x}"
+    assert java_control["convergence_stop"] == continued.convergence_stop is False
+    assert java_control["iteration_limit_stop"] == continued.iteration_limit_stop is False
+    assert java_control["stop"] == continued.stop is False
+    assert java_control["run_growing"] == continued.run_growing is True
+    assert java_control["refresh_relations"] is True
+
+    growth_input, growth_output = tmp_path / "continued-grow-in.bin", tmp_path / "continued-grow-out.bin"
+    growth_input.write_bytes(growth_input_bytes(
+        thinned.run.segmentation,
+        thinned.run.skeleton,
+        actual.class_memberships,
+        thinned.run.ordering,
+        thinned.run.class_volume,
+        actual.lesion_membership,
+        actual.black_hole_membership,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionGrowingPassDynamicReferenceHarness",
+        str(growth_input), str(growth_output),
+    ], check=True, capture_output=True, text=True)
+    assert growth_output.read_bytes() == expected_growth_bytes(continued.growing)
+
+    relation_input = tmp_path / "continued-relation-in.bin"
+    relation_fields = [
+        struct.pack(">6i", *seg.shape, CLASSES, LESION, 2),
+        template_labels.tobytes(),
+        np.asarray(continued.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.zeros(seg.shape, dtype=np.int8).tobytes(),
+        np.asarray(actual.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    ]
+    relation_input.write_bytes(b"".join(relation_fields))
+    subprocess.run([javac, "-d", str(classes_dir), str(OUTPUT_HARNESS)], check=True, capture_output=True, text=True)
+    java_outputs = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostRegistrationOutputsReferenceHarness", str(relation_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_outputs["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    np.testing.assert_array_equal(continued.segmentation.ravel(), np.asarray(java_outputs["segmentation"], np.int16))
+    np.testing.assert_array_equal(continued.relations.relation_map.ravel(), np.asarray(java_outputs["relation_map"], np.int16))
+    np.testing.assert_array_equal(continued.relations.relation_membership.ravel(), np.asarray(java_outputs["relation_membership"], np.bool_))
+    assert continued.relations.relation_count == java_outputs["relation_count"]
 
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:

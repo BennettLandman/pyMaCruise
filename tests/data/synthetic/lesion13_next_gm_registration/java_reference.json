@@ -11,6 +11,10 @@
   },
   "harness": "LesionPostThinningRegistrationReferenceHarness.java",
   "harness_sha256": "083f39ed37cd01aeabc0aead3c4bdd055185e0fd21d5e7d5a53837c0cf60b1eb",
+  "branch_harness": "LesionNextIterationBranchReferenceHarness.java",
+  "branch_harness_sha256": "dceb95289dea92bb97665fdb96b7bd71ad28dc2f75a3b4dfa7f4968cf444deb8",
+  "output_harness": "LesionPostRegistrationOutputsReferenceHarness.java",
+  "output_harness_sha256": "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76",
   "fixture_sha256": "466192f2aaf54277258cdcbc4eb00fe521279f825cfdf13d225aeab0a62695bd",
   "source_call_order": [
     "computeMemberships(GMflag=true)",
@@ -18,6 +22,13 @@
     "if alignShapes then atlas.registerShapes()",
     "convergence check"
   ],
+  "continued_branch_control": {
+    "iteration": 1,
+    "n_iter_max": 3,
+    "max_distance": 0.1,
+    "expected": "continue, grow, then computeRelations"
+  },
+  "post_registration_growth_and_relation_reference": "LesionGrowingPassDynamicReferenceHarness and LesionPostRegistrationOutputsReferenceHarness",
   "registration_trace_fields": [
     "every trial transform and energy",
     "accept/reject decision and rejected-trial count",
