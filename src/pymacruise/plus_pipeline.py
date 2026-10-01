@@ -125,6 +125,15 @@ class PlusThicknessResult:
     surface: SurfaceThicknessResult
 
 
+@dataclass(frozen=True)
+class PlusPostTGDMResult:
+    """Selected plus outputs after cropped TGDM, uncropping, and measurements."""
+
+    level_sets: PlusUncroppedTGDMResult
+    surfaces: PlusSurfaceResult
+    thickness: PlusThicknessResult
+
+
 def run_plus_gvf_stage(
     scalar_volume: nib.spatialimages.SpatialImage,
     options: PlusPipelineOptions = PlusPipelineOptions(),
@@ -390,3 +399,29 @@ def run_plus_thickness_stage(
         surfaces.outer,
     )
     return PlusThicknessResult(volume=volume, surface=surface)
+
+
+def run_plus_post_tgdm_stages(
+    cropped_tgdm: TGDMMaCRUISEImageResult,
+    crop_parameters: CropParameters,
+) -> PlusPostTGDMResult:
+    """Compose the selected post-TGDM MaCRUISEplus stages in source order.
+
+    This bounded continuation starts with already-produced cropped TGDM
+    images. It restores them with the selected JIST-compatible crop rule,
+    extracts inner/central/outer meshes from the full-grid RAS level sets, and
+    computes the selected level-set and closest-point thickness products.
+    It does not run TOADS/LesionTOADS, MaACE/GVF, or full MaCRUISEplus.
+
+    The mesh stage uses scikit-image Lewiner marching cubes. Exact equivalence
+    with JIST ``IsoSurfaceOnGrid`` remains an explicit comparison risk; see
+    :func:`extract_plus_surfaces` and ``docs/papers/marching-cubes.md``.
+    """
+    level_sets = uncrop_plus_tgdm_outputs(cropped_tgdm, crop_parameters)
+    surfaces = extract_plus_surfaces(level_sets)
+    thickness = run_plus_thickness_stage(level_sets, surfaces)
+    return PlusPostTGDMResult(
+        level_sets=level_sets,
+        surfaces=surfaces,
+        thickness=thickness,
+    )
