@@ -833,8 +833,9 @@ not full TOADS workflow equivalence.
 classification and four 255-scaled float buffers. It reshapes the Java
 x-fastest buffer order using Fortran indexing into the NIfTI `[x,y,z]` grid,
 preserves UBYTE labels and float32 outputs, then uses the P18cyy RAS NIfTI
-writer and selected suffixes. The asymmetric 2×3×4 phantom checks every voxel
-after compressed save/reload. Focused six-file output/adapter suite: 39 passed
-in 0.86 seconds on implementation commit
-`e971d58c25ddc0d5f35d4838e0dbb14f8e148793`. This bridges the wrapper's final
+writer and selected suffixes. The asymmetric 2×3×4 phantom and committed Java Dura-output fixture check
+every voxel after compressed save/reload. The Java fixture also passes through
+wrapper scaling and Fortran-order reconstruction. Focused six-file
+output/adapter suite: 40 passed in 0.57 seconds on implementation commit
+`60ad9586cf8341f9312ed6fa22f4c1689f943e23`. This bridges the wrapper's final
 Dura products only; it does not demonstrate a complete TOADS workflow.
