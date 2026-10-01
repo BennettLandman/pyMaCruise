@@ -812,3 +812,17 @@ and the P18cy/P18cz fixture provenance in `tests/data/synthetic/`.
 Optimized dispatch still excludes LESION, OUTLIER, OUTMASK, and Rayleigh
 class mixing. The Rayleigh primitive does not estimate centroids or route a
 class family. Neither slice closes the TOADS iteration or workflow.
+
+### Completed substage: primary TOADS output image creation (P18cyy)
+
+`toads_output_io.py` serializes the selected primary `AlgorithmMultipleToads`
+result modes (`hard_segmentation`, `full_segmentation`, `Cruise_input`,
+`DuraRemoval_input`, and `thalamus_seg`) from already-restored RAS arrays.
+It preserves the source `_Toads_seg`, `_Toads_mems`, `_csf`, `_gm`, `_wmfill`,
+`_wmmask`, `_thalamus`, and optional `_Toads_field(s)` suffixes, with uint8
+labels and float32 membership/input/field data. A shared image helper applies
+the RAS T1 geometry; files are saved as `.nii.gz`. The debug `all_images`
+branch and crop restoration are not included. The focused output/adapter suite
+passed 33 tests in 1.47 seconds on commit
+`86ba25a79d889508c2f710c01ba1bf9535b72032`. This validates serialization only,
+not full TOADS workflow equivalence.
