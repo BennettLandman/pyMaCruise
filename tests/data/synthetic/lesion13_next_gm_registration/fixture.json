@@ -1,0 +1,32 @@
+{
+  "description": "Selected registration input after the finite P39 13-class GM-enabled membership update. The class memberships are emitted by the committed post-thinning continuation; atlas-space shape priors are carried separately from the committed P39aq registration fixture because membership consumes transformed maps while registerShapes samples atlas-space priors.",
+  "dimensions_xyz_channels": [17, 17, 17, 26],
+  "orientation": "RAS",
+  "affine_ras_mm": [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0]
+  ],
+  "frames": {
+    "membership_classes_0_through_12": [0, 13],
+    "atlas_space_shape_priors_0_through_12": [13, 26]
+  },
+  "membership_source_fixture": "../lesion13_finite_grow_thin/finite_13class_grow_thin_ras.nii.gz",
+  "atlas_prior_source_fixture": "../lesion_post_thinning_registration/registration_inputs_ras.nii.gz",
+  "atlas_prior_source_sha256": "25804aeb8d75a9e859133046492f0e6650406b0a465bd44515f9a186d7af6e68",
+  "fixture_sha256": "466192f2aaf54277258cdcbc4eb00fe521279f825cfdf13d225aeab0a62695bd",
+  "registration": {
+    "initial_transform": [0.03, -0.02, 0.01, 0.1, -0.1, 0.05],
+    "image_resolutions_mm": [1.0, 1.0, 1.0],
+    "template_resolutions_mm": [1.0, 1.0, 1.0],
+    "subsample": 2,
+    "max_iterations": 10
+  },
+  "scope_limitations": [
+    "This fixture validates selected registerShapes on a synthetic post-membership map and explicit atlas-space priors.",
+    "The Java harness is a source-formula excerpt using copied ParametricTransform, RotationMatrix, ImageFunctions, and Numerics helpers, not execution of the complete LesionTOADS classes.",
+    "The synthetic registration trace contains five rejected NaN trial energies; the accepted trial and final handoff are finite. This pins the selected comparison/rejection behavior only.",
+    "This does not validate the complete iterative LesionTOADS workflow, real atlas alignment, or real imaging data."
+  ]
+}

@@ -17,6 +17,7 @@ from pymacruise.lesion_growth import (
 from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
 from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after_next_iteration_thinning
 from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm_membership_update
+from pymacruise.lesion_next_iteration_registration import register_after_next_gm_membership_update
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
@@ -32,11 +33,21 @@ from test_lesion_nan_post_registration_growth_reference import (
 ROOT = Path(__file__).parent / "data/synthetic/lesion13_finite_grow_thin"
 SPEC = json.loads((ROOT / "fixture.json").read_text(encoding="utf-8"))
 REFERENCE = json.loads((ROOT / "java_reference.json").read_text(encoding="utf-8"))
+REGISTRATION_SPEC = json.loads(
+    (Path(__file__).parent / "data/synthetic/lesion_post_thinning_registration/fixture.json").read_text(encoding="utf-8")
+)
+REGISTRATION_INPUT = Path(__file__).parent / "data/synthetic/lesion13_next_gm_registration/registration_inputs_ras.nii.gz"
+REGISTRATION_REFERENCE = json.loads(
+    (REGISTRATION_INPUT.parent / "java_reference.json").read_text(encoding="utf-8")
+)
 THIN_HARNESS = Path(__file__).parent / "java_reference/Lesion13ClassNextThinningReferenceHarness.java"
 STATISTICS_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStatisticsReferenceHarness.java"
 POWER_TABLE = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic/utilities/PowerTable.java"
 MEMBERSHIP_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStandard13MembershipReferenceHarness.java"
 RATIO_HARNESS = Path(__file__).parent / "java_reference/LesionDynamicEnergyRatioReferenceHarness.java"
+REGISTRATION_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningRegistrationReferenceHarness.java"
+JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
+MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
 TYPES = tuple(SPEC["object_types"])
 CLASSES = int(SPEC["class_count"])
 LESION = int(SPEC["lesion_class"])
@@ -373,3 +384,89 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
         "energy_ratio_bits": ratio.energy_ratio,
     }.items():
         assert java_ratio[field] == f"{int(np.asarray(value, np.float32).view(np.uint32)):08x}"
+
+    # The selected wrapper calls registerShapes immediately after this ratio;
+    # the ratio is not a gate. Feed the actual just-computed 13-class maps and
+    # fixed shape priors into both the Python adapter and dynamic Java excerpt.
+    registration_image_input = nib.load(str(REGISTRATION_INPUT))
+    assert nib.aff2axcodes(registration_image_input.affine) == ("R", "A", "S")
+    assert hashlib.sha256(REGISTRATION_INPUT.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["fixture_sha256"]
+    assert hashlib.sha256(REGISTRATION_HARNESS.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["harness_sha256"]
+    reference_sources = {
+        "ParametricTransform.java": JAVA_UPSTREAM / "methods/ParametricTransform.java",
+        "RotationMatrix.java": JAVA_UPSTREAM / "structures/RotationMatrix.java",
+        "ImageFunctions.java": JAVA_UPSTREAM / "libraries/ImageFunctions.java",
+        "Numerics.java": JAVA_UPSTREAM / "utilities/Numerics.java",
+    }
+    for name, source_path in reference_sources.items():
+        assert hashlib.sha256(source_path.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["source_sha256"][name]
+    registration_data = np.asarray(registration_image_input.dataobj, dtype=np.float32)
+    assert registration_data.shape == (*seg.shape, 26)
+    np.testing.assert_array_equal(registration_data[..., :CLASSES], actual.class_memberships)
+    atlas_shapes = registration_data[..., CLASSES:]
+    atlas_source = nib.load(str(Path(__file__).parent / "data/synthetic/lesion_post_thinning_registration/registration_inputs_ras.nii.gz"))
+    atlas_source_data = np.asarray(atlas_source.dataobj, dtype=np.float32)
+    np.testing.assert_array_equal(atlas_shapes, atlas_source_data[..., CLASSES:])
+    registration = register_after_next_gm_membership_update(
+        update,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        REGISTRATION_SPEC["initial_transform"],
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        align_shapes=True,
+        init_align_iter=REGISTRATION_SPEC["init_align_iter"],
+    )
+    assert registration.stage_order[-1] == "registerShapes"
+    registration_sources = [
+        MEDIC_UTIL_STUB,
+        JAVA_UPSTREAM / "utilities/Numerics.java",
+        JAVA_UPSTREAM / "structures/RotationMatrix.java",
+        JAVA_UPSTREAM / "methods/ParametricTransform.java",
+        JAVA_UPSTREAM / "libraries/ImageFunctions.java",
+        REGISTRATION_HARNESS,
+    ]
+    subprocess.run([javac, "-d", str(classes_dir), *(str(path) for path in registration_sources)], check=True, capture_output=True, text=True)
+    java_registration = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostThinningRegistrationReferenceHarness", str(REGISTRATION_INPUT)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    optimization = registration.registration.optimization
+    assert optimization is not None
+    assert optimization.stop_reason == java_registration["stop_reason"]
+    assert len(optimization.iterations) == len(java_registration["iterations"])
+    np.testing.assert_array_equal(registration.registration.transform, np.asarray(java_registration["transform"], np.float32))
+    _assert_f32(optimization.energy, java_registration["energy"], "registration energy")
+    _assert_f32(optimization.lambda_value, java_registration["lambda"], "registration lambda")
+    for step, expected in zip(optimization.iterations, java_registration["iterations"], strict=True):
+        assert step.result.accepted == expected["accepted"]
+        assert step.result.rejected_trials == expected["rejected_trials"]
+        np.testing.assert_array_equal(step.result.transform, np.asarray(expected["transform"], np.float32))
+        _assert_f32(step.result.energy, expected["energy"], "registration iteration energy")
+        _assert_f32(step.result.relative_change, expected["relative_change"], "registration relative change")
+        _assert_f32(step.result.lambda_value, expected["lambda"], "registration lambda")
+        assert len(step.trial_energies) == len(expected["trials"])
+        for trial_index, expected_trial in enumerate(expected["trials"]):
+            np.testing.assert_array_equal(step.trial_transforms[trial_index], np.asarray(expected_trial["transform"], np.float32))
+            _assert_f32(step.trial_energies[trial_index], expected_trial["energy"], "registration trial energy")
+            if np.isnan(expected_trial["energy"]):
+                assert not (step.result.accepted and trial_index == len(expected["trials"]) - 1)
+    rejected_nan_count = sum(
+        int(np.isnan(trial["energy"]))
+        for step in java_registration["iterations"]
+        for trial in step["trials"]
+    )
+    assert rejected_nan_count == REGISTRATION_REFERENCE["rejected_nan_trial_energy_count"]
+    np.testing.assert_array_equal(registration.registration.rotation, np.asarray(java_registration["rotation"], np.float32))
+    for bounds, expected in zip(registration.registration.shape_bounds, java_registration["bounds"], strict=True):
+        assert bounds.lower_xyz == tuple(expected["lower"])
+        assert bounds.upper_xyz == tuple(expected["upper"])
+        assert bounds.support_count == expected["support_count"]
+
+
+def _assert_f32(actual: float, expected: float, label: str) -> None:
+    if np.isnan(actual) or np.isnan(expected):
+        assert np.isnan(actual) and np.isnan(expected), label
+        return
+    actual_bits = int(np.asarray(actual, dtype=np.float32).view(np.uint32))
+    expected_bits = int(np.asarray(expected, dtype=np.float32).view(np.uint32))
+    assert actual_bits == expected_bits, label

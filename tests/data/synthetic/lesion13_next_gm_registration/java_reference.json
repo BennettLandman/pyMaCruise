@@ -1,0 +1,29 @@
+{
+  "reference_kind": "runtime Java formula excerpt executed on the committed RAS synthetic registration input",
+  "source_sha256": {
+    "AlgorithmLesionToads.java": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+    "LesionToadAtlas.java": "718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e",
+    "LesionToadSegmentation.java": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+    "ParametricTransform.java": "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac",
+    "RotationMatrix.java": "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0",
+    "ImageFunctions.java": "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892",
+    "Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb"
+  },
+  "harness": "LesionPostThinningRegistrationReferenceHarness.java",
+  "harness_sha256": "083f39ed37cd01aeabc0aead3c4bdd055185e0fd21d5e7d5a53837c0cf60b1eb",
+  "fixture_sha256": "466192f2aaf54277258cdcbc4eb00fe521279f825cfdf13d225aeab0a62695bd",
+  "source_call_order": [
+    "computeMemberships(GMflag=true)",
+    "energyRatio",
+    "if alignShapes then atlas.registerShapes()",
+    "convergence check"
+  ],
+  "registration_trace_fields": [
+    "every trial transform and energy",
+    "accept/reject decision and rejected-trial count",
+    "per-iteration transform, energy, relative change, and lambda",
+    "final transform, energy, lambda, rotation, and all 13 shape bounds"
+  ],
+  "rejected_nan_trial_energy_count": 5,
+  "nan_comparison_semantics": "NaN trial energies are rejected because Java trialEnergy > start is false; all accepted trial energies and the final handoff are finite."
+}
