@@ -78,6 +78,36 @@ def test_class_and_member_mode_preserves_fourth_channel_dimension() -> None:
     np.testing.assert_array_equal(image.dataobj, stack)
 
 
+@pytest.mark.parametrize(
+    ("field", "suffix", "expected_shape"),
+    [
+        (np.full((3, 4, 5), 1.0, dtype=np.float64), "_lToads_field.nii.gz", (3, 4, 5)),
+        (np.stack([np.full((3, 4, 5), value) for value in (0.8, 1.2)], axis=-1), "_lToads_fields.nii.gz", (3, 4, 5, 2)),
+    ],
+)
+def test_exports_optional_single_or_multichannel_restored_field(
+    tmp_path, field, suffix, expected_shape
+) -> None:
+    reference = nib.Nifti1Image(np.zeros((3, 4, 5), dtype=np.float32), np.eye(4))
+
+    images = lesion_toads_output_images(
+        _outputs(), reference, inhomogeneity_field=field
+    )
+    paths = save_lesion_toads_outputs(
+        _outputs(), reference, tmp_path, input_name="case.nii.gz",
+        inhomogeneity_field=field,
+    )
+
+    image = images["inhomogeneity_field"]
+    assert image.shape == expected_shape
+    assert image.get_data_dtype() == np.dtype(np.float32)
+    assert paths["inhomogeneity_field"].name == f"case{suffix}"
+    restored = nib.load(paths["inhomogeneity_field"])
+    assert restored.shape == expected_shape
+    assert restored.get_data_dtype() == np.dtype(np.float32)
+    np.testing.assert_array_equal(restored.dataobj, np.asarray(field, dtype=np.float32))
+
+
 def test_saves_only_nii_gz_with_ras_geometry_and_selected_suffixes(tmp_path) -> None:
     shape = (3, 4, 5)
     reference = nib.Nifti1Image(np.zeros(shape, dtype=np.float32), np.diag([1.2, 1.4, 2.0, 1.0]))
@@ -141,3 +171,14 @@ def test_rejects_output_arrays_not_matching_the_t1_grid() -> None:
 
     with pytest.raises(ValueError, match="classification must match"):
         lesion_toads_output_images(invalid, reference)
+
+
+def test_rejects_empty_or_wrong_grid_optional_field() -> None:
+    outputs = _outputs()
+    reference = nib.Nifti1Image(np.zeros((3, 4, 5), dtype=np.float32), np.eye(4))
+
+    for field in (np.zeros((2, 4, 5)), np.zeros((3, 4, 5, 0))):
+        with pytest.raises(ValueError, match="inhomogeneity_field must be"):
+            lesion_toads_output_images(
+                outputs, reference, inhomogeneity_field=field
+            )

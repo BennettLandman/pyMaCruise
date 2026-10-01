@@ -7,6 +7,7 @@ import re
 
 import nibabel as nib
 import numpy as np
+from numpy.typing import ArrayLike
 
 from .image_io import normalize_image_to_ras, save_nifti_ras
 from .lesion_post_loop_outputs import LesionToadsPostLoopOutputs
@@ -18,6 +19,7 @@ _PRODUCT_FILENAMES = {
     "classification_from_membership": "_lToads_class_max_mem.nii.gz",
     "lesion_subtype": "_lToads_lesions_hard.nii.gz",
     "memberships_plus_lesion": "_lToads_mems.nii.gz",
+    "inhomogeneity_field": "_lToads_field.nii.gz",
 }
 
 
@@ -49,13 +51,17 @@ def _make_image(
 def lesion_toads_output_images(
     outputs: LesionToadsPostLoopOutputs,
     t1_reference: nib.spatialimages.SpatialImage,
+    *,
+    inhomogeneity_field: ArrayLike | None = None,
 ) -> dict[str, nib.spatialimages.SpatialImage]:
     """Build typed RAS NIfTI images for already-uncropped output arrays.
 
     Arrays from the selected output adapter are already in RAS voxel order and
     on the original T1 grid. The reference image supplies only physical
     geometry and non-spatial header metadata. UBYTE output preserves Java's
-    signed-byte bit pattern while representing it as NIfTI uint8.
+    signed-byte bit pattern while representing it as NIfTI uint8. Supply an
+    already-restored field only when both source field-output options are on;
+    its 3-D/4-D shape selects the source `_field`/`_fields` output form.
     """
     if not isinstance(outputs, LesionToadsPostLoopOutputs):
         raise TypeError("outputs must be LesionToadsPostLoopOutputs")
@@ -91,6 +97,21 @@ def lesion_toads_output_images(
         else:
             raise ValueError(f"unsupported LesionTOADS output product: {product.name}")
 
+    if inhomogeneity_field is not None:
+        field = np.asarray(inhomogeneity_field, dtype=np.float32)
+        if field.ndim == 3 and field.shape == shape:
+            images["inhomogeneity_field"] = _make_image(
+                reference, field, dtype=np.dtype(np.float32)
+            )
+        elif field.ndim == 4 and field.shape[:3] == shape and field.shape[3] > 0:
+            images["inhomogeneity_field"] = _make_image(
+                reference, field, dtype=np.dtype(np.float32)
+            )
+        else:
+            raise ValueError(
+                "inhomogeneity_field must be [x, y, z] or [x, y, z, channels] on the T1 grid"
+            )
+
     expected = {"classification", "lesion_subtype"}
     if outputs.membership_classification is not None:
         expected.add("classification_from_membership")
@@ -98,6 +119,8 @@ def lesion_toads_output_images(
         expected.add("memberships_plus_lesion")
     elif outputs.result_mode in {"cruise inputs", "dura removal inputs"}:
         expected.update(_CHANNEL_NAMES)
+    if inhomogeneity_field is not None:
+        expected.add("inhomogeneity_field")
     if set(images) != expected:
         raise ValueError(
             f"output products do not match selected mode: expected {sorted(expected)}, got {sorted(images)}"
@@ -123,21 +146,28 @@ def save_lesion_toads_outputs(
     output_directory: str | Path,
     *,
     input_name: str | Path,
+    inhomogeneity_field: ArrayLike | None = None,
 ) -> dict[str, Path]:
     """Save selected output products as compressed NIfTI files in RAS.
 
     Existing paths are rejected to avoid silently overwriting prior results.
     Product names and types follow the selected VandyCRUISE wrapper branch.
+    An optional field must already be restored to the original T1 grid.
     """
-    images = lesion_toads_output_images(outputs, t1_reference)
+    images = lesion_toads_output_images(
+        outputs, t1_reference, inhomogeneity_field=inhomogeneity_field
+    )
     stem = _safe_stem(input_name)
     directory = Path(output_directory)
     suffixes = dict(_PRODUCT_FILENAMES)
     for name, suffix in zip(_CHANNEL_NAMES, ("_lToads_csf.nii.gz", "_lToads_gm.nii.gz", "_lToads_wmFill.nii.gz", "_lToads_wmMask.nii.gz"), strict=True):
         suffixes[name] = suffix
-    destinations = {
-        name: directory / f"{stem}{suffixes[name]}" for name in images
-    }
+    destinations = {}
+    for name, image in images.items():
+        suffix = suffixes[name]
+        if name == "inhomogeneity_field" and image.ndim == 4:
+            suffix = "_lToads_fields.nii.gz"
+        destinations[name] = directory / f"{stem}{suffix}"
     collisions = [str(path) for path in destinations.values() if path.exists()]
     if collisions:
         raise FileExistsError(f"refusing to overwrite existing output(s): {', '.join(collisions)}")
