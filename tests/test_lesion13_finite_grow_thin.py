@@ -1176,6 +1176,68 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     )
     assert second_continue.branch.relations.relation_count == second_java_outputs["relation_count"]
 
+    # The next wrapper iteration starts with propagateThinning. The atlas
+    # maps must be resampled with the transform/bounds from this second
+    # registration, while the segmentation/frontier/relation state comes from
+    # the just-validated no-stop branch above.
+    second_registered_shapes = transform_registered_lesion_shape_priors(
+        second_registration,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    )
+    assert second_registered_shapes.shape == (*seg.shape, CLASSES)
+    assert np.isfinite(second_registered_shapes).all()
+    second_registered_input = tmp_path / "second-registered-shapes-in.bin"
+    second_registered_output = tmp_path / "second-registered-shapes-out.bin"
+    second_registered_input.write_bytes(_registered_shapes_input_bytes(
+        second_registration.registration.transform,
+        second_registration.registration.shape_bounds,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionRegisteredShapeVolumeReferenceHarness",
+        str(second_registered_input), str(second_registered_output),
+    ], check=True, capture_output=True, text=True)
+    assert second_registered_output.read_bytes() == np.asarray(
+        second_registered_shapes, dtype=">f4"
+    ).ravel(order="C").tobytes()
+
+    third_thinned = run_lesion_toads_next_iteration_thinning(
+        second_continue.branch,
+        second_registered_shapes,
+        object_types=TYPES,
+        lesion_class=LESION,
+        volume_ratio=0.4,
+        limit=1000.0,
+    )
+    assert third_thinned.initialization.inserted_items
+    assert third_thinned.run.events
+    assert any(
+        event.candidate_label is not None
+        and event.candidate_label != event.popped_item.label
+        for event in third_thinned.run.events
+    )
+    third_thin_input = tmp_path / "third-thin-in.bin"
+    third_thin_output = tmp_path / "third-thin-out.bin"
+    third_thin_input.write_bytes(_thinning_input_bytes(
+        second_continue.branch.segmentation,
+        second_continue.branch.growing.skeleton,
+        actual_next.class_memberships,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+        second_registered_shapes,
+        second_continue.branch.growing.available,
+        second_continue.branch.growing.ordering,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "Lesion13ClassNextThinningReferenceHarness",
+        str(third_thin_input), str(third_thin_output),
+    ], check=True, capture_output=True, text=True)
+    assert third_thin_output.read_bytes() == _expected_thinning_bytes(third_thinned)
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):

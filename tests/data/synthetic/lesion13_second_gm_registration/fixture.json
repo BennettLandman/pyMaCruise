@@ -19,7 +19,9 @@
     "alternate continuation: convergence check",
     "alternate continuation: iteration-limit check",
     "propagateGrowing",
-    "computeRelations"
+    "computeRelations",
+    "transform atlas priors using the second registerShapes transform/bounds",
+    "next wrapper iteration: propagateThinning"
   ],
   "registration_state": {
     "initial_transform": "The transform returned by the immediately preceding synthetic registerShapes call.",
@@ -46,7 +48,8 @@
       "iteration": 2,
       "n_iter_max": 3,
       "max_distance": 0.0,
-      "expected": "finite energy ratio passes the zero threshold; nonterminal iteration grows from the second thinning output and refreshes relations"
+      "expected": "finite energy ratio passes the zero threshold; nonterminal iteration grows from the second thinning output and refreshes relations",
+      "next_loop": "The refreshed branch state plus atlas priors resampled using this registration's returned transform and bounds enter one source-matched propagateThinning pass."
     }
   },
   "java_reference": {
@@ -63,7 +66,7 @@
     }
   },
   "scope_limitations": [
-    "The synthetic state covers the selected second registration, its terminal wrapper control, and an alternate finite no-stop continuation through growth and relation refresh; it is not complete LesionTOADS equivalence.",
+    "The synthetic state covers the selected second registration, its terminal wrapper control, and an alternate finite no-stop continuation through growth, relation refresh, atlas-prior transform, and one following thinning pass; it is not complete LesionTOADS equivalence.",
     "The finite membership state has no zero class or lesion standard deviation, so source zero-variance NaN mode is not exercised here.",
     "Atlas priors remain separate from transformed membership priors, and this case does not validate real atlas alignment or real imaging data."
   ]
