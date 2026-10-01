@@ -120,10 +120,26 @@ def test_standard13_profile_composes_selected_initial_membership_voxel() -> None
         assert values == reference[name], name
 
 
-def test_standard13_profile_rejects_nonpositive_shape_for_active_class_loop() -> None:
+def test_standard13_zero_shape_skips_one_class_and_preserves_other_outputs() -> None:
     state = _state()
     shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()
     shapes[8] = 0.0
     state["shape_values"] = shapes
-    with np.testing.assert_raises_regex(ValueError, "all 13 classes must have positive"):
-        compute_lesion_toads_standard13_voxel(**state)
+    result = compute_lesion_toads_standard13_voxel(**state)
+    assert result.class_memberships[8] == 0.0
+    assert result.class_energies[8] == 0.0
+
+
+def test_standard13_absent_lesion_preserves_previous_auxiliary_maps() -> None:
+    state = _state()
+    shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()
+    shapes[10] = 0.0
+    state["shape_values"] = shapes
+    state["black_hole_membership"] = np.float32(0.25)
+    state["lesion_relation"] = np.float32(0.375)
+    result = compute_lesion_toads_standard13_voxel(**state)
+    assert result.class_memberships[10] == 0.0
+    assert result.class_energies[10] == 0.0
+    assert result.lesion_membership == np.float32(state["lesion_membership"] / result.denominator)
+    assert result.black_hole_membership == state["black_hole_membership"]
+    assert result.lesion_relation == state["lesion_relation"]

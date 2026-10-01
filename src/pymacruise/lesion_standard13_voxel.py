@@ -157,8 +157,9 @@ def compute_lesion_toads_standard13_voxel(
         or not (np.any(deviations == np.float32(0.0)) or np.any(lesion_deviation == np.float32(0.0)))
     ):
         raise ValueError("source zero-variance NaNs require GMflag and a zero source deviation")
-    if np.any(shapes <= np.float32(0.0)):
-        raise ValueError("all 13 classes must have positive transformed shape at this voxel")
+    # The Java volume pass accepts zero/negative transformed priors and skips
+    # those classes (setting membership to zero). Registered atlas support is
+    # class-specific, so this is expected outside individual class bounds.
 
     similarities = compute_lesion_toads_similarity(
         centers, deviations, lesion_center, lesion_deviation, weights,
@@ -175,8 +176,6 @@ def compute_lesion_toads_standard13_voxel(
     for k, kind in enumerate(STANDARD13_TYPES):
         if shapes[k] <= np.float32(0.0):
             current[k] = np.float32(0.0)
-            if kind == "LESION":
-                lesion = black_hole = lesion_rel = np.float32(0.0)
             continue
 
         if kind == "MASK":
