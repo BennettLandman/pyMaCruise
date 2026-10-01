@@ -10,11 +10,15 @@ The integration test rebuilds P39ak/P39am from the folded synthetic RAS
 fixture, uses the P39aq registration fixture/reference, and applies the
 existing Python growth, classification, and relation kernels. For stop cases
 without growth, the final segmentation is compared with the pinned P39ak Java
-result. The growth-on cases still lack a Java full-pass comparison on this
-specific 13-class fixture; the standalone growth kernel has separate Java
-fixture coverage. The LesionTOADS branch calls `computeRelations` only; it does
-not refresh base-TOADS boundary-distance or closest-label maps. No actual
-imaging data is used and this is not full workflow equivalence.
+result. For the growth-on branch, a dynamic Java harness starts from the same
+folded 17³, 13-class post-thinning state and compares segmentation, skeleton,
+availability, ordering, class volumes, all 1,860 queue events, and all 991
+neighbor insertions byte-for-byte. This pins selected `initGrowingLabels`,
+`bestMembership`, `maxMembershipRatio`, `isHomeomorphicSegmentation`, and
+`propagateGrowing` behavior on this state. The LesionTOADS branch calls
+`computeRelations` only; it does not refresh base-TOADS boundary-distance or
+closest-label maps. No actual imaging data is used and this is not full
+workflow equivalence.
 
 Regenerate the checked-in Java decision reference with:
 
