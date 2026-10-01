@@ -34,7 +34,9 @@ def run_lesion_toads_next_iteration_thinning(
     refreshed relations. Its grown segmentation and frontier state are used
     exactly as the selected wrapper's next-loop inputs. Class memberships and
     auxiliary lesion maps are carried from that branch's membership result;
-    transformed atlas shapes remain explicit fixed inputs.
+    ``transformed_shape`` must be the already transformed atlas shape maps for
+    this iteration's post-registration state. Those maps are fixed only for
+    this thinning seam; this adapter does not perform the next registration.
     """
     if not isinstance(previous_branch, LesionToadsPostRegistrationBranch):
         raise TypeError("previous_branch must be a LesionToadsPostRegistrationBranch")

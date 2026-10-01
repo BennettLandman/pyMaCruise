@@ -1,0 +1,30 @@
+{
+  "reference_kind": "hand-coded Java excerpts for selected methods; not execution of the complete wrapper or algorithm class",
+  "lesion_toads_source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+  "wrapper_source_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+  "grow_harness": "LesionGrowingPassDynamicReferenceHarness.java",
+  "grow_harness_sha256": "e324c89358dc83096c2cf98ef9a64f404263c0566292f25021b2b74bdfab7d62",
+  "thin_harness": "Lesion13ClassNextThinningReferenceHarness.java",
+  "thin_harness_sha256": "3923db745105c572888d4c2ed9e61f83542bc58c4579e591c89120ce20ccbb24",
+  "binary_heap_sha256": "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a",
+  "numerics_sha256": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb",
+  "topology_lut_sha256": "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f",
+  "call_order": [
+    "finite 13-class membership state supplied",
+    "initGrowingLabels",
+    "propagateGrowing through queue exhaustion",
+    "initThinningLabels",
+    "propagateThinning through queue exhaustion or limit"
+  ],
+  "growth_event_count": 3,
+  "growth_accepted_count": 1,
+  "thinning_initial_queue_count": 3375,
+  "thinning_event_count": 3375,
+  "thinning_processed_count": 1657,
+  "class_interior_support_voxels": [450, 450, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225],
+  "scope_limitations": [
+    "The Java references are source-formula excerpts with copied BinaryHeap4D and Numerics helpers, not calls into the complete VandyCRUISE classes.",
+    "The thinning fixture deliberately keeps bestMembership equal to the current class for each processed item; the topology-change branch is not covered by this continuation fixture.",
+    "This pins only the selected finite 13-class grow-to-next-thinning seam and does not validate a complete LesionTOADS iteration or pipeline."
+  ]
+}
