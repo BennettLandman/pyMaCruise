@@ -826,3 +826,15 @@ branch and crop restoration are not included. The focused output/adapter suite
 passed 33 tests in 1.47 seconds on commit
 `86ba25a79d889508c2f710c01ba1bf9535b72032`. This validates serialization only,
 not full TOADS workflow equivalence.
+
+### Completed substage: Dura-output wrapper-buffer to NIfTI bridge (P18cyz)
+
+`save_toads_dura_wrapper_outputs` consumes the selected wrapper's flattened
+classification and four 255-scaled float buffers. It reshapes the Java
+x-fastest buffer order using Fortran indexing into the NIfTI `[x,y,z]` grid,
+preserves UBYTE labels and float32 outputs, then uses the P18cyy RAS NIfTI
+writer and selected suffixes. The asymmetric 2×3×4 phantom checks every voxel
+after compressed save/reload. Focused six-file output/adapter suite: 39 passed
+in 0.86 seconds on implementation commit
+`e971d58c25ddc0d5f35d4838e0dbb14f8e148793`. This bridges the wrapper's final
+Dura products only; it does not demonstrate a complete TOADS workflow.
