@@ -20,7 +20,8 @@ axis codes are recorded. Atlas NIfTI payloads are not loaded.
 
 The command writes `run.json` in the configured output directory. A directory
 without a manifest must be empty. If `run.json` already exists, `--overwrite`
-replaces only that manifest and leaves other files untouched. The manifest
+replaces only a regular manifest file and leaves other files untouched;
+symlinked manifests are rejected. The manifest
 sets `dry_run` to `true`, records `workflow_executed: false`, and leaves
 `stages.pipeline` as `not_started`. No N4 correction or segmentation stage is
 run. If ANTsPy is missing, install it with
