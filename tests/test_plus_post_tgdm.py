@@ -75,6 +75,13 @@ def test_plus_post_tgdm_composes_public_stages_in_source_order(monkeypatch) -> N
 
     cropped = _cropped_tgdm()
     parameters = _crop_parameters()
+    saved_inputs = {
+        name: (
+            np.asarray(getattr(cropped, name).dataobj).copy(),
+            getattr(cropped, name).affine.copy(),
+        )
+        for name in FIELDS
+    }
     actual = run_plus_post_tgdm_stages(cropped, parameters)
 
     assert events == ["uncrop", "surfaces", "thickness"]
@@ -113,6 +120,10 @@ def test_plus_post_tgdm_composes_public_stages_in_source_order(monkeypatch) -> N
         actual.thickness.surface.mean_mm
         == expected_thickness.surface.mean_mm
     )
+    for name, (saved_data, saved_affine) in saved_inputs.items():
+        observed = getattr(cropped, name)
+        np.testing.assert_array_equal(observed.dataobj, saved_data)
+        np.testing.assert_array_equal(observed.affine, saved_affine)
 
 
 def test_plus_post_tgdm_keeps_selected_uncrop_boundary_and_mesh_risk_visible() -> None:
