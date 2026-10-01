@@ -13,6 +13,7 @@ from typing import Any, Sequence
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from .lesion_energy_ratio import LesionEnergyRatio, lesion_toads_energy_ratio
 from .lesion_growth import LesionToadsGrowingPass, propagate_lesion_toads_growing
 from .lesion_registration_handoff import LesionRegistrationHandoff
 from .lesion_relations import LesionRelationList, lesion_compute_relations
@@ -58,6 +59,7 @@ def lesion_toads_post_registration_branch(
     relation_limit: int,
     has_lesion: bool = True,
     use_lesion_max: bool = False,
+    source_energy_ratio: LesionEnergyRatio | None = None,
 ) -> LesionToadsPostRegistrationBranch:
     """Run only the selected wrapper's branch immediately after alignment.
 
@@ -67,7 +69,11 @@ def lesion_toads_post_registration_branch(
     ceiling, grows only outside ``narrow_band_competition`` when ``!stop`` or
     the original signed ``nIterMax`` is positive, then either transfers final
     labels/subtypes or refreshes relations. The LesionTOADS branch does not
-    update base-TOADS boundary-distance or closest-label maps here.
+    update base-TOADS boundary-distance or closest-label maps here. A supplied
+    ``source_energy_ratio`` can preserve the preceding membership pass's
+    source-computed NaN ratio; its operands and every float32 intermediate are
+    checked against the selected expression before applying Java's NaN-false
+    convergence comparison. Without that record, current energy must be finite.
     """
     if not isinstance(registration_handoff, LesionRegistrationHandoff):
         raise TypeError("registration_handoff must be a LesionRegistrationHandoff")
@@ -106,15 +112,34 @@ def lesion_toads_post_registration_branch(
     previous = np.float32(previous_energy)
     energy = np.float32(membership.objective)
     distance = np.float32(max_distance)
-    if not np.isfinite(previous) or not np.isfinite(energy):
-        raise ValueError("previous and current energy must be finite")
+    if not np.isfinite(previous):
+        raise ValueError("previous energy must be finite")
     if not np.isfinite(distance) or distance < np.float32(0.0):
         raise ValueError("max_distance must be finite and nonnegative")
-    difference = np.float32(previous - energy)
-    numerator = np.float32(np.float32(2.0) * difference)
-    denominator = np.float32(previous + energy)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        energy_ratio = np.float32(np.abs(np.float32(numerator / denominator)))
+    if source_energy_ratio is None:
+        if not np.isfinite(energy):
+            raise ValueError(
+                "nonfinite current energy requires its source-computed energy ratio"
+            )
+        source_energy_ratio = lesion_toads_energy_ratio(previous, energy)
+    elif not isinstance(source_energy_ratio, LesionEnergyRatio):
+        raise TypeError("source_energy_ratio must be a LesionEnergyRatio")
+    expected_ratio = lesion_toads_energy_ratio(previous, energy)
+    for field in (
+        "previous_energy", "current_energy", "difference", "numerator",
+        "denominator", "quotient", "energy_ratio",
+    ):
+        supplied_value = np.float32(getattr(source_energy_ratio, field))
+        expected_value = np.float32(getattr(expected_ratio, field))
+        if supplied_value.view(np.uint32) != expected_value.view(np.uint32):
+            raise ValueError(
+                "source_energy_ratio must match the source energy operands and float32 expression"
+            )
+    if np.isinf(energy) or np.isinf(source_energy_ratio.energy_ratio):
+        raise ValueError("infinite source energies and ratios are unsupported")
+    # NaN current energy and the resulting source-faithful NaN ratio are
+    # accepted only when supplied as a matching P39an energy-ratio record.
+    energy_ratio = np.float32(source_energy_ratio.energy_ratio)
     convergence_stop = bool(energy_ratio < distance)
     iteration_limit_stop = int(iteration) >= iterations
     stop = convergence_stop or iteration_limit_stop
