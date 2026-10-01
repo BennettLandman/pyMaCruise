@@ -1,0 +1,39 @@
+{
+  "kind": "project-generated folded radial membership phantom",
+  "shape": [
+    25,
+    25,
+    25
+  ],
+  "affine_ras_mm": [
+    [
+      0.8,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.8,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.2,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "foreground_membership": 200.0,
+  "background_membership": 0.0,
+  "sha256": {
+    "topology_corrected_initial_membership.nii.gz": "3b0b532afc92e36e3a887524393fcf39a765a3af7fc8a01a5261a4958be2614d"
+  }
+}
