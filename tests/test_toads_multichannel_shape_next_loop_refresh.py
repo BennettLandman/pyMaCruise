@@ -12,6 +12,7 @@ from pymacruise.toads_default_exact_centroids import toads_default_exact_centroi
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
 from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_optimized_image_variance
 from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
+from pymacruise.toads_cruise_outputs import generate_toads_cruise_outputs
 from pymacruise.toads_relations import toads_refresh_relation_state
 from pymacruise.toads_thinning import toads_propagate_thinning
 from pymacruise.toads_iteration import toads_stopping_iteration
@@ -27,6 +28,7 @@ THINNING_HARNESS = ROOT.parent / "scripts/run_java_toads_post_registration_next_
 FIELD_HARNESS = ROOT.parent / "scripts/run_java_toads_post_thinning_exact_field_reference.sh"
 MEMBERSHIP_HARNESS = ROOT.parent / "scripts/run_java_toads_p18czp_actual_next_loop_membership_reference.sh"
 TERMINAL_LABELS_HARNESS = ROOT.parent / "scripts/run_java_toads_p18czp_terminal_labels_reference.sh"
+CRUISE_OUTPUTS_HARNESS = ROOT.parent / "scripts/run_java_toads_p18czp_cruise_outputs_reference.sh"
 CONTROL_REFERENCE = ROOT / "java_reference/ToadsP18cytRegisteredIterationReferenceHarness.java"
 
 
@@ -68,6 +70,13 @@ def _terminal_labels_input(segmentation, template_labels, previous_classificatio
         np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
         np.asarray(template_labels, dtype=np.int8).tobytes(order="C"),
         np.asarray(previous_classification, dtype=np.int8).tobytes(order="C"),
+    ))
+
+
+def _cruise_outputs_input(segmentation, memberships) -> bytes:
+    return b"".join((
+        np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
+        np.asarray(memberships, dtype="<f4").tobytes(order="C"),
     ))
 
 
@@ -287,3 +296,25 @@ def test_shape_growth_relation_refresh_flows_through_next_thinning_fields_and_me
     assert java_terminal["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
     np.testing.assert_array_equal(terminal.classification.ravel(), java_terminal["classification"])
     assert terminal.changed_classification_voxels == java_terminal["changed_voxels"]
+
+    # Validate the selected 11-structure final product dispatch on these same
+    # multichannel memberships and post-thinning labels (the output routine
+    # consumes shared class maps, not an image-channel axis).
+    default_atlas_names = (
+        "Background", "SulcalCSF", "Ventricles", "CerebellarGM", "CerebralGM",
+        "Caudate", "Thalamus", "Putamen", "Brainstem", "CerebellarWM", "CerebralWM",
+    )
+    cruise = generate_toads_cruise_outputs(
+        refreshed_membership.memberships, thinning.segmentation, default_atlas_names, use_approx=False,
+    )
+    cruise_input = tmp_path / "p18czp_cruise_outputs.bin"
+    cruise_input.write_bytes(_cruise_outputs_input(thinning.segmentation, refreshed_membership.memberships))
+    java_cruise = json.loads(subprocess.run(
+        ["sh", str(CRUISE_OUTPUTS_HARNESS), str(cruise_input), *(str(v) for v in grown.shape)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_cruise["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert java_cruise["wrapper_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
+    assert tuple(java_cruise["shape"]) == thinning.segmentation.shape
+    for product, expected_hash in zip(cruise.as_channels(), java_cruise["output_hashes"], strict=True):
+        assert _sha(product) == expected_hash
