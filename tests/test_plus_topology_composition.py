@@ -6,6 +6,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 import pymacruise.plus_topology_composition as composition
 from pymacruise.plus_pipeline import PlusPipelineOptions
@@ -109,3 +110,61 @@ def test_topology_refinement_precedes_ace_gvf_and_tgdm(monkeypatch) -> None:
         assert np.isfinite(np.asarray(image.dataobj)).all()
     for image, original in zip(inputs, before, strict=True):
         np.testing.assert_array_equal(image.dataobj, original)
+
+
+def test_las_segmentation_warns_and_composition_outputs_remain_ras(monkeypatch) -> None:
+    ras_inputs = _inputs()
+    ras_segmentation = ras_inputs[0]
+    las_data = np.flip(np.asarray(ras_segmentation.dataobj), axis=0).copy()
+    las_affine = ras_segmentation.affine.copy()
+    las_affine[0, 0] *= -1
+    las_affine[0, 3] = ras_segmentation.affine[0, 0] * (
+        ras_segmentation.shape[0] - 1
+    )
+    las_segmentation = nib.Nifti1Image(las_data, las_affine)
+    assert nib.aff2axcodes(las_segmentation.affine) == ("L", "A", "S")
+
+    received_segmentation: list[nib.spatialimages.SpatialImage] = []
+    original_boundary = composition.run_plus_boundary_stage
+
+    def traced_boundary(segmentation, *args, **kwargs):
+        received_segmentation.append(segmentation)
+        return original_boundary(segmentation, *args, **kwargs)
+
+    monkeypatch.setattr(composition, "run_plus_boundary_stage", traced_boundary)
+    with pytest.warns(UserWarning, match="reorienting the image to RAS") as caught:
+        result = composition.run_plus_topology_and_tgdm(
+            las_segmentation,
+            *ras_inputs[1:],
+            options=PlusPipelineOptions(),
+        )
+
+    assert len(caught) == 1
+    assert len(received_segmentation) == 1
+    assert nib.aff2axcodes(received_segmentation[0].affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(
+        received_segmentation[0].dataobj,
+        ras_segmentation.dataobj,
+    )
+
+    output_images = (
+        result.boundary.raw_boundary,
+        result.boundary.cleaned_boundary,
+        result.tissue.gm,
+        result.tissue.wm,
+        result.tissue.mask,
+        result.topology.corrected,
+        result.topology.atlas_refined,
+        result.tgdm_initial_membership,
+        result.ace.enhanced_gray_matter,
+        result.ace.skeleton,
+        result.ace.thinned_skeleton,
+        result.gvf.vector_field,
+        result.tgdm.initial_level_set,
+        result.tgdm.inner,
+        result.tgdm.central,
+        result.tgdm.outer,
+    )
+    assert all(image is not None for image in output_images)
+    for image in output_images:
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
