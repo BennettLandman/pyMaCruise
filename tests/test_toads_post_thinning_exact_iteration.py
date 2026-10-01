@@ -4,13 +4,23 @@ from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 
 import numpy as np
+import pytest
 
 from pymacruise.toads_post_registration_next_thinning import toads_post_registration_next_thinning
 from pymacruise.toads_post_thinning_exact_iteration import toads_post_thinning_exact_iteration_degree1
+from pymacruise.toads_default_membership_registration_control import (
+    continue_default_membership_through_registration_control,
+)
 from pymacruise.toads_math import toads_powertable_lookup
+from pymacruise.toads_registration_sampling import (
+    vectorized_toads_registration_coefficients,
+    vectorized_toads_registration_energy,
+)
+from pymacruise.toads_registration import exact_registration_measure_coefficients
 from test_toads_post_registration_next_thinning import _registered_branch
 
 
@@ -212,3 +222,199 @@ def test_selected_single_channel_exact_refit_statistics_membership_sequence(tmp_
     assert hashlib.sha256(POWER_TABLE_COPY.read_bytes()).hexdigest() == POWER_TABLE_SHA256
     assert power_delta <= 1e-14, f"max PowerTable-vs-NumPy lookup difference was {power_delta:.17g}"
     assert energy_delta == 0.0, f"max same-input membership class-energy difference was {energy_delta:.9g}"
+
+
+def test_p18cyt_membership_registration_and_control_match_vandycruise(tmp_path: Path) -> None:
+    """Check the one-channel P18cyt membership output at the selected wrapper seam."""
+    next_thinning, image, centroids, field, closest = _continuation_state()
+    shape = np.zeros((*image.shape, 11), dtype=np.float32)
+    exponent_map = np.empty((1, 11), dtype=np.float32)
+    exponent_map[0, 0] = 1.0
+    exponent_map[0, 1:3] = 0.8
+    exponent_map[0, 3:] = 1.0
+    memberships = next_thinning.branch.handoff.membership_pass.memberships
+    result = toads_post_thinning_exact_iteration_degree1(
+        next_thinning,
+        image,
+        centroids,
+        field,
+        category_exponents=np.asarray([0.8, 1.0, 1.0], dtype=np.float32),
+        exponent_by_channel_class=exponent_map,
+        modality_weights=np.asarray([0.73], dtype=np.float32),
+        class_variance_weights=np.asarray(
+            [[0.81, 0.93, 1.17, 0.76, 0.88, 1.02, 1.14, 0.69, 0.96, 1.21, 0.73]],
+            dtype=np.float32,
+        ),
+        transformed_shapes=shape,
+        closest_labels=closest,
+        smoothing_priors=np.asarray(
+            [0.65, 0.71, 0.84, 0.91, 1.02, 1.13, 0.76, 0.88, 1.05, 1.17, 0.82],
+            dtype=np.float32,
+        ),
+        atlas_shape_priors=np.asarray(
+            [0.10, 0.08, 0.09, 0.11, 0.12, 0.09, 0.10, 0.11, 0.07, 0.06, 0.07],
+            dtype=np.float32,
+        ),
+        smoothing=0.043,
+        prior_factor=0.64,
+        prior_coefficient=0.16,
+        prior_scale=0.05,
+    )
+    membership_pass = result.membership_pass
+    # This is the actual P18cyt one-channel output: one intensity input and
+    # eleven statistical membership maps. Give each atlas class a smooth,
+    # nonconstant prior so rigid registration exercises spatial derivatives.
+    nx, ny, nz = membership_pass.memberships.shape[:3]
+    gx, gy, gz = np.meshgrid(
+        np.linspace(-1.0, 1.0, nx, dtype=np.float32),
+        np.linspace(-1.0, 1.0, ny, dtype=np.float32),
+        np.linspace(-1.0, 1.0, nz, dtype=np.float32),
+        indexing="ij",
+    )
+    atlas = np.empty((nx, ny, nz, 11), dtype=np.float32)
+    for class_index in range(11):
+        cx = np.float32(-0.45 + 0.09 * class_index)
+        cy = np.float32(0.3 * np.sin(class_index))
+        cz = np.float32(0.25 * np.cos(class_index))
+        radius = np.float32((gx - cx) ** 2 + 1.3 * (gy - cy) ** 2 + 0.8 * (gz - cz) ** 2)
+        atlas[..., class_index] = np.asarray(
+            np.exp(-radius / np.float32(0.42)) * np.float32(0.75) + np.float32(0.05),
+            dtype=np.float32,
+        )
+
+    objective = np.float32(membership_pass.objective)
+    previous_energy = np.float32(objective * np.float32(1.01))
+    common = dict(
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        previous_energy=previous_energy,
+        iteration=3,
+        maximum_iterations=5,
+        convergence_threshold=1e-4,
+        do_growing=False,
+        offset=0,
+        subsample=2,
+        max_registration_iterations=5,
+        registration_energy_tolerance=0.0,
+        minimum_lambda=1e-3,
+    )
+    aligned = continue_default_membership_through_registration_control(
+        membership_pass, atlas, **common,
+    )
+    ratio = np.float32(
+        np.abs(
+            np.float32(
+                np.float32(np.float32(2.0) * np.float32(previous_energy - objective))
+                / np.float32(previous_energy + objective)
+            )
+        )
+    )
+    assert aligned.control.energy_ratio.view(np.int32) == ratio.view(np.int32)
+    assert aligned.stage_order == (
+        "computeExactMemberships",
+        "energyRatio",
+        "atlas.registerShapes() -> registerAllShapes()",
+        "convergenceCheck",
+        "iterationLimitCheck",
+    )
+    assert aligned.handoff.membership_pass is membership_pass
+    assert aligned.handoff.registration is not None
+    assert not aligned.control.stop
+
+    unaligned = continue_default_membership_through_registration_control(
+        membership_pass, atlas, align_shapes=False, **common,
+    )
+    assert unaligned.handoff.registration is None
+    assert unaligned.control.energy_ratio.view(np.int32) == ratio.view(np.int32)
+    assert unaligned.stage_order == (
+        "computeExactMemberships", "energyRatio", "convergenceCheck", "iterationLimitCheck",
+    )
+    limited = continue_default_membership_through_registration_control(
+        membership_pass,
+        atlas,
+        align_shapes=False,
+        **{**common, "iteration": 5},
+    )
+    assert limited.control.stop and not limited.control.run_growing
+
+    mem_path, shape_path = tmp_path / "p18cyt_memberships.bin", tmp_path / "p18cyt_atlas.bin"
+    mem_path.write_bytes(np.asarray(membership_pass.memberships, dtype="<f4").tobytes(order="C"))
+    shape_path.write_bytes(np.asarray(atlas, dtype="<f4").tobytes(order="C"))
+    harness = ROOT / "java_reference/generate_toads_p18cyp_actual_registration_reference.sh"
+    completed = subprocess.run(
+        ["sh", str(harness), str(mem_path), str(shape_path), str(nx), str(ny), str(nz)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    java = json.loads(completed.stdout.splitlines()[-1])
+    assert java["source"] == (
+        "VandyCRUISE MultipleToadDeformableAtlas.updateShapeRegistration(rigid) + "
+        "registerShapes() + private registerAllShapes()"
+    )
+    registration = aligned.handoff.registration
+    assert registration is not None
+    # The harness runs the same registration source with these exact P18cyt
+    # memberships and atlas values, exposing per-iteration derivative and
+    # line-search traces on stdout before its terminal transform/energy.
+    trace = completed.stdout.splitlines()
+    number = r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[Ee][-+]?\d+)?"
+    java_hessians = [
+        np.asarray([float(v) for v in re.findall(number, line.split("vector:", 1)[1])], dtype=np.float32)
+        for line in trace if line.startswith("H: vector:")
+    ]
+    java_gradients = [
+        np.asarray([float(v) for v in re.findall(number, line.split("vector:", 1)[1])], dtype=np.float32)
+        for line in trace if line.startswith("G: vector:")
+    ]
+    java_trials = [
+        tuple(float(value) for value in match.groups())
+        for line in trace if (match := re.search(r"a: ([^ (]+)\(([^)]+)\)->\(([^)]+)\)", line))
+    ]
+    assert len(java_hessians) == len(java_gradients) == len(java_trials) == len(registration.iterations) == 5
+    low = np.zeros((11, 3), dtype=np.int32)
+    high = np.broadcast_to(np.asarray((nx, ny, nz), dtype=np.int32), (11, 3)).copy()
+    registered_classes = np.asarray([False] + [True] * 10)
+    current_transform = np.zeros(6, dtype=np.float32)
+    for index, (iteration_result, java_hessian, java_gradient, java_trial) in enumerate(zip(
+        registration.iterations, java_hessians, java_gradients, java_trials, strict=True,
+    )):
+        coeff = vectorized_toads_registration_coefficients(
+            membership_pass.memberships,
+            atlas,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            transform=tuple(float(v) for v in current_transform),
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered_classes,
+            offset=0,
+            subsample=2,
+        )
+        gradient, hessian = exact_registration_measure_coefficients(
+            coeff.gradient, coeff.hessian, coeff.norm_gradient, coeff.norm_hessian, coeff.norm,
+            source_faithful=True,
+        )
+        np.testing.assert_allclose(java_hessian, hessian, rtol=3e-5, atol=3e-6)
+        np.testing.assert_allclose(java_gradient, gradient, rtol=3e-5, atol=3e-6)
+        energy_before = vectorized_toads_registration_energy(
+            membership_pass.memberships,
+            atlas,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            transform=tuple(float(v) for v in current_transform),
+            class_bounds_low_xyz=low,
+            class_bounds_high_xyz=high,
+            registered_classes=registered_classes,
+            offset=0,
+            subsample=2,
+        )
+        assert java_trial[0] == pytest.approx(float(np.float32(1.5**index)), rel=2e-6)
+        assert java_trial[1] == pytest.approx(float(energy_before), rel=3e-5, abs=3e-6)
+        np.testing.assert_allclose(java_trial[2], iteration_result.energy, rtol=3e-5, atol=3e-6)
+        current_transform = iteration_result.transform.copy()
+    java_transform = np.asarray(java["transform_bits"], dtype=np.int32).view(np.float32)
+    java_energy = np.asarray([java["energy_bits"]], dtype=np.int32).view(np.float32)
+    np.testing.assert_allclose(java_transform, registration.transform, rtol=3e-5, atol=3e-6)
+    np.testing.assert_allclose(java_energy, [registration.energy], rtol=3e-5, atol=3e-6)
