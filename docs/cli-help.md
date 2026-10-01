@@ -47,6 +47,46 @@ the bundled LesionTOADS atlas descriptor. The base profile uses the bundled
 default TOADS descriptor. Custom atlas paths are not accepted by this
 preflight interface.
 
+## `pymacruise topology-correct`
+
+```text
+pymacruise topology-correct --volume INPUT.nii.gz --paint-mask MASK.nii.gz \
+  --output CORRECTED.nii.gz [--multi-atlas-wm WM.nii.gz \
+  --atlas-refined-output REFINED.nii.gz] [--paint-threshold VALUE] \
+  [--lowest-level VALUE] [--highest-level VALUE] [--regularize VALUE] \
+  [--provenance run.json]
+```
+
+This command delegates to the existing source-matched `(6,18)` topology
+correction API. It accepts a 3D scalar image and paint mask on the same
+physical grid. The optional multi-atlas WM mask and refined output must be
+provided together; this enables the selected V3 WM post-processing stage.
+Inputs are normalized to RAS with a visible warning for non-RAS orientations.
+The corrected output (and optional refined output) is compressed NIfTI in
+RAS. Optional provenance records inputs, parameters, outputs, and the RAS
+convention.
+
+## `pymacruise segmentation-refine`
+
+```text
+pymacruise segmentation-refine --segmentation MaSeg.nii.gz \
+  --inner-levelset INNER.nii.gz --outer-levelset OUTER.nii.gz \
+  --output REFINED.nii.gz --summary rules.json \
+  [--inner-coefficient-mm VALUE] [--outer-coefficient-mm VALUE] \
+  [--inner-central-coefficient-mm VALUE] \
+  [--outer-central-coefficient-mm VALUE] [--neighborhood-radius VOXELS] \
+  [--max-sweeps COUNT] [--no-deal-with-central] [--no-source-faithful] \
+  [--provenance run.json]
+```
+
+The three inputs must be 3D `.nii.gz` images on the same physical grid after
+RAS reorientation. `--summary` records the selected mode and per-rule
+candidate, changed, unresolved, sweep, and threshold counts. The historical
+`source_faithful` behavior is the default while owner sign-off is pending; it
+preserves the V3 MATLAB `maxind` row-index result. Use `--no-source-faithful`
+to opt into assigning the actual modal label. The label-refinement output is
+written as RAS `.nii.gz`; each non-RAS input produces a visible warning.
+
 ## `pymacruise prepare-raw`
 
 ```text

@@ -16,6 +16,7 @@ from pymacruise.gvf import generalized_gvf_image
 from pymacruise.image_io import save_nifti_ras
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.raw_preparation import prepare_raw
+from pymacruise.segmentation_refine import refine_segmentation_by_surfaces
 from pymacruise.surfaces import (
     extract_levelset_surface,
     read_legacy_vtk,
@@ -23,6 +24,7 @@ from pymacruise.surfaces import (
 )
 from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
+from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
 from pymacruise.volume_ops import calculate_volume
 from pymacruise.workflow import load_workflow_config_file, preflight_workflow
@@ -61,6 +63,55 @@ def build_parser() -> argparse.ArgumentParser:
     calculate.add_argument("--operation", required=True)
     calculate.add_argument("--output", required=True, type=Path)
     _add_provenance_option(calculate)
+
+    topology = commands.add_parser(
+        "topology-correct", help="apply source-selected (6,18) topology correction"
+    )
+    topology.add_argument("--volume", required=True, type=Path, help="scalar volume .nii.gz")
+    topology.add_argument("--paint-mask", required=True, type=Path, help="object paint mask .nii.gz")
+    topology.add_argument("--multi-atlas-wm", type=Path, help="optional multi-atlas WM mask .nii.gz")
+    topology.add_argument(
+        "--output", required=True, type=Path, help="topology-corrected volume .nii.gz"
+    )
+    topology.add_argument(
+        "--atlas-refined-output",
+        type=Path,
+        help="optional V3 multi-atlas-refined volume .nii.gz; requires --multi-atlas-wm",
+    )
+    topology.add_argument("--paint-threshold", type=float, default=0.5)
+    topology.add_argument("--lowest-level", type=float, default=0.0)
+    topology.add_argument("--highest-level", type=float, default=1.0)
+    topology.add_argument("--regularize", type=float, default=1e-4)
+    _add_provenance_option(topology)
+
+    refine = commands.add_parser(
+        "segmentation-refine",
+        help="refine MaSeg labels using inner and outer level sets",
+    )
+    refine.add_argument("--segmentation", required=True, type=Path, help="MaSeg labels .nii.gz")
+    refine.add_argument("--inner-levelset", required=True, type=Path, help="inner level set .nii.gz")
+    refine.add_argument("--outer-levelset", required=True, type=Path, help="outer level set .nii.gz")
+    refine.add_argument("--output", required=True, type=Path, help="refined labels .nii.gz")
+    refine.add_argument("--summary", required=True, type=Path, help="JSON per-rule result summary")
+    refine.add_argument("--inner-coefficient-mm", type=float, default=0.2)
+    refine.add_argument("--outer-coefficient-mm", type=float, default=0.2)
+    refine.add_argument("--inner-central-coefficient-mm", type=float, default=0.2)
+    refine.add_argument("--outer-central-coefficient-mm", type=float, default=0.2)
+    refine.add_argument(
+        "--deal-with-central",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="enable central-label handling (default: enabled)",
+    )
+    refine.add_argument("--neighborhood-radius", type=int, default=2)
+    refine.add_argument("--max-sweeps", type=int, default=50)
+    refine.add_argument(
+        "--source-faithful",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="preserve the historical MATLAB maxind behavior (default: enabled)",
+    )
+    _add_provenance_option(refine)
 
     ace = commands.add_parser("ace", help="run the supported MaACE/ACE enhancement stage")
     ace.add_argument("--gray", required=True, type=Path)
@@ -258,6 +309,119 @@ def main(argv: list[str] | None = None) -> int:
             inputs={"image_a": args.input_a, "image_b": args.input_b},
             parameters={"operation": effective_operation},
             outputs={"result": args.output},
+        )
+    elif args.command == "topology-correct":
+        _require_nifti_gz_output(args.output)
+        if args.atlas_refined_output is not None:
+            _require_nifti_gz_output(args.atlas_refined_output)
+        if (args.multi_atlas_wm is None) != (args.atlas_refined_output is None):
+            parser.error("--multi-atlas-wm and --atlas-refined-output must be supplied together")
+        parameters = {
+            "paint_threshold": args.paint_threshold,
+            "lowest_level": args.lowest_level,
+            "highest_level": args.highest_level,
+            "regularize": args.regularize,
+        }
+        result = topology_correct(
+            _load_nifti_gz(args.volume),
+            _load_nifti_gz(args.paint_mask),
+            multi_atlas_wm=(
+                None if args.multi_atlas_wm is None else _load_nifti_gz(args.multi_atlas_wm)
+            ),
+            **parameters,
+        )
+        _save_nifti_gz(result.corrected, args.output)
+        outputs: dict[str, Path] = {"corrected_volume": args.output}
+        print(f"Wrote {args.output} (RAS)")
+        if result.atlas_refined is not None and args.atlas_refined_output is not None:
+            _save_nifti_gz(result.atlas_refined, args.atlas_refined_output)
+            outputs["atlas_refined_volume"] = args.atlas_refined_output
+            print(f"Wrote {args.atlas_refined_output} (RAS)")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={
+                "volume": args.volume,
+                "paint_mask": args.paint_mask,
+                "multi_atlas_wm": args.multi_atlas_wm,
+            },
+            parameters={
+                **parameters,
+                "atlas_refinement_enabled": args.multi_atlas_wm is not None,
+            },
+            outputs=outputs,
+        )
+    elif args.command == "segmentation-refine":
+        _require_nifti_gz_output(args.output)
+        if args.summary.suffix.lower() != ".json":
+            parser.error("Segmentation refinement summary must use the .json extension")
+        refinement_parameters = {
+            "inner_coefficient_mm": args.inner_coefficient_mm,
+            "outer_coefficient_mm": args.outer_coefficient_mm,
+            "inner_central_coefficient_mm": args.inner_central_coefficient_mm,
+            "outer_central_coefficient_mm": args.outer_central_coefficient_mm,
+            "deal_with_central": args.deal_with_central,
+            "neighborhood_radius": args.neighborhood_radius,
+            "max_sweeps": args.max_sweeps,
+            "source_faithful": args.source_faithful,
+        }
+        result = refine_segmentation_by_surfaces(
+            _load_nifti_gz(args.segmentation),
+            _load_nifti_gz(args.inner_levelset),
+            _load_nifti_gz(args.outer_levelset),
+            **refinement_parameters,
+        )
+        _save_nifti_gz(result.image, args.output)
+        rule_names = sorted(
+            set(result.changed_voxels)
+            | set(result.unresolved_voxels)
+            | set(result.sweeps)
+            | set(result.threshold_voxels)
+            | set(result.candidate_masks)
+        )
+        summary = {
+            "schema_version": 1,
+            "command": args.command,
+            "spatial_convention": "RAS",
+            "source_faithful": args.source_faithful,
+            "output": str(args.output.expanduser().resolve()),
+            "changed_voxels": dict(result.changed_voxels),
+            "unresolved_voxels": dict(result.unresolved_voxels),
+            "sweeps": dict(result.sweeps),
+            "threshold_voxels": dict(result.threshold_voxels),
+            "rules": {
+                name: {
+                    "candidate_voxels": (
+                        int(result.candidate_masks[name].sum())
+                        if name in result.candidate_masks
+                        else 0
+                    ),
+                    "changed_voxels": result.changed_voxels.get(name, 0),
+                    "unresolved_voxels": result.unresolved_voxels.get(name, 0),
+                    "sweeps": result.sweeps.get(name, 0),
+                    "threshold_voxels": result.threshold_voxels.get(name),
+                }
+                for name in rule_names
+            },
+        }
+        args.summary.parent.mkdir(parents=True, exist_ok=True)
+        args.summary.write_text(
+            json.dumps(summary, indent=2, sort_keys=True, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
+        print(f"Wrote {args.output} (RAS)")
+        print(f"Wrote rule summary: {args.summary}")
+        print(f"source_faithful={str(args.source_faithful).lower()}")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={
+                "segmentation": args.segmentation,
+                "inner_levelset": args.inner_levelset,
+                "outer_levelset": args.outer_levelset,
+            },
+            parameters=refinement_parameters,
+            outputs={"refined_segmentation": args.output, "rule_summary": args.summary},
         )
     elif args.command == "ace":
         for path in (args.enhanced, args.skeleton, args.thinned_skeleton):

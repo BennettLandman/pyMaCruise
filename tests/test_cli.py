@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.cli import main
+from pymacruise.topology import topology_correct
 from pymacruise.volume_ops import calculate_volume
 
 
@@ -103,3 +104,128 @@ def test_calculate_cli_enforces_nii_gz_and_records_ras_operation(tmp_path) -> No
     )
     assert rejected.returncode != 0
     assert "Image inputs must use .nii.gz" in rejected.stderr
+
+
+def test_topology_correct_cli_matches_api_with_atlas_refinement(tmp_path) -> None:
+    affine = np.diag([-1.0, 1.2, 1.5, 1.0])
+    affine[0, 3] = 4.0
+    grid = np.indices((5, 5, 5), dtype=np.float32)
+    volume_data = (grid[0] * 0.2 + grid[1] * 0.1 + grid[2] * 0.05).astype(np.float32)
+    paint_data = np.zeros((5, 5, 5), dtype=np.uint8)
+    paint_data[2, 2, 2] = 1
+    multi_atlas_wm_data = np.zeros((5, 5, 5), dtype=np.uint8)
+    multi_atlas_wm_data[1:4, 1:4, 1:4] = 1
+    inputs = {
+        "volume": tmp_path / "volume.nii.gz",
+        "paint": tmp_path / "paint.nii.gz",
+        "wm": tmp_path / "multi-atlas-wm.nii.gz",
+    }
+    for key, values in (
+        ("volume", volume_data),
+        ("paint", paint_data),
+        ("wm", multi_atlas_wm_data),
+    ):
+        nib.save(nib.Nifti1Image(values, affine), inputs[key])
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        expected = topology_correct(
+            nib.load(inputs["volume"]),
+            nib.load(inputs["paint"]),
+            multi_atlas_wm=nib.load(inputs["wm"]),
+            regularize=0.0,
+        )
+
+    corrected_path = tmp_path / "corrected.nii.gz"
+    atlas_refined_path = tmp_path / "atlas-refined.nii.gz"
+    provenance_path = tmp_path / "topology.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pymacruise.cli",
+            "topology-correct",
+            "--volume",
+            str(inputs["volume"]),
+            "--paint-mask",
+            str(inputs["paint"]),
+            "--multi-atlas-wm",
+            str(inputs["wm"]),
+            "--output",
+            str(corrected_path),
+            "--atlas-refined-output",
+            str(atlas_refined_path),
+            "--regularize",
+            "0",
+            "--provenance",
+            str(provenance_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "reorienting the image to RAS" in completed.stderr
+    corrected = nib.load(corrected_path)
+    refined = nib.load(atlas_refined_path)
+    assert nib.aff2axcodes(corrected.affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(refined.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(corrected.affine, expected.corrected.affine)
+    np.testing.assert_array_equal(corrected.dataobj, expected.corrected.dataobj)
+    assert expected.atlas_refined is not None
+    np.testing.assert_array_equal(refined.affine, expected.atlas_refined.affine)
+    np.testing.assert_array_equal(refined.dataobj, expected.atlas_refined.dataobj)
+
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    assert provenance["command"] == "topology-correct"
+    assert provenance["spatial_convention"] == "RAS"
+    assert provenance["inputs"] == {
+        "volume": str(inputs["volume"].resolve()),
+        "paint_mask": str(inputs["paint"].resolve()),
+        "multi_atlas_wm": str(inputs["wm"].resolve()),
+    }
+    assert provenance["parameters"] == {
+        "paint_threshold": 0.5,
+        "lowest_level": 0.0,
+        "highest_level": 1.0,
+        "regularize": 0.0,
+        "atlas_refinement_enabled": True,
+    }
+    assert provenance["outputs"] == {
+        "corrected_volume": str(corrected_path.resolve()),
+        "atlas_refined_volume": str(atlas_refined_path.resolve()),
+    }
+
+
+def test_topology_correct_cli_help_and_compressed_output_error(tmp_path) -> None:
+    help_result = subprocess.run(
+        [sys.executable, "-m", "pymacruise.cli", "topology-correct", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert help_result.returncode == 0
+    assert "--multi-atlas-wm" in help_result.stdout
+    assert "--regularize" in help_result.stdout
+
+    values = np.ones((3, 3, 3), dtype=np.float32)
+    path = tmp_path / "volume.nii.gz"
+    nib.save(nib.Nifti1Image(values, np.eye(4)), path)
+    rejected = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pymacruise.cli",
+            "topology-correct",
+            "--volume",
+            str(path),
+            "--paint-mask",
+            str(path),
+            "--output",
+            str(tmp_path / "corrected.nii"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "Image outputs must use .nii.gz" in rejected.stderr
