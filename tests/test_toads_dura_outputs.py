@@ -5,12 +5,14 @@ import json
 from pathlib import Path
 
 import numpy as np
+import nibabel as nib
 
 from pymacruise.toads_dura_outputs import (
     adapt_toads_wrapper_outputs,
     generate_toads_dura_removal_outputs,
     pack_toads_dura_removal_outputs,
 )
+from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
 
 
 DATA = Path(__file__).parent / "data/synthetic/toads_dura_removal_outputs"
@@ -91,6 +93,56 @@ def test_wrapper_restores_byte_classification_and_default_255_scaled_float_outpu
         np.testing.assert_array_equal(raw, np.asarray(case[raw_key], dtype=np.float32))
         np.testing.assert_array_equal(scaled, np.asarray(case[scaled_key], dtype=np.float32))
         np.testing.assert_array_equal(scaled, np.multiply(raw, np.float32(255.0), dtype=np.float32))
+
+
+def test_java_wrapper_buffers_round_trip_to_ras_nifti_outputs(tmp_path) -> None:
+    case = json.loads(FIXTURE.read_text())
+    mems, segmentation = _synthetic_inputs(case)
+    products = generate_toads_dura_removal_outputs(mems, segmentation, NAMES)
+    buffers = adapt_toads_wrapper_outputs(
+        products,
+        segmentation,
+        tuple(case["original_shape"]),
+        (-1, 1, 0, 1, -1, 0),
+        1,
+    )
+    shape = tuple(case["original_shape"])
+    reference = nib.Nifti1Image(
+        np.zeros(shape, dtype=np.float32),
+        np.diag([1.2, 1.4, 1.8, 1.0]),
+    )
+
+    paths = save_toads_dura_wrapper_outputs(
+        buffers, reference, tmp_path, input_name="java-case.nii.gz"
+    )
+
+    class_image = nib.load(paths["classification"])
+    assert class_image.get_data_dtype() == np.dtype(np.uint8)
+    assert nib.aff2axcodes(class_image.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(
+        class_image.dataobj,
+        np.asarray(case["classification"], dtype=np.int8)
+        .reshape(shape, order="F")
+        .astype(np.uint8),
+    )
+    scaled_keys = (
+        "scaled_csf",
+        "scaled_gray_matter",
+        "scaled_white_matter_fill",
+        "scaled_white_matter_mask",
+    )
+    for name, key in zip(
+        ("csf", "gray_matter", "white_matter_fill", "white_matter_mask"),
+        scaled_keys,
+        strict=True,
+    ):
+        image = nib.load(paths[name])
+        assert image.get_data_dtype() == np.dtype(np.float32)
+        assert image.shape == shape
+        np.testing.assert_array_equal(
+            image.dataobj,
+            np.asarray(case[key], dtype=np.float32).reshape(shape, order="F"),
+        )
 
 
 def test_cerebellar_gm_spelling_bug_and_csf_alias_order_are_preserved() -> None:
