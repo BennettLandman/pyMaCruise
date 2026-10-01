@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "profile": "base",
+  "t1_path": "../T1.nii.gz",
+  "maseg_path": "../MaSeg.nii.gz",
+  "brain_mask_path": "../brain_mask.nii.gz",
+  "output_dir": "run-output",
+  "bias_correction": "N4"
+}

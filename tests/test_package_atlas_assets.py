@@ -199,6 +199,96 @@ for relative, expected in expected_hashes.items():
     )
     assert result.returncode == 0, f"installed wheel atlas resolution failed:\n{result.stdout}\n{result.stderr}"
 
+    _assert_installed_wheel_workflow_preflight(target)
+
+
+def _assert_installed_wheel_workflow_preflight(target: Path) -> None:
+    """Run the installed package's CLI against committed synthetic inputs."""
+    run_root = target.parent / "preflight-run"
+    config_dir = run_root / "config"
+    input_dir = run_root
+    fake_site = run_root / "fake-site"
+    config_dir.mkdir(parents=True)
+    fake_site.mkdir()
+
+    fixture_root = PROJECT_ROOT / "tests" / "data" / "synthetic"
+    config_source = fixture_root / "workflow_preflight" / "base.json"
+    config_path = config_dir / "base.json"
+    shutil.copy2(config_source, config_path)
+    # These symlinks expose the committed fixture files at the config's
+    # relative paths without copying or generating alternate image data.
+    for filename in ("T1.nii.gz", "MaSeg.nii.gz", "brain_mask.nii.gz"):
+        (input_dir / filename).symlink_to(fixture_root / filename)
+
+    # Dependency preflight checks ANTsPy importability but does not call it.
+    # This marker keeps the installed-wheel check independent of the optional
+    # ANTsPy extra while still exercising the selected N4 dependency branch.
+    (fake_site / "ants.py").write_text('"""preflight import marker"""\n', encoding="utf-8")
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join(
+        [os.fspath(target.resolve()), os.fspath(fake_site.resolve())]
+    )
+    environment["PYTHONNOUSERSITE"] = "1"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pymacruise.cli",
+            "workflow-preflight",
+            "--config",
+            os.fspath(config_path),
+        ],
+        cwd=run_root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"installed-wheel workflow-preflight failed:\n{result.stdout}\n{result.stderr}"
+    )
+    assert "Dry run only" in result.stdout
+    assert "no N4 correction or segmentation workflow was executed" in result.stdout
+
+    manifest_path = config_dir / "run-output" / "run.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    installed_root = (target / "pymacruise").resolve()
+    atlas = manifest["preflight"]["atlas"]
+    installed_atlas_root = (installed_root / "data" / "atlases").resolve()
+    assert Path(atlas["descriptor"]).resolve().is_relative_to(installed_atlas_root)
+    assert atlas["assets_checked"] > 1
+    assert atlas["payloads_materialized"] is False
+    assert manifest["dry_run"] is True
+    assert manifest["preflight"]["status"] == "passed"
+    assert manifest["preflight"]["workflow_executed"] is False
+    assert manifest["stages"]["pipeline"] == "not_started"
+    assert manifest["outputs"] == {}
+    assert manifest["workflow_profile"] == "base"
+    assert manifest["configuration_schema_version"] == 1
+    assert manifest["source_revision"] is None
+    assert manifest["dependencies"]["pymacruise"] != "not-installed"
+    assert set(manifest["inputs"]) == {"t1", "maseg", "brain_mask"}
+    expected_fixture_names = {
+        "t1": "T1.nii.gz",
+        "maseg": "MaSeg.nii.gz",
+        "brain_mask": "brain_mask.nii.gz",
+    }
+    for role, record in manifest["inputs"].items():
+        assert record["input_axis_codes"] == ["R", "A", "S"]
+        assert record["output_axis_codes"] == ["R", "A", "S"]
+        assert len(record["sha256"]) == 64
+        assert len(record["affine_ras"]) == 4
+        assert Path(record["path"]).resolve() == (
+            fixture_root / expected_fixture_names[role]
+        ).resolve()
+    assert all(
+        conversion["from"] == ["R", "A", "S"]
+        and conversion["to"] == ["R", "A", "S"]
+        and conversion["reoriented"] is False
+        for conversion in manifest["preflight"]["orientation_conversions"].values()
+    )
+    assert sorted(path.name for path in manifest_path.parent.iterdir()) == ["run.json"]
+
 
 def _source_descriptor_asset_hashes() -> dict[str, str]:
     atlas_root = PROJECT_ROOT / "data" / "atlases"
