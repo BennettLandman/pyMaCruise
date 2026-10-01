@@ -1,0 +1,15 @@
+{
+  "case_name": "P18czk exact memberships to terminal nIterMax branch",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "iteration": 8,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "do_growing": false,
+  "terminal_action": "stop and update classification from labels",
+  "registration_initialization": "carry selected transform and prior objective from P18czi",
+  "scope": "synthetic RAS one-channel, 11-class, zero-shape terminal decision; classification labels are not source-class Java-compared"
+}
