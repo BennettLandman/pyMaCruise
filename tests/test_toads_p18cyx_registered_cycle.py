@@ -157,8 +157,8 @@ def test_p18cyw_membership_runs_second_loop_registration_and_continuing_branch(t
     )
 
     # Execute selected VandyCRUISE rigid registration on the exact P18cyw
-    # membership/atlas arrays; the Java wrapper uses the same five-iteration
-    # cap, scale-one rigid route, offsets, and current transform.
+    # membership/atlas arrays; this method harness uses the same five-iteration
+    # cap, scale-one rigid route, offsets, and fixture's identity transform.
     membership_path = tmp_path / "p18cyw_memberships.bin"
     atlas_path = tmp_path / "p18cyw_atlas.bin"
     membership_path.write_bytes(np.asarray(membership_pass.memberships, dtype="<f4").tobytes(order="C"))
