@@ -1,0 +1,16 @@
+{
+  "case_name": "P18czf iteration-6 branch through next-loop thinning",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_class_count": 11,
+  "iteration": 6,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "volume_ratio": 0.5,
+  "thinning_limit": 3.0,
+  "inputs": "P18czf grown segmentation, P18cze exact memberships, and P18czf refreshed class adjacency",
+  "transformed_shape_values": "fixed zero maps on the synthetic grid",
+  "source_reference": "ToadsPostRegistrationNextThinningReferenceHarness and ToadsP18cyvNextIterationOrderReferenceHarness",
+  "scope": "one next-loop short-constructor thinning pass on the fixed one-channel synthetic RAS state; no field or full-workflow claim"
+}
