@@ -1,0 +1,17 @@
+{
+  "case_name": "P18czc continuing branch through next-loop thinning",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_class_count": 11,
+  "iteration": 5,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "relation_limit": 1,
+  "volume_ratio": 0.5,
+  "thinning_limit": 3.0,
+  "transformed_shape_values": "fixed zeros matching current exact membership maps",
+  "inputs": "P18czc grown segmentation, exact P18cza memberships, and refreshed class adjacency",
+  "source_reference": "ToadsPostRegistrationNextThinningReferenceHarness plus ToadsP18cyvNextIterationOrderReferenceHarness",
+  "scope": "one selected short-constructor thinning pass from P18czc; no subsequent field fit or full TOADS workflow"
+}
