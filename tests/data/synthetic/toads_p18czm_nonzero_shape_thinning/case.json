@@ -1,0 +1,20 @@
+{
+  "case_name": "P18 selected thinning shape-prior neighbor competition",
+  "segmentation": "segmentation.nii.gz",
+  "memberships": "membership_maps.nii.gz",
+  "shape_priors": "shape_priors.nii.gz",
+  "source_axis_codes": ["R", "A", "S"],
+  "fixture_sha256": {
+    "segmentation.nii.gz": "ce2b5a9ba0e82c20dd3de3eec05e4d81eedb2dcdb925fe3e556171834c9aec44",
+    "membership_maps.nii.gz": "097a0bebeb65b411b61a0b80140979fbda5cd8d0882df670b64628dd46a24ea6",
+    "shape_priors.nii.gz": "2ff2d8721d1e6910a0ea7d1de37fb8020930f3666cd48d30ce8a4be097877bfd"
+  },
+  "volume_ratio": 0.5,
+  "thinning_limit": 3.0,
+  "processing_voxel_xyz": [1, 3, 3],
+  "target_class": 2,
+  "related_fallback_labels": [0, 3],
+  "shape_choice": "class-2 prior at the +x class-3 neighbor exceeds the -x class-0 neighbor",
+  "source": "selected VandyCRUISE MultipleToadSegmentation.initThinningLabels + propagateThinning; short constructor useApprox=false",
+  "scope": "synthetic RAS 11-class, one-channel-independent thinning kernel case; verifies nonzero shape-prior selection, not the complete TOADS wrapper"
+}
