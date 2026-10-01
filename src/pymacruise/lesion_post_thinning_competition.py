@@ -1,10 +1,12 @@
-"""Continue a selected folded LesionTOADS state through competition.
+"""Cross-check membership and competition adapters on folded synthetic state.
 
-This adapter joins the already source-matched first thinning, post-thinning
-statistics refresh, GMflag=true standard-13 membership update, wrapper energy
-ratio, and narrow-band competition pass. It is a synthetic fixed-input seam;
-it does not implement initialization, registration, convergence, or a complete
-LesionTOADS workflow.
+This diagnostic composition combines outputs from separate selected modes: the
+default ``linear_fast_marching`` thinning/statistics/membership path and the
+alternative ``narrow_band_competition`` queue path. The selected wrapper does
+not execute competition after this membership/ratio update, so this helper is
+not an end-to-end or source-order workflow. It checks fixed-input adapter
+interoperability only; initialization, registration, convergence, and the
+complete LesionTOADS workflow remain outside scope.
 """
 
 from __future__ import annotations

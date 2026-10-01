@@ -65,15 +65,17 @@ def _run_java(tmp_path: Path, nifti: Path, volume_bits: list[int]) -> dict:
     return json.loads(completed.stdout)
 
 
-def test_post_thinning_chain_feeds_java_referenced_competition(tmp_path: Path) -> None:
+def test_membership_output_interoperates_with_java_referenced_alternative_competition(tmp_path: Path) -> None:
     assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == (
         "727df8bc9ce7f4f3b3429b94d7549fd8b110bcf28273af08443c8ffe1a775772"
     )
     assert hashlib.sha256((JAVA_UPSTREAM / "BinaryHeap4D.java").read_bytes()).hexdigest() == COMPETITION_REFERENCE["heap_sha256"]
     assert hashlib.sha256((JAVA_UPSTREAM / "CriticalPointLUT.java").read_bytes()).hexdigest() == COMPETITION_REFERENCE["lut_source_sha256"]
     assert hashlib.sha256(LUT.read_bytes()).hexdigest() == COMPETITION_REFERENCE["lut_asset_sha256"]
-    # _compose runs P39ak against the committed folded 17^3 RAS phantom and
-    # compares the first membership and thinning results to selected-Java data.
+    # _compose runs the default linear_fast_marching branch on the committed
+    # folded 17^3 RAS phantom and compares its first state to selected Java.
+    # The competition adapter below is from the alternative queue mode; the
+    # wrapper does not run the combined sequence tested here.
     frames, state, initial, thinning = _compose()
     result = run_post_thinning_competition_pass(
         thinning,
