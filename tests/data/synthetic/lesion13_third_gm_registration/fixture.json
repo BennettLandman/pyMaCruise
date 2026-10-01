@@ -68,12 +68,30 @@
     "energy_ratio": "Zero because the source membership objective bits are unchanged; Java wrapper comparison confirms convergence and iteration-limit stops.",
     "expected": "stop=true; positive nIterMax still selects the wrapper's final growth stage before final label transfer."
   },
+  "terminal_output_dispatch": {
+    "state": "Uses fourth registration's terminal positive-nIterMax branch, including its actual grown segmentation, final class labels/subtypes, and fourth-pass class/lesion/black-hole memberships.",
+    "source_order": "Route-specific order is compared with the Java excerpts; optional membership-derived classification follows the initial classification/subtype exports and precedes route dispatch, optional lesion encoding follows dispatch.",
+    "routes_compared": ["class+member", "cruise inputs", "dura removal inputs"],
+    "flags_compared": [
+      "output_classification_from_membership=false/true",
+      "include_lesion_classification=false/true"
+    ],
+    "result": "Returned arrays, float bits, product names and source order match the selected Java route excerpts across all 12 route/flag combinations."
+  },
   "java_reference": {
     "kind": "Hand-coded selected Java formula excerpts using the pinned upstream ParametricTransform, RotationMatrix, ImageFunctions, Numerics and wrapper control sources; not execution of the full wrapper/class.",
     "registration_harness": "tests/java_reference/LesionSecondPassRegistrationReferenceHarness.java",
     "registration_harness_sha256": "cce7ffbcc4a550d4dee898e6bd7ffc0d0ab0acad3ad8489bc25320bded3626e9",
     "control_harness": "tests/java_reference/LesionNextIterationBranchReferenceHarness.java",
     "control_harness_sha256": "dceb95289dea92bb97665fdb96b7bd71ad28dc2f75a3b4dfa7f4968cf444deb8",
+    "terminal_output_harness": "tests/java_reference/LesionPostRegistrationOutputsReferenceHarness.java",
+    "terminal_output_harness_sha256": "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76",
+    "route_harnesses": {
+      "class+member_and_cruise": "tests/java_reference/LesionPostRegistrationOutputRoutesReferenceHarness.java",
+      "class+member_and_cruise_sha256": "ca1dd209040a84c7f0091fdf3f2f33e6ff3d9d4e3ab3ce6a97046035abf0cab2",
+      "dura_removal": "tests/java_reference/LesionPostRegistrationDuraDispatchReferenceHarness.java",
+      "dura_removal_sha256": "e130a953be23c9ecdf6cb3fce95555732050589910a0199f79854e8de23208c7"
+    },
     "upstream_source_sha256": {
       "AlgorithmLesionToads.java": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
       "LesionToadSegmentation.java": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
@@ -84,7 +102,7 @@
     }
   },
   "scope_limitations": [
-    "The reference covers the third registration, its no-stop growth/relation branch, one following thinning pass, the next statistics/membership energy refresh, the fourth registration, and its stopping decision; later final-growth/output completion is outside this fixture.",
+    "The reference covers the third registration, its no-stop growth/relation branch, one following thinning pass, the next statistics/membership energy refresh, the fourth registration/control stop, final growth/label transfer, and supported in-memory output routes. File creation, cleanup effects, UI behavior, and full LesionTOADS equivalence are not established.",
     "Class membership channels and objective are stable in the final tested refresh, but the lesion auxiliary changes, so the full 13-class state is not at a fixed point.",
     "The Java references are selected formula excerpts, not execution of the complete wrapper or LesionTOADS class, and this is not full LesionTOADS equivalence.",
     "No real atlas or patient imaging is represented."

@@ -22,6 +22,7 @@ from pymacruise.lesion_next_iteration_branch import continue_after_next_iteratio
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from pymacruise.lesion_shapes import lesion_registration_volume_coefficients, sample_lesion_shape_prior
+from pymacruise.lesion_post_loop_outputs import lesion_toads_post_loop_outputs
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
     HEAP,
@@ -62,6 +63,16 @@ SECOND_PASS_REGISTRATION_INPUT = (
 )
 THIRD_PASS_REGISTRATION_INPUT = (
     Path(__file__).parent / "data/synthetic/lesion13_third_gm_registration/registration_inputs_ras.nii.gz"
+)
+OUTPUT_ROUTE_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationOutputRoutesReferenceHarness.java"
+OUTPUT_ROUTE_HARNESS_SHA256 = "ca1dd209040a84c7f0091fdf3f2f33e6ff3d9d4e3ab3ce6a97046035abf0cab2"
+DURA_DISPATCH_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationDuraDispatchReferenceHarness.java"
+DURA_DISPATCH_HARNESS_SHA256 = "e130a953be23c9ecdf6cb3fce95555732050589910a0199f79854e8de23208c7"
+TERMINAL_OUTPUT_HARNESS_SHA256 = "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76"
+LESION_ATLAS_NAMES = (
+    "Background", "Sulcal-CSF", "Ventricles", "Cerebellum-GM", "Cerebrum-GM",
+    "Caudate", "Thalamus", "Putamen", "Brainstem", "Cerebellum-WM",
+    "OuterVentricular-WM", "InterVentricular-WM", "Frontal-WM",
 )
 JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
 MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
@@ -1971,6 +1982,128 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert fourth_java_control["iteration_limit_stop"] == fourth_control.branch.iteration_limit_stop is True
     assert fourth_java_control["stop"] == fourth_control.branch.stop is True
     assert fourth_java_control["run_growing"] == fourth_control.branch.run_growing is True
+
+    # Route the actual positive-nIterMax terminal state through the selected
+    # post-loop output adapter. This exercises its 13-class product semantics
+    # with the terminal grown segmentation and the current fourth-pass maps.
+    assert fourth_control.branch.final_classification is not None
+    assert len(LESION_ATLAS_NAMES) == CLASSES == 13
+    assert hashlib.sha256(OUTPUT_HARNESS.read_bytes()).hexdigest() == TERMINAL_OUTPUT_HARNESS_SHA256
+    assert hashlib.sha256(OUTPUT_ROUTE_HARNESS.read_bytes()).hexdigest() == OUTPUT_ROUTE_HARNESS_SHA256
+    assert hashlib.sha256(DURA_DISPATCH_HARNESS.read_bytes()).hexdigest() == DURA_DISPATCH_HARNESS_SHA256
+    assert third_fixture["java_reference"]["terminal_output_harness_sha256"] == TERMINAL_OUTPUT_HARNESS_SHA256
+    assert third_fixture["java_reference"]["route_harnesses"]["class+member_and_cruise_sha256"] == OUTPUT_ROUTE_HARNESS_SHA256
+    assert third_fixture["java_reference"]["route_harnesses"]["dura_removal_sha256"] == DURA_DISPATCH_HARNESS_SHA256
+    subprocess.run([
+        javac, "-d", str(classes_dir), str(OUTPUT_HARNESS),
+        str(OUTPUT_ROUTE_HARNESS), str(DURA_DISPATCH_HARNESS),
+    ], check=True, capture_output=True, text=True)
+    terminal_output_input = tmp_path / "terminal-output-state.bin"
+    terminal_output_input.write_bytes(b"".join([
+        struct.pack(">6i", *seg.shape, CLASSES, LESION, 2),
+        np.asarray(template_labels, dtype=np.int8).tobytes(),
+        np.asarray(fourth_control.branch.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.zeros(seg.shape, dtype=np.int8).tobytes(),
+        np.asarray(actual_fourth.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_fourth.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_fourth.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    ]))
+    terminal_java = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostRegistrationOutputsReferenceHarness", str(terminal_output_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert terminal_java["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    np.testing.assert_array_equal(
+        fourth_control.branch.final_classification.classification.ravel(),
+        np.asarray(terminal_java["classification"], np.int16),
+    )
+    np.testing.assert_array_equal(
+        fourth_control.branch.final_classification.lesion_classification.ravel(),
+        np.asarray(terminal_java["lesion_classification"], np.int16),
+    )
+
+    for mode in ("class+member", "cruise inputs", "dura removal inputs"):
+        for from_membership in (False, True):
+            for include_lesion in (False, True):
+                route_input = tmp_path / (
+                    f"terminal-route-{mode.replace(' ', '-')}-"
+                    f"{int(from_membership)}-{int(include_lesion)}.bin"
+                )
+                route_input.write_bytes(b"".join([
+                    struct.pack(
+                        ">7i", *seg.shape, CLASSES, LESION,
+                        int(from_membership), int(include_lesion),
+                    ),
+                    np.asarray(template_labels, dtype=np.int8).tobytes(),
+                    np.asarray(fourth_control.branch.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+                    np.asarray(terminal_java["classification"], dtype=np.int8).tobytes(),
+                    np.asarray(terminal_java["lesion_classification"], dtype=np.int16).astype(">i2").tobytes(),
+                    np.asarray(actual_fourth.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+                    np.asarray(actual_fourth.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+                    np.asarray(actual_fourth.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+                ]))
+                if mode == "dura removal inputs":
+                    route_java = json.loads(subprocess.run(
+                        [java, "-cp", str(classes_dir), "LesionPostRegistrationDuraDispatchReferenceHarness", str(route_input)],
+                        check=True, capture_output=True, text=True,
+                    ).stdout)
+                else:
+                    route_java = json.loads(subprocess.run(
+                        [java, "-cp", str(classes_dir), "LesionPostRegistrationOutputRoutesReferenceHarness",
+                         str(route_input), mode],
+                        check=True, capture_output=True, text=True,
+                    ).stdout)
+                routed = lesion_toads_post_loop_outputs(
+                    fourth_control.branch.final_classification,
+                    actual_fourth.class_memberships,
+                    actual_fourth.lesion_membership,
+                    actual_fourth.black_hole_membership,
+                    fourth_control.branch.segmentation,
+                    template_labels,
+                    LESION_ATLAS_NAMES,
+                    LESION,
+                    result_mode=mode,
+                    output_classification_from_membership=from_membership,
+                    include_lesion_classification=include_lesion,
+                )
+                if mode != "dura removal inputs":
+                    assert list(routed.source_order) == route_java["order"]
+                    assert [product.name for product in routed.products] == [
+                        product["name"] for product in route_java["products"]
+                    ]
+                    for product, expected_product in zip(
+                        routed.products, route_java["products"], strict=True
+                    ):
+                        if np.issubdtype(product.values.dtype, np.floating):
+                            assert _flat_float_bits(product.values) == expected_product["values"]
+                        else:
+                            assert product.values.ravel().tolist() == expected_product["values"]
+                else:
+                    expected_products = route_java["products"]
+                    expected_names = [product["name"] for product in expected_products]
+                    adapter_names = [product.name for product in routed.products]
+                    assert adapter_names == (
+                        ["classification"]
+                        + (["classification_from_membership"] if from_membership else [])
+                        + ["lesion_subtype", "dura_removal_inputs"]
+                    )
+                    assert adapter_names[:-1] + [
+                        "csf", "gray_matter", "white_matter_fill", "white_matter_mask"
+                    ] == expected_names
+                    assert list(routed.source_order) == [
+                        "cleanUp", "exportClassification", "exportLesionClassification",
+                        *( ["updateClassificationFromMemberships", "getClassification"] if from_membership else [] ),
+                        "generateDuraRemovalOutputs",
+                        *( ["includeLesionnClassification"] if include_lesion else [] ),
+                    ]
+                    for product, expected_product in zip(
+                        routed.products[:-1], expected_products[:-4], strict=True
+                    ):
+                        assert product.values.ravel().tolist() == expected_product["values"]
+                    expected_channel_bits = [
+                        value for channel in expected_products[-4:] for value in channel["values"]
+                    ]
+                    assert _flat_float_bits(routed.products[-1].values) == expected_channel_bits
 
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
