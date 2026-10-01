@@ -71,6 +71,10 @@ from pymacruise.toads_registration import (
     exact_registration_gradient_descent_step,
     exact_registration_measure_coefficients,
 )
+from pymacruise.lesion_output_io import (
+    lesion_toads_output_images,
+    save_lesion_toads_outputs,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -146,4 +150,6 @@ __all__ = [
     "validate_workflow_files",
     "validate_workflow_inputs",
     "write_run_manifest",
+    "lesion_toads_output_images",
+    "save_lesion_toads_outputs",
 ]
