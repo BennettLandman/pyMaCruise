@@ -37,3 +37,17 @@ hashes are pinned by the test.
 This validates only the selected startup slice through one initial thinning
 pass. Class and image statistics, transformed atlas samples, and transforms
 are fixed. It is not a complete TOADS workflow or a T1-driven run.
+
+## Post-thinning continuation slice
+
+`tests/test_toads_initial_thinning_statistics_membership.py` reuses the
+same 25-cubed folded RAS fixture and the Java-pinned startup/thinning outputs,
+then composes the selected exact-centroid refresh, assigned-class variance
+refresh, centroid-similarity calculation, and next 11-class exact-membership
+pass. This composition uses the thinned segmentation and startup membership
+map; the image variance and other non-refreshed statistics remain fixed. It
+checks the consumed startup membership and thinned labels against the direct
+P18cyn Java reference. The post-thinning combination itself does not yet have a
+single independent Java end-to-end digest; the centroid, variance, similarity,
+and membership kernels have separate source-harness validation elsewhere.
+This is a bounded selected continuation, not complete TOADS equivalence.
