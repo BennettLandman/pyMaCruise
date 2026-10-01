@@ -15,6 +15,8 @@
   "branch_harness_sha256": "dceb95289dea92bb97665fdb96b7bd71ad28dc2f75a3b4dfa7f4968cf444deb8",
   "output_harness": "LesionPostRegistrationOutputsReferenceHarness.java",
   "output_harness_sha256": "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76",
+  "registered_shapes_harness": "LesionRegisteredShapeVolumeReferenceHarness.java",
+  "registered_shapes_harness_sha256": "3dfad9877d85924ecdc656345247ce2da64703169c1c625ab3ce34d66a70a56b",
   "fixture_sha256": "466192f2aaf54277258cdcbc4eb00fe521279f825cfdf13d225aeab0a62695bd",
   "source_call_order": [
     "computeMemberships(GMflag=true)",

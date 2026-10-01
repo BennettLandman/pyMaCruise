@@ -19,6 +19,7 @@ from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after
 from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm_membership_update
 from pymacruise.lesion_next_iteration_registration import register_after_next_gm_membership_update
 from pymacruise.lesion_next_iteration_branch import continue_after_next_iteration_registration
+from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
@@ -44,11 +45,13 @@ REGISTRATION_REFERENCE = json.loads(
 THIN_HARNESS = Path(__file__).parent / "java_reference/Lesion13ClassNextThinningReferenceHarness.java"
 STATISTICS_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStatisticsReferenceHarness.java"
 POWER_TABLE = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic/utilities/PowerTable.java"
+CRITICAL_POINT_LUT = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic/structures/CriticalPointLUT.java"
 MEMBERSHIP_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStandard13MembershipReferenceHarness.java"
 RATIO_HARNESS = Path(__file__).parent / "java_reference/LesionDynamicEnergyRatioReferenceHarness.java"
 REGISTRATION_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningRegistrationReferenceHarness.java"
 BRANCH_HARNESS = Path(__file__).parent / "java_reference/LesionNextIterationBranchReferenceHarness.java"
 OUTPUT_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationOutputsReferenceHarness.java"
+REGISTERED_SHAPES_HARNESS = Path(__file__).parent / "java_reference/LesionRegisteredShapeVolumeReferenceHarness.java"
 JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
 MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
 TYPES = tuple(SPEC["object_types"])
@@ -87,7 +90,9 @@ def _expected_thinning_bytes(result) -> bytes:
     fields.extend(_item_bytes(item) for item in result.initialization.inserted_items)
     fields.append(struct.pack(">i", len(result.run.events)))
     for event in result.run.events:
-        fields.extend((_item_bytes(event.popped_item), struct.pack(">bi", int(event.processed), len(event.inserted_neighbors))))
+        candidate = -1 if event.candidate_label is None else int(event.candidate_label)
+        topology = -1 if event.topology_accepted is None else int(event.topology_accepted)
+        fields.extend((_item_bytes(event.popped_item), struct.pack(">bibi", int(event.processed), candidate, topology, len(event.inserted_neighbors))))
         fields.extend(_item_bytes(item) for item in event.inserted_neighbors)
     fields.extend((
         np.asarray(result.run.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
@@ -131,6 +136,19 @@ def _flat_float_bits(values):
     return np.asarray(values, dtype=np.float32).view(np.uint32).astype(np.uint64).ravel().tolist()
 
 
+def _registered_shapes_input_bytes(transform, bounds, atlas_shapes, image_resolution, template_resolution):
+    dimensions = atlas_shapes[0].shape
+    fields = [
+        struct.pack(">4i6f", *dimensions, len(atlas_shapes), *image_resolution, *template_resolution),
+        np.asarray(transform, dtype=">f4").tobytes(),
+    ]
+    for box in bounds:
+        fields.append(struct.pack(">6i", *box.lower_xyz, *box.upper_xyz))
+    for shape in atlas_shapes:
+        fields.append(np.asarray(shape, dtype=">f4").ravel(order="C").tobytes())
+    return b"".join(fields)
+
+
 def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: Path) -> None:
     assert REFERENCE["lesion_toads_source_sha256"] == "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
     assert REFERENCE["wrapper_source_sha256"] == "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
@@ -142,6 +160,7 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert hashlib.sha256(MEMBERSHIP_HARNESS.read_bytes()).hexdigest() == REFERENCE["membership_harness_sha256"]
     assert hashlib.sha256(RATIO_HARNESS.read_bytes()).hexdigest() == REFERENCE["energy_ratio_harness_sha256"]
     assert hashlib.sha256(POWER_TABLE.read_bytes()).hexdigest() == REFERENCE["power_table_sha256"]
+    assert hashlib.sha256(CRITICAL_POINT_LUT.read_bytes()).hexdigest() == REFERENCE["critical_point_lut_java_sha256"]
     image_path = ROOT / "finite_13class_grow_thin_ras.nii.gz"
     assert hashlib.sha256(image_path.read_bytes()).hexdigest() == SPEC["sha256_nii_gz"]
     image = nib.load(str(image_path))
@@ -197,6 +216,7 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert javac and java, "a JDK is required for the pinned Java method references"
     subprocess.run(
         [javac, "-d", str(classes_dir), str(HEAP), str(LUT_JAVA), str(NUMERICS),
+         str(JAVA_UPSTREAM / "structures/CriticalPointLUT.java"),
          str(GROW_HARNESS), str(THIN_HARNESS)],
         check=True, capture_output=True, text=True,
     )
@@ -555,6 +575,69 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     np.testing.assert_array_equal(continued.relations.relation_map.ravel(), np.asarray(java_outputs["relation_map"], np.int16))
     np.testing.assert_array_equal(continued.relations.relation_membership.ravel(), np.asarray(java_outputs["relation_membership"], np.bool_))
     assert continued.relations.relation_count == java_outputs["relation_count"]
+
+    # The loop restart calls propagateThinning with atlas priors transformed
+    # by the just-updated registration. Compare that map handoff to a Java
+    # excerpt using the pinned matrix/interpolation sources, then carry the
+    # actual branch's grown maps and frontier into the next Java-pinned pass.
+    assert hashlib.sha256(REGISTERED_SHAPES_HARNESS.read_bytes()).hexdigest() == REGISTRATION_REFERENCE["registered_shapes_harness_sha256"]
+    assert hashlib.sha256((JAVA_UPSTREAM / "methods/ParametricTransform.java").read_bytes()).hexdigest() == REGISTRATION_REFERENCE["source_sha256"]["ParametricTransform.java"]
+    assert hashlib.sha256((JAVA_UPSTREAM / "libraries/ImageFunctions.java").read_bytes()).hexdigest() == REGISTRATION_REFERENCE["source_sha256"]["ImageFunctions.java"]
+    assert REGISTRATION_REFERENCE["source_sha256"]["LesionToadAtlas.java"] == "718ac87a670b1a9be1fcaf21d267be8d7150187c94003c62af0c8877534cb68e"
+    transformed_shapes = transform_registered_lesion_shape_priors(
+        registration,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    )
+    assert transformed_shapes.shape == (*seg.shape, CLASSES)
+    assert np.isfinite(transformed_shapes).all()
+    registered_input, registered_output = tmp_path / "registered-shapes-in.bin", tmp_path / "registered-shapes-out.bin"
+    registered_input.write_bytes(_registered_shapes_input_bytes(
+        registration.registration.transform,
+        registration.registration.shape_bounds,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    ))
+    subprocess.run([javac, "-cp", str(classes_dir), "-d", str(classes_dir), str(REGISTERED_SHAPES_HARNESS)], check=True, capture_output=True, text=True)
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionRegisteredShapeVolumeReferenceHarness",
+        str(registered_input), str(registered_output),
+    ], check=True, capture_output=True, text=True)
+    assert registered_output.read_bytes() == np.asarray(transformed_shapes, dtype=">f4").ravel(order="C").tobytes()
+
+    next_thinned = run_lesion_toads_next_iteration_thinning(
+        continued,
+        transformed_shapes,
+        object_types=TYPES,
+        lesion_class=LESION,
+        volume_ratio=0.4,
+        limit=1000.0,
+    )
+    assert next_thinned.initialization.inserted_items
+    assert next_thinned.run.events
+    assert any(
+        event.candidate_label is not None
+        and event.candidate_label != event.popped_item.label
+        for event in next_thinned.run.events
+    )
+    next_thin_input, next_thin_output = tmp_path / "next-thin-in.bin", tmp_path / "next-thin-out.bin"
+    next_thin_input.write_bytes(_thinning_input_bytes(
+        continued.segmentation,
+        continued.growing.skeleton,
+        actual.class_memberships,
+        actual.lesion_membership,
+        actual.black_hole_membership,
+        transformed_shapes,
+        continued.growing.available,
+        continued.growing.ordering,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "Lesion13ClassNextThinningReferenceHarness",
+        str(next_thin_input), str(next_thin_output),
+    ], check=True, capture_output=True, text=True)
+    assert next_thin_output.read_bytes() == _expected_thinning_bytes(next_thinned)
 
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
