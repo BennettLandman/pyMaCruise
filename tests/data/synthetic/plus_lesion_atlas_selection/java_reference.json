@@ -1,0 +1,71 @@
+{
+  "harness_sha256": "29d4cc47ff46fe3760cd4f14cbf300c4eb90d6068a2ef518137fe6f8ba0e44a1",
+  "source_evidence": {
+    "matlab_plus_pipeline": {
+      "path": "MaCRUISE/pipeline/maCRUISEpluspipeline.m",
+      "sha256": "df826582d539735274ebc76407545bd04423cb23247e337b500d53d37ccac65b",
+      "lines": "22-27",
+      "selected_settings": {
+        "N3orN4": "N4",
+        "LesionToadsOutput": "dura removal inputs",
+        "LesionToadsCorrect": false
+      }
+    },
+    "matlab_lesiontoads_wrapper": {
+      "path": "MaCRUISE/pipeline/run_LesionToads_jist.m",
+      "sha256": "39f4318cbe8aa905e92bf5a6e3c543a312c377d0cdf685020bbe1694f3ae43fe",
+      "lines": "31-47",
+      "selected_atlas_option": "With Lesion"
+    },
+    "java_plugin": {
+      "path": "toads-cruise/src/edu/jhu/ece/iacl/plugins/classification/MedicAlgorithmLesionToads.java",
+      "sha256": "60eefe8ca10b0bd357a7c38874c093bd02bd2f0be196d3d9186a8f8b831de8e4",
+      "selection_lines": "405-422",
+      "choice_definition_lines": "166-195"
+    },
+    "java_atlas_type_dispatch": {
+      "path": "toads-cruise/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java",
+      "sha256": "77016c000b8bbbfe55bfbe8d665ddd8be914c8ecbae8563ccce59aaa834bcfe0",
+      "has_lesion_lines": "221-250",
+      "lesion_class_lines": "290-297"
+    }
+  },
+  "bundled_descriptors": {
+    "with_lesion": {
+      "path": "data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt",
+      "sha256": "e42901c860901e0c562e01e8800eda6ac43c528ea4c7bdf27218ad8daab870d7",
+      "outer_ventricular_class": "10|OuterVentricular-WM|25|lesion|hasLesion=true"
+    },
+    "no_lesion_t1_flair": {
+      "path": "data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-toads2012.txt",
+      "sha256": "096eb94f9c814f47535e308b8b0d63eaacbbfc646efc1dd06c8ecd8f0892f006",
+      "outer_ventricular_class": "10|OuterVentricular-WM|25|obj|hasLesion=false"
+    },
+    "no_lesion_t1_only": {
+      "source_default_resource": "Atlas/lesionToads-atlas-2012/cruise-atlas-10obj-toads2010.txt",
+      "bundled_in_pymacruise": false
+    }
+  },
+  "cases": {
+    "selected_plus_with_lesion": {
+      "selected_descriptor": "cruise-atlas-12obj-lesiontoads2012.txt",
+      "outer_ventricular_class": "10|OuterVentricular-WM|25|lesion|hasLesion=true",
+      "basis": "MATLAB plus wrapper hardcodes With Lesion"
+    },
+    "plugin_no_lesion_t1_flair": {
+      "selected_descriptor": "cruise-atlas-12obj-toads2012.txt",
+      "outer_ventricular_class": "10|OuterVentricular-WM|25|obj|hasLesion=false",
+      "basis": "No Lesion selected and both MPRAGE and FLAIR are present"
+    },
+    "plugin_no_lesion_t1_only": {
+      "selected_descriptor": "cruise-atlas-10obj-toads2010.txt",
+      "outer_ventricular_class": "not-inspected",
+      "basis": "No Lesion selected without both MPRAGE and FLAIR"
+    }
+  },
+  "boundary_fixture": {
+    "label_202_sha256": "2b8f7ff4de309aa963090075f5ea61aca11f48c0f0838bca32eee08e80185396",
+    "label_200_sha256": "ef5bcfbbb536aa8874e956077b6e64da4bca75fd04b9ac87d9e3d0e6185f8f52",
+    "interpretation": "plus boundary-overlook segmentation values; distinct from the lesion atlas descriptor type and its label value 25"
+  }
+}
