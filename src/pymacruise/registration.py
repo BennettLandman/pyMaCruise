@@ -2,11 +2,16 @@
 
 The selected MATLAB adapters call NiftyReg ``reg_aladin`` with the template
 as reference and the subject as floating image. T1/FLAIR and MNI alignment
-use rigid-only mode in the selected runners. ``reg_resample`` maps floating
+use rigid-only mode in the selected runners. The NiftyReg method is based on
+symmetric block matching (Modat et al., 2014,
+https://doi.org/10.1117/1.JMI.1.2.024003). ``reg_resample`` maps floating
 images into the reference grid; labels explicitly request nearest-neighbor
 interpolation, while unspecified continuous images use NiftyReg's cubic
-spline default. This module uses ANTsPy forward/inverse transform lists and
-records that its metric/optimizer are a software substitution.
+spline default. This module instead calls ANTsPy/ITK rigid or affine
+registration and transform application (ANTsPy API:
+https://antspy.readthedocs.io/en/latest/api/ants.registration.html). Its
+metric, optimizer, transform implementation, and spline resampling are a
+software substitution; they are not claimed to reproduce NiftyReg.
 """
 
 from __future__ import annotations
@@ -31,7 +36,14 @@ class ANTsRegistrationError(RuntimeError):
 
 @dataclass(frozen=True)
 class RegistrationConfig:
-    """Explicit ANTsPy optimizer settings for a global rigid/affine alignment."""
+    """Explicit ANTsPy settings for global rigid/affine alignment.
+
+    The ANTsPy API exposes the metric, sampling, iterations, and multiresolution
+    schedule used below; the selected values are this adapter's configuration,
+    not settings prescribed by the ANTs metric-evaluation paper or a claim of
+    matching NiftyReg Aladin (Modat et al., 2014,
+    https://doi.org/10.1117/1.JMI.1.2.024003).
+    """
 
     transform_type: Literal["Rigid", "Affine"] = "Rigid"
     metric: Literal["mattes", "meansquares", "GC"] = "mattes"
@@ -152,7 +164,12 @@ def register_to_reference(
     point application uses that list in the opposite direction.
     Output prefix is required so transform files have a caller-controlled,
     persistent location. The optional reference-space mask applies to all
-    registration stages, matching NiftyReg's ``-rmask`` role.
+    registration stages, using the same fixed/reference-space mask role as
+    NiftyReg ``-rmask``. The backend behavior remains ANTsPy, not Aladin's
+    symmetric block-matching method (Modat et al., 2014,
+    https://doi.org/10.1117/1.JMI.1.2.024003); the ANTs API documents fixed,
+    moving, mask, metric, and schedule arguments at
+    https://antspy.readthedocs.io/en/latest/api/ants.registration.html.
     """
     fixed_ras = _validated_ras_image(fixed, "fixed registration image")
     moving_ras = _validated_ras_image(moving, "moving registration image")
@@ -251,9 +268,13 @@ def apply_image_transform(
 ) -> nib.Nifti1Image:
     """Resample a moving NIfTI into the fixed RAS grid using ANTs transforms.
 
-    Intensity and level-set values use cubic B-spline interpolation, matching
-    NiftyReg ``reg_resample``'s omitted ``-inter`` default. Labels use explicit
-    nearest-neighbor interpolation, matching the wrappers' ``-inter 0``.
+    Intensity and level-set values use ANTsPy's ``bSpline`` interpolator;
+    labels use ``nearestNeighbor``. The selected NiftyReg wrappers use
+    cubic-spline default interpolation for continuous images and ``-inter 0``
+    for labels. The choices follow the same interpolation categories, but the
+    backend kernels, boundary semantics, precision, and outputs are not
+    presumed identical. ANTsPy API: https://antspyx.readthedocs.io/en/stable/registration.html;
+    NiftyReg default: https://github.com/SuperElastix/niftyreg/blob/master/reg-apps/reg_resample.cpp.
     """
     if interpolation not in {"intensity", "levelset", "label"}:
         raise ValueError("Interpolation must be intensity, levelset, or label")
@@ -274,10 +295,16 @@ def apply_image_transform(
             spacing=moving_ants.spacing,
             direction=moving_ants.direction,
         )
+        # Preserve the wrappers' nearest-neighbor label-resampling intent.
+        # This is a corresponding ANTsPy interpolator choice, not a claim that
+        # every NiftyReg/ITK boundary or tie case has identical output.
         interpolator = "nearestNeighbor"
         output_dtype = moving_ras.get_data_dtype()
     else:
         ants_moving = moving_ants
+        # reg_resample defaults to cubic spline, and ANTsPy offers bSpline.
+        # Keep this as an explicit backend substitution: names do not establish
+        # identical spline kernels or boundary behavior.
         interpolator = "bSpline"
         output_dtype = np.float32
     try:
@@ -303,7 +330,10 @@ def apply_transforms_to_points_ras(
 
     ANTs transform lists used for image resampling map fixed-grid sample points
     back into the moving image. Point mapping runs in the opposite direction,
-    so each transform is inverted while evaluating the composite.
+    so each transform is inverted while evaluating the composite. This follows
+    ANTsPy/ITK transform-list conventions (see
+    https://antspyx.readthedocs.io/en/stable/registration.html); RAS/LPS
+    conversion and affine-only point handling are this project's adapter logic.
     """
     points = np.asarray(points_ras, dtype=np.float64)
     if points.ndim != 2 or points.shape[1] != 3 or not np.isfinite(points).all():

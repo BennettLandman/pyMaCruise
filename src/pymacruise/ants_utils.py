@@ -1,4 +1,11 @@
-"""Shared RAS NIfTI to ANTsPy image conversion."""
+"""Shared RAS NIfTI to ANTsPy image conversion.
+
+ANTsPy exposes ITK physical-space image metadata through ``ants.from_numpy``.
+PyMaCRUISE keeps NIfTI geometry in RAS and converts the origin/direction to
+LPS here; this coordinate adapter is project glue, not a registration method
+claimed from the cited ITK framework paper (Avants et al., 2014,
+https://doi.org/10.3389/fninf.2014.00044).
+"""
 
 from __future__ import annotations
 
@@ -25,6 +32,11 @@ def nifti_to_ants(
 
     affine = np.asarray(image.affine, dtype=np.float64)
     spacing = nib.affines.voxel_sizes(affine).astype(np.float64)
+    # NIfTI inputs are normalized to RAS before this boundary. ITK/ANTs
+    # physical coordinates use LPS, so change signs on world x/y only; retain
+    # voxel ordering, spacing and origin geometry. Values are converted to the
+    # requested dtype (float32 by default). See the ANTsPy/ITK framework context in
+    # Avants et al. (2014), https://doi.org/10.3389/fninf.2014.00044.
     ras_to_lps = np.diag([-1.0, -1.0, 1.0])
     direction_lps = ras_to_lps @ (affine[:3, :3] / spacing[np.newaxis, :])
     origin_lps = ras_to_lps @ affine[:3, 3]
