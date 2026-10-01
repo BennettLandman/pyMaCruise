@@ -1,0 +1,19 @@
+{
+  "case_name": "P18cze membership through next registration/control branch",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_class_count": 11,
+  "iteration": 6,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "registration": "rigid VandyCRUISE registerShapes with prior P18czb transform and fixed synthetic atlas",
+  "previous_energy": "P18cza exact membership objective",
+  "current_energy": "P18cze exact membership objective after P18czd thinning",
+  "inputs": "single-channel exact membership maps, fixed one-channel atlas shapes, P18czd thinned state, and P18czc relation/order state",
+  "source_references": [
+    "ToadsP18czaCarriedTransformRegistrationHarness",
+    "ToadsP18cytRegisteredIterationReferenceHarness"
+  ],
+  "scope": "registration and wrapper stop/growth decision for one synthetic RAS continuation; no multichannel or full-workflow claim"
+}
