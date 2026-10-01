@@ -1,0 +1,14 @@
+{
+  "case_name": "P18cyx second-loop branch through next thinning",
+  "source_fixture": "toads_post_registration_branch",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_classes": 11,
+  "transformed_shape_values": "fixed zeros matching the current memberships",
+  "relation_limit": 1,
+  "thinning_volume_ratio": 0.5,
+  "thinning_limit": 3.0,
+  "numeric_java_reference": "ToadsPostRegistrationNextThinningReferenceHarness",
+  "order_java_reference": "ToadsP18cyvNextIterationOrderReferenceHarness",
+  "scope": "P18cyx continuing registration/growth/relation branch into selected next thinning pass"
+}
