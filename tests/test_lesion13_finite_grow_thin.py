@@ -1579,6 +1579,107 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert third_java_control["stop"] == third_control.branch.stop is False
     assert third_java_control["run_growing"] == third_control.branch.run_growing is True
 
+    assert third_control.branch.growing is not None
+    third_growth_input = tmp_path / "third-pass-grow-in.bin"
+    third_growth_output = tmp_path / "third-pass-grow-out.bin"
+    third_growth_input.write_bytes(growth_input_bytes(
+        third_thinned.run.segmentation,
+        third_thinned.run.skeleton,
+        actual_third.class_memberships,
+        third_thinned.run.ordering,
+        third_thinned.run.class_volume,
+        actual_third.lesion_membership,
+        actual_third.black_hole_membership,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionGrowingPassDynamicReferenceHarness",
+        str(third_growth_input), str(third_growth_output),
+    ], check=True, capture_output=True, text=True)
+    assert third_growth_output.read_bytes() == expected_growth_bytes(third_control.branch.growing)
+
+    third_relation_input = tmp_path / "third-pass-relation-in.bin"
+    third_relation_input.write_bytes(b"".join([
+        struct.pack(">6i", *seg.shape, CLASSES, LESION, 2),
+        template_labels.tobytes(),
+        np.asarray(third_control.branch.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.zeros(seg.shape, dtype=np.int8).tobytes(),
+        np.asarray(actual_third.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_third.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_third.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    ]))
+    third_java_outputs = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostRegistrationOutputsReferenceHarness", str(third_relation_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert third_java_outputs["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    np.testing.assert_array_equal(
+        third_control.branch.segmentation.ravel(),
+        np.asarray(third_java_outputs["segmentation"], np.int16),
+    )
+    np.testing.assert_array_equal(
+        third_control.branch.relations.relation_map.ravel(),
+        np.asarray(third_java_outputs["relation_map"], np.int16),
+    )
+    np.testing.assert_array_equal(
+        third_control.branch.relations.relation_membership.ravel(),
+        np.asarray(third_java_outputs["relation_membership"], np.bool_),
+    )
+    assert third_control.branch.relations.relation_count == third_java_outputs["relation_count"]
+
+    third_registered_shapes = transform_registered_lesion_shape_priors(
+        third_registration,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    )
+    third_registered_input = tmp_path / "third-registered-shapes-in.bin"
+    third_registered_output = tmp_path / "third-registered-shapes-out.bin"
+    third_registered_input.write_bytes(_registered_shapes_input_bytes(
+        third_registration.registration.transform,
+        third_registration.registration.shape_bounds,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionRegisteredShapeVolumeReferenceHarness",
+        str(third_registered_input), str(third_registered_output),
+    ], check=True, capture_output=True, text=True)
+    assert third_registered_output.read_bytes() == np.asarray(
+        third_registered_shapes, dtype=">f4"
+    ).ravel(order="C").tobytes()
+
+    fourth_thinned = run_lesion_toads_next_iteration_thinning(
+        third_control.branch,
+        third_registered_shapes,
+        object_types=TYPES,
+        lesion_class=LESION,
+        volume_ratio=0.4,
+        limit=1000.0,
+    )
+    assert fourth_thinned.initialization.inserted_items
+    assert fourth_thinned.run.events
+    fourth_thin_input = tmp_path / "fourth-thin-in.bin"
+    fourth_thin_output = tmp_path / "fourth-thin-out.bin"
+    fourth_thin_input.write_bytes(_thinning_input_bytes(
+        third_control.branch.segmentation,
+        third_control.branch.growing.skeleton,
+        actual_third.class_memberships,
+        actual_third.lesion_membership,
+        actual_third.black_hole_membership,
+        third_registered_shapes,
+        third_control.branch.growing.available,
+        third_control.branch.growing.ordering,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "Lesion13ClassNextThinningReferenceHarness",
+        str(fourth_thin_input), str(fourth_thin_output),
+    ], check=True, capture_output=True, text=True)
+    fourth_expected_bytes = _expected_thinning_bytes(fourth_thinned)
+    assert fourth_thin_output.read_bytes() == fourth_expected_bytes
+    same_as_prior_thinning = fourth_expected_bytes == third_thin_output.read_bytes()
+    assert not same_as_prior_thinning
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):
