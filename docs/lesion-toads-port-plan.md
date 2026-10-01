@@ -1458,3 +1458,19 @@ implementation commit `a203b7ec912046b07017de34b63cb595a5f887af`; see
 [`docs/reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md`](reports/full-pytest-2026-09-30-toads-rayleigh-lesion-energy.md).
 These fixed-input adapters do not derive the full spatial/atlas energy state,
 orchestrate all LesionTOADS passes, or establish workflow equivalence.
+
+### Completed substage: optional inhomogeneity-field output
+
+`lesion_toads_output_images` and `save_lesion_toads_outputs` now include the
+selected `outputField && correctInhomogeneity` export when the caller supplies
+the already-restored field. A single channel is saved as
+`_lToads_field.nii.gz`; multiple channels remain a fourth NIfTI dimension and
+use `_lToads_fields.nii.gz`. Both are float32, use the RAS T1 reference
+geometry, and are written as `.nii.gz`. This adapter does not estimate or
+uncrop the field; those upstream stages must provide a T1-grid RAS array.
+Selected synthetic output tests cover single-/multi-channel naming, values,
+types, geometry, and invalid grids. Focused affected integration group:
+18 passed in 74.51 seconds on implementation commit
+`f536f1d8f12bf7b399e3a8937856eda6257081ee`. The last full repository run
+remains the separate checkpoint at `006482f`; this localized addition did not
+rerun unrelated slow integration suites.
