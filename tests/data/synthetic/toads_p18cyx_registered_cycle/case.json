@@ -1,0 +1,15 @@
+{
+  "case_name": "P18cyw membership through second-loop registration and continuing branch",
+  "source_fixture": "toads_post_registration_branch",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_classes": 11,
+  "registration": "rigid registerShapes with selected five-iteration cap on synthetic smooth atlas priors",
+  "registration_harness": "ToadsP18cypActualRegistrationHarness",
+  "branch_harness": "ToadsP18cytRegisteredIterationReferenceHarness",
+  "iteration": 4,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "branch": "continuing; propagateGrowing then computeRelations, computeBoundaryDistances, computeClosestLabels",
+  "scope": "second-loop exact membership to selected registration/control/branch seam; fixed atlas and pre-branch synthetic state, not a complete TOADS workflow"
+}
