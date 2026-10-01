@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -10,7 +11,9 @@ import numpy as np
 import pytest
 
 from pymacruise.lesion_growth import initialize_lesion_toads_thinning_frontier
+from pymacruise.lesion_growth import process_next_lesion_toads_thinning_item
 from pymacruise.lesion_growth import propagate_lesion_toads_thinning
+from pymacruise.toads_heap import ToadsPriorityHeap4D
 
 
 ROOT = Path(__file__).parent
@@ -198,3 +201,74 @@ def test_source_faithful_nan_mode_rejects_infinity_and_nonboolean_flag() -> None
     kwargs["source_faithful_nan"] = 1
     with pytest.raises(TypeError, match="must be boolean"):
         initialize_lesion_toads_thinning_frontier(**kwargs)
+
+
+def test_unsupported_active_nan_event_preserves_queue_and_inputs() -> None:
+    shape = (5, 5, 5)
+    segmentation = np.zeros(shape, dtype=np.int16)
+    skeleton = np.zeros(shape, dtype=np.int16)
+    memberships = np.zeros((*shape, 2), dtype=np.float32)
+    memberships[1, 1, 1, 1] = np.float32(np.nan)
+    lesion = np.zeros(shape, dtype=np.float32)
+    black_hole = np.zeros(shape, dtype=np.float32)
+    transformed_shape = np.zeros((*shape, 2), dtype=np.float32)
+    available = np.zeros((*shape, 2), dtype=np.bool_)
+    ordering = np.zeros(shape, dtype=np.float32)
+    class_volume = np.array([200.0, 0.0], dtype=np.float32)
+    minimum_class_volume = np.array([100.0, 100.0], dtype=np.float32)
+    queue = ToadsPriorityHeap4D(8, mode="max")
+    queue.add(10.0, 2, 2, 2, 0)
+    queue.add(5.0, 2, 2, 3, 0)
+    queue.add(4.0, 2, 3, 2, 0)
+
+    arrays = (
+        segmentation,
+        skeleton,
+        memberships,
+        lesion,
+        black_hole,
+        transformed_shape,
+        available,
+        ordering,
+        class_volume,
+        minimum_class_volume,
+    )
+    before = tuple(array.copy() for array in arrays)
+
+    def trace(heap: ToadsPriorityHeap4D) -> list[tuple[int, int, int, int, int]]:
+        duplicate = copy.deepcopy(heap)
+        result = []
+        while duplicate:
+            item = duplicate.pop_first()
+            result.append((
+                int(np.asarray(item.value, dtype=np.float32).view(np.uint32)),
+                item.x,
+                item.y,
+                item.z,
+                item.label,
+            ))
+        return result
+
+    queue_before = trace(queue)
+    with pytest.raises(ValueError, match="only supports events rejected"):
+        process_next_lesion_toads_thinning_item(
+            segmentation,
+            skeleton,
+            memberships,
+            ("object", "object"),
+            lesion,
+            black_hole,
+            transformed_shape,
+            available,
+            ordering,
+            class_volume,
+            minimum_class_volume,
+            queue,
+            1000.0,
+            lesion_class=1,
+            source_faithful_nan=True,
+        )
+
+    assert trace(queue) == queue_before
+    for actual, expected in zip(arrays, before, strict=True):
+        np.testing.assert_array_equal(actual, expected)

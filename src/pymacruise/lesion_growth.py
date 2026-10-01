@@ -227,8 +227,8 @@ def process_next_lesion_toads_thinning_item(
     updated_available = state.copy() if not _in_place else state
     updated_ordering = order_map.copy() if not _in_place else order_map
     updated_volumes = volumes.copy() if not _in_place else volumes
-    popped = queue.pop_first()
-    x, y, z, processing_class = popped.x, popped.y, popped.z, popped.label
+    candidate = queue.peek_first()
+    x, y, z, processing_class = candidate.x, candidate.y, candidate.z, candidate.label
     transition: LesionToadsThinningTransition | None = None
     inserted: tuple[ToadsHeapItem, ...] = ()
     in_bounds = (
@@ -248,6 +248,10 @@ def process_next_lesion_toads_thinning_item(
         raise ValueError(
             "source-faithful NaN mode only supports events rejected by the selected Java eligibility checks"
         )
+    # Validate unsupported NaN-dependent updates before consuming the caller's
+    # heap. The supported source-faithful case still pops and records skipped
+    # events exactly as the selected Java loop does.
+    popped = queue.pop_first()
     if (
         would_process
     ):
