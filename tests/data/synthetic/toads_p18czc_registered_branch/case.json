@@ -1,0 +1,14 @@
+{
+  "case_name": "P18czb continuing registration/control through growth and relation refresh",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_class_count": 11,
+  "iteration": 5,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "relation_limit": 1,
+  "previous_state": "P18cyz post-thinning labels, skeleton, available map, and volumes; carried P18cyx ordering and boundary distances",
+  "source_java_reference": "ToadsP18czcRelationRefreshReferenceHarness, composed from selected relation-list, relation-diffusion, boundary-distance, and closest-label method excerpts",
+  "scope": "continuing single-channel synthetic RAS branch; relation-state outputs compared after the existing Python growth kernel; no full TOADS claim"
+}
