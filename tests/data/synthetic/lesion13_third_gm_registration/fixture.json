@@ -1,0 +1,64 @@
+{
+  "description": "Selected third 13-class P39 wrapper registration/control handoff after the third finite synthetic thinning, statistics, and GM-enabled membership pass.",
+  "working_space": "RAS",
+  "dimensions_xyz_channels": [17, 17, 17, 26],
+  "input_materialization": {
+    "file": "registration_inputs_ras.nii.gz",
+    "sha256": "331499353a7fc846636a3a04b308c626e4ed4d473e42f0e3348ccdb33cfda85a",
+    "membership_channel_sha256_be_float32": "2600a805c54ca1d952c71f6fb549ce2ae1b5e80fe80ee6c137e4f8d22f39b172",
+    "atlas_prior_channel_sha256_be_float32": "1608865d2199da91c277c11dd97811d591ce437bfd97269d0a904dab65d2ddd6",
+    "membership_state": "Output of the Java-matched third-thinning -> statistics -> GM-enabled membership pass, rebuilt and asserted in the focused test.",
+    "synthetic_fixed_point_note": "The 13 membership channels equal the previous synthetic pass bit-for-bit; this is a finite fixed-point case, not evidence of membership change.",
+    "atlas_prior_state": "Unchanged atlas-space priors from tests/data/synthetic/lesion13_next_gm_registration/registration_inputs_ras.nii.gz.",
+    "geometry": "17x17x17 identity affine in RAS, matching the other finite 13-class synthetic fixtures."
+  },
+  "source_call_order": [
+    "third propagateThinning output",
+    "computeCentroids",
+    "computeVariances",
+    "computeChannelWeights",
+    "computeMemberships: GMflag=true",
+    "energyRatio",
+    "registerShapes using unchanged atlas-space priors and the prior transform",
+    "convergence check",
+    "iteration-limit check"
+  ],
+  "registration": {
+    "initial_transform": "The transform returned by the second selected synthetic registerShapes call.",
+    "transform_type": "single rigid, scale 1, offset 0, subsample 2",
+    "reference_fields": [
+      "membership and atlas-prior input digests",
+      "carried start transform",
+      "initial energy, gradient, and diagonal Hessian",
+      "every candidate transform, source acceptance/rejection, energy and optimizer iteration value",
+      "final transform, rotation, and per-class bounds"
+    ]
+  },
+  "control": {
+    "iteration": 3,
+    "n_iter_max": 4,
+    "max_distance": 0.0,
+    "expected": "nonterminal no-stop decision; selected standard mode enters propagateGrowing and refreshes relations"
+  },
+  "java_reference": {
+    "kind": "Hand-coded selected Java formula excerpts using the pinned upstream ParametricTransform, RotationMatrix, ImageFunctions, Numerics and wrapper control sources; not execution of the full wrapper/class.",
+    "registration_harness": "tests/java_reference/LesionSecondPassRegistrationReferenceHarness.java",
+    "registration_harness_sha256": "cce7ffbcc4a550d4dee898e6bd7ffc0d0ab0acad3ad8489bc25320bded3626e9",
+    "control_harness": "tests/java_reference/LesionNextIterationBranchReferenceHarness.java",
+    "control_harness_sha256": "dceb95289dea92bb97665fdb96b7bd71ad28dc2f75a3b4dfa7f4968cf444deb8",
+    "upstream_source_sha256": {
+      "AlgorithmLesionToads.java": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+      "LesionToadSegmentation.java": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+      "ParametricTransform.java": "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac",
+      "RotationMatrix.java": "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0",
+      "ImageFunctions.java": "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892",
+      "Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb"
+    }
+  },
+  "scope_limitations": [
+    "The reference covers this finite third registration trace and one wrapper decision only; no later thinning/statistics/membership pass is included here.",
+    "Membership channels are at a synthetic fixed point relative to the previous 13-class pass, so this fixture does not demonstrate changing memberships.",
+    "The Java references are selected formula excerpts, not execution of the complete wrapper or LesionTOADS class, and this is not full LesionTOADS equivalence.",
+    "No real atlas or patient imaging is represented."
+  ]
+}

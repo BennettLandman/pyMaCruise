@@ -60,6 +60,9 @@ SECOND_PASS_REGISTRATION_REFERENCE = json.loads(
 SECOND_PASS_REGISTRATION_INPUT = (
     Path(__file__).parent / "data/synthetic/lesion13_second_gm_registration/registration_inputs_ras.nii.gz"
 )
+THIRD_PASS_REGISTRATION_INPUT = (
+    Path(__file__).parent / "data/synthetic/lesion13_third_gm_registration/registration_inputs_ras.nii.gz"
+)
 JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
 MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
 TYPES = tuple(SPEC["object_types"])
@@ -1378,6 +1381,203 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
         "energy_ratio_bits": third_membership_update.energy_ratio.energy_ratio,
     }.items():
         assert java_third_ratio[key] == f"{int(np.asarray(value, np.float32).view(np.uint32)):08x}", key
+
+    third_registration_image = nib.Nifti1Image(
+        np.concatenate((actual_third.class_memberships, atlas_shapes), axis=-1).astype(np.float32),
+        registration_image_input.affine,
+    )
+    generated_third_registration_input = tmp_path / "third-pass-registration-ras.nii.gz"
+    nib.save(third_registration_image, str(generated_third_registration_input))
+    generated_third = nib.load(str(generated_third_registration_input))
+    assert nib.aff2axcodes(generated_third.affine) == ("R", "A", "S")
+    if THIRD_PASS_REGISTRATION_INPUT.exists():
+        third_fixture = json.loads((THIRD_PASS_REGISTRATION_INPUT.parent / "fixture.json").read_text(encoding="utf-8"))
+        assert third_fixture["working_space"] == "RAS"
+        assert hashlib.sha256(SECOND_PASS_REGISTRATION_HARNESS.read_bytes()).hexdigest() == (
+            third_fixture["java_reference"]["registration_harness_sha256"]
+        )
+        assert hashlib.sha256(BRANCH_HARNESS.read_bytes()).hexdigest() == (
+            third_fixture["java_reference"]["control_harness_sha256"]
+        )
+        assert third_fixture["java_reference"]["upstream_source_sha256"]["AlgorithmLesionToads.java"] == (
+            REFERENCE["wrapper_source_sha256"]
+        )
+        assert third_fixture["java_reference"]["upstream_source_sha256"]["LesionToadSegmentation.java"] == (
+            REFERENCE["lesion_toads_source_sha256"]
+        )
+        for source_name, expected_hash in third_fixture["java_reference"]["upstream_source_sha256"].items():
+            if source_name in {"AlgorithmLesionToads.java", "LesionToadSegmentation.java"}:
+                continue
+            source_path = {
+                "ParametricTransform.java": JAVA_UPSTREAM / "methods/ParametricTransform.java",
+                "RotationMatrix.java": JAVA_UPSTREAM / "structures/RotationMatrix.java",
+                "ImageFunctions.java": JAVA_UPSTREAM / "libraries/ImageFunctions.java",
+                "Numerics.java": JAVA_UPSTREAM / "utilities/Numerics.java",
+            }[source_name]
+            assert hashlib.sha256(source_path.read_bytes()).hexdigest() == expected_hash
+        assert hashlib.sha256(THIRD_PASS_REGISTRATION_INPUT.read_bytes()).hexdigest() == (
+            third_fixture["input_materialization"]["sha256"]
+        )
+        third_reference_image = nib.load(str(THIRD_PASS_REGISTRATION_INPUT))
+        assert nib.aff2axcodes(third_reference_image.affine) == ("R", "A", "S")
+        np.testing.assert_array_equal(generated_third.affine, third_reference_image.affine)
+        np.testing.assert_array_equal(
+            np.asarray(generated_third.dataobj, dtype=np.float32),
+            np.asarray(third_reference_image.dataobj, dtype=np.float32),
+        )
+        third_reference_data = np.asarray(third_reference_image.dataobj, dtype=np.float32)
+        np.testing.assert_array_equal(third_reference_data[..., :CLASSES], actual_third.class_memberships)
+        np.testing.assert_array_equal(third_reference_data[..., CLASSES:], atlas_shapes)
+        second_reference_data = np.asarray(nib.load(str(SECOND_PASS_REGISTRATION_INPUT)).dataobj, dtype=np.float32)
+        np.testing.assert_array_equal(third_reference_data[..., :CLASSES], second_reference_data[..., :CLASSES])
+    else:
+        raise AssertionError(f"missing committed RAS fixture: {THIRD_PASS_REGISTRATION_INPUT}")
+
+    third_registration = register_after_next_gm_membership_update(
+        third_membership_update,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        second_registration.registration.transform,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        align_shapes=True,
+        init_align_iter=REGISTRATION_SPEC["init_align_iter"],
+    )
+    assert third_registration.stage_order[-1] == "registerShapes"
+    third_java_registration = json.loads(subprocess.run(
+        [
+            java, "-cp", str(classes_dir), "LesionSecondPassRegistrationReferenceHarness",
+            str(THIRD_PASS_REGISTRATION_INPUT),
+            *(str(float(value)) for value in second_registration.registration.transform),
+        ],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert third_java_registration["membership_sha256"] == hashlib.sha256(
+        np.asarray(actual_third.class_memberships, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    assert third_java_registration["atlas_prior_sha256"] == hashlib.sha256(
+        np.asarray(atlas_shapes, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    np.testing.assert_array_equal(
+        np.asarray(third_java_registration["start_transform"], np.float32),
+        second_registration.registration.transform,
+    )
+    third_optimization = third_registration.registration.optimization
+    assert third_optimization is not None
+    assert third_optimization.stop_reason == third_java_registration["stop_reason"]
+    assert len(third_optimization.iterations) == len(third_java_registration["iterations"])
+    np.testing.assert_array_equal(
+        third_registration.registration.transform,
+        np.asarray(third_java_registration["transform"], np.float32),
+    )
+    _assert_f32(third_optimization.energy, third_java_registration["energy"], "third registration energy")
+    _assert_f32(third_optimization.lambda_value, third_java_registration["lambda"], "third registration lambda")
+    third_initial_coefficients = lesion_registration_volume_coefficients(
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        actual_third.class_memberships,
+        image_dimensions_xyz=seg.shape,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        transform=tuple(float(value) for value in second_registration.registration.transform),
+        offset=0,
+        subsample=2,
+    )
+    third_expected_coefficients = third_java_registration["iterations"][0]["coefficients"]
+    for actual_value, expected_value, label in (
+        (third_initial_coefficients.energy, third_expected_coefficients[0], "third initial energy"),
+        (third_initial_coefficients.normalized_gradient, third_expected_coefficients[2:8], "third initial gradient"),
+        (third_initial_coefficients.normalized_hessian, third_expected_coefficients[8:14], "third initial Hessian"),
+    ):
+        actual_values = np.asarray(actual_value, dtype=np.float32).reshape(-1)
+        expected_values = np.asarray(expected_value, dtype=np.float32).reshape(-1)
+        np.testing.assert_array_equal(actual_values.view(np.uint32), expected_values.view(np.uint32), err_msg=label)
+    for iteration_index, (step, expected) in enumerate(zip(
+        third_optimization.iterations, third_java_registration["iterations"], strict=True
+    )):
+        assert step.result.accepted == expected["accepted"]
+        assert step.result.rejected_trials == expected["rejected_trials"]
+        np.testing.assert_array_equal(step.result.transform, np.asarray(expected["transform"], np.float32))
+        _assert_f32(step.result.energy, expected["energy"], "third registration iteration energy")
+        _assert_f32(step.result.relative_change, expected["relative_change"], "third registration relative change")
+        _assert_f32(step.result.lambda_value, expected["lambda"], "third registration iteration lambda")
+        assert len(step.trial_energies) == len(expected["trials"])
+        for trial_index, expected_trial in enumerate(expected["trials"]):
+            np.testing.assert_array_equal(
+                step.trial_transforms[trial_index], np.asarray(expected_trial["transform"], np.float32)
+            )
+            python_trial_coefficients = lesion_registration_volume_coefficients(
+                tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+                actual_third.class_memberships,
+                image_dimensions_xyz=seg.shape,
+                image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+                template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+                transform=tuple(float(value) for value in step.trial_transforms[trial_index]),
+                offset=0,
+                subsample=2,
+            )
+            java_trial_coefficients = np.asarray(expected_trial["coefficients"], np.float32)
+            _assert_f32(python_trial_coefficients.norm, java_trial_coefficients[1], "third trial shape norm")
+            _assert_f32(python_trial_coefficients.cost, java_trial_coefficients[14], "third trial weighted cost")
+            _assert_f32(python_trial_coefficients.energy, java_trial_coefficients[0], "third trial energy coefficients")
+            _assert_f32(step.trial_energies[trial_index], expected_trial["energy"], "third registration trial energy")
+            if np.isnan(expected_trial["energy"]):
+                assert not (step.result.accepted and trial_index == len(expected["trials"]) - 1)
+    assert np.array_equal(
+        third_registration.registration.rotation,
+        np.asarray(third_java_registration["rotation"], np.float32),
+    )
+    for bounds, expected in zip(
+        third_registration.registration.shape_bounds, third_java_registration["bounds"], strict=True
+    ):
+        assert bounds.lower_xyz == tuple(expected["lower"])
+        assert bounds.upper_xyz == tuple(expected["upper"])
+        assert bounds.support_count == expected["support_count"]
+
+    # registerShapes precedes the wrapper's stop checks. This finite case uses
+    # a nonterminal iteration and zero threshold, so it must choose the
+    # standard-mode growth/relations branch in Java and Python.
+    third_control = continue_after_next_iteration_registration(
+        third_registration,
+        segmentation=third_thinned.run.segmentation,
+        skeleton=third_thinned.run.skeleton,
+        ordering=third_thinned.run.ordering,
+        class_volume=third_thinned.run.class_volume,
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=3,
+        n_iter_max=4,
+        max_distance=0.0,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+    )
+    assert third_control.stage_order[-4:] == (
+        "convergence_check", "iteration_limit_check", "propagateGrowing", "computeRelations"
+    )
+    assert not third_control.branch.stop
+    assert third_control.branch.run_growing
+    third_control_input = tmp_path / "third-pass-control.bin"
+    third_control_input.write_bytes(struct.pack(
+        ">3f2i?",
+        float(third_membership_update.energy_ratio.previous_energy),
+        float(actual_third.objective),
+        0.0,
+        3,
+        4,
+        False,
+    ))
+    third_java_control = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionNextIterationBranchReferenceHarness", str(third_control_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert third_java_control["source_sha256"] == third_fixture["java_reference"]["upstream_source_sha256"]["AlgorithmLesionToads.java"]
+    assert third_java_control["ratio_bits"] == (
+        f"{int(third_membership_update.energy_ratio.energy_ratio.view(np.uint32)):08x}"
+    )
+    assert third_java_control["convergence_stop"] == third_control.branch.convergence_stop is False
+    assert third_java_control["iteration_limit_stop"] == third_control.branch.iteration_limit_stop is False
+    assert third_java_control["stop"] == third_control.branch.stop is False
+    assert third_java_control["run_growing"] == third_control.branch.run_growing is True
 
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
