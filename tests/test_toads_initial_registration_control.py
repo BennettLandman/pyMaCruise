@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 import re
 import subprocess
@@ -13,6 +14,8 @@ import pytest
 from pymacruise.toads_initial_registration_control import register_initial_memberships_and_control
 from pymacruise.toads_initial_thinning_composition import toads_initial_fielded_membership_to_thinning
 from pymacruise.toads_initial_thinning_statistics_membership import continue_initial_thinning_through_memberships
+from pymacruise.toads_default_registered_iteration import continue_registered_toads_iteration
+from pymacruise.toads_control import toads_iteration_control
 from pymacruise.toads_registration import exact_registration_measure_coefficients
 from pymacruise.toads_registration_sampling import (
     vectorized_toads_registration_coefficients,
@@ -175,3 +178,102 @@ def test_p18cyo_membership_and_objective_feed_registration_then_control(tmp_path
         dtype=np.int32,
     )
     np.testing.assert_array_equal(java_bounds, python_bounds)
+
+    # Continue that exact registered membership state through the selected
+    # non-stopping branch. Growth/relation kernels have their own Java-backed
+    # references; this assertion pins their source order after registration.
+    startup_thinning = continuation.startup_and_thinning
+    thinning = startup_thinning.thinning
+    relation_state = startup_thinning.startup.relation_state
+    ordering = np.zeros(thinning.segmentation.shape, dtype=np.float32)
+    for x in range(ordering.shape[0]):
+        for y in range(ordering.shape[1]):
+            for z in range(ordering.shape[2]):
+                ordering[x, y, z] = np.float32(-((13 * x + 7 * y + 3 * z) % 19) / 10.0)
+    branch_inputs = (
+        thinning.segmentation.copy(),
+        thinning.skeleton.copy(),
+        ordering.copy(),
+        thinning.class_volumes.copy(),
+        relation_state.boundary_distances.copy(),
+        result.handoff.membership_pass.memberships.copy(),
+    )
+    transition = continue_registered_toads_iteration(
+        result,
+        np.float32(objective * np.float32(1.01)),
+        3,
+        5,
+        1e-4,
+        thinning.segmentation,
+        thinning.skeleton,
+        ordering,
+        thinning.class_volumes,
+        do_growing=False,
+        boundary_distances=relation_state.boundary_distances,
+        relation_limit=json.loads((ROOT / "spec.json").read_text())["relation_limit"],
+        available=thinning.available,
+    )
+    assert transition.registration_control is result
+    assert transition.branch.control == result.control
+    assert not transition.branch.control.stop
+    assert transition.branch.growing.events
+    assert transition.stage_order[-8:] == (
+        "atlas.registerShapes() -> registerAllShapes()",
+        "energyRatio",
+        "convergenceCheck",
+        "iterationLimitCheck",
+        "propagateGrowing",
+        "computeRelations",
+        "computeBoundaryDistances",
+        "computeClosestLabels",
+    )
+    for current, before in zip(
+        (
+            thinning.segmentation,
+            thinning.skeleton,
+            ordering,
+            thinning.class_volumes,
+            relation_state.boundary_distances,
+            result.handoff.membership_pass.memberships,
+        ),
+        branch_inputs,
+        strict=True,
+    ):
+        np.testing.assert_array_equal(current, before)
+
+    # Pin the other wrapper branch on the same registered membership state:
+    # at the iteration limit, disabled final growth goes straight to label
+    # transfer, with no relation refresh.
+    stopping_control = toads_iteration_control(
+        np.float32(objective * np.float32(1.01)),
+        result.handoff.membership_pass.objective,
+        5,
+        5,
+        1e-4,
+        do_growing=False,
+    )
+    stopping_registration = replace(result, control=stopping_control)
+    template_labels = np.asarray([0, 4, 7, 9, 11, 13, 17, 19, 21, 23, 25], dtype=np.int8)
+    previous_classification = np.full(thinning.segmentation.shape, -1, dtype=np.int8)
+    stopped = continue_registered_toads_iteration(
+        stopping_registration,
+        np.float32(objective * np.float32(1.01)),
+        5,
+        5,
+        1e-4,
+        thinning.segmentation,
+        thinning.skeleton,
+        ordering,
+        thinning.class_volumes,
+        do_growing=False,
+        template_labels=template_labels,
+        previous_classification=previous_classification,
+        available=thinning.available,
+    )
+    assert stopped.branch.control.stop
+    assert stopped.branch.growing is None
+    np.testing.assert_array_equal(
+        stopped.branch.classification,
+        template_labels[thinning.segmentation],
+    )
+    assert stopped.stage_order[-1] == "updateClassificationFromLabels"
