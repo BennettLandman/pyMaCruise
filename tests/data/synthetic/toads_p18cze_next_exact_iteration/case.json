@@ -1,0 +1,21 @@
+{
+  "case_name": "P18czd thinning to next carried degree-one exact iteration",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "previous_degree": 1,
+  "maximum_polynomial_degree": 3,
+  "low_energy_ratio": 0.01,
+  "observed_previous_membership_energy_ratio": 0.5297284126281738,
+  "field_initialization": "carry the P18cza degree-one field through intervening registration, branch, and thinning",
+  "centroid_initialization": "carry the P18cza exact centroid output",
+  "closest_labels": "use refreshed P18czc relation state",
+  "transformed_shape_values": "fixed all-zero maps on the synthetic grid",
+  "source_formula_harnesses": [
+    "ToadsPostThinningExactFieldReferenceHarness",
+    "ToadsPostThinningExactIterationReferenceHarness"
+  ],
+  "scope": "one degree-one exact iteration after P18czd thinning; fixed single-channel priors and no full TOADS claim"
+}
