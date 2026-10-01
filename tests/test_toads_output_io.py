@@ -5,7 +5,12 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_cruise_outputs import ToadsCruiseProducts
-from pymacruise.toads_output_io import save_toads_outputs, toads_output_images
+from pymacruise.toads_dura_outputs import ToadsWrapperOutputBuffers
+from pymacruise.toads_output_io import (
+    save_toads_dura_wrapper_outputs,
+    save_toads_outputs,
+    toads_output_images,
+)
 
 
 SHAPE = (3, 4, 5)
@@ -149,3 +154,36 @@ def test_existing_destination_is_never_overwritten(tmp_path) -> None:
             input_name="brain", result_mode="hard_segmentation",
         )
     assert target.read_bytes() == b"preserve"
+
+
+def test_dura_wrapper_flat_buffers_are_reconstructed_in_mipav_x_fast_order(tmp_path) -> None:
+    shape = (2, 3, 4)
+    reference = nib.Nifti1Image(np.zeros(shape, dtype=np.float32), np.eye(4))
+    voxel_count = int(np.prod(shape))
+    labels = np.arange(voxel_count, dtype=np.int8)
+    scaled_channels = tuple(
+        np.arange(voxel_count, dtype=np.float32) + np.float32(channel * 100.0)
+        for channel in range(4)
+    )
+    buffers = ToadsWrapperOutputBuffers(
+        labels,
+        tuple(channel / np.float32(255.0) for channel in scaled_channels),
+        scaled_channels,
+    )
+
+    paths = save_toads_dura_wrapper_outputs(
+        buffers, reference, tmp_path, input_name="dura-case.nii.gz"
+    )
+
+    label_image = nib.load(paths["classification"])
+    assert label_image.shape == shape
+    np.testing.assert_array_equal(
+        label_image.dataobj, labels.reshape(shape, order="F").astype(np.uint8)
+    )
+    for name, buffer in zip(
+        ("csf", "gray_matter", "white_matter_fill", "white_matter_mask"),
+        scaled_channels,
+        strict=True,
+    ):
+        image = nib.load(paths[name])
+        np.testing.assert_array_equal(image.dataobj, buffer.reshape(shape, order="F"))

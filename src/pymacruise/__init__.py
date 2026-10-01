@@ -75,7 +75,11 @@ from pymacruise.lesion_output_io import (
     lesion_toads_output_images,
     save_lesion_toads_outputs,
 )
-from pymacruise.toads_output_io import save_toads_outputs, toads_output_images
+from pymacruise.toads_output_io import (
+    save_toads_dura_wrapper_outputs,
+    save_toads_outputs,
+    toads_output_images,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -155,4 +159,5 @@ __all__ = [
     "save_lesion_toads_outputs",
     "toads_output_images",
     "save_toads_outputs",
+    "save_toads_dura_wrapper_outputs",
 ]

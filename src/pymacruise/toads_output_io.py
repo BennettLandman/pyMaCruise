@@ -12,6 +12,7 @@ from numpy.typing import ArrayLike
 
 from .image_io import normalize_image_to_ras, nifti_ras_on_reference, save_nifti_ras
 from .toads_cruise_outputs import ToadsCruiseProducts
+from .toads_dura_outputs import ToadsWrapperOutputBuffers
 
 
 ToadsOutputMode = Literal[
@@ -165,3 +166,50 @@ def save_toads_outputs(
     for name, image in images.items():
         save_nifti_ras(image, destinations[name])
     return destinations
+
+
+def save_toads_dura_wrapper_outputs(
+    output_buffers: ToadsWrapperOutputBuffers,
+    t1_reference: nib.spatialimages.SpatialImage,
+    output_directory: str | Path,
+    *,
+    input_name: str | Path,
+) -> dict[str, Path]:
+    """Save the selected Dura-removal wrapper buffers as NIfTI images.
+
+    MIPAV buffers are flattened with x as the fastest axis. Reshaping in
+    Fortran order restores the NIfTI ``[x, y, z]`` indexing. The selected
+    MedicAlgorithmToads08 wrapper always exports the float buffers after its
+    unconditional 255 scale, so those are the four maps written here.
+    """
+    if not isinstance(output_buffers, ToadsWrapperOutputBuffers):
+        raise TypeError("output_buffers must be ToadsWrapperOutputBuffers")
+    if not isinstance(t1_reference, (nib.Nifti1Image, nib.Nifti2Image)):
+        raise TypeError("t1_reference must be a NIfTI image")
+    reference = normalize_image_to_ras(t1_reference, source_name="T1 output reference")
+    if len(reference.shape) != 3:
+        raise ValueError("T1 output reference must be a 3-D image")
+    voxel_count = int(np.prod(reference.shape))
+
+    def restore_buffer(values: ArrayLike, dtype: np.dtype) -> np.ndarray:
+        buffer = np.asarray(values)
+        if buffer.ndim != 1 or buffer.size != voxel_count:
+            raise ValueError("wrapper output buffer length must match the T1 voxel count")
+        return np.asarray(buffer, dtype=dtype).reshape(reference.shape, order="F")
+
+    classification = restore_buffer(output_buffers.classification, np.dtype(np.int8))
+    channels = tuple(
+        restore_buffer(values, np.dtype(np.float32))
+        for values in output_buffers.wrapper_float_buffers
+    )
+    if len(channels) != 4:
+        raise ValueError("Dura-removal wrapper must provide four float output buffers")
+    products = ToadsCruiseProducts(*channels)
+    return save_toads_outputs(
+        reference,
+        classification,
+        output_directory,
+        input_name=input_name,
+        result_mode="DuraRemoval_input",
+        cruise_products=products,
+    )
