@@ -1,0 +1,44 @@
+{
+  "kind": "project-generated synthetic folded-cortex stage fixture",
+  "shape": [
+    25,
+    25,
+    25
+  ],
+  "affine_ras_mm": [
+    [
+      0.8,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.8,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.2,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "sha256": {
+    "segmentation.nii.gz": "f07bb61233b2995497ee2db76e6b223387814f3c470a080b95ff7847093d067f",
+    "toads_wm_for_boundary.nii.gz": "a67c3275d8b32b754c05b9a87afca2dc0229e45840ac0fcf7bf3ebc5a317b840",
+    "multi_atlas_gm.nii.gz": "88183418d26dbd75066bce72bcb66047372d3952c889c130b02c2b09a44b4136",
+    "multi_atlas_wm.nii.gz": "a67c3275d8b32b754c05b9a87afca2dc0229e45840ac0fcf7bf3ebc5a317b840",
+    "multi_atlas_brain_mask.nii.gz": "7a37bedbcdb6f68ce8d251f363e81853ad4273b58930ac0962696f270ebbf67c",
+    "toads_gm.nii.gz": "170eb1b8c922de98472c31808c101b0dcbd0c9c28117042265ba8f734c41b0f2",
+    "toads_wm.nii.gz": "a67c3275d8b32b754c05b9a87afca2dc0229e45840ac0fcf7bf3ebc5a317b840",
+    "toads_mask.nii.gz": "7a37bedbcdb6f68ce8d251f363e81853ad4273b58930ac0962696f270ebbf67c"
+  }
+}

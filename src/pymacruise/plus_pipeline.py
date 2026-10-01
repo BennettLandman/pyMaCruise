@@ -292,17 +292,16 @@ def run_plus_pre_tgdm_stages(
     toads_gm: nib.spatialimages.SpatialImage,
     toads_wm: nib.spatialimages.SpatialImage,
     toads_mask: nib.spatialimages.SpatialImage,
-    gvf_scalar_volume: nib.spatialimages.SpatialImage,
     options: PlusPipelineOptions = PlusPipelineOptions(),
 ) -> PlusPreTGDMResult:
     """Compose selected MaCRUISEplus boundary -> tissue -> ACE -> GVF stages.
 
-    All stage products are caller-supplied on their selected RAS grid. This
-    adapter deliberately begins after TOADS/atlas registration and takes the
-    scalar volume used to seed GVF explicitly: the upstream EM/dura handoffs
-    and the exact scalar provenance are not yet represented by a complete
-    Python workflow. TGDM also remains a separate call because its corrected
-    initial level set and crop provenance are upstream workflow products.
+    The selected source passes the fused TOADS/atlas GM and WM into ACE, then
+    sends ACE's enhanced gray-matter output to GVF. Atlas maps and TOADS stage
+    products are supplied on their selected RAS grid, so this adapter begins
+    after TOADS/atlas registration and does not claim those upstream handoffs.
+    The topology-corrected initial level set is a separate TGDM input; TGDM
+    remains a separate call because its crop provenance is not wired here.
     """
     boundary = run_plus_boundary_stage(
         segmentation, toads_wm_for_boundary, options
@@ -318,7 +317,7 @@ def run_plus_pre_tgdm_stages(
     ace = run_plus_ace_stage(
         tissue.gm, tissue.wm, boundary.cleaned_boundary, options
     )
-    gvf = run_plus_gvf_stage(gvf_scalar_volume, options)
+    gvf = run_plus_gvf_stage(ace.enhanced_gray_matter, options)
     return PlusPreTGDMResult(boundary=boundary, tissue=tissue, ace=ace, gvf=gvf)
 
 
