@@ -2,6 +2,10 @@
 
 ## Progress and completion estimate
 
+## Validation cadence
+
+For localized changes, run the focused tests and the closest affected integration tests. Run the full repository suite at major workflow-integration milestones and final acceptance; rerun it sooner when a change crosses multiple algorithm families or shared image/geometry contracts. Record each validation command, pass/fail/skip counts, duration, and tested commit in the row or linked report. This keeps validation proportional to the changed code while retaining full-suite checkpoints.
+
 **Estimate date: 2026-10-01.** This is a planning estimate, not a validated performance or delivery commitment. Re-estimate after the TOADS port is complete and the first end-to-end synthetic base workflow runs.
 
 | Measure | Current estimate | Basis and caveats |
