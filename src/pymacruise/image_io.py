@@ -83,6 +83,38 @@ def load_nifti_ras(
     )
 
 
+def nifti_ras_on_reference(
+    reference: nib.spatialimages.SpatialImage,
+    values: np.ndarray,
+    *,
+    dtype: np.dtype | str | None = None,
+) -> nib.spatialimages.SpatialImage:
+    """Create a 3-D/4-D RAS NIfTI image on a 3-D reference grid."""
+    if not isinstance(reference, (nib.Nifti1Image, nib.Nifti2Image)):
+        raise ValueError("reference must be a NIfTI image")
+    ras_reference = normalize_image_to_ras(reference, source_name="output reference")
+    if len(ras_reference.shape) != 3:
+        raise ValueError("reference must be a 3-D image")
+    data = np.asarray(values)
+    if data.ndim not in (3, 4) or data.shape[:3] != ras_reference.shape:
+        raise ValueError("output values must be 3-D or 4-D and match the reference grid")
+    if dtype is not None:
+        data = data.astype(np.dtype(dtype), copy=False)
+    header = ras_reference.header.copy()
+    header.set_data_dtype(data.dtype)
+    header.set_slope_inter(None, None)
+    image_type = nib.Nifti2Image if isinstance(ras_reference, nib.Nifti2Image) else nib.Nifti1Image
+    output = image_type(data, ras_reference.affine, header=header)
+    qform, qcode = ras_reference.get_qform(coded=True)
+    _, scode = ras_reference.get_sform(coded=True)
+    if qcode:
+        output.set_qform(qform, code=int(qcode), strip_shears=True)
+    else:
+        output.set_qform(None, code=0)
+    output.set_sform(ras_reference.affine, code=int(scode) if scode else 1)
+    return output
+
+
 def save_nifti_ras(
     image: nib.spatialimages.SpatialImage,
     path: str | Path,

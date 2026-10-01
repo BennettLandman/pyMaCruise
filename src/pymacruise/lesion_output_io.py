@@ -9,7 +9,7 @@ import nibabel as nib
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .image_io import normalize_image_to_ras, save_nifti_ras
+from .image_io import normalize_image_to_ras, nifti_ras_on_reference, save_nifti_ras
 from .lesion_post_loop_outputs import LesionToadsPostLoopOutputs
 
 
@@ -29,23 +29,7 @@ def _make_image(
     *,
     dtype: np.dtype,
 ) -> nib.spatialimages.SpatialImage:
-    data = np.asarray(values).astype(dtype, copy=False)
-    if isinstance(reference, nib.Nifti2Image):
-        image_type = nib.Nifti2Image
-    else:
-        image_type = nib.Nifti1Image
-    header = reference.header.copy()
-    header.set_data_dtype(data.dtype)
-    header.set_slope_inter(None, None)
-    output = image_type(data, reference.affine, header=header)
-    qform, qcode = reference.get_qform(coded=True)
-    _, scode = reference.get_sform(coded=True)
-    if qcode:
-        output.set_qform(qform, code=int(qcode), strip_shears=True)
-    else:
-        output.set_qform(None, code=0)
-    output.set_sform(reference.affine, code=int(scode) if scode else 1)
-    return output
+    return nifti_ras_on_reference(reference, values, dtype=dtype)
 
 
 def lesion_toads_output_images(
