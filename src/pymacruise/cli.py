@@ -14,6 +14,7 @@ from pymacruise.ace import ace_enhance
 from pymacruise.cortical_separation import cortical_separation
 from pymacruise.gvf import generalized_gvf_image
 from pymacruise.image_io import save_nifti_ras
+from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.raw_preparation import prepare_raw
 from pymacruise.surfaces import (
     extract_levelset_surface,
@@ -77,6 +78,16 @@ def build_parser() -> argparse.ArgumentParser:
     gvf.add_argument("--max-iterations", type=int, default=200)
     gvf.add_argument("--solver-tolerance", type=float, default=1e-6)
     _add_provenance_option(gvf)
+
+    n4 = commands.add_parser("n4", help="correct smooth intensity bias with optional ANTsPy")
+    n4.add_argument("--input", required=True, type=Path)
+    n4.add_argument("--output", required=True, type=Path, help="corrected image .nii.gz")
+    n4.add_argument("--shrink-factor", type=int, default=4)
+    n4.add_argument("--iterations", type=int, nargs="+", default=[50, 50, 50, 50])
+    n4.add_argument("--convergence-tolerance", type=float, default=0.0)
+    n4.add_argument("--spline-mesh", type=int, nargs=3, default=[1, 1, 1])
+    n4.add_argument("--rescale-intensities", action="store_true")
+    _add_provenance_option(n4)
 
     tgdm = commands.add_parser("tgdm", help="run supported nested CRUISE/TGDM stages")
     tgdm.add_argument("--initial", required=True, type=Path)
@@ -189,7 +200,8 @@ def _write_provenance(
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     if getattr(args, "provenance", None) is not None and args.provenance.suffix.lower() != ".json":
         raise ValueError("Provenance sidecar must use the .json extension")
     if args.command == "prepare-raw":
@@ -281,6 +293,28 @@ def main(argv: list[str] | None = None) -> int:
             inputs={"scalar_image": args.input},
             parameters=gvf_parameters,
             outputs={"vector_field": args.output},
+        )
+    elif args.command == "n4":
+        _require_nifti_gz_output(args.output)
+        config = N4Config(
+            shrink_factor=args.shrink_factor,
+            iterations=tuple(args.iterations),
+            convergence_tolerance=args.convergence_tolerance,
+            spline_mesh=tuple(args.spline_mesh),
+            rescale_intensities=args.rescale_intensities,
+        )
+        try:
+            result = n4_bias_correct(_load_nifti_gz(args.input), config=config)
+        except N4DependencyError as exc:
+            parser.error(str(exc))
+        _save_nifti_gz(result, args.output)
+        print(f"Wrote {args.output} (RAS)")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"intensity_image": args.input},
+            parameters=asdict(config),
+            outputs={"corrected_image": args.output},
         )
     elif args.command == "tgdm":
         tgdm_parameters = TGDMBaselineParameters()

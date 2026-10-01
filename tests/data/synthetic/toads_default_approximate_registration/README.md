@@ -1,8 +1,8 @@
 # P18czp/P18czq: default TOADS no-atlas initialization and initial pyramid
 
 This asymmetric synthetic case validates the selected default 11-class
-approximate initialization and initial rigid registration call sequence from
-AlgorithmMultipleToads.runAlgorithm():
+approximate initialization and a method-level initial rigid registration
+composition, with source call order taken from AlgorithmMultipleToads.runAlgorithm():
 
 1. no-atlas MultipleToadPreprocess.initialMemberships(...)
 2. atlas.setImageInfo(...)
@@ -11,10 +11,43 @@ AlgorithmMultipleToads.runAlgorithm():
 5. atlas.updateShapeRegistration(...)
 6. atlas.registerShapesPyramid(), dispatched to registerShapesApproxPyramid()
 
+P18czq composes the P18czp intensity-only initializer with the selected rigid
+atlas-registration pyramid. The Java harness pins the wrapper's source call
+order and runs the selected membership-pooling, atlas-shape downsampling,
+registration coefficient, and line-search excerpts. It starts from a known,
+nonzero synthetic pre-pyramid rigid transform, modeling the value handed from
+`preprocess.getTransform()` to the atlas. It does not recompute that transform
+from source image orientation or crop state, nor execute the Java wrapper's
+`initShapeRegistration`/`updateShapeRegistration` setup methods. The Python
+composition test calls `initialize_and_register_toads_default_approximate_atlas`
+and checks that its initialization arrays and per-scale transform handoff match
+the selected reference. This path does not call ANTsPy; the internal TOADS
+objective and optimizer use the selected Python kernels. ANTsPy is used for
+other workflow registration boundaries, which have separate transform and
+interpolation validation. Neither this fixture nor the selected-method match
+establishes full TOADS or end-to-end registration equivalence.
+
+P18czp covers only the no-atlas approximate overload selected by
+AlgorithmMultipleToads for its initial pyramid memberships. In particular,
+the exercised method is `MultipleToadPreprocess.initialApproxMemberships`
+through `initialMemberships(memberships,best,approx,centroids,classes)`; this
+intensity-only initialization does not inspect atlas shape maps. The dedicated
+AlgorithmLesionToads wrapper instead invokes
+`LesionToadPreprocess.initialMemberships(centroids,classes)`, a separate
+full-class method with no `approx` argument. That LesionTOADS initializer is
+not covered by P18czp; its implementation and evidence require a separate plan
+row/slice.
+
 The separate atlas-aware initial-membership overload used for later
 segmentation memberships is outside this fixture's call path. This validates
 the selected initialization/pyramid harness path only; it does not establish
 full TOADS workflow equivalence or segmentation accuracy.
+
+The P18czp Java reference also pins the zero-residual tie, below-`1e-20`
+residual cutoff, and repeated-centroid multiplicity cases. It confirms that
+the overload applies neither an atlas shape penalty nor a forced candidate
+slot. In the asymmetric volume comparison, all membership bits and candidate
+indices are compared, including the first and last boundary voxels.
 
 ## Phantom and reference
 
@@ -29,8 +62,9 @@ full TOADS workflow equivalence or segmentation accuracy.
   tests/java_reference/upstream/.
 - The reference pins AlgorithmMultipleToads.java, MultipleToadPreprocess.java,
   MultipleToadDeformableAtlas.java, and the selected default atlas descriptor.
+  It also pins the compressed subject and atlas-shape inputs by SHA-256.
   The test also pins the harness SHA-256:
-  973592718d4d55e20aed157909e5deb566c5cf4a3a552e76b6eddaf1a11abd0e.
+  9e52b8511b2fe1f874d15d60691873ee064169342d080478d446c3911b894827.
 
 ## Measured comparison
 

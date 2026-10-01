@@ -58,8 +58,9 @@ def run_lesion_toads_standard13_volume(
     lesion_power_exponent: float,
     gm_flag: bool = False,
     spread: float = 0.5,
+    source_zero_variance_nan: bool = False,
 ) -> Standard13VolumeResult:
-    """Run the selected initial 13-class membership pass over one volume.
+    """Run the selected 13-class membership update over one volume.
 
     Arrays use ``(x, y, z[, classes])`` order and are assumed to share the
     supplied RAS grid. The class relation flags, transformed atlas shapes,
@@ -122,7 +123,7 @@ def run_lesion_toads_standard13_volume(
                     ventricle_distance=int(vent[x, y, z]),
                     gray_matter_distance=int(gm[x, y, z]),
                     brainstem_distance=int(brainstem[x, y, z]), spread=spread,
-                    gm_flag=gm_flag,
+                    gm_flag=gm_flag, source_zero_variance_nan=source_zero_variance_nan,
                 )
                 current[x, y, z] = voxel.class_memberships
                 lesion[x, y, z] = voxel.lesion_membership

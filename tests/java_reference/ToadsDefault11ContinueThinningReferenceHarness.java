@@ -1,24 +1,28 @@
 import java.util.ArrayList;
 import java.util.List;
 import edu.jhmi.rad.medic.structures.BinaryHeap4D;
+import edu.jhmi.rad.medic.utilities.PowerTable;
 
 /** Synthetic selected-descriptor 11-class grow/relation/next-thinning chain. */
-public final class ToadsDefault11ContinueThinningReferenceHarness {
-    private static final int N=14,C=11,EMPTY=-1;
+public class ToadsDefault11ContinueThinningReferenceHarness {
+    static final int N=14,C=11,EMPTY=-1;
     private static final float ZERO=1e-10f,LIMIT=3.0f,RATIO=.5f;
     private static final int[][] FACE={{-1,0,0},{0,-1,0},{0,0,-1},{0,0,1},{0,1,0},{1,0,0}};
-    private final byte[][][] seg=new byte[N][N][N],skel=new byte[N][N][N];
-    private final float[][][] ordering=new float[N][N][N];
-    private final float[][][][] mems=new float[N][N][N][C],shape=new float[N][N][N][C];
+    final byte[][][] seg=new byte[N][N][N],skel=new byte[N][N][N];
+    final float[][][] ordering=new float[N][N][N];
+    final float[][][][] mems=new float[N][N][N][C],shape=new float[N][N][N][C];
+    final float[][][][] images=new float[N][N][N][1],field=new float[N][N][N][1];
     private final boolean[][][][] growingAvailable=new boolean[N][N][N][C],available=new boolean[N][N][N][C];
     private final boolean[][] relation=new boolean[C][C];
     private final BinaryHeap4D growTree=new BinaryHeap4D(N*N*3,BinaryHeap4D.MINTREE);
     private final BinaryHeap4D tree=new BinaryHeap4D(N*N*3,BinaryHeap4D.MAXTREE);
     private final float[] growVolume=new float[C],volume=new float[C],minimum=new float[C],initial=new float[C];
+    final float[] oldCentroids=new float[C],updatedCentroids=new float[C],centroidNumerator=new float[C],centroidDenominator=new float[C];
+    final float[] varianceNumerator=new float[C],varianceDenominator=new float[C],deviation=new float[C];
     private final int[] boundaries=new int[C];
     private final List<String> growEvents=new ArrayList<>(),processed=new ArrayList<>();
 
-    private void initialize(){
+    void initialize(){
         for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++){
             seg[x][y][z]=(byte)((x*3+y*5+z*7+(x*y)%C)%C);
             skel[x][y][z]=(byte)EMPTY;
@@ -31,7 +35,11 @@ public final class ToadsDefault11ContinueThinningReferenceHarness {
         for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++){
             int label=seg[x][y][z];
             for(int k=0;k<C;k++)mems[x][y][z][k]=k==label?.91f:.009f;
+            int delta=(x*13+y*7+z*3)%17-8;
+            images[x][y][z][0]=(label+1)/12.0f+delta/1700.0f;
+            field[x][y][z][0]=1.0f+((x+3*y+5*z)%9)/100.0f;
         }
+        for(int k=0;k<C;k++)oldCentroids[k]=(k+1)/12.0f;
         for(int x=1;x<N-1;x++)for(int y=1;y<N-1;y++)for(int z=1;z<N-1;z++)
             for(int k=0;k<C;k++)growingAvailable[x][y][z][k]=skel[x][y][z]==EMPTY;
         for(int x=1;x<N-1;x++)for(int y=1;y<N-1;y++)for(int z=1;z<N-1;z++)for(int k=0;k<C;k++){
@@ -48,7 +56,7 @@ public final class ToadsDefault11ContinueThinningReferenceHarness {
         short[][][] copy=new short[N][N][N];for(int i=0;i<N;i++)for(int j=0;j<N;j++)for(int l=0;l<N;l++)copy[i][j][l]=seg[i][j][l];
         return ToadsHomeomorphicChangeReferenceHarness.isHomeomorphic(copy,(short)x,(short)y,(short)z,(short)target);
     }
-    private void grow(){
+    void grow(){
         while(growTree.isNotEmpty()){
             float val=growTree.getFirst();int x=growTree.getFirstX(),y=growTree.getFirstY(),z=growTree.getFirstZ(),k=growTree.getFirstK();growTree.removeFirst();
             Boolean regular=null;
@@ -66,7 +74,7 @@ public final class ToadsDefault11ContinueThinningReferenceHarness {
             growEvents.add("["+Float.floatToIntBits(val)+","+x+","+y+","+z+","+k+","+(regular==null?-1:(regular?1:0))+",["+String.join(",",inserted)+"]]");
         }
     }
-    private void refreshRelationAndInitializeThinning(){
+    void refreshRelationAndInitializeThinning(){
         boolean[][] rows=ToadsRelationListReferenceHarness.build(seg,C).relations;
         for(int k=0;k<C;k++)System.arraycopy(rows[k],0,relation[k],0,C);
         for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++)skel[x][y][z]=(byte)EMPTY;
@@ -103,7 +111,39 @@ public final class ToadsDefault11ContinueThinningReferenceHarness {
             }
         }
     }
-    private void thin(){float val=0;while(tree.isNotEmpty()&&val>-LIMIT){val=tree.getFirst();thinEvent();}}
+    void thin(){float val=0;while(tree.isNotEmpty()&&val>-LIMIT){val=tree.getFirst();thinEvent();}}
+    void refreshStatistics(){
+        PowerTable[] tables=new PowerTable[3];
+        tables[0]=new PowerTable(0.0f,4.0f,0.000001f,.8f);
+        tables[1]=new PowerTable(0.0f,4.0f,0.000001f,1.0f);
+        tables[2]=new PowerTable(0.0f,4.0f,0.000001f,1.0f);
+        for(int k=0;k<C;k++){
+            float num=0.0f,den=0.0f;
+            int category=k==0?-1:k<=2?0:k<=7?1:2;
+            for(int x=1;x<N-1;x++)for(int y=1;y<N-1;y++)for(int z=1;z<N-1;z++){
+                float img=field[x][y][z][0]*images[x][y][z][0];
+                float mem=mems[x][y][z][k],weight;
+                if(category<0)weight=mem*mem;
+                else{
+                    float residual=img-oldCentroids[k],distance=residual*residual,factor=1.0f;
+                    if(distance>1e-10f)factor=(float)(tables[category].lookup((double)distance,(double)(category==0?.8f:1.0f))/distance);
+                    weight=factor*mem*mem;
+                }
+                num+=weight*img;den+=weight;
+            }
+            centroidNumerator[k]=num;centroidDenominator[k]=den;
+            updatedCentroids[k]=den>0.0f?.9f*num/den+.1f*oldCentroids[k]:oldCentroids[k];
+        }
+        for(int k=0;k<C;k++){
+            float num=0.0f,den=0.0f;
+            for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++)if(seg[x][y][z]==k){
+                float mem=mems[x][y][z][k],square=mem*mem,weight=square+1e-30f;
+                float corrected=field[x][y][z][0]*images[x][y][z][0],diff=corrected-updatedCentroids[k];
+                num+=weight*diff*diff;den+=weight;
+            }
+            varianceNumerator[k]=num;varianceDenominator[k]=den;deviation[k]=den>0.0f?(float)Math.sqrt(num/den):0.0f;
+        }
+    }
     private String queue(){List<String> q=new ArrayList<>();while(tree.isNotEmpty()){q.add("["+Float.floatToIntBits(tree.getFirst())+","+tree.getFirstX()+","+tree.getFirstY()+","+tree.getFirstZ()+","+tree.getFirstK()+"]");tree.removeFirst();}return "["+String.join(",",q)+"]";}
     private static char labelChar(byte v){return v<10?(char)('0'+v):(char)('a'+v-10);}
     private static String labels(byte[][][] a,boolean empty){StringBuilder b=new StringBuilder();for(byte[][] x:a)for(byte[] y:x)for(byte v:y)b.append(empty&&v==EMPTY?'.':labelChar(v));return b.toString();}
@@ -113,9 +153,9 @@ public final class ToadsDefault11ContinueThinningReferenceHarness {
     public static void main(String[] args){
         ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();
         ToadsDefault11ContinueThinningReferenceHarness h=new ToadsDefault11ContinueThinningReferenceHarness();h.initialize();h.grow();
-        String grown=labels(h.seg,false),grownSkeleton=labels(h.skel,true);h.refreshRelationAndInitializeThinning();h.thin();
-        System.out.print("{\"source_order\":[\"continue.growing\",\"computeRelations.class_adjacency\",\"exact_memberships\",\"fixed_zero_transformed_shapes\",\"initThinningLabels\",\"propagateThinning\"],\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"shape\":["+N+","+N+","+N+","+C+"],\"volume_ratio_bits\":"+Float.floatToIntBits(RATIO)+",\"limit_bits\":"+Float.floatToIntBits(LIMIT)+",\"grown_segmentation\":\""+grown+"\",\"grown_skeleton\":\""+grownSkeleton+"\",\"growth_event_count\":"+h.growEvents.size()+",\"growth_events\":["+String.join(",",h.growEvents)+"],\"relation_adjacency_bits\":\""+bools(h.relation)+"\",\"initial_volumes_bits\":"+floats(h.initial)+",\"minimum_volumes_bits\":"+floats(h.minimum)+",\"boundary_counts\":[");
+        String grown=labels(h.seg,false),grownSkeleton=labels(h.skel,true);h.refreshRelationAndInitializeThinning();h.thin();h.refreshStatistics();
+        System.out.print("{\"source_order\":[\"continue.growing\",\"computeRelations.class_adjacency\",\"exact_memberships\",\"fixed_zero_transformed_shapes\",\"initThinningLabels\",\"propagateThinning\",\"computeExactCentroids\",\"computeExactVariances\"],\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"shape\":["+N+","+N+","+N+","+C+"],\"volume_ratio_bits\":"+Float.floatToIntBits(RATIO)+",\"limit_bits\":"+Float.floatToIntBits(LIMIT)+",\"grown_segmentation\":\""+grown+"\",\"grown_skeleton\":\""+grownSkeleton+"\",\"growth_event_count\":"+h.growEvents.size()+",\"growth_events\":["+String.join(",",h.growEvents)+"],\"relation_adjacency_bits\":\""+bools(h.relation)+"\",\"initial_volumes_bits\":"+floats(h.initial)+",\"minimum_volumes_bits\":"+floats(h.minimum)+",\"boundary_counts\":[");
         for(int k=0;k<C;k++){if(k>0)System.out.print(",");System.out.print(h.boundaries[k]);}
-        System.out.print("],\"processed_count\":"+h.processed.size()+",\"processed\":["+String.join(",",h.processed)+"],\"segmentation\":\""+labels(h.seg,false)+"\",\"skeleton\":\""+labels(h.skel,true)+"\",\"available\":\""+available(h.available)+"\",\"final_volumes_bits\":"+floats(h.volume)+",\"queue_after\":"+h.queue()+"}");
+        System.out.print("],\"processed_count\":"+h.processed.size()+",\"processed\":["+String.join(",",h.processed)+"],\"segmentation\":\""+labels(h.seg,false)+"\",\"skeleton\":\""+labels(h.skel,true)+"\",\"available\":\""+available(h.available)+"\",\"final_volumes_bits\":"+floats(h.volume)+",\"queue_after\":"+h.queue()+",\"initial_centroids_bits\":"+floats(h.oldCentroids)+",\"centroid_numerator_bits\":"+floats(h.centroidNumerator)+",\"centroid_denominator_bits\":"+floats(h.centroidDenominator)+",\"updated_centroids_bits\":"+floats(h.updatedCentroids)+",\"variance_numerator_bits\":"+floats(h.varianceNumerator)+",\"variance_denominator_bits\":"+floats(h.varianceDenominator)+",\"standard_deviation_bits\":"+floats(h.deviation)+"}");
     }
 }

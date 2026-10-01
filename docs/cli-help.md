@@ -66,13 +66,29 @@ coordinates are RAS+ millimetres and use tagged ASCII legacy VTK. These
 commands expose selected standalone stages; they do not assemble the complete
 base MaCRUISE or LesionTOADS pipelines.
 
-Each of the seven standalone commands also accepts optional
+Each of the eight standalone commands also accepts optional
 `--provenance RUN.json`. After successful processing it writes a JSON sidecar
 with a schema version, command name, PyMaCRUISE version, resolved input and
 output paths, the `RAS` spatial convention, and effective parameters
 (including API defaults used by that command). Output directories are
 expanded into the individual output image paths. Optional inputs that were
 not supplied are omitted.
+
+### `pymacruise n4`
+
+```text
+pymacruise n4 --input T1.nii.gz --output T1-n4.nii.gz \
+  [--shrink-factor N] [--iterations N [N ...]] \
+  [--convergence-tolerance VALUE] [--spline-mesh X Y Z] \
+  [--rescale-intensities] [--provenance RUN.json]
+```
+
+Reads a finite, non-negative 3D intensity image and writes its N4-corrected
+image as `.nii.gz` in RAS orientation. The defaults match the selected
+wrapper's unadorned ANTs N4 command: shrink factor 4, four 50-iteration
+levels, zero convergence tolerance, a 1×1×1 spline mesh, and intensity
+rescaling off. ANTsPy is optional; install PyMaCRUISE with its `ants` extra
+to run this command. The N4 estimation itself is provided by ANTsPy/ANTs.
 
 ### `pymacruise ace`
 

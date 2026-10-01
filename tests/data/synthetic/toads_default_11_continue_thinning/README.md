@@ -16,13 +16,44 @@ the other ten classes. They sum to one. The growing ordering is
 The Java reference executes source-order growing, relation-list class
 adjacency, and the selected next initThinningLabels/propagateThinning
 default route (volumeRatio=0.5, limit=3). Registration and transformed
-shape generation are fixed outside the seam. It records all 177 growth
-events, the relation adjacency, all 1,728 thinning queue events, class volume
-bits, final labels, skeleton, availability, and residual queue. Python matches
-these traces and states exactly. Membership maxima match the existing labels,
-so thinning removes skeleton points while categorical labels remain fixed;
-this does not claim a full TOADS iteration or registration equivalence.
+shape generation are fixed outside the seam. It then executes the selected
+default exact computeCentroids and computeVariances branches using separate
+fixed image, intensity-field, centroid, and exponent inputs. The field is
+held fixed; inhomogeneity fitting is not included.
+
+The reference records all 177 growth events, relation adjacency, all 1,728
+thinning queue events, thinning state, centroid float32 accumulators and
+updates, and variance accumulators and deviations. Python matches these
+traces and outputs exactly. Membership maxima match the existing labels, so
+thinning removes skeleton points while categorical labels remain fixed. This
+validates one post-thinning statistics refresh; it does not claim full TOADS
+iteration or registration equivalence.
 
 Regenerate NIfTI inputs with generate_fixture.py, then regenerate the Java
 reference with
 sh scripts/generate_java_toads_default_11_continue_thinning_reference.sh.
+
+## P18cym exact membership continuation
+
+The companion `membership_reference.json` and
+`tests/test_toads_default_11_membership_continuation.py` extend that pinned
+P18cyl thinning and statistics state through one source-ordered
+`computeExactMemberships` pass. The fixture includes a second distinct
+synthetic RAS intensity channel and field; the Java harness computes the
+second channel's post-thinning centroid and variance with the same selected
+statistics formulas. The 11-class membership tensor is the fixed P18cyl
+state (its last axis indexes classes, not modalities), and its source float32
+contents are hash-pinned. Image-wide variances, class weights, transformed
+shapes, closest-label slots, smoothing priors, and atlas priors are explicit
+fixed inputs in `membership_parameters.json` and the NIfTI files.
+
+The Java reference compares updated centroid and standard-deviation bits for
+both channels and SHA-256 digests over every class-energy, denominator, and
+updated-membership float32 value, plus the objective float32 bits. The
+membership sweep follows source x/y/z/class order and preserves the fixed
+zero transformed-shape input. It does not perform registration, shape
+transformation, closest-label computation, or an outer-loop convergence
+decision. The second channel is synthetic test data, not patient imaging.
+
+Regenerate the companion reference with
+`sh scripts/generate_java_toads_default_11_membership_continuation_reference.sh`.

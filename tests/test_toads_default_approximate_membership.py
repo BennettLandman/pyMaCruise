@@ -50,6 +50,15 @@ def test_default_approximate_memberships_match_selected_java_reference() -> None
     assert REFERENCE["descriptor_class_types"] == list(DEFAULT_ATLAS_CLASS_TYPES)
     assert REFERENCE["approx"] == 3
     assert DESCRIPTOR.is_file()
+    evidence = REFERENCE["p18czo_evidence_sha256"]
+    for key, path in {
+        "harness": Path(__file__).parent / "java_reference/ToadsDefaultApproximateMembershipReferenceHarness.java",
+        "numerics": Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java",
+        "images": ROOT / "images.nii.gz",
+        "transformed_shapes": ROOT / "transformed_shapes.nii.gz",
+        "descriptor": DESCRIPTOR,
+    }.items():
+        assert evidence[key] == hashlib.sha256(path.read_bytes()).hexdigest(), key
     images, shapes = _fixture()
     originals = (images.copy(), shapes.copy())
     result = initialize_toads_default_approximate_memberships(
@@ -65,33 +74,56 @@ def test_default_approximate_memberships_match_selected_java_reference() -> None
     assert np.all(np.sum(result.memberships, axis=-1) > 0.0)
     assert np.all(result.best_class_indices < len(DEFAULT_ATLAS_CLASS_TYPES))
     assert np.any(result.best_class_indices == 10)
+    assert np.all(np.diff(np.sort(result.best_class_indices, axis=-1), axis=-1) > 0)
+    assert np.any(result.memberships[0, :, :, :] != 0.0)
     np.testing.assert_array_equal(images, originals[0])
     np.testing.assert_array_equal(shapes, originals[1])
 
 
 def test_default_approximate_memberships_preserve_unprocessed_voxels() -> None:
-    images, shapes = _fixture()
+    images = np.zeros((3, 3, 3, 1), dtype=np.float32)
+    shapes = np.zeros((3, 3, 3, 11), dtype=np.float32)
+    centers = np.zeros((1, 11), dtype=np.float32)
+    centers[0, 5] = 1.0
+    shapes[1, 1, 1, 5] = 1.0
     mask = np.zeros(images.shape[:3], dtype=bool)
-    mask[1:6, 1:5, 1:4] = True
+    mask[1, 1, 1] = True
     result = initialize_toads_default_approximate_memberships(
-        images, _centroids(), shapes, approx=3, process_mask=mask,
+        images, centers, shapes, approx=3, process_mask=mask,
     )
+    assert _bits(result.memberships) == REFERENCE["process_mask_case"]["memberships_bits"]
+    assert result.best_class_indices.ravel().astype(int).tolist() == REFERENCE["process_mask_case"]["best_class_indices"]
     assert np.count_nonzero(result.memberships[~mask]) == 0
     assert np.count_nonzero(result.best_class_indices[~mask]) == 0
     assert np.count_nonzero(result.memberships[mask]) > 0
 
 
 def test_default_approximate_memberships_keep_shape_seed_and_low_index_ties() -> None:
-    image = np.zeros((3, 3, 3, 1), dtype=np.float32)
+    image = np.zeros((1, 1, 1, 1), dtype=np.float32)
     centers = np.zeros((1, 11), dtype=np.float32)
-    shapes = np.zeros((3, 3, 3, 11), dtype=np.float32)
-    shapes[..., 5] = .8
+    centers[0, 5] = 1.0
+    shapes = np.zeros((1, 1, 1, 11), dtype=np.float32)
+    shapes[..., 5] = 1.0
     result = initialize_toads_default_approximate_memberships(
         image, centers, shapes, approx=3,
     )
-    # The max-shape class seeds slot 0. With uniform costs, strict ties leave
-    # the lowest remaining class indices in slots 1 and 2.
-    np.testing.assert_array_equal(result.best_class_indices[1, 1, 1], [5, 0, 1])
+    np.testing.assert_array_equal(
+        result.best_class_indices[0, 0, 0], REFERENCE["shape_seeded_membership_tie"]["indices"]
+    )
+    assert _bits(result.memberships[0, 0, 0]) == REFERENCE["shape_seeded_membership_tie"]["membership_bits"]
+
+
+def test_default_approximate_memberships_zero_cost_fallback_matches_java() -> None:
+    result = initialize_toads_default_approximate_memberships(
+        np.zeros((1, 1, 1, 1), dtype=np.float32),
+        np.zeros((1, 11), dtype=np.float32),
+        np.zeros((1, 1, 1, 11), dtype=np.float32),
+        approx=3,
+    )
+    np.testing.assert_array_equal(
+        result.best_class_indices[0, 0, 0], REFERENCE["zero_cost_tie"]["indices"]
+    )
+    assert _bits(result.memberships[0, 0, 0]) == REFERENCE["zero_cost_tie"]["membership_bits"]
 
 
 @pytest.mark.parametrize("approx", [0, 1, 11, 12])

@@ -9,11 +9,8 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 
-from pymacruise.toads_default_approximate_initial_membership import (
-    initialize_toads_default_approximate_initial_memberships,
-)
 from pymacruise.toads_default_approximate_registration import (
-    register_toads_default_approximate_atlas_pyramid,
+    initialize_and_register_toads_default_approximate_atlas,
 )
 from pymacruise.toads_default_atlas_membership import DEFAULT_ATLAS_CLASS_TYPES
 
@@ -21,7 +18,7 @@ from pymacruise.toads_default_atlas_membership import DEFAULT_ATLAS_CLASS_TYPES
 ROOT = Path(__file__).parent / "data" / "synthetic" / "toads_default_approximate_registration"
 JAVA = json.loads((ROOT / "java_reference.json").read_text())
 HARNESS = Path(__file__).parent / "java_reference" / "ToadsDefaultApproximateRegistrationReferenceHarness.java"
-HARNESS_SHA256 = "973592718d4d55e20aed157909e5deb566c5cf4a3a552e76b6eddaf1a11abd0e"
+HARNESS_SHA256 = "9e52b8511b2fe1f874d15d60691873ee064169342d080478d446c3911b894827"
 DESCRIPTOR = Path(__file__).parents[1] / "data" / "atlases" / "cruise-atlas-10obj-toads2008.txt"
 
 
@@ -70,34 +67,43 @@ def test_default_approximate_pyramid_matches_selected_java_reference() -> None:
     assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == HARNESS_SHA256
     assert JAVA["wrapper_source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
     assert JAVA["preprocess_source_sha256"] == "31296a4c154ac5366dcd78aa7e5da28bb1c56163f1e230cc451cb3e4feb071e7"
+    assert JAVA["atlas_source_sha256"] == "e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2"
     assert JAVA["class_types"] == list(DEFAULT_ATLAS_CLASS_TYPES)
     assert JAVA["call_order"] == [
         "initialMemberships", "setImageInfo", "initShapeRegistration",
         "setTransform(preprocess)", "updateShapeRegistration", "registerShapesPyramid",
     ]
     assert JAVA["pyramid_dispatch"] == "registerShapesApproxPyramid"
+    assert 1 < JAVA["approx"] < len(JAVA["class_types"])
+    assert JAVA["registration_harness_scope"].startswith(
+        "method-level selected-source composition begins with a supplied nonzero pre-pyramid rigid transform"
+    )
     assert JAVA["scale_order"] == [4, 2]
     assert JAVA["registered_class_indices"] == list(range(1, 11))
     assert hashlib.sha256(DESCRIPTOR.read_bytes()).hexdigest() == JAVA["descriptor_sha256"]
+    assert hashlib.sha256((ROOT / "images.nii.gz").read_bytes()).hexdigest() == JAVA["image_sha256"]
+    assert hashlib.sha256((ROOT / "atlas_shapes.nii.gz").read_bytes()).hexdigest() == JAVA["atlas_shapes_sha256"]
 
     images, atlas_shapes = _load_inputs()
     originals = tuple(values.copy() for values in (images, atlas_shapes))
-    init = initialize_toads_default_approximate_initial_memberships(
-        images, _centroids(), approx=JAVA["approx"],
-    )
-    assert _bits(init.memberships) == JAVA["initial_memberships_bits"]
-    np.testing.assert_array_equal(
-        init.best_class_indices.ravel().astype(int), JAVA["initial_best_indices"],
-    )
-    result = register_toads_default_approximate_atlas_pyramid(
-        init,
+    result = initialize_and_register_toads_default_approximate_atlas(
+        images,
+        _centroids(),
         atlas_shapes,
+        approx=JAVA["approx"],
         image_resolutions_mm=(.9, 1.2, 1.45),
         template_resolutions_mm=(.9, 1.2, 1.45),
         initial_transform=(.004, -.003, .002, .04, -.03, .02),
         levels=JAVA["levels"],
         max_iterations=3,
     )
+    init = result.initialization
+    assert _bits(init.memberships) == JAVA["initial_memberships_bits"]
+    np.testing.assert_array_equal(
+        init.best_class_indices.ravel().astype(int), JAVA["initial_best_indices"],
+    )
+    assert _bits(result.levels[0].initial_transform) == JAVA["initial_transform_bits"]
+    assert _bits(result.levels[1].initial_transform) == _bits(result.levels[0].result.transform)
     assert len(result.levels) == 2
     for actual, reference in zip(result.levels, JAVA["stages"]):
         assert actual.scale == reference["scale"]

@@ -14,6 +14,8 @@ import edu.jhmi.rad.medic.utilities.Numerics;
 /** Selected atlas-aware initialApproxMemberships excerpt for default TOADS. */
 public final class ToadsDefaultApproximateMembershipReferenceHarness {
     private static final String SOURCE_SHA="31296a4c154ac5366dcd78aa7e5da28bb1c56163f1e230cc451cb3e4feb071e7";
+    private static final String ALGORITHM_SHA="b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d";
+    private static final String NUMERICS_SHA="13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb";
     private static final String DESCRIPTOR_SHA="cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939";
     private static final int APPROX=3;
     private static final class Volume {
@@ -44,6 +46,10 @@ public final class ToadsDefaultApproximateMembershipReferenceHarness {
         for(byte[][][] x:values)for(byte[][] y:x)for(byte[] z:y)for(byte v:z){if(!first)out.append(',');first=false;out.append(v&255);}
         return out.append(']').toString();
     }
+    private static String vector(float[] values){
+        StringBuilder out=new StringBuilder("[");for(int i=0;i<values.length;i++){if(i>0)out.append(',');out.append(bits(values[i]));}
+        return out.append(']').toString();
+    }
     private static String strings(List<String> values){
         StringBuilder out=new StringBuilder("[");
         for(int i=0;i<values.size();i++){if(i>0)out.append(',');out.append('"').append(values.get(i)).append('"');}
@@ -65,6 +71,21 @@ public final class ToadsDefaultApproximateMembershipReferenceHarness {
         for(int c=0;c<channels;c++)for(int k=0;k<classes;k++)out[c][k]=.19f+.021f*k+.013f*c;
         return out;
     }
+    private static Object[] selectedVoxel(float[] image,float[][] center,float[] shape){
+        int classes=shape.length;float[] score=new float[classes];float den=0.0f;
+        for(int k=0;k<classes;k++){
+            score[k]=0.0f;
+            for(int c=0;c<image.length;c++){float delta=image[c]-center[c][k];score[k]+=delta*delta;}
+            for(int m=0;m<classes;m++)if(m!=k){float prior=shape[m];score[k]+=prior*prior;}
+            if(score[k]>1e-20f)score[k]=1.0f/score[k];else score[k]=1e20f;
+            den+=score[k];
+        }
+        if(den>0.0f)for(int k=0;k<classes;k++)score[k]/=den;
+        byte[] best=new byte[APPROX];float[] memberships=new float[APPROX];
+        Numerics.bestIndex(best,memberships,score,APPROX,Numerics.bestIndex(shape));
+        return new Object[]{best,memberships};
+    }
+    private static String byteVector(byte[] values){StringBuilder out=new StringBuilder("[");for(int i=0;i<values.length;i++){if(i>0)out.append(',');out.append(values[i]&255);}return out.append(']').toString();}
     private static void selectedInitialApprox(Volume image,Volume shape,float[][] center,float[][][][] memberships,byte[][][][] best){
         int classes=shape.nc,channels=image.nc;
         for(int x=0;x<image.nx;x++)for(int y=0;y<image.ny;y++)for(int z=0;z<image.nz;z++){
@@ -93,8 +114,27 @@ public final class ToadsDefaultApproximateMembershipReferenceHarness {
         float[][][][] memberships=new float[image.nx][image.ny][image.nz][APPROX];
         byte[][][][] best=new byte[image.nx][image.ny][image.nz][APPROX];
         selectedInitialApprox(image,shape,centroids(image.nc,shape.nc),memberships,best);
-        System.out.println("{\"source_sha256\":\""+SOURCE_SHA+"\",\"descriptor_sha256\":\""+DESCRIPTOR_SHA+
-            "\",\"descriptor_class_types\":"+strings(types)+",\"approx\":"+APPROX+
-            ",\"initial_memberships_bits\":"+floats(memberships)+",\"best_class_indices\":"+bytes(best)+"}");
+        StringBuilder output=new StringBuilder("{\"source_sha256\":\"").append(SOURCE_SHA).append("\",\"algorithm_sha256\":\"").append(ALGORITHM_SHA)
+            .append("\",\"numerics_sha256\":\"").append(NUMERICS_SHA)
+            .append("\",\"method_scope\":\"atlas-aware approximate overload only; requires approx < classes\"")
+            .append(",\"active_short_wrapper_route\":\"useApprox=false; approx=classes=11; initialMemberships selects exact overload\"")
+            .append(",\"descriptor_sha256\":\"").append(DESCRIPTOR_SHA)
+            .append("\",\"descriptor_class_types\":").append(strings(types)).append(",\"approx\":").append(APPROX)
+            .append(",\"initial_memberships_bits\":").append(floats(memberships)).append(",\"best_class_indices\":").append(bytes(best));
+        float[][] tiedCenters=new float[1][11];tiedCenters[0][5]=1.0f;float[] tiedShape=new float[11];tiedShape[5]=1.0f;
+        Object[] tied=selectedVoxel(new float[]{0.0f},tiedCenters,tiedShape);
+        output.append(",\"shape_seeded_membership_tie\":{\"indices\":").append(byteVector((byte[])tied[0]))
+            .append(",\"membership_bits\":").append(vector((float[])tied[1])).append('}');
+        Object[] zero=selectedVoxel(new float[]{0.0f},new float[1][11],new float[11]);
+        output.append(",\"zero_cost_tie\":{\"indices\":").append(byteVector((byte[])zero[0]))
+            .append(",\"membership_bits\":").append(vector((float[])zero[1])).append('}');
+        float[][][][] maskedMemberships=new float[3][3][3][APPROX];byte[][][][] maskedBest=new byte[3][3][3][APPROX];
+        for(int x=1;x<2;x++)for(int y=1;y<2;y++)for(int z=1;z<2;z++){
+            Object[] active=selectedVoxel(new float[]{0.0f},tiedCenters,tiedShape);
+            maskedMemberships[x][y][z]=(float[])active[1];maskedBest[x][y][z]=(byte[])active[0];
+        }
+        output.append(",\"process_mask_case\":{\"dims\":[3,3,3],\"memberships_bits\":").append(floats(maskedMemberships))
+            .append(",\"best_class_indices\":").append(bytes(maskedBest)).append("}}");
+        System.out.println(output);
     }
 }

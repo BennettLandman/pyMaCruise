@@ -94,6 +94,7 @@ def compute_lesion_toads_standard13_voxel(
     brainstem_distance: int,
     gm_flag: bool = False,
     spread: float = 0.5,
+    source_zero_variance_nan: bool = False,
 ) -> Standard13VoxelResult:
     """Update one interior voxel from a complete fixed pre-call state.
 
@@ -103,7 +104,11 @@ def compute_lesion_toads_standard13_voxel(
     values are the transformed atlas probabilities at this voxel. Distance
     maps are supplied as outputs of the source's optional distance builders;
     their generation is outside this composition. Only an active positive
-    shape/prior profile is accepted, matching the source guard.
+    shape/prior profile is accepted, matching the source guard. The narrow
+    ``source_zero_variance_nan`` path is reserved for selected GM-enabled
+    continuation calls with finite inputs and zero source deviations; it
+    preserves computed Java IEEE NaNs while the default continues to reject
+    computed nonfinite membership terms.
     """
     image = np.asarray(image_values, dtype=np.float32)
     centers = np.asarray(class_centroids, dtype=np.float32)
@@ -125,6 +130,8 @@ def compute_lesion_toads_standard13_voxel(
     lesion_rel = np.float32(lesion_relation)
     if not isinstance(gm_flag, (bool, np.bool_)):
         raise ValueError("gm_flag must be boolean")
+    if not isinstance(source_zero_variance_nan, (bool, np.bool_)):
+        raise ValueError("source_zero_variance_nan must be boolean")
 
     count = 13
     if image.shape != (2,) or centers.shape != (2, count) or deviations.shape != centers.shape:
@@ -145,6 +152,11 @@ def compute_lesion_toads_standard13_voxel(
                priors, smoothing_coefficients, current, neighbors, lesion_faces, black_hole_faces)
     if any(not np.isfinite(array).all() for array in numeric):
         raise ValueError("numeric state must contain only finite values")
+    if source_zero_variance_nan and (
+        not gm_flag
+        or not (np.any(deviations == np.float32(0.0)) or np.any(lesion_deviation == np.float32(0.0)))
+    ):
+        raise ValueError("source zero-variance NaNs require GMflag and a zero source deviation")
     if np.any(shapes <= np.float32(0.0)):
         raise ValueError("all 13 classes must have positive transformed shape at this voxel")
 
@@ -216,14 +228,41 @@ def compute_lesion_toads_standard13_voxel(
             has_lesion=True, lesion_class_index=10, lesion_class_type="LESION",
         )
         relation = "direct" if direct[k] else "prior"
-        current[k] = convert_lesion_toads_class_membership(
-            float(prior_update.class_membership_data_term), float(shapes[k]), relation_type=relation,
-        )
+        if source_zero_variance_nan:
+            # The selected Java branch compares the computed term to ZERO;
+            # NaN therefore selects INF and IEEE NaNs in the energy map remain
+            # available for the subsequent objective accumulation.
+            with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+                current[k] = (
+                    np.float32(np.float32(1.0) / prior_update.class_membership_data_term)
+                    if prior_update.class_membership_data_term > np.float32(1.0e-10)
+                    else np.float32(1.0e10)
+                )
+            if relation == "prior":
+                doubled_shape = np.float32(np.float32(2.0) * shapes[k])
+                factor = np.float32(1.0) if np.float32(1.0) < doubled_shape else doubled_shape
+                current[k] = np.float32(factor * current[k])
+        else:
+            current[k] = convert_lesion_toads_class_membership(
+                float(prior_update.class_membership_data_term), float(shapes[k]), relation_type=relation,
+            )
         class_energy[k] = prior_update.class_energy
         if kind == "LESION":
-            lesion = convert_lesion_toads_class_membership(
-                float(prior_update.lesion_membership_data_term), float(shapes[k]), relation_type=relation,
-            )
+            if source_zero_variance_nan:
+                with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+                    lesion = (
+                        np.float32(np.float32(1.0) / prior_update.lesion_membership_data_term)
+                        if prior_update.lesion_membership_data_term > np.float32(1.0e-10)
+                        else np.float32(1.0e10)
+                    )
+                if relation == "prior":
+                    doubled_shape = np.float32(np.float32(2.0) * shapes[k])
+                    factor = np.float32(1.0) if np.float32(1.0) < doubled_shape else doubled_shape
+                    lesion = np.float32(factor * lesion)
+            else:
+                lesion = convert_lesion_toads_class_membership(
+                    float(prior_update.lesion_membership_data_term), float(shapes[k]), relation_type=relation,
+                )
             lesion_rel = np.float32(1.0) if direct[k] else np.float32(
                 np.float32(2.0) * shapes[k] if np.float32(2.0) * shapes[k] < np.float32(1.0) else 1.0
             )

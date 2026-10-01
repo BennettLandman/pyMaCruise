@@ -22,6 +22,7 @@ import edu.jhmi.rad.medic.utilities.Numerics;
  */
 public final class ToadsLesionApproximateRegistrationReferenceHarness {
     private static final String WRAPPER_SHA="b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d";
+    private static final String LESION_WRAPPER_SHA="556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb";
     private static final String PREPROCESS_SHA="31296a4c154ac5366dcd78aa7e5da28bb1c56163f1e230cc451cb3e4feb071e7";
     private static final String ATLAS_SHA="e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2";
     private static final int APPROX=3, LEVELS=3, MAX_ITER=3, SUBSAMPLE=2;
@@ -72,6 +73,21 @@ public final class ToadsLesionApproximateRegistrationReferenceHarness {
     private static float[][] centroids(int channels,int classes){
         float[][] out=new float[channels][classes];for(int c=0;c<channels;c++)for(int k=0;k<classes;k++)out[c][k]=.19f+.021f*k+.013f*c;return out;
     }
+    private static Object[] initializeVoxel(float[] image,float[][] center,float[] shape){
+        int classes=shape.length;float[] score=new float[classes];float den=0.0f;
+        for(int k=0;k<classes;k++){
+            score[k]=0.0f;
+            for(int c=0;c<image.length;c++){float delta=image[c]-center[c][k];score[k]+=delta*delta;}
+            for(int m=0;m<classes;m++)if(m!=k)score[k]+=shape[m]*shape[m];
+            if(score[k]>1e-20f)score[k]=1.0f/score[k];else score[k]=1e20f;
+            den+=score[k];
+        }
+        if(den>0.0f)for(int k=0;k<classes;k++)score[k]/=den;
+        byte[] best=new byte[APPROX];float[] selected=new float[APPROX];
+        Numerics.bestIndex(best,selected,score,APPROX,Numerics.bestIndex(shape));
+        return new Object[]{best,selected};
+    }
+    private static String byteVector(byte[] values){StringBuilder s=new StringBuilder("[");for(int i=0;i<values.length;i++){if(i>0)s.append(',');s.append(values[i]&255);}return s.append(']').toString();}
     private static void initialize(Volume image,Volume prior,float[][] center,float[][][][] mem,byte[][][][] best){
         int classes=prior.nc,channels=image.nc;
         for(int x=0;x<image.nx;x++)for(int y=0;y<image.ny;y++)for(int z=0;z<image.nz;z++){
@@ -179,6 +195,18 @@ public final class ToadsLesionApproximateRegistrationReferenceHarness {
             .append(",\"later_wrapper_context\":[\"segmentation state exists\",\"initialMemberships(...,atlas,...)\",\"updateShapeRegistration\",\"registerShapes\"]")
             .append(",\"initial_dims\":[").append(image.nx).append(',').append(image.ny).append(',').append(image.nz)
             .append("],\"initial_memberships_bits\":").append(floatArray(initMem)).append(",\"initial_best_indices\":").append(byteArray(initBest)).append('}');
+        out.setLength(out.length()-1);
+        out.append(",\"lesion_wrapper_source_sha256\":\"").append(LESION_WRAPPER_SHA).append('\"')
+            .append(",\"selected_wrapper\":\"AlgorithmMultipleToads\"")
+            .append(",\"source_call_order\":[\"new MultipleToadSegmentation(...)\",\"segmentation.initCentroids(centroids)\",\"segmentation.setLesionCentroid(...)\",\"preprocess.initialMemberships(segmentation.getMemberships(),segmentation.getBest(),atlas,approx,centroids,classes)\",\"atlas.updateShapeRegistration(...)\",\"atlas.registerShapes() when alignShapes\"]")
+            .append(",\"reachability_classification\":{\"selected\":\"atlas-aware overload is reached from AlgorithmMultipleToads after segmentation initialization\",\"initial_pyramid\":\"earlier AlgorithmMultipleToads call is the no-atlas overload\",\"dedicated_lesion_wrapper\":\"AlgorithmLesionToads uses the no-atlas overload for its initial registration pyramid\",\"scope\":\"overload method only; no registration result claimed\"}");
+        float[] tieImage={0.0f};float[][] tieCentroids=new float[1][13];tieCentroids[0][5]=1.0f;float[] tieShape=new float[13];tieShape[5]=1.0f;
+        Object[] tie=initializeVoxel(tieImage,tieCentroids,tieShape);
+        out.append(",\"shape_seeded_membership_tie\":{\"indices\":").append(byteVector((byte[])tie[0]))
+            .append(",\"membership_bits\":").append(vector((float[])tie[1])).append('}');
+        Object[] zero=initializeVoxel(new float[]{0.0f},new float[1][13],new float[13]);
+        out.append(",\"zero_cost_tie\":{\"indices\":").append(byteVector((byte[])zero[0]))
+            .append(",\"membership_bits\":").append(vector((float[])zero[1])).append('}').append('}');
         System.out.println(out);
     }
 }

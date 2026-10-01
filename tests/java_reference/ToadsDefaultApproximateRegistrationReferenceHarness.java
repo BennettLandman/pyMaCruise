@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -58,6 +59,7 @@ public final class ToadsDefaultApproximateRegistrationReferenceHarness {
     private static String byteArray(byte[][][][] a){StringBuilder s=new StringBuilder("[");boolean first=true;for(byte[][][] x:a)for(byte[][] y:x)for(byte[] z:y)for(byte v:z){if(!first)s.append(',');first=false;s.append(v&255);}return s.append(']').toString();}
     private static String floatArray(float[][][][] a){StringBuilder s=new StringBuilder("[");boolean first=true;for(float[][][] x:a)for(float[][] y:x)for(float[] z:y)for(float v:z){if(!first)s.append(',');first=false;s.append(bits(v));}return s.append(']').toString();}
     private static String vector(float[] a){StringBuilder s=new StringBuilder("[");for(int i=0;i<a.length;i++){if(i>0)s.append(',');s.append(bits(a[i]));}return s.append(']').toString();}
+    private static String sha256(Path file)throws Exception{byte[] digest=MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file));StringBuilder out=new StringBuilder();for(byte value:digest)out.append(String.format("%02x",value&255));return out.toString();}
     private static String floats(float[] a){StringBuilder s=new StringBuilder("[");for(int i=0;i<a.length;i++){if(i>0)s.append(',');s.append(Float.toString(a[i]));}return s.append(']').toString();}
     private static List<String> classTypes(Path descriptor)throws IOException{
         List<String> lines=Files.readAllLines(descriptor);int head=-1;
@@ -186,11 +188,14 @@ public final class ToadsDefaultApproximateRegistrationReferenceHarness {
             l=runLevel(l,trans,fi,ft,IMAGE_RES,TEMPLATE_RES);trans=l.finalTransform;stageJson.add(levelJson(l));
         }
         StringBuilder out=new StringBuilder("{\"wrapper_source_sha256\":\"").append(WRAPPER_SHA).append("\",\"preprocess_source_sha256\":\"").append(PREPROCESS_SHA)
+            .append("\",\"image_sha256\":\"").append(sha256(Path.of(args[0])))
+            .append("\",\"atlas_shapes_sha256\":\"").append(sha256(Path.of(args[1])))
             .append("\",\"atlas_source_sha256\":\"").append(ATLAS_SHA).append("\",\"descriptor_sha256\":\"").append(DESCRIPTOR_SHA).append("\",\"approx\":").append(APPROX).append(",\"levels\":").append(LEVELS)
             .append(",\"subsample\":").append(SUBSAMPLE).append(",\"initial_transform_bits\":").append(vector(INITIAL))
             .append(",\"class_types\":[\"MASK\",\"OPTIMIZED_CSF\",\"OPTIMIZED_CSF\",\"OPTIMIZED_GM\",\"OPTIMIZED_GM\",\"OPTIMIZED_GM\",\"OPTIMIZED_GM\",\"OPTIMIZED_GM\",\"OPTIMIZED_WM\",\"OPTIMIZED_WM\",\"OPTIMIZED_WM\"]")
             .append(",\"call_order\":[\"initialMemberships\",\"setImageInfo\",\"initShapeRegistration\",\"setTransform(preprocess)\",\"updateShapeRegistration\",\"registerShapesPyramid\"]")
             .append(",\"pyramid_dispatch\":\"registerShapesApproxPyramid\",\"scale_order\":[4,2],\"coarse_subsample\":2")
+            .append(",\"registration_harness_scope\":\"method-level selected-source composition begins with a supplied nonzero pre-pyramid rigid transform; wrapper call order is source metadata, not execution of AlgorithmMultipleToads or init/update Java wrapper methods; crop/orientation derivation of preprocess.getTransform is outside this fixture\"")
             .append(",\"initial_dims\":[").append(image.nx).append(',').append(image.ny).append(',').append(image.nz)
             .append("],\"initial_memberships_bits\":").append(floatArray(initMem)).append(",\"initial_best_indices\":").append(byteArray(initBest))
             .append(",\"registered_class_indices\":[1,2,3,4,5,6,7,8,9,10],\"stages\":[").append(String.join(",",stageJson))

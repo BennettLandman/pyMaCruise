@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import nibabel as nib
@@ -8,11 +9,14 @@ import numpy as np
 
 from pymacruise.toads_default_continue_thinning import toads_default_continue_thinning
 from pymacruise.toads_default_atlas_membership import DEFAULT_ATLAS_CLASS_TYPES
+from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
+from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
 from pymacruise.toads_iteration import toads_continuing_iteration
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "toads_default_11_continue_thinning"
 REFERENCE = ROOT / "java_reference.json"
+JAVA_HARNESS = Path(__file__).parent / "java_reference" / "ToadsDefault11ContinueThinningReferenceHarness.java"
 
 
 def _load(name: str) -> np.ndarray:
@@ -41,7 +45,11 @@ def test_selected_11_class_continue_growth_relation_and_next_thinning_match_java
         "fixed_zero_transformed_shapes",
         "initThinningLabels",
         "propagateThinning",
+        "computeExactCentroids",
+        "computeExactVariances",
     ]
+    assert ref["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    assert ref["harness_sha256"] == hashlib.sha256(JAVA_HARNESS.read_bytes()).hexdigest()
     seg = _load("initial_segmentation.nii.gz").astype(np.int16)
     skeleton = _load("initial_skeleton.nii.gz").astype(np.int16)
     memberships = _load("exact_memberships.nii.gz").astype(np.float32)
@@ -70,6 +78,8 @@ def test_selected_11_class_continue_growth_relation_and_next_thinning_match_java
         "exact_memberships.nii.gz",
         "growing_ordering.nii.gz",
         "transformed_shapes.nii.gz",
+        "image_values.nii.gz",
+        "intensity_field.nii.gz",
     )]
     for image in loaded[1:]:
         np.testing.assert_array_equal(image.affine, loaded[0].affine)
@@ -137,3 +147,46 @@ def test_selected_11_class_continue_growth_relation_and_next_thinning_match_java
     assert _labels(thinning.segmentation) == ref["segmentation"]
     assert _labels(thinning.skeleton, empty=True) == ref["skeleton"]
     assert "".join("1" if v else "0" for v in thinning.available.ravel()) == ref["available"]
+
+    # Pin the incoming P18cyk next-thinning state before statistics refresh.
+    assert thinning.segmentation.shape == seg.shape
+    assert thinning.segmentation.min() >= 0 and thinning.segmentation.max() < len(DEFAULT_ATLAS_CLASS_TYPES)
+    assert _labels(thinning.segmentation) == ref["segmentation"]
+    assert thinning.class_volumes.view(np.int32).astype(int).tolist() == ref["final_volumes_bits"]
+
+    statistics = json.loads((ROOT / "statistics_inputs.json").read_text())
+    image_values = _load("image_values.nii.gz").astype(np.float32)[..., None]
+    intensity_field = _load("intensity_field.nii.gz").astype(np.float32)[..., None]
+    initial_centroids = np.asarray([statistics["initial_centroids"]], dtype=np.float32)
+    category_exponents = np.asarray([statistics["category_exponents"]], dtype=np.float32)
+    statistics_inputs = (
+        image_values.copy(),
+        intensity_field.copy(),
+        memberships.copy(),
+        initial_centroids.copy(),
+        category_exponents.copy(),
+        thinning.segmentation.copy(),
+    )
+    refreshed_centroids = toads_default_exact_centroid_update(
+        image_values,
+        memberships,
+        initial_centroids,
+        category_exponents,
+        intensity_field=intensity_field,
+        smoothness=statistics["centroid_smoothness"],
+    )
+    deviations = toads_default_exact_class_variances(
+        image_values,
+        memberships,
+        refreshed_centroids,
+        thinning.segmentation,
+        intensity_field=intensity_field,
+    )
+    assert refreshed_centroids.ravel().view(np.int32).astype(int).tolist() == ref["updated_centroids_bits"]
+    assert deviations.ravel().view(np.int32).astype(int).tolist() == ref["standard_deviation_bits"]
+    for current, previous in zip(
+        (image_values, intensity_field, memberships, initial_centroids, category_exponents, thinning.segmentation),
+        statistics_inputs,
+        strict=True,
+    ):
+        np.testing.assert_array_equal(current, previous)
