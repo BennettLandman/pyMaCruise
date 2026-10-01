@@ -13,10 +13,12 @@
   ],
   "shape_layout": "(x,y,z,class), 14x14x14x11 float32; deterministic positive values from 0.35 to 0.95",
   "shape_formula": "shape[x,y,z,k] = float32(0.35 + ((7*x + 11*y + 13*z + 17*k) mod 61) / 100)",
-  "upstream_state": "the selected synthetic grow/thin state and two fitted channels remain fixed; shapes are loaded after dynamic statistics/image variances and before membership refresh",
-  "shape_applications": "Java/Python selected membership formula uses shape[k]^2 in inverse shape prior, shape-relation suppression/factors, direct/neighbor relation branches, and smoothing priors",
-  "scope_limit": "This validates the selected two-channel membership continuation, not shape-driven upstream growth/thinning or full TOADS.",
+  "upstream_state": "the selected synthetic prior grow/thin state and two fitted channels remain fixed; the nonzero shape map is supplied before membership refresh, whose result feeds the next source-ordered growing pass",
+  "shape_applications": "The selected membership formula uses shape[k]^2 in inverse shape priors and shape-relation suppression/factors; smoothing priors are also applied in that membership pass",
+  "next_growth_evidence": "The Java-referenced nonzero-shape pass and zero-shape baseline each process 391 queue entries; nonzero shapes yield 50 topology accepts and 299 rejects, while zero shapes yield 50 accepts and 323 rejects. Queue and topology traces differ although this phantom reaches the same final labels.",
+  "scope_limit": "This validates a selected two-channel membership-to-next-growing continuation with the prior grow/thin state fixed. It does not recompute the preceding grow/thin state with nonzero shapes, run registration, or complete TOADS.",
   "harness_sha256": "7847be881ece3c01fbd87f97a400a9645c7e9c5effe824cea13fc1925443887e",
   "shape_array_sha256": "97b9e7f0f410eda5d5bf287598d3602165dcc271903f23c1f120261f586daa77",
-  "shape_file_sha256": "21375eb0f20310402ce52cfc152a929b49defe8b0995d907fdf9f8651c7c406a"
+  "shape_file_sha256": "21375eb0f20310402ce52cfc152a929b49defe8b0995d907fdf9f8651c7c406a",
+  "next_growth_harness_sha256": "b4f7e9f19373bbd106ffe47321e2f134ed6070327717bc168eb68ded06bc5264"
 }
