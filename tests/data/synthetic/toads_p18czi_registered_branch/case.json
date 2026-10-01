@@ -1,0 +1,15 @@
+{
+  "case_name": "P18czh exact memberships through next carried registration/control transition",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "iteration": 7,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "relation_limit": 1,
+  "shape_maps": "fixed all-zero synthetic maps",
+  "registration_initialization": "carry the selected P18czf rigid transform and prior objective",
+  "scope": "synthetic single-channel, 11-class, zero-shape next registration/control branch; not full TOADS"
+}
