@@ -1,0 +1,13 @@
+{
+  "case_name": "P18cza exact membership through carried-transform registration and control",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "membership_class_count": 11,
+  "iteration": 5,
+  "maximum_iterations": 8,
+  "convergence_threshold": 0.0,
+  "registration": "rigid VandyCRUISE registerShapes using the prior registered transform and five-step cap",
+  "previous_energy": "P18cyx branch membership objective",
+  "scope": "registration and stop/growth control handoff only; no next growth or relation pass"
+}
