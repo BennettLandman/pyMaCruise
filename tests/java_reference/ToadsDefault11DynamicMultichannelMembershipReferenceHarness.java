@@ -10,7 +10,7 @@ import java.security.MessageDigest;
 public final class ToadsDefault11DynamicMultichannelMembershipReferenceHarness extends ToadsDefault11ContinueThinningReferenceHarness {
     private static final int NC=2;
     private static final float SMOOTH=.043f, FACTOR=.64f, COEFFICIENT=.16f, PRIOR_SCALE=.05f;
-    private static final float[] MODALITY={.73f,.46f}, IMAGE_VARIANCE={.61f,.34f};
+    private static final float[] MODALITY={.73f,.46f};
     private static final float[] SMOOTH_PRIOR={.65f,.71f,.84f,.91f,1.02f,1.13f,.76f,.88f,1.05f,1.17f,.82f};
     private static final float[] ATLAS_PRIOR={.10f,.08f,.09f,.11f,.12f,.09f,.10f,.11f,.07f,.06f,.07f};
     private static final float[][] VARIANCE_WEIGHT={
@@ -25,6 +25,7 @@ public final class ToadsDefault11DynamicMultichannelMembershipReferenceHarness e
     private final float[][][][] energy=new float[N][N][N][C];
     private final float[][][] denominator=new float[N][N][N];
     private final PowerTable[][] powers=new PowerTable[3][NC];
+    private final float[] imageVariance=new float[NC], imageStddev=new float[NC];
     private float objective=0.0f;
 
     private static float secondImage(int x,int y,int z) {
@@ -76,15 +77,46 @@ public final class ToadsDefault11DynamicMultichannelMembershipReferenceHarness e
             deviations[c][k]=den>0.0f?(float)Math.sqrt(num/den):0.0f;
         }
     }
+    private void computeImageVariance() {
+        float sum=0.0f;
+        for(int c=0;c<NC;c++) {
+            float num=0.0f,den=0.0f;
+            // P18's selected default atlas class zero is MASK. The source
+            // computeExactImageVariance switch contributes optimized classes
+            // only; the MASK branch contributes neither numerator nor weight.
+            for(int k=1;k<C;k++)for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++) {
+                float mem=mems[x][y][z][k],weight=mem*mem+1e-30f;
+                float corrected=fields2[x][y][z][c]*images2[x][y][z][c];
+                float residual=corrected-centers[c][k],diff=residual*residual;
+                num+=weight*diff*diff;
+                den+=weight;
+            }
+            imageVariance[c]=num>0.0f?den/num:1.0e10f;
+            sum+=imageVariance[c];
+        }
+        for(int c=0;c<NC;c++) {
+            imageStddev[c]=(float)Math.sqrt(imageVariance[c]);
+            imageVariance[c]=imageVariance[c]/sum;
+        }
+        float scale=(1.0f-PRIOR_SCALE)/PRIOR_SCALE;
+        for(int k=0;k<C;k++)for(int m=0;m<C;m++)if(k!=m) {
+            float distance=0.0f;
+            for(int c=0;c<NC;c++) {
+                float d=centers[c][k]-centers[c][m],sumStd=deviations[c][k]+deviations[c][m];
+                float term=imageVariance[c]*d;term*=d;term/=sumStd;term/=sumStd;distance+=term;
+            }
+            similarity[k][m]=1.0f/(1.0f+scale*distance);
+        }
+    }
     private void updateMemberships() {
         for(int type=0;type<3;type++)for(int c=0;c<NC;c++)powers[type][c]=new PowerTable(0,4,.000001f,type==0?.8f:1.0f);
         for(int x=1;x<N-1;x++)for(int y=1;y<N-1;y++)for(int z=1;z<N-1;z++)for(int k=0;k<C;k++) {
             if(CATEGORY[k]<0) {
-                for(int c=0;c<NC;c++){float w=MODALITY[c]*VARIANCE_WEIGHT[c][k];w*=IMAGE_VARIANCE[c];float v=images2[x][y][z][c];if(v!=0.0f)energy[x][y][z][k]+=w;}
+                for(int c=0;c<NC;c++){float w=MODALITY[c]*VARIANCE_WEIGHT[c][k];w*=imageVariance[c];float v=images2[x][y][z][c];if(v!=0.0f)energy[x][y][z][k]+=w;}
             } else for(int c=0;c<NC;c++) {
                 float corrected=fields2[x][y][z][c]*images2[x][y][z][c],residual=corrected-centers[c][k],d=residual*residual;
                 double term=powers[CATEGORY[k]][c].lookup((double)d,(double)EXPONENT[c][k]);
-                float w=MODALITY[c]*VARIANCE_WEIGHT[c][k];w*=IMAGE_VARIANCE[c];
+                float w=MODALITY[c]*VARIANCE_WEIGHT[c][k];w*=imageVariance[c];
                 energy[x][y][z][k]=(float)(energy[x][y][z][k]+w*term);
             }
         }
@@ -118,8 +150,9 @@ public final class ToadsDefault11DynamicMultichannelMembershipReferenceHarness e
         try {
             ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();
             ToadsDefault11DynamicMultichannelMembershipReferenceHarness h=new ToadsDefault11DynamicMultichannelMembershipReferenceHarness();
-            h.initialize();h.grow();h.refreshRelationAndInitializeThinning();h.thin();h.loadTwoChannels(Path.of(args[0]));h.refreshMultichannelStatistics();h.updateMemberships();
-            System.out.print("{\"reference_scope\":\"selected Java formula harness; source-connected synthetic grow/thin state, supplied two-channel fields, fixed modality/image/class weights and zero shape maps\",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"power_table_source_sha256\":\"2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae\",\"segmentation\":\""+labels(h.seg)+"\",\"centroids_channel0_bits\":"+bits(h.centers[0])+",\"centroids_channel1_bits\":"+bits(h.centers[1])+",\"deviations_channel0_bits\":"+bits(h.deviations[0])+",\"deviations_channel1_bits\":"+bits(h.deviations[1])+",\"membership_sha256\":\""+hash(h.mems)+"\",\"denominator_sha256\":\""+hash(h.denominator)+"\",\"class_energy_sha256\":\""+hash(h.energy)+"\",\"objective_bits\":"+Float.floatToIntBits(h.objective)+"}");
+            h.initialize();h.grow();h.refreshRelationAndInitializeThinning();h.thin();h.loadTwoChannels(Path.of(args[0]));h.refreshMultichannelStatistics();h.computeImageVariance();h.updateMemberships();
+            System.out.print("{\"reference_scope\":\"selected Java formula harness; source-connected synthetic grow/thin state, supplied two-channel fields, dynamic exact image variances, fixed modality/class weights and zero shape maps\",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\",\"wrapper_source_sha256\":\"b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d\",\"power_table_source_sha256\":\"2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae\",\"source_order\":[\"computeExactCentroids\",\"computeExactVariances\",\"computeExactImageVariance\",\"computeExactMemberships\"],\"image_variance_bits\":"+bits(h.imageVariance)+",\"image_stddev_bits\":"+bits(h.imageStddev)+",\"centroids_channel0_bits\":"+bits(h.centers[0])+",\"centroids_channel1_bits\":"+bits(h.centers[1])+",\"deviations_channel0_bits\":"+bits(h.deviations[0])+",\"deviations_channel1_bits\":"+bits(h.deviations[1])+",\"similarity_bits\":"+matrixBits(h.similarity)+",\"membership_sha256\":\""+hash(h.mems)+"\",\"denominator_sha256\":\""+hash(h.denominator)+"\",\"class_energy_sha256\":\""+hash(h.energy)+"\",\"objective_bits\":"+Float.floatToIntBits(h.objective)+"}");
         } catch(Exception e) { throw new RuntimeException(e); }
     }
+    private static String matrixBits(float[][] values){StringBuilder b=new StringBuilder("[");boolean first=true;for(float[] row:values)for(float v:row){if(!first)b.append(',');first=false;b.append(Float.floatToIntBits(v));}return b.append(']').toString();}
 }

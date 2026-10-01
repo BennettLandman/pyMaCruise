@@ -11,13 +11,14 @@ import numpy as np
 from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
 from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
-from pymacruise.toads_math import toads_optimized_centroid_similarity
+from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_optimized_image_variance
 from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
 
 
 ROOT = Path(__file__).parent
 CASE_DIR = ROOT / "data/synthetic/toads_p18czo_multichannel_exact_field"
 CASE = json.loads((CASE_DIR / "case.json").read_text())
+JAVA_BITS = json.loads((CASE_DIR / "image_variance_reference.json").read_text())
 SOURCE_DIR = ROOT / "data/synthetic" / CASE["source_fixture_directory"]
 JAVA_HARNESS = ROOT.parent / "scripts/run_java_toads_default_11_dynamic_multichannel_membership_reference.sh"
 SOURCE_SHA256 = "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
@@ -77,8 +78,22 @@ def test_refitted_two_channel_fields_flow_through_java_referenced_statistics_and
         [str(JAVA_HARNESS), str(field_path)], check=True, capture_output=True, text=True
     ).stdout)
     assert reference["source_sha256"] == SOURCE_SHA256
+    assert reference["wrapper_source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
     assert reference["power_table_source_sha256"] == POWER_TABLE_SHA256
-    assert "supplied two-channel fields" in reference["reference_scope"]
+    harness_source = ROOT / "java_reference/ToadsDefault11DynamicMultichannelMembershipReferenceHarness.java"
+    assert JAVA_BITS["harness_sha256"] == hashlib.sha256(harness_source.read_bytes()).hexdigest()
+    assert "no estimation" in CASE["dynamic_continuation"]["variance_weight_refresh"]
+    assert reference["source_order"] == [
+        "computeExactCentroids", "computeExactVariances", "computeExactImageVariance", "computeExactMemberships"
+    ]
+    assert "dynamic exact image variances" in reference["reference_scope"]
+    assert reference["image_variance_bits"] == JAVA_BITS["image_variance_bits"]
+    assert reference["image_stddev_bits"] == JAVA_BITS["image_stddev_bits"]
+    assert reference["similarity_bits"] == JAVA_BITS["similarity_bits"]
+    assert reference["membership_sha256"] == JAVA_BITS["membership_sha256"]
+    assert reference["denominator_sha256"] == JAVA_BITS["denominator_sha256"]
+    assert reference["class_energy_sha256"] == JAVA_BITS["class_energy_sha256"]
+    assert reference["objective_bits"] == JAVA_BITS["objective_bits"]
 
     centers = toads_default_exact_centroid_update(
         images, memberships, old_centers, exponents,
@@ -91,6 +106,11 @@ def test_refitted_two_channel_fields_flow_through_java_referenced_statistics_and
     assert _float_bits(centers[1]) == reference["centroids_channel1_bits"]
     assert _float_bits(deviations[0]) == reference["deviations_channel0_bits"]
     assert _float_bits(deviations[1]) == reference["deviations_channel1_bits"]
+    image_variances, image_stddev = toads_optimized_image_variance(
+        images, memberships[..., 1:], centers[:, 1:], intensity_field=result.fields
+    )
+    assert _float_bits(image_variances) == reference["image_variance_bits"]
+    assert _float_bits(image_stddev) == reference["image_stddev_bits"]
 
     categories = np.asarray(params["category_exponents"], dtype=np.float32)
     exponent_by_channel = np.empty((2, 11), dtype=np.float32)
@@ -99,8 +119,9 @@ def test_refitted_two_channel_fields_flow_through_java_referenced_statistics_and
     exponent_by_channel[:, 3:8] = categories[1]
     exponent_by_channel[:, 8:11] = categories[2]
     similarity = toads_optimized_centroid_similarity(
-        centers, deviations, np.asarray(params["image_variances"], dtype=np.float32), params["prior_scale"]
+        centers, deviations, image_variances, params["prior_scale"]
     )
+    assert _float_bits(similarity) == reference["similarity_bits"]
     shapes = np.asarray(_load(SOURCE_DIR / "transformed_shapes.nii.gz").dataobj, dtype=np.float32)
     closest = np.asarray(_load(SOURCE_DIR / "membership_closest_labels.nii.gz").dataobj, dtype=np.int8)
     membership_result = toads_default_atlas_membership_pass(
@@ -110,7 +131,7 @@ def test_refitted_two_channel_fields_flow_through_java_referenced_statistics_and
         exponent_by_channel_class=exponent_by_channel,
         modality_weights=np.asarray(params["modality_weights"], dtype=np.float32),
         class_variance_weights=np.asarray(params["class_variance_weights"], dtype=np.float32),
-        image_variances=np.asarray(params["image_variances"], dtype=np.float32),
+        image_variances=image_variances,
         transformed_shapes=shapes,
         closest_labels=closest,
         smoothing_priors=np.asarray(params["smoothing_priors"], dtype=np.float32),

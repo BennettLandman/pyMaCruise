@@ -24,9 +24,13 @@
   "java_reference": "ToadsPostThinningExactFieldReferenceHarness, run independently on each selected channel; then ToadsDefault11DynamicMultichannelMembershipReferenceHarness consumes both newly fitted fields",
   "reference_scope": "selected formula harnesses, not source-class execution; the dynamic continuation recomputes two-channel centroids, assigned-class deviations, and membership/objective from the supplied fitted fields",
   "dynamic_continuation": {
-    "source_order": ["P18czo channel0/1 degree-one field fit", "P18czo exact centroid update", "P18czo exact assigned-class deviation update", "P18czo exact membership/objective pass"],
+    "source_order": ["P18czo channel0/1 degree-one field fit", "P18czo exact centroid update", "P18czo exact assigned-class deviation update", "P18czo exact image variance update", "P18czo exact membership/objective pass"],
     "java_harness": "tests/java_reference/ToadsDefault11DynamicMultichannelMembershipReferenceHarness.java",
-    "image_variance_estimation": "not recomputed; selected synthetic fixture image variances, modality weights, and class weights are fixed inputs",
+    "image_variance_estimation": "recomputed per channel by computeExactImageVariance from all supplied fields, current memberships, and refreshed centroids; class zero MASK is skipped by the source type dispatch",
+    "variance_weight_refresh": "disabled in selected AlgorithmMultipleToads wrapper (source comment: no estimation); modality and per-class variance weights remain explicit fixed fixture inputs",
+    "source_sha256": "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+    "wrapper_source_sha256": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "bit_reference": "image_variance_reference.json",
     "shape_maps": "zero-valued synthetic transformed shape maps",
     "working_state": "synthetic RAS 14x14x14, two ordered channels, 11 classes, selected grow/thin state"
   },
