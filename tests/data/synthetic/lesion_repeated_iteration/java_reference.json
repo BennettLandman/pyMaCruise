@@ -1,0 +1,52 @@
+{
+  "source_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+  "energy_bits": [
+    1111800585,
+    1104291819,
+    1103987936
+  ],
+  "ratio_bits": [
+    1058765745,
+    1018610633
+  ],
+  "stop_reasons": [
+    "continue",
+    "iteration_limit"
+  ],
+  "stage_order": [
+    [
+      "propagateThinning",
+      "computeCentroids",
+      "computeVariances",
+      "computeChannelWeights",
+      "computeMemberships",
+      "energyRatio",
+      "registerShapes",
+      "convergenceCheck",
+      "iterationLimitCheck",
+      "propagateGrowing",
+      "computeRelations"
+    ],
+    [
+      "propagateThinning",
+      "computeCentroids",
+      "computeVariances",
+      "computeChannelWeights",
+      "computeMemberships",
+      "energyRatio",
+      "registerShapes",
+      "convergenceCheck",
+      "iterationLimitCheck",
+      "propagateGrowing",
+      "updateClassificationFromLabels",
+      "updateLesionClassifcation"
+    ]
+  ],
+  "negative_ceiling": {
+    "n_iter_max": -2,
+    "stop": true,
+    "run_growing": false,
+    "stop_reason": "iteration_limit"
+  },
+  "harness_sha256": "5570a34eed7b943454acb25c61b74dc5ac80736321afc43e50081009ae13f260"
+}

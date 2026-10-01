@@ -1,8 +1,19 @@
-"""Selected TOADS approximate-membership initialization and rigid pyramid.
+"""Atlas-aware approximate-membership method and shared registration kernels.
 
-The optional approximation is used to initialize atlas registration. The
-selected iterative TOADS constructor sets ``approx=0``; this module does not
-route approximate memberships into subsequent tissue-segmentation sweeps.
+The lesion-descriptor initializer here is validated as an isolated overload.
+No selected VandyCRUISE caller was found for a lesion-atlas approximate
+registration pyramid, so no such workflow composition is exposed here. The
+selected default-atlas initial pyramid lives in
+``toads_default_approximate_registration``. These shared coefficient,
+sampling, pooling, and line-search kernels are reused there.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, place
+statistical atlas registration within the TOADS framework. This module supplies
+source-derived registration kernels and one isolated atlas-aware lesion
+initializer used by bounded adapters; the selected-source call order and
+parameter choices are not paper claims. The kernels do not establish the
+papers' full registration, iterative segmentation, or a reachable
+lesion-atlas approximate-registration workflow.
 """
 
 from __future__ import annotations
@@ -25,7 +36,6 @@ from .toads_registration_sampling import (
     sample_toad_shape_prior,
     source_block_mean_subsample,
 )
-from .toads_shapes import ToadShapeBounds, _rotation_matrix, compute_toad_shape_bounds
 from .toads_lesion_atlas_type_membership import LESION_TOADS_CLASS_TYPES
 
 
@@ -36,31 +46,6 @@ class ToadsApproximateMembershipInitialization:
     memberships: NDArray[np.float32]
     best_class_indices: NDArray[np.uint8]
     class_types: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class ToadsApproximateRegistrationLevel:
-    """One coarse level's approximate candidate pooling and registration."""
-
-    scale: int
-    initial_transform: NDArray[np.float32]
-    memberships: NDArray[np.float32]
-    best_class_indices: NDArray[np.uint8]
-    expanded_memberships: NDArray[np.float32]
-    result: ToadsRigidRegistrationResult
-    iteration_coefficients: tuple[tuple[NDArray[np.float32], NDArray[np.float32]], ...]
-    iteration_trials: tuple[tuple[tuple[NDArray[np.float32], np.float32], ...], ...]
-
-
-@dataclass(frozen=True)
-class ToadsApproximateLesionAtlasRegistration:
-    """Initialized top-k state and selected rigid registration pyramid."""
-
-    initialization: ToadsApproximateMembershipInitialization
-    levels: tuple[ToadsApproximateRegistrationLevel, ...]
-    transform: NDArray[np.float32]
-    rotation: NDArray[np.float32]
-    shape_bounds: tuple[ToadShapeBounds, ...]
 
 
 def _argmax_first(values: NDArray[np.float32]) -> int:
@@ -412,109 +397,3 @@ def _approx_line_search(
     with np.errstate(divide="ignore", invalid="ignore"):
         relative = np.float32(np.float32(energy - energy0) / energy)
     return RegistrationLineSearchResult(current, energy, lam, relative, accepted, rejected), tuple(trials)
-
-
-def register_toads_approximate_lesion_atlas_pyramid(
-    initialization: ToadsApproximateMembershipInitialization,
-    atlas_shapes: ArrayLike,
-    *,
-    image_resolutions_mm: tuple[float, float, float],
-    template_resolutions_mm: tuple[float, float, float],
-    initial_transform: ArrayLike,
-    levels: int,
-    max_iterations: int = 50,
-    energy_tolerance: float = 1e-6,
-    minimum_lambda: float = 1e-3,
-) -> ToadsApproximateLesionAtlasRegistration:
-    """Run selected ``registerShapesApproxPyramid`` on top-k slot arrays."""
-    mem = np.asarray(initialization.memberships, dtype=np.float32)
-    best = np.asarray(initialization.best_class_indices)
-    shapes = np.asarray(atlas_shapes, dtype=np.float32)
-    types = tuple(initialization.class_types)
-    transform = np.asarray(initial_transform, dtype=np.float32)
-    if mem.ndim != 4 or best.shape != mem.shape or not np.issubdtype(best.dtype, np.integer):
-        raise ValueError("initialization must contain matching 4D membership and class-slot arrays")
-    classes = len(types)
-    if classes < 3 or shapes.ndim != 4 or shapes.shape[-1] != classes or not np.isfinite(shapes).all():
-        raise ValueError("atlas_shapes must contain one finite template map per ordered class")
-    if np.any((best < 0) | (best >= classes)) or not np.isfinite(mem).all():
-        raise ValueError("initial candidate slots or memberships are invalid")
-    if not isinstance(levels, (int, np.integer)) or levels < 2:
-        raise ValueError("levels must be an integer >= 2 for pyramid registration")
-    if not isinstance(max_iterations, (int, np.integer)) or max_iterations < 1:
-        raise ValueError("max_iterations must be a positive integer")
-    if transform.shape != (6,) or not np.isfinite(transform).all():
-        raise ValueError("initial_transform must contain six finite rigid parameters")
-    if types != LESION_TOADS_CLASS_TYPES:
-        raise ValueError("initialization class order must match the selected lesion 13-class descriptor")
-    full_image_dims = tuple(int(x) for x in mem.shape[:3])
-    full_template_dims = tuple(int(x) for x in shapes.shape[:3])
-    registered = np.asarray([kind != "MASK" for kind in types], dtype=bool)
-    levels_out: list[ToadsApproximateRegistrationLevel] = []
-    for scale in (2**power for power in range(int(levels) - 1, 0, -1)):
-        pooled = subsample_toads_approximate_memberships(
-            mem, best, classes=classes, factor=scale,
-        )
-        expanded = _expand_slots(pooled, classes)
-        level_initial = transform.copy()
-        result, coefficient_history, trial_history = _approx_registration_level(
-            pooled, shapes, transform,
-            full_image_dims=full_image_dims, full_template_dims=full_template_dims,
-            image_resolutions_mm=image_resolutions_mm,
-            template_resolutions_mm=template_resolutions_mm,
-            scale=scale, registered=registered, max_iterations=max_iterations,
-            energy_tolerance=energy_tolerance, minimum_lambda=minimum_lambda,
-        )
-        levels_out.append(ToadsApproximateRegistrationLevel(
-            scale, level_initial, pooled.memberships, pooled.best_class_indices, expanded, result,
-            coefficient_history, trial_history,
-        ))
-        transform = result.transform.copy()
-
-    rotation = _rotation_matrix(transform[:3])
-    bounds = tuple(
-        compute_toad_shape_bounds(
-            shapes[..., k], image_dimensions_xyz=full_image_dims,
-            image_resolutions_mm=image_resolutions_mm,
-            template_resolutions_mm=template_resolutions_mm,
-            transform=tuple(float(v) for v in transform),
-        )
-        for k in range(classes)
-    )
-    return ToadsApproximateLesionAtlasRegistration(
-        initialization, tuple(levels_out), transform.copy(), rotation, bounds,
-    )
-
-
-def initialize_and_register_toads_approximate_lesion_atlas(
-    image_values: ArrayLike,
-    centroids: ArrayLike,
-    transformed_shapes: ArrayLike,
-    atlas_shapes: ArrayLike,
-    class_types: Sequence[str],
-    *,
-    approx: int,
-    image_resolutions_mm: tuple[float, float, float],
-    template_resolutions_mm: tuple[float, float, float],
-    initial_transform: ArrayLike,
-    levels: int,
-    process_mask: ArrayLike | None = None,
-    max_iterations: int = 50,
-    energy_tolerance: float = 1e-6,
-    minimum_lambda: float = 1e-3,
-) -> ToadsApproximateLesionAtlasRegistration:
-    """Convenience composition for init/update-state then approximate pyramid."""
-    init = initialize_toads_approximate_memberships(
-        image_values, centroids, transformed_shapes, class_types,
-        approx=approx, process_mask=process_mask,
-    )
-    return register_toads_approximate_lesion_atlas_pyramid(
-        init, atlas_shapes,
-        image_resolutions_mm=image_resolutions_mm,
-        template_resolutions_mm=template_resolutions_mm,
-        initial_transform=initial_transform,
-        levels=levels,
-        max_iterations=max_iterations,
-        energy_tolerance=energy_tolerance,
-        minimum_lambda=minimum_lambda,
-    )

@@ -1,0 +1,16 @@
+{
+  "source_method": "MultipleToadSegmentation.addInhomogeneityCorrection",
+  "source_sha256": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+  "fixture_field": [1.0, 1.25, 0.75, 1.5, 0.8, 1.2, 1.3, 0.9],
+  "assigned": {"use_field": true},
+  "mutation_visible_value": 3.0,
+  "reference_state": {
+    "initial_false": true,
+    "assigned_by_identity": true,
+    "other_channel_untouched": true,
+    "enabled_after_assignment": true,
+    "mutation_visible": true,
+    "replacement_by_identity": true,
+    "null_accepted_and_enabled": true
+  }
+}

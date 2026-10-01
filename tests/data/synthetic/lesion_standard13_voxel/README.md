@@ -1,0 +1,52 @@
+# LesionTOADS standard 13-class one-voxel fixture
+
+`inputs_ras.nii.gz` is a synthetic 3×3×3×2 image with T1_MPRAGE and FLAIR as
+the last axis and an identity RAS affine. The center voxel is the single
+interior voxel visited by the selected source loop. The test supplies the
+other initialized state (class means and standard deviations, atlas priors
+and transformed shapes, class/lesion memberships, six-face neighborhood,
+relation flags, and the source-computed distance values) as small synthetic
+arrays.
+
+The fixture pins the selected `run_LesionToads_jist.m` initial-call settings:
+first atlas coefficient 2.0, prior scale 0.1, smoothing 0.2, UI distance
+settings 3/25/2, T1_MPRAGE+FLAIR, and FLAIR lesion weighting with exponent
+1.2. The adapter forwards these distance fields as GM=3, brainstem=25,
+ventricle=2. The
+effective float32 values are computed after the source constructor scales the
+coefficient by 13 classes and smoothing by six faces and 14 lesion-aware
+classes. Initial `GMflag` is false because the selected wrapper enables it
+only after this first `computeMemberships()` call.
+
+The selected source's OPTIMIZED_CSF data-energy branch is commented out, so
+both such classes use its active `outlier` fallback. Background uses the
+source binary `maskDistance(image, 0)` term. The Java harness emits the
+bit-exact expected post-update membership, energy, relation, denominator,
+similarity, and objective values for this fixed state. The initial call uses
+`GMflag=false`; [the GM update reference](gm_flag_java_reference.json) adds a
+fixed-input `GMflag=true` pass covering valid, invalid, and zero GM distance,
+ventricle precedence, and independent brainstem multiplication. It also runs
+the same state through the volume adapter to verify flag forwarding.
+
+The reference preserves a selected Java behavior that differs from ordinary
+floating-point division: distance maps and their maxima are bytes. In the
+source expressions `lesionRelation *= (VentDist / MaxVentDist)`, the
+nonzero-distance operands divide as integers before multiplication, so the
+relation factor is usually zero when distance is below the maximum. The
+lesion-membership expression multiplies by a float first, so it uses float32
+division. For zero ventricle/GM distance, the float `spread` numerator keeps
+float32 relation division. The brainstem relation expression also uses byte
+integer division. These branch semantics are pinned in the Java harness and
+shared Python modulation helper.
+
+Regenerate the reference with:
+
+```sh
+tests/java_reference/generate_lesion_toads_standard13_voxel_reference.sh
+```
+
+The same script regenerates the GM-flag case reference.
+
+This is a one-voxel composition with supplied transformed atlas and distance
+state. It does not implement full-volume iteration, atlas registration,
+topology relation construction, or source distance-map generation.

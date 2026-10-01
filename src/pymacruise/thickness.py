@@ -8,10 +8,14 @@ Source versions: ``LevelSetThickness.java`` CVS r1.2,
 ``GetThicknessCRUISE.java`` CVS r1.2, and
 ``ClosestPointThicknessForInner.java`` CVS r1.2 (author Yuankai Huo).
 
-Paper context: Han et al. (2004), cited in ``docs/papers/cruise.md``, places
-cortical surface reconstruction and thickness among CRUISE outputs. This
-module implements selected wrapper measurements; it does not reproduce the
-paper's experiments or establish equivalence of the substituted surface mesh.
+Paper context: Han et al. (2004), Eq. 13, defines CRUISE thickness at a point
+on the triangulated central surface as the difference between the inner and
+outer signed-distance level sets there. The selected wrappers port a volume
+level-set subtraction product and a separate closest-point surface measure;
+neither adapter is claimed to reproduce that central-surface equation or the
+paper's measurements. The different JIST-to-Lewiner surface substitution also
+prevents an assumption of equivalent mesh-dependent values. See
+``docs/papers/cruise.md`` for the operation-to-code and validation boundaries.
 """
 
 from __future__ import annotations

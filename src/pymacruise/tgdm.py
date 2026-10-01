@@ -358,7 +358,13 @@ def tgdm_tissue_sign_field(
 def tgdm_inner_pressure_field(
     white_matter: np.ndarray, *, white_matter_iso: float = 0.1
 ) -> np.ndarray:
-    """Build `solveInnerSurfaceFromOuter`'s normalized white-matter force."""
+    """Build the selected inner-surface white-matter pressure map.
+
+    Han et al. (2004, Eq. 9) describe inner-surface pressure around the 0.5
+    WM-membership interface. This adapter scales source 0..255 WM values
+    against the selected ``white_matter_iso`` (default 0.1); that threshold and
+    normalization are wrapper behavior, not the paper's exact formula.
+    """
     wm = np.asarray(white_matter, dtype=np.float32)
     if wm.ndim != 3 or not np.isfinite(wm).all():
         raise ValueError("white_matter must be a finite 3D array")
@@ -369,7 +375,14 @@ def tgdm_inner_pressure_field(
 
 
 def tgdm_central_pressure_field(sign_field: np.ndarray) -> np.ndarray:
-    """Build the central surface's signed tissue pressure from sign volume."""
+    """Build the central surface's signed tissue pressure from sign volume.
+
+    Han et al. (2004, Eq. 11) describe a central-surface regional pressure
+    that pushes outward from WM, inward from CSF, and is inactive within GM,
+    alongside the GM-derived GVF force. This function decodes the selected
+    wrapper's quantized 0..254 sign image; its conversion and scaling are
+    source-specific and are not a direct implementation of Eq. 11.
+    """
     values = np.asarray(sign_field, dtype=np.float32)
     if values.ndim != 3 or not np.isfinite(values).all():
         raise ValueError("sign_field must be a finite 3D array")
@@ -383,7 +396,14 @@ def tgdm_outer_pressure_field(
     *,
     gray_matter_iso: float = 0.4,
 ) -> np.ndarray:
-    """Recreate the three-branch GM pressure map and ACE skeleton bias."""
+    """Recreate the selected three-branch GM pressure map and ACE bias.
+
+    Han et al. (2004, Eq. 12) describe outer-surface pressure as
+    ``2 * (GM + WM) - 1``. The selected wrapper operation here is different:
+    it builds three GM-intensity branches from central-level-set regions and
+    assigns a strong inward force on ACE skeleton voxels. Those are
+    VandyCRUISE/MaCRUISE source choices, not the paper's Eq. 12 formula.
+    """
     central = np.asarray(central_level_set, dtype=np.float32)
     gray = np.asarray(gray_matter, dtype=np.float32)
     skeleton = np.asarray(ace_skeleton)
@@ -424,12 +444,16 @@ def tgdm_nested_arrays(
     wrappers that enforce/reorient physical image geometry are a separate
     adapter task; this function never changes grids or resamples inputs.
 
-    Paper connection: CRUISE (Han et al., 2004, Methods) describes coupled
-    inner, central, and outer cortical surfaces driven by tissue memberships
-    and nested-surface constraints. This adapter uses the selected
-    MaCRUISE/VandyCRUISE tissue fields and profile defaults; its extra central
-    shrink and inner-surface recomputation are source-wrapper behavior, not
-    steps attributed to the 2004 paper.
+    Paper connection: CRUISE (Han et al., 2004, “Nested cortical surface
+    reconstruction,” Eqs. 9–12) describes a WM-constrained inner surface,
+    central evolution from the inner surface using ACE-GM GVF and tissue
+    pressure with an inner nesting bound, then an outer surface initialized
+    from the central surface with a combined GM/WM pressure and nesting bound.
+    This adapter uses selected MaCRUISE/VandyCRUISE tissue fields and force
+    profiles: `gvf` is caller-supplied rather than computed here, and the
+    wrapper's three-branch outer map is not Eq. 12. Its extra central shrink
+    and inner-surface recomputation are source-wrapper behavior, not steps
+    attributed to the 2004 paper.
     """
     membership = np.asarray(initial_membership, dtype=np.float32)
     wm = np.asarray(white_matter, dtype=np.float32)
@@ -563,7 +587,16 @@ def tgdm_nested_images(
     gvf: nib.spatialimages.SpatialImage | None = None,
     parameters: TGDMBaselineParameters = TGDMBaselineParameters(),
 ) -> TGDMMaCRUISEImageResult:
-    """Run nested TGDM after RAS reorientation and strict grid validation."""
+    """Run nested TGDM after RAS reorientation and strict grid validation.
+
+    Paper context: Han et al. (2004), ``docs/papers/cruise.md``, describes
+    coupled nested cortical surfaces; the level-set/TGDM method context is
+    discussed by Han, Xu, and Prince (2003), ``docs/papers/tgdm.md``. This
+    image wrapper normalizes inputs to RAS and delegates evolution to the
+    selected source-mapped nested-array adapter. Its effective fields and
+    profile settings are MaCRUISE/VandyCRUISE wrapper behavior, not a claim to
+    reproduce every stage or parameter in either paper.
+    """
     reference, ref_data = _ras_scalar_data(initial_membership, "initial membership")
     aligned: dict[str, np.ndarray] = {}
     for name, image in (

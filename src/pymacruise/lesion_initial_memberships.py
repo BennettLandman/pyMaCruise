@@ -41,6 +41,13 @@ def lesion_initial_memberships(
     ``(z0i,zNi)`` pairs; their extents must match the non-padding image region.
     The new result has ``(x,y,z,classes)`` order, is zero outside the active
     crop, and is written at index ``source_coordinate - crop_start + pad``.
+
+    Paper connection: Shiee et al. (2010), Method §2.1, Eq. (1), defines the
+    intensity-to-centroid mismatch as one term in the TOADS fuzzy energy.
+    This source method uses image-to-centroid distances only to seed
+    memberships; it does not minimize the full energy or apply its
+    neighbor-smoothness, atlas-prior, lesion-relationship, or topology terms.
+    Its exact reciprocal, tie, and traversal rules are from VandyCRUISE.
     
     At each active voxel, source order is class then channel for squared
     distance and class then class for exact channel-0 centroid multiplicity.

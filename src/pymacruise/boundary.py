@@ -3,6 +3,14 @@
 Ports the selected V3 workflow's default ``MinFilter3D`` path and the used
 ``merge_csf_method`` values (1 and 3). Thin-skeleton generation is a separate
 CRUISE skeleton operation and is intentionally handled by P27.
+
+MaACE paper context: Huo et al. (2016), §2.3.1, describes incorporating a
+multi-atlas cortical-boundary membership in ACE's speed field. The selected
+``MinFilter3D`` adapter here creates a binary ``csf_MaBoundary``-style map
+from segmentation labels; this is a related workflow input, but its identity
+with Huo et al.'s distinct ``mu_boundary`` term and the paper's equation has
+not been established. Exact neighborhood rules and merge modes below follow
+the selected V3 Java/MATLAB source.
 """
 
 from __future__ import annotations

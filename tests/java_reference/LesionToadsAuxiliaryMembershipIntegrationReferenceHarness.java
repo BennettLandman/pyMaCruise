@@ -21,13 +21,13 @@ public final class LesionToadsAuxiliaryMembershipIntegrationReferenceHarness {
         String[] types={"OBJECT",c.auxiliary,"OUTMASK"};float[] mem=c.memberships.clone();
         float lesion=c.lesion,bh=c.blackHole,relation=c.lesionRelation,outlier=c.outlier;
         if(c.auxiliary.equals("LESION")){
-            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-            else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;relation*=n/c.maxGM;}
-            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+            else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=c.bstem/c.maxBstem;}
         }else{
-            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-            else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;relation*=n/c.maxGM;}
-            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+            else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=c.bstem/c.maxBstem;}
         }
         float classOutmask=(1.0f-outlier)*mem[2]+outlier*c.outmaskValue;
         if(c.outmaskRelation.equals("prior")){float factor=sf(c.outmaskShape);classOutmask=factor*classOutmask;outlier=factor*outlier;}

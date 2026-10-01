@@ -4,9 +4,12 @@ The source selects direct versus prior membership per voxel and class through
 ``relationList[relationMap[x][y][z]][k]``. P39zzzzs currently accepts a single
 relation type per class; this adapter reuses its validated one-voxel update
 kernel while selecting that type from the supplied relation state.
-Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md`` describes
-modified lesion-aware relationship terms. This adapter reproduces the selected
-source relation lookup for a bounded update, not the full topology evolution.
+Paper connection: Shiee et al. (2010), Method §2.1, Eq. (1), uses the
+voxel/class relationship factor in the fuzzy energy, and §2.3 describes
+lesion-specific changes to reduce false positives. This adapter reproduces
+the selected source relation-table lookup and direct/prior dispatch for a
+bounded update; that lookup is not itself the paper's relationship formula or
+the full topology evolution.
 """
 
 from __future__ import annotations

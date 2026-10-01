@@ -1,0 +1,24 @@
+{
+  "wrapper_source": "AlgorithmLesionToads.java",
+  "wrapper_source_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+  "align_shapes_default_excerpt_sha256": "2aa3b63035d194c80981e1b9454b81cc6a4bb324820b8c02ce3dadacddd00bf0",
+  "wrapper_call_order_excerpt_sha256": "e06f566c8ace94dd39c9d5ce5d6f92c1144f147f9bdd096827101c82587b0489",
+  "align_shapes_default": true,
+  "wrapper_call_order": [
+    "if (alignShapes)",
+    "preprocess.initialMemberships",
+    "atlas.setImageInfo before registration",
+    "atlas.initShapeRegistration rigid",
+    "atlas.setTransform preprocessing transform",
+    "atlas.updateShapeRegistration rigid",
+    "atlas.registerShapesPyramid",
+    "preprocess.uncropImages",
+    "preprocess.findCroppingBoundaries",
+    "preprocess.cropImages",
+    "atlas.setImageInfo after recrop",
+    "atlas.computeTransformedTemplate",
+    "preprocess.updateTransformedTemplate(atlas.getTemplate())"
+  ],
+  "source_line_ranges": [102, 447, 501],
+  "scope": "Source call-order provenance only; registration numerics and full workflow are outside this test."
+}

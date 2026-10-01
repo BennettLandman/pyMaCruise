@@ -120,8 +120,10 @@ def compute_lesion_toads_similarity(
                 else:
                     for channel in range(channels):
                         delta = np.float32(centroids[channel, k] - centroids[channel, m])
-                        term = np.float32(delta * delta)
-                        weighted = np.float32(weights[channel] * term)
+                        # Source is channelWeight * delta * delta / stddev / stddev;
+                        # grouping delta squared before weighting changes some float32 ULPs.
+                        weighted_delta = np.float32(weights[channel] * delta)
+                        weighted = np.float32(weighted_delta * delta)
                         denominator = np.float32(
                             deviations[channel, k] + deviations[channel, m]
                         )
@@ -136,8 +138,8 @@ def compute_lesion_toads_similarity(
             distance = np.float32(0.0)
             for channel in range(channels):
                 delta = np.float32(lesion_center[channel] - centroids[channel, k])
-                term = np.float32(delta * delta)
-                weighted = np.float32(weights[channel] * term)
+                weighted_delta = np.float32(weights[channel] * delta)
+                weighted = np.float32(weighted_delta * delta)
                 denominator = np.float32(lesion_deviation[channel] + deviations[channel, k])
                 contribution = np.float32(np.float32(weighted / denominator) / denominator)
                 distance = np.float32(distance + contribution)

@@ -55,13 +55,13 @@ public final class LesionToadsSmoothingMembershipIntegrationReferenceHarness {
         if(c.target.equals("BLACKHOLE")){bh=inv(target[4],c.rel,c.shape[1]);bhEnergy=target[5];}
         relation=c.rel.equals("direct")?1.0f:sf(c.shape[1]);
         if(c.target.equals("LESION")){
-            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-            else if(c.gmFlag&&c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;relation*=n/c.maxGM;}
-            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+            else if(c.gmFlag&&c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=c.bstem/c.maxBstem;}
         }else{
-            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-            else if(c.gmFlag&&c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;relation*=n/c.maxGM;}
-            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+            if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+            else if(c.gmFlag&&c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+            if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=c.bstem/c.maxBstem;}
         }
         float den=0.0f;for(int k=0;k<2;k++){if(types[k].equals("LESION"))den+=lesion;else if(types[k].equals("BLACKHOLE"))den+=lesion+bh;den+=mem[k];}
         float energy=0.0f;if(den>0.0f){for(int k=0;k<2;k++){mem[k]=mem[k]/den;if(types[k].equals("LESION")){lesion=lesion/den;}else if(types[k].equals("BLACKHOLE")){lesion=lesion/den;bh=bh/den;}energy+=eng[k]*mem[k]*mem[k];}}

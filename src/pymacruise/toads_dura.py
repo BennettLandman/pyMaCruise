@@ -1,11 +1,37 @@
-"""Source-faithful distance fields used by the MaCRUISE dura stage.
+"""Source-faithful operations for the MaCRUISE second-pass dura-removal stage.
 
-The selected `MedicAlgorithmRemoveDura09` implementation delegates signed
-distance construction to JIST `DistanceField`. The implementation is shared
-with the verified six-neighbor fast-marching port used elsewhere in the
-package; Java stores every distance update as float32, so this wrapper selects
-that arithmetic explicitly. Distances and caps are in voxel units, matching
-the source class (which does not use image voxel spacing).
+Landman et al. (2013), §“Dura Removal” (printed p. 95; DOI
+10.1007/s12021-012-9159-9), is the primary published description identified
+for the specific “Remove Dura
+2009” operation. It calls the stage a previously unpublished contribution and
+describes a second pass after tissue segmentation: initialize from the
+topologically corrected WM membership, evolve a topology-preserving geometric
+deformable model (TGDM) between WM and WM+GM memberships, add a cortical-
+thickness regularization force to prune dura attachments using fast-marching
+topology correction, then derive a brain mask and apply it to the original
+image. The paper provides the method-level account, not the selected JIST
+revision’s complete parameter and arithmetic contract.
+
+The implementation authority for source-specific details is the selected
+VandyCRUISE ``MedicAlgorithmRemoveDura09`` and its called JIST classes. The
+article's software listing names “Remove Dura 2009 (1.6 RC)”; this is a
+procedure-level mapping and does not establish that the selected source
+revision reproduces every detail of that release. Han, Xu, and Prince
+(2003; DOI 10.1109/TPAMI.2003.1201824) describe the underlying topology-
+preserving TGDM method; Bazin and Pham (2007; DOI
+10.1016/j.cmpb.2007.08.006) describe the fast-marching topology-correction
+method. These component papers do not, by themselves, specify the complete
+dura-removal procedure. The Python port composes selected-source topology,
+distance-field, and TGDM operations and does not claim independent clinical
+validation or end-to-end equivalence. See ``docs/papers/dura-removal.md`` for
+the operation-to-code crosswalk and source/validation limits.
+
+The signed-distance adapter delegates the algorithm to JIST ``DistanceField``.
+Its six-neighbor fast-marching implementation is shared with the separately
+validated package primitive; Java stores each distance update as float32, so
+this wrapper selects that arithmetic explicitly. Distances and caps are in
+voxel units, matching the source class (which does not use image voxel
+spacing).
 """
 
 from __future__ import annotations

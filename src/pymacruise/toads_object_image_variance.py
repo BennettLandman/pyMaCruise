@@ -1,4 +1,11 @@
-"""Image-wide variance update for selected base-TOADS ordinary OBJECT classes."""
+"""Image-wide variance update for selected base-TOADS ordinary OBJECT classes.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical tissue classification with class-specific intensity models. This
+function ports a selected image-wide variance component for ordinary OBJECT
+classes; the class selection and arithmetic follow VandyCRUISE source and do
+not by themselves implement the papers' statistical estimation procedure.
+"""
 
 from __future__ import annotations
 

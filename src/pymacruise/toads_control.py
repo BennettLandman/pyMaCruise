@@ -1,4 +1,12 @@
-"""Selected outer-loop control decisions for AlgorithmMultipleToads."""
+"""Selected outer-loop control decisions for AlgorithmMultipleToads.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+TOADS as an iterative statistical and topology-preserving segmentation
+framework. This module implements only the selected wrapper's stop, growth,
+classification, and relation-refresh decisions after one membership-energy
+update. Thresholds and stop ordering are source-specific; this control slice
+does not implement or validate paper-level convergence.
+"""
 
 from __future__ import annotations
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
 import nibabel as nib
 import numpy as np
 import pytest
+from nibabel.orientations import aff2axcodes
 
 from pymacruise.lesion_toads_preprocessing import (
     initialize_lesion_toads_centroids,
@@ -26,6 +28,24 @@ def _load_channels() -> np.ndarray:
 def test_lesion_toads_initialization_matches_java_reference() -> None:
     recipe = json.loads((FIXTURES / "spec.json").read_text())
     reference = json.loads((FIXTURES / "java_reference.json").read_text())
+    assert aff2axcodes(nib.load(FIXTURES / "t1_mprage.nii.gz").affine) == (
+        "R",
+        "A",
+        "S",
+    )
+    assert aff2axcodes(nib.load(FIXTURES / "flair.nii.gz").affine) == (
+        "R",
+        "A",
+        "S",
+    )
+    harness = (
+        Path(__file__).parent
+        / "java_reference"
+        / "LesionToadsPreprocessingReferenceHarness.java"
+    )
+    assert hashlib.sha256(harness.read_bytes()).hexdigest() == (
+        "00cec29159fcc6b70bf45b736e9bbf967b26cbc19a91e26c7e7304b6945f11fd"
+    )
     result = initialize_lesion_toads_intensities(
         _load_channels(),
         recipe["lesion_priors"],
@@ -113,3 +133,36 @@ def test_centroid_bounds_use_normalized_cropped_inputs_separately() -> None:
     assert centroids.robust_minima.shape == (2,)
     assert centroids.robust_maxima.shape == (2,)
     assert np.all(centroids.robust_maxima >= centroids.robust_minima)
+
+
+def test_selected_wrapper_uses_robust_bounds_only_for_cropped_centroids() -> None:
+    reference = json.loads((FIXTURES / "java_reference.json").read_text())
+    normalized = normalize_lesion_toads_images(_load_channels())
+    # This fixed asymmetric interior region stands in for the wrapper's
+    # normalized, already-cropped image argument. Crop selection is not under
+    # test; the Java harness uses these same voxel limits for its centroid
+    # method reference.
+    cropped = normalized.normalized_images[:, 1:-1, 2:-2, 1:-1]
+    result = initialize_lesion_toads_centroids(cropped, [0.4, 1.2], [0.1, 0.6])
+    full_grid = initialize_lesion_toads_centroids(
+        normalized.normalized_images, [0.4, 1.2], [0.1, 0.6]
+    )
+
+    np.testing.assert_array_equal(
+        result.robust_minima,
+        np.asarray(reference["cropped_centroid_robust_minima"], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        result.robust_maxima,
+        np.asarray(reference["cropped_centroid_robust_maxima"], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        result.lesion_centroid,
+        np.asarray(reference["cropped_lesion_centroid"], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        result.black_hole_centroid,
+        np.asarray(reference["cropped_black_hole_centroid"], dtype=np.float32),
+    )
+    assert not np.array_equal(result.robust_minima, full_grid.robust_minima)
+    assert not np.array_equal(result.robust_maxima, full_grid.robust_maxima)

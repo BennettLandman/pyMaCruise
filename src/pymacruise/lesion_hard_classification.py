@@ -4,6 +4,13 @@ This ports the voxel selection in ``LesionToadSegmentation.generateClassificatio
 It maps ordinary memberships to atlas labels, then lets the lesion-membership
 map override only when it is strictly greater than the best ordinary score.
 Workflow classification updates and NIfTI serialization are separate stages.
+
+Shiee et al. (2010), ``docs/papers/lesion-toads.md``, describe lesion-aware
+classification and topology preservation at the algorithm level. The strict
+membership comparisons and byte-label mapping here are the selected
+VandyCRUISE helper semantics, not a method specified by that paper; synthetic
+Java-excerpt cases validate this map only, and no active wrapper call has been
+identified.
 """
 
 from __future__ import annotations

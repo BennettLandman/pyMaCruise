@@ -3,6 +3,13 @@
 This composes the bundled TOADS2012 13-structure descriptor with the active
 ``MultipleToadSegmentation.computeExactMemberships`` sweep. Atlas statistics,
 transformed subject-grid priors, and relation maps are explicit inputs.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical tissue classification constrained by atlas/topology information.
+This fixed-input dispatcher connects a selected 13-structure atlas to that
+classification role. Its class-family formulas and order are selected
+VandyCRUISE behavior; this does not validate the paper's complete iteration
+or the entire TOADS2012 workflow.
 """
 
 from __future__ import annotations

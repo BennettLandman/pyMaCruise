@@ -16,9 +16,13 @@ then the separate lesion and black-hole centroid methods. Those latter
 methods compute robust bounds on the normalized (in the wrapper, cropped)
 channels and use `low + prior * (high - low)`. The fixture harness reproduces
 normalization and those centroid formulas on the full grid; it does not
-reproduce cropping. It emits ordinary bounds, centroid robust bounds, every
-normalized voxel, and both initialized centroid vectors. Source SHA-256 values
-and the wrapper call order are pinned in `java_reference.json`.
+reproduce crop selection. It also evaluates the centroid methods on a fixed,
+asymmetric interior region representing an already-cropped normalized input,
+so the post-crop robust bounds are checked independently of full-grid bounds.
+It emits ordinary bounds, centroid robust bounds, every normalized voxel, and
+both initialized centroid vectors for each input region. Source SHA-256 values
+and the wrapper call order are pinned in `java_reference.json`; the test pins
+the Java harness SHA-256.
 
 Recreate the input
 NIfTI files and recipe with:

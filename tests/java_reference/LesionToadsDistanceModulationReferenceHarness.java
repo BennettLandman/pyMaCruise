@@ -21,13 +21,13 @@ public final class LesionToadsDistanceModulationReferenceHarness {
         int[] c=CASES[i];float spread=SPREADS[i];float membership=MEMBERSHIP,relation=RELATION;
         if(c[3]!=0&&c[0]!=-1) {
             float numerator=c[0]==0?spread:c[0];
-            membership=numerator*membership/c[3];relation*=numerator/c[3];
+            membership=numerator*membership/c[3];if(c[0]==0)relation*=spread/c[3];else relation*=c[0]/c[3];
         } else if(c[6]!=0&&c[4]!=0&&c[1]!=-1) {
             float numerator=c[1]==0?spread:c[1];
-            membership=numerator*membership/c[4];relation*=numerator/c[4];
+            membership=numerator*membership/c[4];if(c[1]==0)relation*=spread/c[4];else relation*=c[1]/c[4];
         }
         if(c[5]!=0&&c[2]!=-1) {
-            membership=c[2]*membership/c[5];relation*=(float)c[2]/c[5];
+            membership=c[2]*membership/c[5];relation*=c[2]/c[5];
         }
         if(!first)System.out.print(',');
         System.out.print("{\"ventricle_distance\":"+c[0]+",\"gray_matter_distance\":"+c[1]+",\"brainstem_distance\":"+c[2]+",\"max_ventricle_distance\":"+c[3]+",\"max_gray_matter_distance\":"+c[4]+",\"max_brainstem_distance\":"+c[5]+",\"gm_flag\":"+(c[6]!=0)+",\"spread_bits\":"+bits(spread)+",\"membership_bits\":"+bits(membership)+",\"relation_bits\":"+bits(relation)+"}");

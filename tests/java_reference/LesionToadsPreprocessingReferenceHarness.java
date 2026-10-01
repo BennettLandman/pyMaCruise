@@ -112,6 +112,10 @@ public final class LesionToadsPreprocessingReferenceHarness {
         float[] imageMax = new float[CHANNELS];
         float[] lesion = new float[CHANNELS];
         float[] blackHole = new float[CHANNELS];
+        float[] croppedLow = new float[CHANNELS];
+        float[] croppedHigh = new float[CHANNELS];
+        float[] croppedLesion = new float[CHANNELS];
+        float[] croppedBlackHole = new float[CHANNELS];
         for (int c = 0; c < CHANNELS; c++) {
             imageMin[c] = images[c][0];
             imageMax[c] = images[c][0];
@@ -133,6 +137,25 @@ public final class LesionToadsPreprocessingReferenceHarness {
             float centroidSpan = high[c] - low[c];
             lesion[c] = low[c] + LESION_PRIORS[c] * centroidSpan;
             blackHole[c] = low[c] + BLACK_HOLE_PRIORS[c] * centroidSpan;
+
+            // Model the selected wrapper's already-cropped, normalized image
+            // at the centroid-method boundary. Cropping itself is not under
+            // test here; use a fixed asymmetric interior region so robust
+            // centroid bounds cannot accidentally reuse full-image bounds.
+            float[] croppedNormalized = new float[(NX - 2) * (NY - 4) * (NZ - 2)];
+            int index = 0;
+            for (int z = 1; z < NZ - 1; z++) {
+                for (int y = 2; y < NY - 2; y++) {
+                    for (int x = 1; x < NX - 1; x++) {
+                        croppedNormalized[index++] = images[c][x + NX * y + NX * NY * z];
+                    }
+                }
+            }
+            croppedLow[c] = robustMinimum(croppedNormalized, 0.01f, 2);
+            croppedHigh[c] = robustMaximum(croppedNormalized, 0.01f, 2);
+            float croppedSpan = croppedHigh[c] - croppedLow[c];
+            croppedLesion[c] = croppedLow[c] + LESION_PRIORS[c] * croppedSpan;
+            croppedBlackHole[c] = croppedLow[c] + BLACK_HOLE_PRIORS[c] * croppedSpan;
         }
 
         System.out.print("{\"source_sha256\":{\"LesionToadPreprocess.java\":\"72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08\",\"AlgorithmLesionToads.java\":\"556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb\",\"ImageFunctions.java\":\"be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892\"},\"call_order\":[\"LesionToadPreprocess.constructor\",\"AlgorithmLesionToads.normalizeImages\",\"findCroppingBoundaries\",\"cropImages\",\"initialCentroids\",\"initialLesionCentroid\",\"initialBlackHoleCentroid\"],\"reference_scope\":\"No-crop source excerpt: normalization then both auxiliary centroid methods over the full normalized grid\",\"robustMaxMin\":false,\"shape\":[" + NX + "," + NY + "," + NZ + "],\"channels\":[");
@@ -147,6 +170,10 @@ public final class LesionToadsPreprocessingReferenceHarness {
         System.out.print(",\"lesion_priors\":" + array(LESION_PRIORS));
         System.out.print(",\"black_hole_priors\":" + array(BLACK_HOLE_PRIORS));
         System.out.print(",\"lesion_centroid\":" + array(lesion));
-        System.out.println(",\"black_hole_centroid\":" + array(blackHole) + "}");
+        System.out.print(",\"black_hole_centroid\":" + array(blackHole));
+        System.out.print(",\"cropped_centroid_robust_minima\":" + array(croppedLow));
+        System.out.print(",\"cropped_centroid_robust_maxima\":" + array(croppedHigh));
+        System.out.print(",\"cropped_lesion_centroid\":" + array(croppedLesion));
+        System.out.println(",\"cropped_black_hole_centroid\":" + array(croppedBlackHole) + "}");
     }
 }

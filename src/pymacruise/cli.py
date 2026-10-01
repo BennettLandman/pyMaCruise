@@ -23,7 +23,7 @@ from pymacruise.surfaces import (
 from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.toads_dura import run_dura_removal
-from pymacruise.volume_ops import calculate_nifti_files
+from pymacruise.volume_ops import calculate_volume
 
 
 def _package_version() -> str:
@@ -58,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     calculate.add_argument("--input-b", required=True, type=Path)
     calculate.add_argument("--operation", required=True)
     calculate.add_argument("--output", required=True, type=Path)
+    _add_provenance_option(calculate)
 
     ace = commands.add_parser("ace", help="run the supported MaACE/ACE enhancement stage")
     ace.add_argument("--gray", required=True, type=Path)
@@ -210,10 +211,22 @@ def main(argv: list[str] | None = None) -> int:
         for name in outputs:
             print(f"Wrote {args.output_dir / f'{name}.nii.gz'}")
     elif args.command == "calculate":
-        calculate_nifti_files(
-            str(args.input_a), str(args.input_b), str(args.output), args.operation
+        _require_nifti_gz_output(args.output)
+        effective_operation = args.operation.strip().upper()
+        result = calculate_volume(
+            _load_nifti_gz(args.input_a),
+            _load_nifti_gz(args.input_b),
+            effective_operation,
         )
+        _save_nifti_gz(result, args.output)
         print(f"Wrote {args.output}")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"image_a": args.input_a, "image_b": args.input_b},
+            parameters={"operation": effective_operation},
+            outputs={"result": args.output},
+        )
     elif args.command == "ace":
         for path in (args.enhanced, args.skeleton, args.thinned_skeleton):
             _require_nifti_gz_output(path)

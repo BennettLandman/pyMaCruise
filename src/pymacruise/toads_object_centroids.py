@@ -4,6 +4,12 @@ This implements only the ordinary ``OBJECT`` numerator/denominator branch
 inside ``MultipleToadSegmentation.computeExactCentroids`` and its ``damped``
 centroid update. Lesion, outlier, optimized tissue, Rayleigh, linked/prior
 modes, and centroid/variance dispatch are outside this adapter.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical tissue classification using class intensity models. This function
+implements only the ordinary-OBJECT centroid update in that broad role; its
+summation order and damping details are selected VandyCRUISE semantics, not a
+full implementation of the paper's statistical model.
 """
 
 from __future__ import annotations

@@ -1,0 +1,45 @@
+{
+  "nifti": "small_distance_ras.nii.gz",
+  "shape_xyz_channels": [
+    4,
+    4,
+    4,
+    2
+  ],
+  "crop_bounds_source_coordinates": [
+    [
+      5,
+      7
+    ],
+    [
+      8,
+      10
+    ],
+    [
+      2,
+      4
+    ]
+  ],
+  "pad_border": 1,
+  "centroids_channels_classes": [
+    [
+      0.0,
+      9.999999960041972e-13,
+      9.999999717180685e-10
+    ],
+    [
+      0.0,
+      9.999999960041972e-13,
+      0.0
+    ]
+  ],
+  "centroid_bits": [
+    0,
+    730643660,
+    814313567,
+    0,
+    730643660,
+    0
+  ],
+  "source_zero": 1e-20
+}

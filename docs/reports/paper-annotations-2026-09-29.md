@@ -2,10 +2,11 @@
 
 ## Validation run
 
-The nine paper-to-code rows below were completed in implementation/documentation
-commit `d936ef52e4c2744ea1a9a0227b89aa53b8a58b96`. The full repository suite
-passed with `.venv/bin/python -m pytest -q`: **365 passed in 89.50 seconds**.
-The matching full-suite entry is in
+The initial P49–P57 paper-to-code annotation pass was added in
+implementation/documentation commit `d936ef52e4c2744ea1a9a0227b89aa53b8a58b96`.
+The full repository suite passed at that revision with
+`.venv/bin/python -m pytest -q`: **365 passed in 89.50 seconds**. The matching
+full-suite entry is in
 [`full-pytest-2026-09-29.md`](full-pytest-2026-09-29.md). These annotation-only
 changes do not alter runtime algorithms. Paper mapping explains method context
 and source relationships; it does not replace the separate numerical/source
@@ -40,6 +41,56 @@ decisions, refresh formulas, and wrapper stop conditions as selected
 VandyCRUISE source behavior. They limit evidence to the named synthetic
 Java-harness slices and do not claim whole-volume topology preservation,
 complete convergence, or end-to-end LesionTOADS equivalence.
+
+This was a documentation-only follow-up; the full-suite result above predates
+later implementation slices and is not evidence for those newer slices.
+
+## P52 / P57 documentation follow-up (2026-09-30)
+
+P52 now links the Han et al. (2004) coupled-surface context to the RAS image
+entry point and MaCRUISEplus TGDM wrapper, while retaining the selected source
+as authority for force profiles and wrapper-only central-shrink/recomputation
+steps. P57 now names Lewiner et al. (2003) beside the concrete
+`marching_cubes(method="lewiner")` operation and its plus/CLI wrappers. The
+notes distinguish Lewiner's external triangulator from JIST's
+`IsoSurfaceOnGrid` settings, Java near-zero perturbation, and RAS affine
+conversion. The 18-connectivity difference remains an open substitution risk;
+neither mesh equivalence nor downstream thickness parity is claimed.
+
+These are documentation-only edits. Existing analytic mesh and selected TGDM
+Java-harness evidence remains limited to the tests and reports named in the
+crosswalk; the full-suite result above predates newer implementation slices.
+
+## P51 documentation follow-up (2026-09-30)
+
+The ACE/MaACE guide now distinguishes the source-derived binary atlas-label
+boundary helper (`boundary.py` / `run_plus_boundary_stage`) from Huo et al.'s
+paper-level ``mu_boundary`` term. The code comments trace exact boundary
+neighborhood and cleanup behavior to selected V3 source; the plus ACE wrapper
+accepts a precomputed boundary-like image and applies its source mode-3 merge.
+No equivalence to the paper's boundary definition, max-based speed equation,
+or complete MaACE method is claimed. The ACE distance/speed field remains
+connected to Tosun et al.'s ACE equations, and ThinACE remains a separate
+VandyCRUISE cleanup implementation rather than a paper-specified thinning
+algorithm.
+
+This documentation-only update adds no new numerical validation evidence;
+source-comparison claims remain those cited in `ace-port.md` and its test
+reports.
+
+## P49 documentation follow-up (2026-09-30)
+
+The TOADS paper crosswalk and module docstrings now cover recently added
+ordinary-OBJECT statistical updates, class-pair similarity, default/atlas-type
+membership compositions, optional top-k initialization and registration, the
+post-registration template refresh, and the bounded continuing-iteration
+control slice. The comments use Bazin and Pham (2007, 2008) only for the broad
+statistical-classification, atlas-registration, and topology-aware iterative
+roles. Exact formulas, candidate/class ordering, pyramid schedules, wrapper
+call order, and stop conditions are attributed to the selected VandyCRUISE
+source. The new annotations do not claim a complete TOADS workflow or
+paper-level equivalence; synthetic Java-harness evidence remains limited to
+the named implementation slices.
 
 This was a documentation-only follow-up; the full-suite result above predates
 later implementation slices and is not evidence for those newer slices.

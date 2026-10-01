@@ -48,6 +48,11 @@ def test_lesion_uncrop_reuses_java_validated_ras_crop_geometry_result() -> None:
     case = json.loads(REFERENCE.read_text())
     cropped = np.asarray(case["cropped_image"], dtype=np.float32)[None, ...]
     transform = np.asarray(case["cropped_transform"], dtype=np.float32)
+    cropped_before = cropped.copy()
+    transform_before = transform.copy()
+    assert case["image_orientation_signs"] == [-1.0, -1.0, 1.0]
+    assert case["image_resolution"] != case["template_resolution"]
+    assert np.any(transform[:3] != 0) and np.any(transform[3:] != 0)
 
     restored, restored_transform = uncrop_lesion_toads_preprocessing_inputs(
         cropped,
@@ -62,12 +67,9 @@ def test_lesion_uncrop_reuses_java_validated_ras_crop_geometry_result() -> None:
     np.testing.assert_array_equal(
         restored[0], np.asarray(case["uncropped_image"], dtype=np.float32)
     )
-    np.testing.assert_allclose(
-        restored_transform,
-        np.asarray(case["uncropped_transform"], dtype=np.float32),
-        rtol=0,
-        atol=2e-7,
-    )
+    expected_transform = np.asarray(case["uncropped_transform"], dtype=np.float32)
+    np.testing.assert_array_equal(restored_transform.view(np.int32), expected_transform.view(np.int32))
     assert np.count_nonzero(restored[:, 0]) == 0
     assert np.count_nonzero(restored[:, -1]) == 0
-    np.testing.assert_array_equal(transform, np.asarray(case["cropped_transform"], dtype=np.float32))
+    np.testing.assert_array_equal(cropped, cropped_before)
+    np.testing.assert_array_equal(transform, transform_before)

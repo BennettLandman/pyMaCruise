@@ -171,6 +171,13 @@ def run_plus_ace_stage(
     The selected entry point uses a positive-CSF merge after the speed
     Gaussian (`UseUpdatedCSFinACE=3`) and disables the later enhanced-GM /
     skeleton update branch. The boundary input is supplied on the shared grid.
+
+    Huo et al. (2016), ``docs/papers/ace-maace.md``, describe a distinct
+    multi-atlas ``mu_boundary`` speed term. This adapter accepts a precomputed
+    atlas-CSF/boundary image and applies the selected Java mode-3 merge; it
+    does not compute or validate the paper's ``mu_boundary`` term or its
+    max-based speed equation. See ``run_plus_boundary_stage`` for the separate
+    selected ``MinFilter3D`` label-boundary operation.
     """
     if not isinstance(options, PlusPipelineOptions):
         raise ValueError("options must be PlusPipelineOptions")
@@ -210,7 +217,14 @@ def run_plus_boundary_stage(
     toads_wm_mask: nib.spatialimages.SpatialImage,
     options: PlusPipelineOptions = PlusPipelineOptions(),
 ) -> PlusBoundaryResult:
-    """Create the selected plus 3D boundary and clean it with TOADS WM."""
+    """Create and clean the selected plus atlas-label boundary.
+
+    Huo et al. (2016), ``docs/papers/ace-maace.md``, describe a multi-atlas
+    cortical-boundary term related to MaACE. This function creates the
+    selected V3 ``MinFilter3D`` boundary and applies its TOADS-WM cleanup. Its
+    relation to the paper's exact ``mu_boundary`` definition is not asserted;
+    the neighborhood and cleanup semantics here are source-derived.
+    """
     if not isinstance(options, PlusPipelineOptions):
         raise ValueError("options must be PlusPipelineOptions")
     if options.boundary_erosion_method != "3D":
@@ -265,6 +279,11 @@ def run_plus_tgdm_stage(
     MaACE-enhanced GM and thin skeleton, and the plus GVF field to its TGDM
     wrapper. This adapter routes those existing inputs and selected
     `WMIsoLevel` settings; output inverse-cropping belongs to the runner.
+
+    Paper context: Han et al. (2004), ``docs/papers/cruise.md``, describes the
+    coupled nested-surface role. MaCRUISEplus supplies its own MaSeg/TOADS
+    fields and wrapper settings; this adapter does not reproduce the paper's
+    full upstream segmentation pipeline.
     """
     if not isinstance(options, PlusPipelineOptions):
         raise ValueError("options must be PlusPipelineOptions")
@@ -333,6 +352,15 @@ def extract_plus_surfaces(
     This reuses scikit-image Lewiner marching cubes and the complete-affine
     RAS conversion. Exact mesh equivalence to JIST ``IsoSurfaceOnGrid`` is an
     explicit, still-open comparison risk.
+
+    The triangulator corresponds to Lewiner et al. (2003), cited in
+    ``docs/papers/marching-cubes.md``. That paper citation applies to the
+    external marching-cubes implementation only; near-zero handling, JIST
+    iso-level/connectivity settings, and the output affine are separate source
+    and PyMaCRUISE conventions. In particular, JIST's selected digital
+    connectivity 18 has no matching scikit-image argument and is not
+    reproduced; Lewiner's topological guarantee does not establish equivalent
+    connectivity, topology, or vertices versus JIST ``IsoSurfaceOnGrid``.
     """
     if not isinstance(result, PlusUncroppedTGDMResult):
         raise ValueError("result must be PlusUncroppedTGDMResult")

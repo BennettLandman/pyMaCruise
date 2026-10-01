@@ -56,8 +56,10 @@ def generalized_gvf(
     if not np.isfinite(solver_tolerance) or solver_tolerance <= 0:
         raise ValueError("solver_tolerance must be finite and positive")
 
-    # VandyCRUISE min/max-normalizes the scalar input before differentiating;
-    # its separate `normalize` option controls output vectors, not this step.
+    # Xu & Prince discuss [0, 1] edge-map normalization for the experiments
+    # in §4; the selected VandyCRUISE implementation makes min/max
+    # normalization an input step generally. Its separate `normalize`
+    # option controls output vectors, not this step.
     minimum = float(values.min())
     maximum = float(values.max())
     if maximum == minimum:
@@ -72,8 +74,8 @@ def generalized_gvf(
     gradient_magnitude = np.sqrt(
         np.sum(gradient * gradient, axis=-1, dtype=np.float64)
     ).astype(np.float32)
-    # Xu & Prince's model uses spatially varying smoothing and data weights
-    # (their Eqs. 5, 8-9). Preserve the selected Java implementation's exact
+    # Xu & Prince's GGVF equilibrium is §3, Eq. (5); their example spatial
+    # weights are Eqs. (8)-(9). Preserve the selected Java implementation's exact
     # convention here: it computes |grad f| (despite its `SqrMagf` variable
     # name), places that magnitude rather than its square in the exponential,
     # and divides the smoothing weight by six for its six-neighbor stencil.

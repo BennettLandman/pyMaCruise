@@ -3,6 +3,13 @@
 This is deliberately limited to the ``similarity[k][m]`` coefficient
 construction in ``MultipleToadSegmentation.computeExactMemberships``. It
 does not implement membership updates, priors, or the wider TOADS iteration.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, frame
+TOADS as statistical tissue classification constrained by atlas relationships.
+This selected coefficient prelude supports class competition in that broad
+framework. The exact similarity formula and float operation order are
+VandyCRUISE source behavior, and this module does not implement the paper's
+complete classification method.
 """
 
 from __future__ import annotations

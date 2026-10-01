@@ -1,14 +1,24 @@
 """Scientific triangular surfaces in RAS+ millimetres.
 
-Level-set extraction follows MaCRUISE's ``GetMeshSurfaceFromLevelSet``
-contract (zero level, connectivity 18, non-inclusive exact zeros, and the
-source's near-zero perturbation). Marching Cubes is supplied by scikit-image;
-vertices are transformed through the complete NIfTI affine before export.
+Level-set extraction preserves selected MaCRUISE preprocessing semantics
+(zero level, non-inclusive exact zeros, and the source's near-zero
+perturbation). The selected JIST triangulator is called with digital
+connectivity 18, but scikit-image's Lewiner API has no corresponding setting;
+PyMaCRUISE therefore does not reproduce that connectivity rule. Vertices are
+transformed through the complete NIfTI affine before export.
 
 Source references: ``GetMeshSurfaceFromLevelSet.java``, CVS r1.4; JIST
 ``IsoSurfaceOnGrid.java``, CVS r1.3, author Blake Lucas. The Python triangulator
 is an explicit, documented implementation substitution; it does not copy
 JIST source code.
+
+Published implementation context: the selected
+``skimage.measure.marching_cubes(method="lewiner")`` call uses Lewiner et al.'s
+2003 ambiguity-resolving Marching Cubes implementation. Its topological
+guarantee does not implement JIST's separate 18-connectivity option or
+establish equivalent mesh topology. The citation applies to triangulation
+only; input perturbation and RAS coordinate conversion follow separate
+source/output contracts.
 """
 
 from __future__ import annotations
@@ -84,9 +94,19 @@ def extract_levelset_surface(
 ) -> SurfaceMesh:
     """Extract a closed triangular surface from a 3D scalar NIfTI image.
 
-    This ports the active JIST defaults: iso-level 0, digital connectivity 18,
-    and ``inclusive=false``. Source ``solveOriginal`` moves values within
-    0.1 of the iso-level to +/-0.1 (exact zeros to -0.1) before extraction.
+    This preserves selected JIST input semantics: the requested iso-level
+    (default 0), ``inclusive=false``, and the source's near-zero treatment.
+    JIST also selects digital connectivity 18, but scikit-image exposes no
+    corresponding option, so that setting is not reproduced by this call.
+    Source ``solveOriginal`` moves values within 0.1 of the iso-level to
+    +/-0.1 (exact zeros to -0.1) before extraction.
+
+    Triangulation is delegated to scikit-image's Lewiner implementation
+    (Lewiner et al., 2003; see ``docs/papers/marching-cubes.md``). The
+    published method describes that triangulator, not the surrounding JIST
+    settings. Since scikit-image has no matching 18-connectivity argument,
+    identical mesh topology or vertices versus JIST ``IsoSurfaceOnGrid`` are
+    not claimed.
     """
     if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):
         raise ValueError("Level-set input must be a NIfTI image")
@@ -107,12 +127,13 @@ def extract_levelset_surface(
         raise ValueError("Level-set does not cross the requested iso-level")
 
     try:
-        # The triangulator is scikit-image's Cython port of Lewiner et al.'s
-        # ambiguity-resolving Marching Cubes 33 implementation. The preceding
-        # near-zero perturbation is retained from the Java source and is not a
-        # step prescribed by Lewiner et al. Nor does this API expose the
-        # source's separate 18-connectivity setting: exact JIST
-        # IsoSurfaceOnGrid topology/geometry remains a tracked substitution risk.
+        # This selects scikit-image's Lewiner et al. MC33 implementation. The
+        # JIST wrapper instead calls IsoSurfaceOnGrid.solveOriginal(..., 18,
+        # 0, false); scikit-image has no matching digital-connectivity option.
+        # Near-zero perturbation above is Java behavior, not a Lewiner step.
+        # Face mappings differ in the synthetic JIST comparisons; see
+        # docs/papers/marching-cubes.md. This is a measured substitution, not
+        # source-equivalent JIST triangulation.
         index_vertices, faces, _normals, _values = marching_cubes(
             shifted,
             level=0.0,

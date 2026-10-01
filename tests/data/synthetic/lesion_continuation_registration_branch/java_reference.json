@@ -1,0 +1,23 @@
+{
+  "source_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+  "previous_energy_bits": 1111800585,
+  "membership_energy_bits": 1104291819,
+  "ratio_bits": 1058765745,
+  "stop": false,
+  "run_growing": true,
+  "refresh_relations": true,
+  "stage_order": [
+    "propagateThinning",
+    "computeCentroids",
+    "computeVariances",
+    "computeChannelWeights",
+    "computeMemberships",
+    "energyRatio",
+    "registerShapes",
+    "convergenceCheck",
+    "iterationLimitCheck",
+    "propagateGrowing",
+    "computeRelations"
+  ],
+  "harness_sha256": "20f08c8a7d0b04e341b6aef9517f884631f3927201b3b18d9b3f3f40b54b795f"
+}

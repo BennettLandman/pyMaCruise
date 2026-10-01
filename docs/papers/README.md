@@ -1,7 +1,7 @@
 # Published-method code annotations
 
 This folder contains the paper citations, method summaries, and bounded
-paper-to-code maps requested in closeout steps P48–P57. Papers explain the
+paper-to-code maps requested in closeout steps P48–P58. Papers explain the
 algorithmic context; the selected MaCRUISE/VandyCRUISE source remains the
 authority for exact version-specific behavior. A citation or comment is not
 evidence of numerical equivalence.
@@ -18,6 +18,7 @@ evidence of numerical equivalence.
 | P55 | Generalized gradient vector flow | [`gvf.md`](gvf.md) |
 | P56 | N4 bias correction (ANTsPy dependency) | [`n4.md`](n4.md) |
 | P57 | Lewiner marching cubes (scikit-image) | [`marching-cubes.md`](marching-cubes.md) |
+| P58 | MaCRUISE second-pass dura removal | [`dura-removal.md`](dura-removal.md) |
 
 Each guide identifies the relevant publication, code locations, what the
 implementation actually does, and boundaries between paper concepts and

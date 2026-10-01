@@ -1,4 +1,12 @@
-"""Fixed-input composition of the default TOADS atlas with one OUTLIER class."""
+"""Fixed-input composition of the default TOADS atlas with one OUTLIER class.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical intensity classification combined with atlas priors. This
+selected-source composition adds the default atlas' OUTLIER branch to that
+classification role. The outlier energy, mixing, and class ordering are
+VandyCRUISE details and are not attributed as equations from the papers; a
+fixed-input pass is not the complete TOADS iteration.
+"""
 
 from __future__ import annotations
 

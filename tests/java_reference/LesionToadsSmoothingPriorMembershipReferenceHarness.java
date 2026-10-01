@@ -75,13 +75,13 @@ public final class LesionToadsSmoothingPriorMembershipReferenceHarness {
                 if(c.target.equals("BLACKHOLE")){bh=inverse(v[4],c.relation,c.shapes[k]);be=v[5];}
                 relation=c.relation.equals("direct")?1.0f:sf(c.shapes[k]);
                 if(c.target.equals("LESION")){
-                    if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-                    else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;relation*=n/c.maxGM;}
-                    if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+                    if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+                    else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+                    if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;relation*=c.bstem/c.maxBstem;}
                 }else{
-                    if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;relation*=n/c.maxVent;}
-                    else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;relation*=n/c.maxGM;}
-                    if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=(float)c.bstem/c.maxBstem;}
+                    if(c.maxVent!=0&&c.vent!=-1){float n=c.vent==0?c.spread:c.vent;lesion=n*lesion/c.maxVent;if(c.vent==0)relation*=n/c.maxVent;else relation*=c.vent/c.maxVent;}
+                    else if(c.maxGM!=0&&c.gm!=-1){float n=c.gm==0?c.spread:c.gm;lesion=n*lesion/c.maxGM;bh=n*bh/c.maxGM;if(c.gm==0)relation*=n/c.maxGM;else relation*=c.gm/c.maxGM;}
+                    if(c.maxBstem!=0&&c.bstem!=-1){lesion=c.bstem*lesion/c.maxBstem;bh=c.bstem*bh/c.maxBstem;relation*=c.bstem/c.maxBstem;}
                 }
             }
         }

@@ -6,13 +6,16 @@ queue exhaustion. It reuses the already source-validated ``BinaryHeap4D``
 port in :mod:`pymacruise.toads_heap`; it does not estimate lesion memberships
 or run later competition/thinning stages.
 
-Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``, presents
-lesion-aware topology-preserving segmentation and its lesion-class competition.
-This module implements selected growth and thinning queue operations from the
-VandyCRUISE source, including its local topology gate; source ordering,
-scoring, and loop details are not specified by the paper. Java-harness matches
-on committed synthetic cases validate those named operations only, not
-whole-volume topology preservation or the complete LesionTOADS algorithm.
+Paper connection: Shiee et al. (2010), Method §2.2, explains the topology
+modeling choice to group lesions with WM so their union follows the WM
+topological prior. This module implements selected growth and thinning queue
+operations from VandyCRUISE, including its local topology gate for candidate
+label changes. The local gate is a source-level realization of that broader
+constraint, not by itself proof that every volume-wide WM/lesion result
+preserves the published topology. Source ordering, scoring, and loop details
+are also selected-source behavior. Java-harness matches on committed
+synthetic cases validate only the named operations, not the complete
+LesionTOADS algorithm.
 """
 
 from __future__ import annotations

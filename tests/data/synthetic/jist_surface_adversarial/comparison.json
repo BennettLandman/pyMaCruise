@@ -1,0 +1,404 @@
+{
+  "cases": {
+    "boundary_crossing_sphere": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "boundary_intersection": true,
+      "comparison": {
+        "jist_topology": {
+          "boundary_edges": 68,
+          "connected_components": 1,
+          "euler_characteristic": 1,
+          "faces": 1820,
+          "nonmanifold_edges": 0,
+          "unique_edges": 2764,
+          "vertices": 945
+        },
+        "lewiner_topology": {
+          "boundary_edges": 68,
+          "connected_components": 1,
+          "euler_characteristic": 1,
+          "faces": 1820,
+          "nonmanifold_edges": 0,
+          "unique_edges": 2764,
+          "vertices": 945
+        },
+        "mapped_triangle_connectivity": {
+          "fraction_of_jist_faces": 0.6857142857142857,
+          "jist_faces": 1820,
+          "lewiner_faces": 1820,
+          "matching_unordered_faces": 1248,
+          "vertex_mapping_bijective": true
+        },
+        "symmetric_vertex_nearest_neighbor_mm": {
+          "max_sampled": 8.508300766152388e-07,
+          "mean": 2.290499377496175e-07
+        },
+        "symmetric_vertex_to_triangle_mm": {
+          "jist_vertices_to_lewiner_mean": 1.5995471888008136e-07,
+          "lewiner_vertices_to_jist_mean": 1.63127128388977e-07,
+          "max_sampled": 7.641231910758865e-07,
+          "mean": 1.6154092363452915e-07
+        }
+      },
+      "definition": "radius-9 sphere centered at voxel coordinate (2,20,20), crossing x=0 image boundary",
+      "expected_boundary": "open clipped patch",
+      "expected_components": 1,
+      "expected_euler_characteristic": 1,
+      "input_sha256_little_endian_float32": "73d6e61a347986f1ea654f53cd52156d3ef22eb5fd1ecad43093393845dcd411",
+      "jist_return_code": 0,
+      "jist_topology": {
+        "boundary_edges": 68,
+        "connected_components": 1,
+        "euler_characteristic": 1,
+        "faces": 1820,
+        "nonmanifold_edges": 0,
+        "unique_edges": 2764,
+        "vertices": 945
+      },
+      "lewiner_topology": {
+        "boundary_edges": 68,
+        "connected_components": 1,
+        "euler_characteristic": 1,
+        "faces": 1820,
+        "nonmanifold_edges": 0,
+        "unique_edges": 2764,
+        "vertices": 945
+      },
+      "shape": [
+        41,
+        41,
+        41
+      ]
+    },
+    "narrow_neck_dumbbell": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "comparison": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 2,
+          "faces": 4968,
+          "nonmanifold_edges": 0,
+          "unique_edges": 7452,
+          "vertices": 2486
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 2,
+          "faces": 4968,
+          "nonmanifold_edges": 0,
+          "unique_edges": 7452,
+          "vertices": 2486
+        },
+        "mapped_triangle_connectivity": {
+          "fraction_of_jist_faces": 0.7181964573268921,
+          "jist_faces": 4968,
+          "lewiner_faces": 4968,
+          "matching_unordered_faces": 3568,
+          "vertex_mapping_bijective": true
+        },
+        "symmetric_vertex_nearest_neighbor_mm": {
+          "max_sampled": 1.4404296848624654e-06,
+          "mean": 2.6159191674456e-07
+        },
+        "symmetric_vertex_to_triangle_mm": {
+          "jist_vertices_to_lewiner_mean": 1.7214296936548455e-07,
+          "lewiner_vertices_to_jist_mean": 1.6913255802089452e-07,
+          "max_sampled": 1.3030405575665023e-06,
+          "mean": 1.706377636931895e-07
+        }
+      },
+      "definition": "union of two radius-8.5 spheres at x=\u00b17 and radius-1.5 capped connector",
+      "expected_boundary": "closed",
+      "expected_components": 1,
+      "expected_euler_characteristic": 2,
+      "input_sha256_little_endian_float32": "6343ed61a722140b9b81200cf0803f48abc77c85d4b9c3ccfc5fc7a31bd4a514",
+      "jist_return_code": 0,
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 4968,
+        "nonmanifold_edges": 0,
+        "unique_edges": 7452,
+        "vertices": 2486
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 4968,
+        "nonmanifold_edges": 0,
+        "unique_edges": 7452,
+        "vertices": 2486
+      },
+      "neck_diameter_mm": 3.0,
+      "shape": [
+        41,
+        41,
+        41
+      ]
+    },
+    "near_touching_components": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "comparison": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 2,
+          "euler_characteristic": 4,
+          "faces": 3520,
+          "nonmanifold_edges": 0,
+          "unique_edges": 5280,
+          "vertices": 1764
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 2,
+          "euler_characteristic": 4,
+          "faces": 3520,
+          "nonmanifold_edges": 0,
+          "unique_edges": 5280,
+          "vertices": 1764
+        },
+        "mapped_triangle_connectivity": {
+          "fraction_of_jist_faces": 0.7136363636363636,
+          "jist_faces": 3520,
+          "lewiner_faces": 3520,
+          "matching_unordered_faces": 2512,
+          "vertex_mapping_bijective": true
+        },
+        "symmetric_vertex_nearest_neighbor_mm": {
+          "max_sampled": 1.8090820290694865e-06,
+          "mean": 2.562855866142615e-07
+        },
+        "symmetric_vertex_to_triangle_mm": {
+          "jist_vertices_to_lewiner_mean": 1.7482170609605808e-07,
+          "lewiner_vertices_to_jist_mean": 1.7638435166000625e-07,
+          "max_sampled": 1.5258789076710855e-06,
+          "mean": 1.7560302887803214e-07
+        }
+      },
+      "continuous_gap_mm": 0.2,
+      "definition": "union of radius-7 spheres centered at x=\u00b17.1",
+      "expected_boundary": "closed",
+      "expected_components": 2,
+      "expected_euler_characteristic": 4,
+      "input_sha256_little_endian_float32": "7cde07c48b579b07e0c65c7af765753b8b2fc95df3ce07ef01197074498ca304",
+      "jist_return_code": 0,
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 2,
+        "euler_characteristic": 4,
+        "faces": 3520,
+        "nonmanifold_edges": 0,
+        "unique_edges": 5280,
+        "vertices": 1764
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 2,
+        "euler_characteristic": 4,
+        "faces": 3520,
+        "nonmanifold_edges": 0,
+        "unique_edges": 5280,
+        "vertices": 1764
+      },
+      "shape": [
+        41,
+        41,
+        41
+      ]
+    },
+    "torus": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "comparison": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 0,
+          "faces": 4624,
+          "nonmanifold_edges": 0,
+          "unique_edges": 6936,
+          "vertices": 2312
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 0,
+          "faces": 4624,
+          "nonmanifold_edges": 0,
+          "unique_edges": 6936,
+          "vertices": 2312
+        },
+        "mapped_triangle_connectivity": {
+          "fraction_of_jist_faces": 0.6782006920415224,
+          "jist_faces": 4624,
+          "lewiner_faces": 4624,
+          "matching_unordered_faces": 3136,
+          "vertex_mapping_bijective": true
+        },
+        "symmetric_vertex_nearest_neighbor_mm": {
+          "max_sampled": 1.750488280549689e-06,
+          "mean": 2.5918077508555147e-07
+        },
+        "symmetric_vertex_to_triangle_mm": {
+          "jist_vertices_to_lewiner_mean": 1.885386097965069e-07,
+          "lewiner_vertices_to_jist_mean": 1.877580126544671e-07,
+          "max_sampled": 1.631066434326879e-06,
+          "mean": 1.8814831122548701e-07
+        }
+      },
+      "definition": "sqrt((sqrt(x^2+y^2)-9)^2+z^2)-4.5",
+      "expected_boundary": "closed",
+      "expected_components": 1,
+      "expected_euler_characteristic": 0,
+      "expected_genus": 1,
+      "input_sha256_little_endian_float32": "5bde2e3b3a24ce1f1292fbca9a35c8db8ea39642e6a3cd49f694f2fc1e7dce3c",
+      "jist_return_code": 0,
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 0,
+        "faces": 4624,
+        "nonmanifold_edges": 0,
+        "unique_edges": 6936,
+        "vertices": 2312
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 0,
+        "faces": 4624,
+        "nonmanifold_edges": 0,
+        "unique_edges": 6936,
+        "vertices": 2312
+      },
+      "shape": [
+        41,
+        41,
+        41
+      ]
+    }
+  },
+  "limitations": [
+    "Distances are symmetric samples from each mesh's vertices to the opposing triangles, not a continuous triangle-to-triangle Hausdorff bound.",
+    "Triangle matching is after nearest-vertex mapping; a bijective mapping is reported separately.",
+    "The Java harness stubs JIST image/progress and mesh containers plus normal generation; it executes the selected IsoSurfaceOnGrid algorithm body.",
+    "This is substitution-risk evidence on four synthetic inputs, not P37 acceptance or full workflow equivalence."
+  ],
+  "settings": {
+    "connectivity": 18,
+    "inclusive": false,
+    "iso_level": 0.0
+  },
+  "source": {
+    "harness_sha256": "973263fa3e46408c165ad4c707688f7849b030e4be97e6fd8c3829c2cf119be2",
+    "isosurface_sha256": "a323ac5eed8b66ad62a68cd93a6bc7bcf01281453fc6541ee5c4ccc529d40c38",
+    "isosurface_source": "toads-cruise-scm-2026-09-26/toads-cruise/src/edu/jhu/ece/iacl/algorithms/graphics/isosurf/IsoSurfaceOnGrid.java",
+    "method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, CONNECT_18_6=18, iso=0, inclusive=false)",
+    "wrapper_sha256": "3f7b54e099f2550f42a572e96070642b8124a93ab1b45eca1aa544ecec1758b4",
+    "wrapper_source": "toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/plugins/CRUISE/utilities/GetMeshSurfaceFromLevelSet.java"
+  },
+  "title": "Selected JIST IsoSurfaceOnGrid versus Lewiner on adversarial synthetic level sets"
+}

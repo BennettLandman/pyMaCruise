@@ -1705,8 +1705,18 @@ def modulate_lesion_toads_membership_by_distances(
     A valid ventricle distance takes precedence over valid gray-matter
     distance; a valid brainstem distance is then applied independently. The
     selected source substitutes ``spread`` for zero only in the ventricle and
-    gray-matter branches. This helper applies scalar distances already
+    gray-matter branches. Relation updates preserve Java's byte arithmetic:
+    nonzero distance/max relation factors use integer division, while the
+    float ``spread`` branches use float division. Membership updates promote
+    to float before dividing. This helper applies scalar distances already
     computed elsewhere; it does not create masks or distance maps.
+
+    Paper connection: Shiee et al. (2010), Method §2.3, motivates
+    distance-dependent lesion relationships to suppress false positives near
+    likely-confound structures. This is the selected Java branch for those
+    supplied distance maps; its cap/sentinel handling, precedence, byte
+    division behavior, and brainstem extension are implementation details,
+    not numerical rules specified by the paper.
     """
     membership = np.float32(lesion_membership)
     relation = np.float32(lesion_relation)
@@ -1747,18 +1757,23 @@ def modulate_lesion_toads_membership_by_distances(
     if vent_max != np.float32(0.0) and vent != -1:
         numerator = spread_value if vent == 0 else np.float32(vent)
         membership = np.float32(np.float32(numerator * membership) / vent_max)
-        factor = np.float32(numerator / vent_max)
+        # Source fields and maxima are Java bytes. For nonzero distances the
+        # relation expression divides byte by byte before compound assignment,
+        # so Java performs integer division (unlike the float-promoted
+        # membership expression above). The zero-distance expression uses
+        # float spread and therefore keeps floating-point division.
+        factor = np.float32(numerator / vent_max) if vent == 0 else np.float32(vent // int(max_ventricle_distance))
         relation = np.float32(relation * factor)
     elif gm_flag and gm_max != np.float32(0.0) and gm != -1:
         numerator = spread_value if gm == 0 else np.float32(gm)
         membership = np.float32(np.float32(numerator * membership) / gm_max)
-        factor = np.float32(numerator / gm_max)
+        factor = np.float32(numerator / gm_max) if gm == 0 else np.float32(gm // int(max_gray_matter_distance))
         relation = np.float32(relation * factor)
 
     if brainstem_max != np.float32(0.0) and brainstem != -1:
         numerator = np.float32(brainstem)
         membership = np.float32(np.float32(numerator * membership) / brainstem_max)
-        factor = np.float32(numerator / brainstem_max)
+        factor = np.float32(brainstem // int(max_brainstem_distance))
         relation = np.float32(relation * factor)
 
     return LesionDistanceModulation(membership=membership, relation=relation)

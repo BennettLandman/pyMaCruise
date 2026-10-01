@@ -1,0 +1,46 @@
+{
+  "image_nifti": "normalized_channels_ras.nii.gz",
+  "topology_nifti": "topology_labels_ras.nii.gz",
+  "image_shape_xyz_channels": [
+    11,
+    10,
+    9,
+    2
+  ],
+  "topology_shape_xyz": [
+    11,
+    10,
+    9
+  ],
+  "axis_codes": [
+    "R",
+    "A",
+    "S"
+  ],
+  "image_resolution_mm": [
+    0.8,
+    1.2,
+    1.5
+  ],
+  "template_resolution_mm": [
+    0.8,
+    1.2,
+    1.5
+  ],
+  "orientation_signs": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "initial_transform": [
+    0.04,
+    -0.03,
+    0.08,
+    -1.1,
+    -2.6,
+    -1.5
+  ],
+  "background_label": 1,
+  "background_ratio": 0.0,
+  "padding": 10
+}

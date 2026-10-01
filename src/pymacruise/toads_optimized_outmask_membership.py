@@ -1,4 +1,12 @@
-"""Fixed-input base-TOADS optimized-tissue plus OUTMASK membership pass."""
+"""Fixed-input base-TOADS optimized-tissue plus OUTMASK membership pass.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical tissue classification with atlas-informed constraints. This
+fixed-input pass composes selected optimized-tissue classes and OUTMASK in
+that broad role. Its source-specific energy terms, order, and masking
+semantics come from VandyCRUISE, not directly from the papers; this is not a
+complete TOADS iteration.
+"""
 
 from __future__ import annotations
 

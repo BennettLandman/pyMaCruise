@@ -1,0 +1,55 @@
+		if (alignShapes) {
+			if (verbose) MedicUtilPublic.displayMessage("Atlas alignment\n");
+			memberships = preprocess.initialMemberships(centroids, classes);
+			
+			// align both images centers ? not very efficient
+			//preprocess.alignImagesAndTopolgyCenters(atlas.getLabels(), centroids, classes);
+			//System.out.println("IMAGE DIMENSIONS "+nx+" "+ny+" "+nz);
+			atlas.setImageInfo(nx,ny,nz,rx,ry,rz,orient,orx,ory,orz);
+			
+			//atlas.initShapeRegistration(memberships, registrationMode, initAlignIter, levels, 1.0f);				
+			atlas.initShapeRegistration(memberships, "rigid", initAlignIter, levels, 1.0f);				
+			atlas.setTransform(preprocess.getTransform());
+			
+			if (debug) System.out.println("pre-process: "+preprocess.displayTransform());
+			
+			//atlas.updateShapeRegistration(memberships, "fully_affine", initAlignIter, levels);
+			//atlas.updateShapeRegistration(memberships, "single_scale", initAlignIter, levels);
+			//atlas.updateShapeRegistration(memberships, registrationMode, initAlignIter, levels, 1.0f);
+			atlas.updateShapeRegistration(memberships, "rigid", initAlignIter, levels, 1.0f);
+			if (debug) System.out.println("atlas: "+atlas.displayTransform(atlas.getTransform()));
+			
+			fireProgressStateChanged(30);
+			
+			atlas.registerShapesPyramid();
+			
+			// add a last step ? not needed, can be nice as an option
+			//atlas.updateShapeRegistration(memberships, registrationMode, lastIter, 1, 1.0f);
+			if (debug) System.out.println("atlas: "+atlas.displayTransform(atlas.getTransform()));
+			
+			fireProgressStateChanged(50);
+			
+			//atlas.registerShapes();
+			
+			memberships = null;
+			
+			if (debug) System.out.println("aligned atlas: "+atlas.displayTransform(atlas.getTransform()));
+			if (debug) System.out.println("aligned pre-process: "+preprocess.displayTransform());
+			
+			preprocess.uncropImages();
+			preprocess.findCroppingBoundaries();
+			preprocess.cropImages();
+			
+			if (debug) System.out.println("final pre-process: "+preprocess.displayTransform());
+			if (debug) System.out.println("final aligned atlas: "+atlas.displayTransform(atlas.getTransform()));
+			
+			dim = preprocess.getCurrentImageDimensions();
+			nx = dim[0]; ny = dim[1]; nz = dim[2];
+			
+			atlas.setImageInfo(nx,ny,nz,rx,ry,rz,orient,orx,ory,orz);
+			
+			atlas.computeTransformedTemplate();
+			
+			// re-compute the centroids to get better estimates
+			preprocess.updateTransformedTemplate(atlas.getTemplate());
+			//centroids = preprocess.initialCentroids(atlas.getLabels(),atlas.getIntensityPriors(modality,nc),classes);		

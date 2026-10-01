@@ -1,4 +1,11 @@
-"""Base TOADS assigned-class variance adapter for ordinary objects."""
+"""Base TOADS assigned-class variance adapter for ordinary objects.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical tissue classification with class-specific intensity models. This
+is the selected source's assigned-class standard-deviation update for
+ordinary OBJECT classes only; it is one parameter-estimation component, not
+the complete paper model or TOADS iteration.
+"""
 
 from __future__ import annotations
 

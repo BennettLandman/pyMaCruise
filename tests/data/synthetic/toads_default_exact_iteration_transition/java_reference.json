@@ -1,0 +1,47 @@
+{
+  "algorithm_source_sha256": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+  "segmentation_source_sha256": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+  "fixed_registration": true,
+  "cases": [
+    {
+      "name": "continue-grows-even-when-option-off",
+      "previous_bits": 1065353216,
+      "current_bits": 1056964608,
+      "iteration": 1,
+      "maximum_iterations": 5,
+      "threshold_bits": 925353388,
+      "do_growing": false,
+      "ratio_bits": 1059760811,
+      "stop": false,
+      "run_growing": true,
+      "source_order": "membership,control,growing,computeRelations,computeBoundaryDistances,computeClosestLabels"
+    },
+    {
+      "name": "iteration-limit-final-growth",
+      "previous_bits": 1063675494,
+      "current_bits": 1061997773,
+      "iteration": 3,
+      "maximum_iterations": 3,
+      "threshold_bits": 925353388,
+      "do_growing": true,
+      "ratio_bits": 1039200491,
+      "stop": true,
+      "run_growing": true,
+      "source_order": "membership,control,growing,updateClassificationFromLabels"
+    },
+    {
+      "name": "iteration-limit-no-final-growth",
+      "previous_bits": 1063675494,
+      "current_bits": 1061997773,
+      "iteration": 3,
+      "maximum_iterations": 3,
+      "threshold_bits": 925353388,
+      "do_growing": false,
+      "ratio_bits": 1039200491,
+      "stop": true,
+      "run_growing": false,
+      "source_order": "membership,control,updateClassificationFromLabels"
+    }
+  ],
+  "harness_sha256": "365649cc6e9d549d3e0c6ff613eaf871d965ef508d818d182b4dc199a49e05ad"
+}

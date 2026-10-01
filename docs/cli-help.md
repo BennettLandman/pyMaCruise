@@ -47,7 +47,11 @@ P34/P42a workflow orchestration is implemented.
   writes four RAS-oriented binary `.nii.gz` masks derived from MaSeg labels.
 - `pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation OP
   --output RESULT.nii.gz` performs the selected generic voxelwise operator;
-  both images must share one physical grid.
+  both images must share one physical grid. Supported operations are `ADD`,
+  `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `MIN`, and `MAX` (case-insensitive).
+  Inputs are axis-reoriented to RAS with a warning when needed, and output is
+  `.nii.gz`. Optional `--provenance RUN.json` records the effective operation,
+  paths, software version, and RAS convention.
 
 The full-pipeline configuration file, restart behavior, and final output
 manifest will be specified when P34 and P42a are implemented. See

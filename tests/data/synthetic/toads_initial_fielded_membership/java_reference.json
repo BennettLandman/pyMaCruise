@@ -1,0 +1,20 @@
+{
+  "source_sha256": {
+    "MedicAlgorithmToads08.java": "d00a7ad609ab0c6381334248b53f4daadc070161af67ef853e2a552dd008d115",
+    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+  },
+  "stage_order": [
+    "addInhomogeneityCorrection[channel=0]",
+    "addInhomogeneityCorrection[channel=1]",
+    "computeRelations",
+    "computeBoundaryDistances",
+    "computeClosestLabels",
+    "computeVariances",
+    "computeExactMemberships"
+  ],
+  "membership_reference": {
+    "fixture": "toads_default_atlas_dispatch",
+    "case": {"field": true, "psf": true, "smoothing": true, "prior": true}
+  }
+}

@@ -1,4 +1,12 @@
-"""Selected LesionTOADS skeleton-to-label classification update."""
+"""Selected LesionTOADS skeleton-to-label classification update.
+
+Shiee et al. (2010), ``docs/papers/lesion-toads.md``, discuss preserving
+topology in lesion-aware segmentation. This skeleton-to-label byte update is
+only a selected VandyCRUISE output helper; its sentinel and class-index
+semantics are source-specific and are not specified by the paper. The helper
+is dormant in the selected wrapper, and its synthetic Java-excerpt validation
+does not show paper-level topology preservation.
+"""
 
 from __future__ import annotations
 

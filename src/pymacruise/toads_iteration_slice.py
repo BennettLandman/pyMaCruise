@@ -7,6 +7,13 @@ dispatcher, atlas registration, optional inhomogeneity correction, and full
 TOADS initialization/convergence workflow are deliberately excluded. Model
 parameters are supplied by the caller, as if produced by the preceding
 source stages.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+an iterative combination of statistical classification and topology-aware
+updates. This adapter composes one continuing source-defined pass in that
+general role. The tested control, growth, and relation-refresh sequence is
+selected VandyCRUISE behavior with fixed model parameters; it is not a full
+TOADS iteration from image initialization through convergence.
 """
 
 from __future__ import annotations

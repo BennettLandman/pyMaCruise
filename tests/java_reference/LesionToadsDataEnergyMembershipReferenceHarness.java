@@ -70,13 +70,13 @@ public final class LesionToadsDataEnergyMembershipReferenceHarness {
             float[] v=update(s,k,rawData[k]);mem[k]=v[0];energy[k]=v[1];
             if(k==1){lesion=inv(v[2],rel,SHAPES[s][1]);le=v[3];be=v[5];if(target.equals("BLACKHOLE"))bh=inv(v[4],rel,SHAPES[s][1]);relation=rel.equals("direct")?1.0f:sf(SHAPES[s][1]);
                 if(target.equals("LESION")){
-                    if(MAX_VENT[s]!=0&&VENT[s]!=-1){float n=VENT[s]==0?SPREAD[s]:VENT[s];lesion=n*lesion/MAX_VENT[s];relation*=n/MAX_VENT[s];}
-                    else if(MAX_GM[s]!=0&&GM[s]!=-1){float n=GM[s]==0?SPREAD[s]:GM[s];lesion=n*lesion/MAX_GM[s];relation*=n/MAX_GM[s];}
-                    if(MAX_BSTEM[s]!=0&&BSTEM[s]!=-1){lesion=BSTEM[s]*lesion/MAX_BSTEM[s];relation*=(float)BSTEM[s]/MAX_BSTEM[s];}
+                    if(MAX_VENT[s]!=0&&VENT[s]!=-1){float n=VENT[s]==0?SPREAD[s]:VENT[s];lesion=n*lesion/MAX_VENT[s];if(VENT[s]==0)relation*=n/MAX_VENT[s];else relation*=VENT[s]/MAX_VENT[s];}
+                    else if(MAX_GM[s]!=0&&GM[s]!=-1){float n=GM[s]==0?SPREAD[s]:GM[s];lesion=n*lesion/MAX_GM[s];if(GM[s]==0)relation*=n/MAX_GM[s];else relation*=GM[s]/MAX_GM[s];}
+                    if(MAX_BSTEM[s]!=0&&BSTEM[s]!=-1){lesion=BSTEM[s]*lesion/MAX_BSTEM[s];relation*=BSTEM[s]/MAX_BSTEM[s];}
                 }else{
-                    if(MAX_VENT[s]!=0&&VENT[s]!=-1){float n=VENT[s]==0?SPREAD[s]:VENT[s];lesion=n*lesion/MAX_VENT[s];relation*=n/MAX_VENT[s];}
-                    else if(MAX_GM[s]!=0&&GM[s]!=-1){float n=GM[s]==0?SPREAD[s]:GM[s];lesion=n*lesion/MAX_GM[s];bh=n*bh/MAX_GM[s];relation*=n/MAX_GM[s];}
-                    if(MAX_BSTEM[s]!=0&&BSTEM[s]!=-1){lesion=BSTEM[s]*lesion/MAX_BSTEM[s];bh=BSTEM[s]*bh/MAX_BSTEM[s];relation*=(float)BSTEM[s]/MAX_BSTEM[s];}
+                    if(MAX_VENT[s]!=0&&VENT[s]!=-1){float n=VENT[s]==0?SPREAD[s]:VENT[s];lesion=n*lesion/MAX_VENT[s];if(VENT[s]==0)relation*=n/MAX_VENT[s];else relation*=VENT[s]/MAX_VENT[s];}
+                    else if(MAX_GM[s]!=0&&GM[s]!=-1){float n=GM[s]==0?SPREAD[s]:GM[s];lesion=n*lesion/MAX_GM[s];bh=n*bh/MAX_GM[s];if(GM[s]==0)relation*=n/MAX_GM[s];else relation*=GM[s]/MAX_GM[s];}
+                    if(MAX_BSTEM[s]!=0&&BSTEM[s]!=-1){lesion=BSTEM[s]*lesion/MAX_BSTEM[s];bh=BSTEM[s]*bh/MAX_BSTEM[s];relation*=BSTEM[s]/MAX_BSTEM[s];}
                 }
             }
         }

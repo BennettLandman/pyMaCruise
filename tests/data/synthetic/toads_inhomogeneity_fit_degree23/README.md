@@ -1,0 +1,9 @@
+# TOADS degree-two/three approximate field-fit fixture
+
+This 18×18×18 synthetic phantom uses a folded slab/ribbon mask and an anisotropic true-RAS affine with voxel sizes 0.85, 1.15, and 1.55 mm. The float32 image, 3-slot memberships, class candidates, and segmentation are fixed inputs. Candidate slot zero is always background class 0; the remaining candidates use ten non-background classes and distinct memberships.
+
+The selected wrapper correction settings are OPTIMIZED_IMAGE/GLOBAL/CHEBYSHEV/FIXED/EQUAL_VARIANCE with q=2. The fit uses the source-ordered 10-term degree-two or 20-term degree-three basis, stride-three scan from voxel origin, p=1 PowerTable weighting, and background-class exclusion. A source LU reference and Python both match the normal matrix and RHS exactly in double-bit representation. The independent NumPy/Jama LU solutions differ by at most **2.6356694604601216e-13** in coefficients at degree 2 and **3.196554132500751e-11** at degree 3. Despite that solve sensitivity, all mean-centered float32 field samples match Java exactly (maximum difference **0 ULP**) for both degrees. Both fits use 94 sampled mask voxels and 2,802 full-grid correction-mask voxels. Values outside the correction mask remain exactly one.
+
+The Java harness is `tests/java_reference/ToadsInhomogeneityDegree23FitReferenceHarness.java`; regenerate the pinned reference with `sh tests/java_reference/generate_toads_inhomogeneity_degree23_fit_reference.sh`. It pins `InhomogeneityCorrection2.java`, the MIPAV JamaMatrix wrapper, Jama Matrix/LU, and PowerTable source hashes in `java_reference.json`.
+
+This validates two fixed polynomial degrees with one nonsingular folded phantom and explicit degenerate/index/shape rejection tests. It does not validate the degree ramp, iterative field reuse, spline mode, multi-channel correction orchestration, or full TOADS workflow.

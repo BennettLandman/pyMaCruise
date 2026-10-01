@@ -1,9 +1,18 @@
 """Optional top-k initial memberships for the selected 11-class TOADS atlas.
 
 This ports only the atlas-aware overload of
-``MultipleToadPreprocess.initialApproxMemberships``. The selected base
-workflow can use this state for its initial rigid atlas alignment; it does
-not imply that the subsequent exact-membership segmentation sweep is sparse.
+``MultipleToadPreprocess.initialApproxMemberships``. The selected wrapper's
+first rigid atlas pyramid instead calls the no-atlas ``initialMemberships``
+overload; this atlas-aware state belongs to a later reinitialization after
+segmentation state exists. Neither overload implies that the subsequent
+exact-membership segmentation sweep is sparse.
+
+Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``, describe
+statistical class memberships and atlas priors in TOADS. This atlas-aware
+top-k overload is a selected registration-initialization stage. Its class
+grouping, candidate ordering, and forced-slot details come from VandyCRUISE
+source; it is not the papers' full membership update or iterative
+segmentation.
 """
 
 from __future__ import annotations

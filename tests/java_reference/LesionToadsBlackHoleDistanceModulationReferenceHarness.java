@@ -27,7 +27,7 @@ public final class LesionToadsBlackHoleDistanceModulationReferenceHarness {
             if(c[0]==0) {
                 lesion=spread*lesion/c[3];relation*=(spread/c[3]);
             } else {
-                lesion=c[0]*lesion/c[3];relation*=((float)c[0]/c[3]);
+                lesion=c[0]*lesion/c[3];relation*=c[0]/c[3];
             }
         } else if(c[6]!=0&&c[4]!=0&&c[1]!=-1) {
             if(c[1]==0) {
@@ -35,12 +35,12 @@ public final class LesionToadsBlackHoleDistanceModulationReferenceHarness {
                 relation*=(spread/c[4]);
             } else {
                 lesion=c[1]*lesion/c[4];blackHole=c[1]*blackHole/c[4];
-                relation*=((float)c[1]/c[4]);
+                relation*=c[1]/c[4];
             }
         }
         if(c[5]!=0&&c[2]!=-1) {
             lesion=c[2]*lesion/c[5];blackHole=c[2]*blackHole/c[5];
-            relation*=((float)c[2]/c[5]);
+            relation*=c[2]/c[5];
         }
         if(!first)System.out.print(',');
         System.out.print("{\"ventricle_distance\":"+c[0]+",\"gray_matter_distance\":"+c[1]

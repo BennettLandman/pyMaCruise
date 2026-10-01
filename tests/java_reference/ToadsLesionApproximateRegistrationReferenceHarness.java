@@ -15,10 +15,10 @@ import edu.jhmi.rad.medic.structures.RotationMatrix;
 import edu.jhmi.rad.medic.utilities.Numerics;
 
 /**
- * Selected-source excerpt for initialApproxMemberships plus
- * registerShapesApproxPyramid. It uses vendored ParametricTransform,
- * RotationMatrix, ImageFunctions, and Numerics classes; no external checkout
- * is needed by the test suite.
+ * Selected-source excerpt for the atlas-aware 13-class approximate-membership
+ * overload only. The wrapper uses this overload after segmentation state
+ * exists, then updates and registers shapes at that later stage; this harness
+ * does not claim it is the wrapper's initial pyramid call.
  */
 public final class ToadsLesionApproximateRegistrationReferenceHarness {
     private static final String WRAPPER_SHA="b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d";
@@ -171,21 +171,14 @@ public final class ToadsLesionApproximateRegistrationReferenceHarness {
         if(image.nx!=subjectShapes.nx||image.ny!=subjectShapes.ny||image.nz!=subjectShapes.nz||image.nc!=2||subjectShapes.nc!=13||atlas.nc!=13)throw new IllegalArgumentException("fixture geometry/classes mismatch");
         int classes=atlas.nc;float[][][][] initMem=new float[image.nx][image.ny][image.nz][APPROX];byte[][][][] initBest=new byte[image.nx][image.ny][image.nz][APPROX];
         initialize(image,subjectShapes,centroids(image.nc,classes),initMem,initBest);
-        List<String> stageJson=new ArrayList<>();float[] trans=INITIAL.clone();int[] fi={image.nx,image.ny,image.nz},ft={atlas.nx,atlas.ny,atlas.nz};
-        for(int scale=1<<(LEVELS-1);scale>=2;scale/=2){
-            Level l=pool(initMem,initBest,classes,scale);l.shape=downsampleShapes(atlas,scale);l.tx=l.shape[0].length;l.ty=l.shape[0][0].length;l.tz=l.shape[0][0][0].length;
-            l=runLevel(l,trans,fi,ft,IMAGE_RES,TEMPLATE_RES);trans=l.finalTransform;stageJson.add(levelJson(l));
-        }
         StringBuilder out=new StringBuilder("{\"wrapper_source_sha256\":\"").append(WRAPPER_SHA).append("\",\"preprocess_source_sha256\":\"").append(PREPROCESS_SHA)
-            .append("\",\"atlas_source_sha256\":\"").append(ATLAS_SHA).append("\",\"approx\":").append(APPROX).append(",\"levels\":").append(LEVELS)
-            .append(",\"subsample\":").append(SUBSAMPLE).append(",\"initial_transform_bits\":").append(vector(INITIAL))
+            .append("\",\"atlas_source_sha256\":\"").append(ATLAS_SHA).append("\",\"approx\":").append(APPROX)
             .append(",\"class_types\":[\"MASK\",\"OPTIMIZED_CSF\",\"OPTIMIZED_CSF\",\"OBJECT\",\"OBJECT\",\"OBJECT\",\"OBJECT\",\"OBJECT\",\"OBJECT\",\"OBJECT\",\"LESION\",\"OBJECT\",\"OBJECT\"]")
-            .append(",\"call_order\":[\"initialMemberships\",\"initShapeRegistration\",\"setTransform(preprocess)\",\"updateShapeRegistration\",\"registerShapesPyramid\"]")
-            .append(",\"pyramid_dispatch\":\"registerShapesApproxPyramid\",\"scale_order\":[4,2],\"coarse_subsample\":2")
+            .append(",\"validation_scope\":\"method-only atlas-aware 13-class approximate-membership overload\"")
+            .append(",\"selected_overload\":\"preprocess.initialMemberships(segmentation.getMemberships(),segmentation.getBest(),atlas,approx,centroids,classes)\"")
+            .append(",\"later_wrapper_context\":[\"segmentation state exists\",\"initialMemberships(...,atlas,...)\",\"updateShapeRegistration\",\"registerShapes\"]")
             .append(",\"initial_dims\":[").append(image.nx).append(',').append(image.ny).append(',').append(image.nz)
-            .append("],\"initial_memberships_bits\":").append(floatArray(initMem)).append(",\"initial_best_indices\":").append(byteArray(initBest))
-            .append(",\"registered_class_indices\":[1,2,3,4,5,6,7,8,9,10,11,12],\"stages\":[").append(String.join(",",stageJson))
-            .append("],\"final_transform_bits\":").append(vector(trans)).append('}');
+            .append("],\"initial_memberships_bits\":").append(floatArray(initMem)).append(",\"initial_best_indices\":").append(byteArray(initBest)).append('}');
         System.out.println(out);
     }
 }
