@@ -1824,6 +1824,154 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     )
     assert "partial fixed point" in third_fixture["post_thinning_refresh"]["state_transition"]
 
+    # The wrapper still calls registerShapes after this refresh. Registration
+    # consumes the unchanged class memberships and atlas-space priors, while
+    # the changed lesion auxiliary remains part of membership state only.
+    fourth_registration = register_after_next_gm_membership_update(
+        fourth_membership_update,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        third_registration.registration.transform,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        align_shapes=True,
+        init_align_iter=REGISTRATION_SPEC["init_align_iter"],
+    )
+    assert fourth_registration.stage_order[-1] == "registerShapes"
+    fourth_java_registration = json.loads(subprocess.run(
+        [
+            java, "-cp", str(classes_dir), "LesionSecondPassRegistrationReferenceHarness",
+            str(THIRD_PASS_REGISTRATION_INPUT),
+            *(str(float(value)) for value in third_registration.registration.transform),
+        ],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert fourth_java_registration["membership_sha256"] == hashlib.sha256(
+        np.asarray(actual_fourth.class_memberships, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    assert fourth_java_registration["atlas_prior_sha256"] == hashlib.sha256(
+        np.asarray(atlas_shapes, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    np.testing.assert_array_equal(
+        np.asarray(fourth_java_registration["start_transform"], np.float32),
+        third_registration.registration.transform,
+    )
+    fourth_optimization = fourth_registration.registration.optimization
+    assert fourth_optimization is not None
+    assert fourth_optimization.stop_reason == fourth_java_registration["stop_reason"]
+    assert len(fourth_optimization.iterations) == len(fourth_java_registration["iterations"])
+    np.testing.assert_array_equal(
+        fourth_registration.registration.transform,
+        np.asarray(fourth_java_registration["transform"], np.float32),
+    )
+    _assert_f32(fourth_optimization.energy, fourth_java_registration["energy"], "fourth registration energy")
+    _assert_f32(fourth_optimization.lambda_value, fourth_java_registration["lambda"], "fourth registration lambda")
+    fourth_initial_coefficients = lesion_registration_volume_coefficients(
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        actual_fourth.class_memberships,
+        image_dimensions_xyz=seg.shape,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        transform=tuple(float(value) for value in third_registration.registration.transform),
+        offset=0,
+        subsample=2,
+    )
+    fourth_expected_coefficients = fourth_java_registration["iterations"][0]["coefficients"]
+    for actual_value, expected_value, label in (
+        (fourth_initial_coefficients.energy, fourth_expected_coefficients[0], "fourth initial energy"),
+        (fourth_initial_coefficients.normalized_gradient, fourth_expected_coefficients[2:8], "fourth initial gradient"),
+        (fourth_initial_coefficients.normalized_hessian, fourth_expected_coefficients[8:14], "fourth initial Hessian"),
+    ):
+        actual_values = np.asarray(actual_value, dtype=np.float32).reshape(-1)
+        expected_values = np.asarray(expected_value, dtype=np.float32).reshape(-1)
+        np.testing.assert_array_equal(actual_values.view(np.uint32), expected_values.view(np.uint32), err_msg=label)
+    for step, expected in zip(fourth_optimization.iterations, fourth_java_registration["iterations"], strict=True):
+        assert step.result.accepted == expected["accepted"]
+        assert step.result.rejected_trials == expected["rejected_trials"]
+        np.testing.assert_array_equal(step.result.transform, np.asarray(expected["transform"], np.float32))
+        _assert_f32(step.result.energy, expected["energy"], "fourth registration iteration energy")
+        _assert_f32(step.result.relative_change, expected["relative_change"], "fourth registration relative change")
+        _assert_f32(step.result.lambda_value, expected["lambda"], "fourth registration iteration lambda")
+        assert len(step.trial_energies) == len(expected["trials"])
+        for trial_index, expected_trial in enumerate(expected["trials"]):
+            np.testing.assert_array_equal(
+                step.trial_transforms[trial_index], np.asarray(expected_trial["transform"], np.float32)
+            )
+            trial_coefficients = lesion_registration_volume_coefficients(
+                tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+                actual_fourth.class_memberships,
+                image_dimensions_xyz=seg.shape,
+                image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+                template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+                transform=tuple(float(value) for value in step.trial_transforms[trial_index]),
+                offset=0,
+                subsample=2,
+            )
+            java_trial_coefficients = np.asarray(expected_trial["coefficients"], np.float32)
+            _assert_f32(trial_coefficients.norm, java_trial_coefficients[1], "fourth trial shape norm")
+            _assert_f32(trial_coefficients.cost, java_trial_coefficients[14], "fourth trial weighted cost")
+            _assert_f32(trial_coefficients.energy, java_trial_coefficients[0], "fourth trial energy coefficients")
+            _assert_f32(step.trial_energies[trial_index], expected_trial["energy"], "fourth trial energy")
+    assert np.array_equal(
+        fourth_registration.registration.rotation,
+        np.asarray(fourth_java_registration["rotation"], np.float32),
+    )
+    for bounds, expected in zip(
+        fourth_registration.registration.shape_bounds, fourth_java_registration["bounds"], strict=True
+    ):
+        assert bounds.lower_xyz == tuple(expected["lower"])
+        assert bounds.upper_xyz == tuple(expected["upper"])
+        assert bounds.support_count == expected["support_count"]
+
+    # The fourth energy ratio is zero. With a positive convergence threshold,
+    # source control must stop on convergence (and iteration limit) while
+    # preserving the selected positive-nIterMax final-growth behavior.
+    fourth_control = continue_after_next_iteration_registration(
+        fourth_registration,
+        segmentation=fourth_thinned.run.segmentation,
+        skeleton=fourth_thinned.run.skeleton,
+        ordering=fourth_thinned.run.ordering,
+        class_volume=fourth_thinned.run.class_volume,
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=4,
+        n_iter_max=4,
+        max_distance=0.1,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+    )
+    assert fourth_control.stage_order[-4:] == (
+        "iteration_limit_check", "propagateGrowing",
+        "updateClassificationFromLabels", "updateLesionClassifcation",
+    )
+    assert fourth_control.branch.convergence_stop
+    assert fourth_control.branch.iteration_limit_stop
+    assert fourth_control.branch.stop
+    assert fourth_control.branch.run_growing
+    fourth_control_input = tmp_path / "fourth-pass-control.bin"
+    fourth_control_input.write_bytes(struct.pack(
+        ">3f2i?",
+        float(fourth_membership_update.energy_ratio.previous_energy),
+        float(actual_fourth.objective),
+        0.1,
+        4,
+        4,
+        False,
+    ))
+    fourth_java_control = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionNextIterationBranchReferenceHarness", str(fourth_control_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert fourth_java_control["source_sha256"] == third_fixture["java_reference"]["upstream_source_sha256"]["AlgorithmLesionToads.java"]
+    assert fourth_java_control["ratio_bits"] == (
+        f"{int(fourth_membership_update.energy_ratio.energy_ratio.view(np.uint32)):08x}"
+    )
+    assert fourth_java_control["convergence_stop"] == fourth_control.branch.convergence_stop is True
+    assert fourth_java_control["iteration_limit_stop"] == fourth_control.branch.iteration_limit_stop is True
+    assert fourth_java_control["stop"] == fourth_control.branch.stop is True
+    assert fourth_java_control["run_growing"] == fourth_control.branch.run_growing is True
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):
