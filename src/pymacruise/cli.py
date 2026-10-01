@@ -25,6 +25,7 @@ from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.toads_dura import run_dura_removal
 from pymacruise.volume_ops import calculate_volume
+from pymacruise.workflow import load_workflow_config_file, preflight_workflow
 
 
 def _package_version() -> str:
@@ -133,6 +134,17 @@ def build_parser() -> argparse.ArgumentParser:
     surface_thickness.add_argument("--inner-output", required=True, type=Path)
     surface_thickness.add_argument("--central-output", type=Path)
     _add_provenance_option(surface_thickness)
+
+    workflow_preflight = commands.add_parser(
+        "workflow-preflight",
+        help="validate a workflow config and write a dry-run manifest; no workflow stages execute",
+    )
+    workflow_preflight.add_argument("--config", required=True, type=Path)
+    workflow_preflight.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="replace an existing run.json manifest only; do not remove other files",
+    )
     return parser
 
 
@@ -204,7 +216,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if getattr(args, "provenance", None) is not None and args.provenance.suffix.lower() != ".json":
         raise ValueError("Provenance sidecar must use the .json extension")
-    if args.command == "prepare-raw":
+    if args.command == "workflow-preflight":
+        config = load_workflow_config_file(args.config)
+        manifest_path, manifest = preflight_workflow(
+            config, overwrite=args.overwrite
+        )
+        print(f"Preflight passed: {manifest_path}")
+        print("Dry run only; no N4 correction or segmentation workflow was executed.")
+        print(f"Workflow profile: {manifest['workflow_profile']}")
+    elif args.command == "prepare-raw":
         result = prepare_raw(
             args.t1,
             args.maseg,

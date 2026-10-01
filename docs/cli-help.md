@@ -5,6 +5,48 @@ outputs. The command line currently exposes preparation and individual
 scientific stages; the full base and plus workflow commands remain under
 development.
 
+## `pymacruise workflow-preflight`
+
+```text
+pymacruise workflow-preflight --config workflow.json [--overwrite]
+```
+
+This command is a **dry-run preflight**, not a segmentation workflow. It checks
+the JSON configuration, compressed NIfTI inputs, profile-specific bundled
+atlas descriptor and referenced NIfTI headers, core dependencies, and the
+optional ANTsPy dependency needed by the selected N4 correction. Non-RAS
+inputs are reoriented for validation with a warning; original and normalized
+axis codes are recorded. Atlas NIfTI payloads are not loaded.
+
+The command writes `run.json` in the configured output directory. A directory
+without a manifest must be empty. If `run.json` already exists, `--overwrite`
+replaces only that manifest and leaves other files untouched. The manifest
+sets `dry_run` to `true`, records `workflow_executed: false`, and leaves
+`stages.pipeline` as `not_started`. No N4 correction or segmentation stage is
+run. If ANTsPy is missing, install it with
+`python -m pip install 'pymacruise[ants]'` before retrying.
+
+Configuration paths are resolved relative to the JSON file. Version 1 uses
+this schema for the base profile:
+
+```json
+{
+  "schema_version": 1,
+  "profile": "base",
+  "t1_path": "../inputs/T1.nii.gz",
+  "maseg_path": "../inputs/MaSeg.nii.gz",
+  "brain_mask_path": "../inputs/BrainMask.nii.gz",
+  "output_dir": "run-output",
+  "bias_correction": "N4"
+}
+```
+
+The plus profile additionally requires `flair_path` and may provide a
+`plus_options` object using the field names in `PlusPipelineOptions`. It uses
+the bundled LesionTOADS atlas descriptor. The base profile uses the bundled
+default TOADS descriptor. Custom atlas paths are not accepted by this
+preflight interface.
+
 ## `pymacruise prepare-raw`
 
 ```text
