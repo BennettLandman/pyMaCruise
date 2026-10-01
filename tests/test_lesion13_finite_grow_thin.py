@@ -1075,6 +1075,107 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert second_java_control["stop"] == second_control.branch.stop is True
     assert second_java_control["run_growing"] == second_control.branch.run_growing is False
 
+    # Exercise the alternate finite continuation from the same second-pass
+    # state: with a zero convergence threshold and a nonterminal iteration,
+    # the selected wrapper grows from the second thinning products and then
+    # refreshes class relations using the second GM membership maps.
+    assert np.isfinite(next_membership.energy_ratio.energy_ratio)
+    second_continue = continue_after_next_iteration_registration(
+        second_registration,
+        segmentation=next_thinned.run.segmentation,
+        skeleton=next_thinned.run.skeleton,
+        ordering=next_thinned.run.ordering,
+        class_volume=next_thinned.run.class_volume,
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=2,
+        n_iter_max=3,
+        max_distance=0.0,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+    )
+    assert second_continue.stage_order[-4:] == (
+        "convergence_check", "iteration_limit_check", "propagateGrowing", "computeRelations"
+    )
+    assert not second_continue.branch.stop
+    assert second_continue.branch.run_growing
+    assert second_continue.branch.growing is not None
+    assert second_continue.branch.relations is not None
+    second_continue_control_input = tmp_path / "second-pass-continue-control.bin"
+    second_continue_control_input.write_bytes(struct.pack(
+        ">3f2i?",
+        float(next_membership.energy_ratio.previous_energy),
+        float(actual_next.objective),
+        0.0,
+        2,
+        3,
+        False,
+    ))
+    second_java_continue_control = json.loads(subprocess.run(
+        [
+            java, "-cp", str(classes_dir), "LesionNextIterationBranchReferenceHarness",
+            str(second_continue_control_input),
+        ],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert second_java_continue_control["ratio_bits"] == (
+        f"{int(next_membership.energy_ratio.energy_ratio.view(np.uint32)):08x}"
+    )
+    assert second_java_continue_control["convergence_stop"] is False
+    assert second_java_continue_control["iteration_limit_stop"] is False
+    assert second_java_continue_control["stop"] is False
+    assert second_java_continue_control["run_growing"] is True
+    assert second_java_continue_control["refresh_relations"] is True
+
+    second_growth_input = tmp_path / "second-pass-grow-in.bin"
+    second_growth_output = tmp_path / "second-pass-grow-out.bin"
+    second_growth_input.write_bytes(growth_input_bytes(
+        next_thinned.run.segmentation,
+        next_thinned.run.skeleton,
+        actual_next.class_memberships,
+        next_thinned.run.ordering,
+        next_thinned.run.class_volume,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+    ))
+    subprocess.run([
+        java, "-cp", str(classes_dir), "LesionGrowingPassDynamicReferenceHarness",
+        str(second_growth_input), str(second_growth_output),
+    ], check=True, capture_output=True, text=True)
+    assert second_continue.branch.growing is not None
+    assert second_growth_output.read_bytes() == expected_growth_bytes(second_continue.branch.growing)
+
+    second_relation_input = tmp_path / "second-pass-relation-in.bin"
+    second_relation_input.write_bytes(b"".join([
+        struct.pack(">6i", *seg.shape, CLASSES, LESION, 2),
+        template_labels.tobytes(),
+        np.asarray(second_continue.branch.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.zeros(seg.shape, dtype=np.int8).tobytes(),
+        np.asarray(actual_next.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_next.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(actual_next.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    ]))
+    second_java_outputs = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostRegistrationOutputsReferenceHarness", str(second_relation_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert second_java_outputs["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    np.testing.assert_array_equal(
+        second_continue.branch.segmentation.ravel(),
+        np.asarray(second_java_outputs["segmentation"], np.int16),
+    )
+    np.testing.assert_array_equal(
+        second_continue.branch.relations.relation_map.ravel(),
+        np.asarray(second_java_outputs["relation_map"], np.int16),
+    )
+    np.testing.assert_array_equal(
+        second_continue.branch.relations.relation_membership.ravel(),
+        np.asarray(second_java_outputs["relation_membership"], np.bool_),
+    )
+    assert second_continue.branch.relations.relation_count == second_java_outputs["relation_count"]
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):
