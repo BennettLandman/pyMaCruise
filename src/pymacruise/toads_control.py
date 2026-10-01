@@ -54,18 +54,58 @@ def toads_iteration_control(
         raise ValueError("maximum_iterations must be an integer greater than or equal to one")
     if not isinstance(do_growing, (bool, np.bool_)):
         raise ValueError("do_growing must be boolean")
-    previous = np.float32(previous_energy)
-    current = np.float32(current_energy)
+    ratio = toads_energy_ratio(previous_energy, current_energy)
     threshold = np.float32(convergence_threshold)
-    if not np.isfinite(previous) or not np.isfinite(current):
-        raise ValueError("membership energies must be finite")
     if not np.isfinite(threshold) or threshold < np.float32(0.0):
         raise ValueError("convergence_threshold must be finite and nonnegative")
+    return toads_iteration_control_from_ratio(
+        ratio, iteration, maximum_iterations, threshold, do_growing=do_growing
+    )
 
+
+def toads_energy_ratio(previous_energy: float, current_energy: float) -> np.float32:
+    """Compute the wrapper's float32 energy ratio before atlas alignment.
+
+    ``AlgorithmMultipleToads`` evaluates the ratio immediately after
+    ``computeMemberships`` and before its optional ``atlas.registerShapes``
+    call. Keep this arithmetic separate from the later stop checks so a caller
+    can preserve that source order.
+    """
+    previous = np.float32(previous_energy)
+    current = np.float32(current_energy)
+    if not np.isfinite(previous) or not np.isfinite(current):
+        raise ValueError("membership energies must be finite")
     difference = np.float32(previous - current)
     numerator = np.float32(np.float32(2.0) * difference)
     denominator = np.float32(previous + current)
-    ratio = np.float32(np.abs(np.float32(numerator / denominator)))
+    return np.float32(np.abs(np.float32(numerator / denominator)))
+
+
+def toads_iteration_control_from_ratio(
+    energy_ratio: float,
+    iteration: int,
+    maximum_iterations: int,
+    convergence_threshold: float,
+    *,
+    do_growing: bool,
+) -> ToadsIterationControl:
+    """Apply convergence and iteration-limit decisions to a prior ratio."""
+    if isinstance(iteration, (bool, np.bool_)) or not isinstance(iteration, (int, np.integer)) or iteration < 1:
+        raise ValueError("iteration must be an integer greater than or equal to one")
+    if (
+        isinstance(maximum_iterations, (bool, np.bool_))
+        or not isinstance(maximum_iterations, (int, np.integer))
+        or maximum_iterations < 1
+    ):
+        raise ValueError("maximum_iterations must be an integer greater than or equal to one")
+    if not isinstance(do_growing, (bool, np.bool_)):
+        raise ValueError("do_growing must be boolean")
+    ratio = np.float32(energy_ratio)
+    threshold = np.float32(convergence_threshold)
+    if not np.isfinite(ratio) or ratio < np.float32(0.0):
+        raise ValueError("energy_ratio must be finite and nonnegative")
+    if not np.isfinite(threshold) or threshold < np.float32(0.0):
+        raise ValueError("convergence_threshold must be finite and nonnegative")
     stop = bool(ratio < threshold)
     if iteration >= maximum_iterations:
         stop = True

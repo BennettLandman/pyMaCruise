@@ -14,7 +14,11 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from .toads_control import ToadsIterationControl, toads_iteration_control
+from .toads_control import (
+    ToadsIterationControl,
+    toads_energy_ratio,
+    toads_iteration_control_from_ratio,
+)
 from .toads_default_registration_handoff import (
     ToadsDefaultRegistrationHandoff,
     _bounds_for_transform,
@@ -85,6 +89,11 @@ def register_initial_memberships_and_control(
     final_transform = transform.copy()
     final_bounds = current_bounds
     stages = [*continuation.stage_order]
+    # Source order in AlgorithmMultipleToads is Eprev=energy;
+    # energy=computeMemberships(); Eratio=...; then optional registerShapes.
+    # Compute and retain that ratio before entering the atlas optimizer.
+    energy_ratio = toads_energy_ratio(previous_energy, objective)
+    stages.append("energyRatio")
     if align_shapes:
         # registerAllShapes samples the full image lattice and tests the prior
         # value at each transformed coordinate. Bounding boxes are computed
@@ -125,10 +134,10 @@ def register_initial_memberships_and_control(
         rotation=_rotation_matrix(final_transform[:3]),
         shape_bounds=final_bounds,
     )
-    stages.append("energyRatio")
-    control = toads_iteration_control(
-        previous_energy,
-        objective,
+    # Convergence and iteration-limit checks follow optional registration in
+    # the selected Java wrapper; they consume the ratio computed above.
+    control = toads_iteration_control_from_ratio(
+        energy_ratio,
         iteration,
         maximum_iterations,
         convergence_threshold,

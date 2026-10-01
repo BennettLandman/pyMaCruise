@@ -78,9 +78,44 @@ def test_p18cyo_membership_and_objective_feed_registration_then_control(tmp_path
     assert int(np.asarray(continuation.membership_pass.objective, dtype=np.float32).view(np.int32)) == source_reference["objective_bits"]
     membership_before = continuation.membership_pass.memberships.copy()
     objective = np.float32(continuation.membership_pass.objective)
+    previous_energy = np.float32(objective * np.float32(1.01))
+    control_harness = Path(__file__).parent / "java_reference/ToadsP18cyqEnergyControlReferenceHarness.java"
+    control_compile = subprocess.run(
+        ["javac", "-d", str(tmp_path), str(control_harness)],
+        check=True, capture_output=True, text=True,
+    )
+    assert not control_compile.stderr
+    bits = lambda value: str(int(np.asarray([value], dtype=np.float32).view(np.int32)[0]))
+    def java_control(previous, current, threshold, iteration, maximum, do_growing):
+        completed = subprocess.run(
+            ["java", "-cp", str(tmp_path), "ToadsP18cyqEnergyControlReferenceHarness",
+             bits(previous), bits(current), bits(threshold), str(iteration), str(maximum), str(do_growing).lower()],
+            check=True, capture_output=True, text=True,
+        )
+        return json.loads(completed.stdout)
+
+    java_open = java_control(previous_energy, objective, 1e-4, 3, 5, False)
+    wrapper_reference = json.loads((ROOT.parent / "toads_default_registration_handoff/java_reference.json").read_text())
+    assert java_open["reference_kind"] == "selected Java float formula"
+    assert java_open["call_order"] == wrapper_reference["call_order"][:5]
+    java_cases = (
+        (java_open, previous_energy, objective, 1e-4, 3, 5, False),
+        (java_control(objective, objective, 1e-4, 3, 5, True), objective, objective, 1e-4, 3, 5, True),
+        (java_control(previous_energy, objective, 1e-4, 5, 5, False), previous_energy, objective, 1e-4, 5, 5, False),
+    )
+    for reference_case, previous, current, threshold, iteration, maximum, do_growing in java_cases:
+        python_case = toads_iteration_control(
+            previous, current, iteration, maximum, threshold, do_growing=do_growing,
+        )
+        assert reference_case["ratio_bits"] == int(
+            np.asarray([python_case.energy_ratio], dtype=np.float32).view(np.int32)[0]
+        )
+        assert reference_case["stop"] is python_case.stop
+        assert reference_case["run_growing"] is python_case.run_growing
+    assert not java_open["stop"] and java_open["run_growing"]
     result = register_initial_memberships_and_control(
         continuation, atlas, image_resolutions_mm=(1, 1, 1), template_resolutions_mm=(1, 1, 1),
-        initial_transform=(0, 0, 0, 0, 0, 0), previous_energy=np.float32(objective * 1.01),
+        initial_transform=(0, 0, 0, 0, 0, 0), previous_energy=previous_energy,
         iteration=3, maximum_iterations=5, convergence_threshold=1e-4, do_growing=False,
     )
     assert result.handoff.membership_pass is continuation.membership_pass
@@ -95,7 +130,8 @@ def test_p18cyo_membership_and_objective_feed_registration_then_control(tmp_path
                           np.float32(np.float32(objective * 1.01) + objective)))
     )
     assert result.stage_order[-4:] == (
-        "atlas.registerShapes() -> registerAllShapes()", "energyRatio", "convergenceCheck", "iterationLimitCheck",
+        "energyRatio", "atlas.registerShapes() -> registerAllShapes()",
+        "convergenceCheck", "iterationLimitCheck",
     )
 
     # Run the actual supplied VandyCRUISE atlas implementation headlessly on
@@ -218,8 +254,8 @@ def test_p18cyo_membership_and_objective_feed_registration_then_control(tmp_path
     assert not transition.branch.control.stop
     assert transition.branch.growing.events
     assert transition.stage_order[-8:] == (
-        "atlas.registerShapes() -> registerAllShapes()",
         "energyRatio",
+        "atlas.registerShapes() -> registerAllShapes()",
         "convergenceCheck",
         "iterationLimitCheck",
         "propagateGrowing",
