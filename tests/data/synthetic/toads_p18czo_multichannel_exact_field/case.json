@@ -1,0 +1,27 @@
+{
+  "case_name": "P18 selected two-channel exact degree-one field fit",
+  "source_fixture_directory": "toads_default_11_continue_thinning",
+  "channel_order": [
+    "image_values.nii.gz / intensity_field.nii.gz",
+    "image_values_channel2.nii.gz / intensity_field_channel2.nii.gz"
+  ],
+  "membership_maps": "../toads_default_11_continue_thinning/exact_memberships.nii.gz",
+  "segmentation": "post_thinning_segmentation.nii.gz",
+  "axis_codes": ["R", "A", "S"],
+  "voxel_spacing_mm": [0.8, 1.2, 1.7],
+  "fixture_sha256": {
+    "image_values.nii.gz": "658cef9c20f71b5015b7ae843ece5ec42fd48e25b2979e73d73ff19585cd4b63",
+    "image_values_channel2.nii.gz": "40920d2906c20be9d9564baff593d9a8fce159d06961fc1c5aed64bc64a49934",
+    "intensity_field.nii.gz": "10a0eac65702d9a3cbffa01dcfab426876fac75a069f28cd9d26fbe086df4044",
+    "intensity_field_channel2.nii.gz": "7e282f69d346f817f68fd12e801af4c0889e4f158eabcab58f687e0112dfb15a",
+    "exact_memberships.nii.gz": "4f575f9efd9f139ea47fc6126197416fe4e3527fff683d77fdfad285447525bf",
+    "post_thinning_segmentation.nii.gz": "1dbbe96b107e86a597f78e87e5d770aeb57419c85563e50ac12896e0fd733899"
+  },
+  "channels": 2,
+  "classes": 11,
+  "field_degree": 1,
+  "source_order": ["channel0.computeExact3DPolynomialField.degree1", "channel1.computeExact3DPolynomialField.degree1"],
+  "java_reference": "ToadsPostThinningExactFieldReferenceHarness, run independently on each selected channel",
+  "reference_scope": "formula harness for selected one-channel source kernel applied in channel order; not source-class execution",
+  "deferred": ["multichannel exact centroids and variances after these newly fitted fields", "image-variance estimation and multichannel membership/objective pass using the updated fields"]
+}
