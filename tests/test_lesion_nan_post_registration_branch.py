@@ -4,6 +4,9 @@ from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import struct
+import subprocess
 
 import nibabel as nib
 import numpy as np
@@ -19,8 +22,13 @@ from test_lesion_post_thinning_gm_membership import _compose, SPEC
 ROOT = Path(__file__).parent / "data/synthetic/lesion_post_registration_nan"
 REFERENCE = json.loads((ROOT / "java_reference.json").read_text(encoding="utf-8"))
 HARNESS = Path(__file__).parent / "java_reference/LesionNaNPostRegistrationBranchReferenceHarness.java"
+OUTPUT_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationOutputsReferenceHarness.java"
+OUTPUT_HARNESS_SHA256 = "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76"
 REGISTRATION_ROOT = Path(__file__).parent / "data/synthetic/lesion_post_thinning_registration"
 REGISTRATION_SPEC = json.loads((REGISTRATION_ROOT / "fixture.json").read_text(encoding="utf-8"))
+P39AK_REFERENCE = json.loads(
+    (Path(__file__).parent / "data/synthetic/lesion_initial_thinning_composition/java_reference.json").read_text()
+)
 TYPES = tuple(SPEC["object_types"])
 LABELS = np.arange(10, 10 + len(TYPES), dtype=np.int8)
 
@@ -81,9 +89,34 @@ def _branch(update, registration, thinning, *, previous, iteration, n_iter_max, 
     )
 
 
-def test_p39ar_nan_and_finite_post_registration_branches_match_java() -> None:
+def _java_terminal_outputs(result, update, *, classpath: Path, output_path: Path) -> dict:
+    shape = result.segmentation.shape
+    classes = result.membership_result.membership.class_memberships.shape[-1]
+    fields = (
+        struct.pack(">6i", *shape, classes, int(SPEC["lesion_class"]), 2),
+        np.asarray(LABELS, dtype=np.int8).tobytes(),
+        np.asarray(result.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.zeros(shape, dtype=np.int8).tobytes(),
+        np.asarray(update.membership.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(update.membership.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(update.membership.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    )
+    output_path.write_bytes(b"".join(fields))
+    completed = subprocess.run(
+        [shutil.which("java") or "java", "-cp", str(classpath),
+         "LesionPostRegistrationOutputsReferenceHarness", str(output_path)],
+        check=True, capture_output=True, text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def test_p39ar_nan_and_finite_post_registration_branches_match_java(tmp_path: Path) -> None:
     assert REFERENCE["source_sha256"] == "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
     assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == REFERENCE["harness_sha256"]
+    assert hashlib.sha256(OUTPUT_HARNESS.read_bytes()).hexdigest() == OUTPUT_HARNESS_SHA256
+    javac = shutil.which("javac")
+    assert javac is not None and shutil.which("java") is not None, "a JDK is required for pinned Java references"
+    subprocess.run([javac, "-d", str(tmp_path), str(OUTPUT_HARNESS)], check=True, capture_output=True, text=True)
     frames, update, registration, thinning = _p39ar_context()
     assert frames.shape[:3] == (17, 17, 17)
     assert len(TYPES) == 13
@@ -138,6 +171,39 @@ def test_p39ar_nan_and_finite_post_registration_branches_match_java() -> None:
             assert result.growing.remaining_queue == (), name
         else:
             assert result.growing is None, name
+
+        java_outputs = _java_terminal_outputs(
+            result, result.membership_result, classpath=tmp_path,
+            output_path=tmp_path / f"{name}.bin",
+        )
+        assert java_outputs["source_sha256"] == "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+        if result.final_classification is not None:
+            np.testing.assert_array_equal(
+                result.final_classification.classification.ravel(),
+                np.asarray(java_outputs["classification"], dtype=np.int16), name,
+            )
+            np.testing.assert_array_equal(
+                result.final_classification.lesion_classification.ravel(),
+                np.asarray(java_outputs["lesion_classification"], dtype=np.int16), name,
+            )
+        if result.relations is not None:
+            np.testing.assert_array_equal(
+                result.relations.relation_map.ravel(),
+                np.asarray(java_outputs["relation_map"], dtype=np.int16), name,
+            )
+            np.testing.assert_array_equal(
+                result.relations.relation_membership.ravel(),
+                np.asarray(java_outputs["relation_membership"], dtype=np.bool_), name,
+            )
+            assert result.relations.relation_count == java_outputs["relation_count"]
+            assert not hasattr(result.relations, "boundary_distances")
+            assert not hasattr(result.relations, "closest_labels")
+        if not result.run_growing:
+            np.testing.assert_array_equal(
+                result.segmentation.ravel(),
+                np.asarray(P39AK_REFERENCE["final_segmentation"], dtype=np.int16),
+                f"{name} source segmentation before optional growth",
+            )
 
     with pytest.raises(ValueError, match="requires its source-computed energy ratio"):
         lesion_toads_post_registration_branch(
