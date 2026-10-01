@@ -51,3 +51,15 @@ P18cyn Java reference. The post-thinning combination itself does not yet have a
 single independent Java end-to-end digest; the centroid, variance, similarity,
 and membership kernels have separate source-harness validation elsewhere.
 This is a bounded selected continuation, not complete TOADS equivalence.
+
+## Fixed-membership registration continuation (P18cyp)
+
+`P18cyp.md` documents the following rigid `registerShapes()` and wrapper
+control slice. Its focused test first confirms the P18cyo membership and
+objective digests, then invokes the actual selected VandyCRUISE
+`MultipleToadDeformableAtlas` methods headlessly and compares every one of the
+five registration coefficient/trial updates, final transform/energy, and
+shape bounds to Python. Only MIPAV token parsing and progress output are
+stubbed. Registration uses the complete image lattice as in Java. The
+post-thinning correction-field refit and remaining TOADS workflow stages are
+still outside this continuation.

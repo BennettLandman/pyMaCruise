@@ -86,8 +86,14 @@ def register_initial_memberships_and_control(
     final_bounds = current_bounds
     stages = [*continuation.stage_order]
     if align_shapes:
-        low = np.asarray([bound.lower_xyz for bound in current_bounds], dtype=np.int32)
-        high = np.asarray([bound.upper_xyz for bound in current_bounds], dtype=np.int32)
+        # registerAllShapes samples the full image lattice and tests the prior
+        # value at each transformed coordinate. Bounding boxes are computed
+        # for downstream state only; using their inclusive upper endpoints as
+        # sampler limits would omit valid border voxels and diverge from Java.
+        low = np.zeros((11, 3), dtype=np.int32)
+        high = np.broadcast_to(
+            np.asarray(memberships.shape[:3], dtype=np.int32), (11, 3)
+        ).copy()
         registered = np.ones(11, dtype=bool)
         registered[0] = False
         registration = register_toads_atlas_rigid(
