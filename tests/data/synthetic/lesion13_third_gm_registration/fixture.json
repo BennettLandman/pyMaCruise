@@ -8,7 +8,7 @@
     "membership_channel_sha256_be_float32": "2600a805c54ca1d952c71f6fb549ce2ae1b5e80fe80ee6c137e4f8d22f39b172",
     "atlas_prior_channel_sha256_be_float32": "1608865d2199da91c277c11dd97811d591ce437bfd97269d0a904dab65d2ddd6",
     "membership_state": "Output of the Java-matched third-thinning -> statistics -> GM-enabled membership pass, rebuilt and asserted in the focused test.",
-    "synthetic_fixed_point_note": "The 13 membership channels equal the previous synthetic pass bit-for-bit; this is a finite fixed-point case, not evidence of membership change.",
+    "synthetic_membership_note": "The 13 class membership channels equal the previous synthetic pass bit-for-bit, but the lesion auxiliary map changes in the following refresh; this is only a partial fixed point.",
     "atlas_prior_state": "Unchanged atlas-space priors from tests/data/synthetic/lesion13_next_gm_registration/registration_inputs_ras.nii.gz.",
     "geometry": "17x17x17 identity affine in RAS, matching the other finite 13-class synthetic fixtures."
   },
@@ -25,7 +25,12 @@
     "propagateGrowing",
     "computeRelations",
     "transform atlas priors using the third registerShapes transform/bounds",
-    "next wrapper iteration: propagateThinning"
+    "next wrapper iteration: propagateThinning",
+    "computeCentroids",
+    "computeVariances",
+    "computeChannelWeights",
+    "computeMemberships: GMflag=true",
+    "energyRatio"
   ],
   "registration": {
     "initial_transform": "The transform returned by the second selected synthetic registerShapes call.",
@@ -46,6 +51,11 @@
     "following_thinning": "Uses the third registration's transformed atlas maps and the actual grown segmentation/frontier; Java queue, topology events, final arrays and residue match byte-for-byte.",
     "fixed_point_check": "Following thinning output differs from the preceding thinning reference, so this is another finite state transition rather than a repeated unchanged result."
   },
+  "post_thinning_refresh": {
+    "source_order": ["computeCentroids", "computeVariances", "computeChannelWeights", "computeMemberships: GMflag=true", "energyRatio"],
+    "java_reference": "All selected statistics, membership, auxiliary map, objective and energy-ratio outputs are compared with the pinned Java excerpts.",
+    "state_transition": "Class membership maps and objective are bit-identical to the preceding membership state, but the lesion auxiliary membership changes and matches Java; this is a partial fixed point and the full state advances."
+  },
   "java_reference": {
     "kind": "Hand-coded selected Java formula excerpts using the pinned upstream ParametricTransform, RotationMatrix, ImageFunctions, Numerics and wrapper control sources; not execution of the full wrapper/class.",
     "registration_harness": "tests/java_reference/LesionSecondPassRegistrationReferenceHarness.java",
@@ -62,8 +72,8 @@
     }
   },
   "scope_limitations": [
-    "The reference covers this finite third registration trace, the no-stop growth/relation branch, and one following thinning pass; later statistics/membership/registration loops are not included here.",
-    "Membership channels are at a synthetic fixed point relative to the previous 13-class pass, so this fixture does not demonstrate changing memberships.",
+    "The reference covers this finite third registration trace, the no-stop growth/relation branch, one following thinning pass, and the next statistics/membership energy refresh; later registration/control is outside this fixture.",
+    "Class membership channels and objective are stable in the final tested refresh, but the lesion auxiliary changes, so the full 13-class state is not at a fixed point.",
     "The Java references are selected formula excerpts, not execution of the complete wrapper or LesionTOADS class, and this is not full LesionTOADS equivalence.",
     "No real atlas or patient imaging is represented."
   ]
