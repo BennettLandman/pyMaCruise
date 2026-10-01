@@ -7,7 +7,11 @@
   "thin_harness": "Lesion13ClassNextThinningReferenceHarness.java",
   "thin_harness_sha256": "3923db745105c572888d4c2ed9e61f83542bc58c4579e591c89120ce20ccbb24",
   "statistics_harness": "LesionPostThinningStatisticsReferenceHarness.java",
-  "statistics_harness_sha256": "264cdc831061e9e172a956a0ce90c87b177c2d44803b7d463eaaaf05a916de67",
+  "statistics_harness_sha256": "86d3a4f7874b7eb393552b357d3b068c20d11b5705ef8d95ced55eaee047c2f3",
+  "membership_harness": "LesionPostThinningStandard13MembershipReferenceHarness.java",
+  "membership_harness_sha256": "c968700014d6c0633f3dec2946de150896e40f7d549748ead8f61810f16db4e4",
+  "energy_ratio_harness": "LesionDynamicEnergyRatioReferenceHarness.java",
+  "energy_ratio_harness_sha256": "555c8d56feb4c8f5cebf2fd0eb5490d936ff64236f0f54e5ecb9a4e62f58f996",
   "power_table_sha256": "2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae",
   "binary_heap_sha256": "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a",
   "numerics_sha256": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb",
@@ -20,18 +24,22 @@
     "propagateThinning through queue exhaustion or limit",
     "computeCentroids",
     "computeVariances",
-    "computeChannelWeights"
+    "computeChannelWeights",
+    "computeMemberships: GMflag=true",
+    "computeEnergyRatio"
   ],
   "growth_event_count": 3,
   "growth_accepted_count": 1,
   "thinning_initial_queue_count": 3375,
   "thinning_event_count": 3375,
-  "thinning_processed_count": 1657,
+  "thinning_processed_count": 1688,
   "class_interior_support_voxels": [450, 450, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225, 225],
+  "lesion_auxiliary_winner_count": 145,
+  "black_hole_winner_without_lesion_eligibility_count": 144,
   "scope_limitations": [
     "The Java references are source-formula excerpts with copied BinaryHeap4D and Numerics helpers, not calls into the complete VandyCRUISE classes.",
     "The thinning fixture deliberately keeps bestMembership equal to the current class for each processed item; the topology-change branch is not covered by this continuation fixture.",
-    "The statistics fixture uses fixed synthetic images, memberships, and initialized centroids; it validates refresh from the current thinned labels, not a following GM-enabled membership update.",
-    "This pins only the selected finite 13-class grow-to-thinning-to-statistics seam and does not validate a complete LesionTOADS iteration or pipeline."
+    "The fixture carries fixed synthetic 13-class image, shape, relation, distance and previous-state inputs; it validates a following GM-enabled membership pass and energy-ratio update but not later registration.",
+    "This pins the selected finite 13-class growth, next thinning, statistics, GM-enabled membership, and energy-ratio seams; it does not validate a complete LesionTOADS iteration or pipeline."
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Finite synthetic post-membership and image input for selected 13-class LesionTOADS growth, next-iteration thinning, and post-thinning statistics. One center voxel has unset skeleton and is eligible for a single growth event; each class has interior segmentation support.",
+  "description": "Finite synthetic 13-class state for selected growth, next-iteration thinning, post-thinning statistics, and GM-enabled standard-13 membership update. It includes separate lesion-winning and black-hole-winning auxiliary voxels under the LESION descriptor.",
   "shape_xyz": [
     17,
     17,
@@ -24,7 +24,15 @@
     "images": [
       31,
       33
-    ]
+    ],
+    "direct_relations": [
+      33,
+      46
+    ],
+    "lesion_relation": 46,
+    "ventricle_distance": 47,
+    "gray_matter_distance": 48,
+    "brainstem_distance": 49
   },
   "object_types": [
     "object",
@@ -48,33 +56,33 @@
   "initial_class_centroids": [
     [
       0.15000000596046448,
-      0.2800000011920929,
-      0.4099999964237213,
-      0.5400000214576721,
-      0.6700000166893005,
-      0.800000011920929,
-      0.9300000071525574,
-      1.059999942779541,
-      1.190000057220459,
-      1.3200000524520874,
-      1.4500000476837158,
-      1.5800000429153442,
-      1.7100000381469727
+      0.20000000298023224,
+      0.25,
+      0.30000001192092896,
+      0.3499999940395355,
+      0.4000000059604645,
+      0.44999998807907104,
+      0.5,
+      0.550000011920929,
+      0.6000000238418579,
+      0.6499999761581421,
+      0.699999988079071,
+      0.75
     ],
     [
-      0.20000000298023224,
+      0.2800000011920929,
       0.33000001311302185,
-      0.46000000834465027,
-      0.5899999737739563,
-      0.7200000286102295,
-      0.8500000238418579,
-      0.9800000190734863,
-      1.1100000143051147,
-      1.2400000095367432,
-      1.3700000047683716,
-      1.5,
-      1.6299999952316284,
-      1.7599999904632568
+      0.3799999952316284,
+      0.4300000071525574,
+      0.47999998927116394,
+      0.5299999713897705,
+      0.5799999833106995,
+      0.6299999952316284,
+      0.6800000071525574,
+      0.7300000190734863,
+      0.7799999713897705,
+      0.8299999833106995,
+      0.8799999952316284
     ]
   ],
   "initial_lesion_centroids": [
@@ -86,6 +94,39 @@
     0.0
   ],
   "outlier_membership_constant": 0.0,
+  "shape_priors": [
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697,
+    0.1538461595773697
+  ],
+  "smoothing_priors": [
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037,
+    0.0023809524718672037
+  ],
+  "outlier_energy": 0.1,
+  "lesion_power_exponent": 1.2,
+  "previous_energy": 4.5,
   "growth_center_xyz": [
     7,
     8,
@@ -119,6 +160,6 @@
     ]
   ],
   "intended_use": "synthetic method-reference test only; not patient or atlas data",
-  "sha256_nii_gz": "232881312080f7a92ab2abd9d798e7dedf4941898a77961f2c90e7c47456249a",
-  "sha256_uncompressed_float32le": "50897ab981213a2ab35f9e94a22bdb4c31e6f5ec24a71b00e4cdd6993495d2f8"
+  "sha256_nii_gz": "77fa42db083f44dcfbf0c1dab3d668341188c016263bbae3d7c56dfd22e13d1d",
+  "sha256_uncompressed_float32le": "0d880f8e792d2e390b7719485d49d20e6cada84812e2d0206eb531570b764000"
 }

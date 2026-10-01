@@ -61,13 +61,15 @@ public final class LesionPostThinningStatisticsReferenceHarness {
                 else {
                     float lm=lesion[x][y][z], bm=black[x][y][z], winner=Math.max(m,Math.max(lm,bm));
                     float factor=1.0f;
-                    if(winner!=m && winner==lm && c==1) {
+                    // computeCentroids routes by max(mem, lesion, black-hole),
+                    // with ties resolved in this order: class, lesion, black-hole.
+                    if(winner==m) { num[k]+=m*m*sample; den[k]+=m*m; }
+                    else if(winner==lm && c==1) {
                         float d=sample-initialLesion[c]; d*=d;
                         if(d>1e-10f) factor=(float)(lesionTable.lookup((double)d,(double)lesionPower[c])/d);
                     }
-                    if(winner==m) { num[k]+=factor*m*m*sample; den[k]+=factor*m*m; }
-                    else if(winner==lm) { numL+=factor*lm*lm*sample; denL+=factor*lm*lm; }
-                    else { numB+=factor*bm*bm*sample; denB+=factor*bm*bm; }
+                    if(winner==lm) { numL+=factor*lm*lm*sample; denL+=factor*lm*lm; }
+                    else if(winner==bm) { numB+=bm*bm*sample; denB+=bm*bm; }
                 }
             }
             for(int k=0;k<K;k++) centroid[c][k]=den[k]>0.0f?num[k]/den[k]:0.0f;
@@ -82,7 +84,7 @@ public final class LesionPostThinningStatisticsReferenceHarness {
                 float num=0.0f,den=0.0f;
                 for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++) if(seg[x][y][z]==k) {
                     float m=mem[x][y][z][k],lm=lesion[x][y][z],bm=black[x][y][z],sample=image[x][y][z][c];
-                    if(k==LESION_CLASS && m<Math.max(lm,bm)) {
+                    if(k==LESION_CLASS && m<lm) {
                         if(lm>=bm) { float d=sample-lesionCentroid[c],w=lm*lm+EPS; lnum+=w*d*d; lden+=w; }
                         else { float d=sample-blackCentroid[c],w=lm*lm+EPS; bnum+=w*d*d; bden+=w; }
                     } else {
