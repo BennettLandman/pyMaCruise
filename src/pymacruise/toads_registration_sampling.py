@@ -206,13 +206,10 @@ def sample_toads_registration_fields(
     coordinates = np.empty(dimensions + (3,), dtype=np.float32)
     full_low = (0, 0, 0)
     full_high = dimensions
-
     for x in range(dimensions[0]):
         for y in range(dimensions[1]):
             for z in range(dimensions[2]):
                 point = (x, y, z)
-                # The full-grid bounds make the mapped coordinate available
-                # even when every class-specific bound excludes this voxel.
                 coordinate_sample = sample_toad_shape_prior(
                     shapes[..., 0],
                     point,
@@ -488,6 +485,7 @@ def vectorized_toads_registration_energy(
     scale: float = 1.0,
     image_center_xyz: ArrayLike | None = None,
     template_center_xyz: ArrayLike | None = None,
+    precomputed_affine: bool = False,
 ) -> np.float32:
     """NumPy-slab exact-membership energy in source x/y/z/class order."""
     context = _vector_context(
@@ -504,6 +502,7 @@ def vectorized_toads_registration_energy(
         coordinates = _map_registration_slab(
             x, ys, zs, params, image_res, template_res, rotation,
             scale_value, image_center, template_center,
+            precomputed_affine=precomputed_affine,
         )
         y_grid, z_grid = ys[:, None], zs[None, :]
         cost_terms = np.zeros((ys.size, zs.size, mem.shape[-1]), dtype=np.float32)
@@ -544,6 +543,7 @@ def vectorized_toads_registration_coefficients(
     scale: float = 1.0,
     image_center_xyz: ArrayLike | None = None,
     template_center_xyz: ArrayLike | None = None,
+    precomputed_affine: bool = False,
 ) -> RegistrationCoefficientSums:
     """Vectorize mapping/interpolation by x slab, preserving source sum order."""
     context = _vector_context(
@@ -564,6 +564,7 @@ def vectorized_toads_registration_coefficients(
         coordinates = _map_registration_slab(
             x, ys, zs, params, image_res, template_res, rotation,
             scale_value, center, template_center,
+            precomputed_affine=precomputed_affine,
         )
         jacobian = _registration_jacobian_slab(
             x, ys, zs, center, image_res, template_res, params, scale_value
@@ -711,23 +712,59 @@ def _map_registration_slab(
     scale: np.float32,
     image_center: tuple[np.float32, np.float32, np.float32],
     template_center: tuple[np.float32, np.float32, np.float32],
+    *,
+    precomputed_affine: bool = False,
 ) -> NDArray[np.float32]:
     y_grid = y_indices[:, None].astype(np.float32)
     z_grid = z_indices[None, :].astype(np.float32)
-    physical = (
-        np.float32(np.float32(np.float32(x) * scale - image_center[0]) * image_res[0]),
-        np.float32(np.float32(y_grid * scale - image_center[1]) * image_res[1]),
-        np.float32(np.float32(z_grid * scale - image_center[2]) * image_res[2]),
-    )
+    if not precomputed_affine:
+        # ParametricTransform.imageToTemplate evaluates the centered physical
+        # coordinates directly. Pyramid and legacy fixed-shape paths retain
+        # this operation order.
+        physical = (
+            np.float32(np.float32(np.float32(x) * scale - image_center[0]) * image_res[0]),
+            np.float32(np.float32(y_grid * scale - image_center[1]) * image_res[1]),
+            np.float32(np.float32(z_grid * scale - image_center[2]) * image_res[2]),
+        )
+        coordinates = np.empty((y_indices.size, z_indices.size, 3), dtype=np.float32)
+        for axis in range(3):
+            value = np.float32(rotation[axis, 0] * physical[0])
+            value = np.float32(value + np.float32(rotation[axis, 1] * physical[1]))
+            value = np.float32(value + np.float32(rotation[axis, 2] * physical[2]))
+            value = np.float32(value + transform[axis + 3])
+            value = np.float32(value / template_res[axis])
+            value = np.float32(value + template_center[axis])
+            coordinates[..., axis] = np.float32(value / scale)
+        return coordinates
+    # Match ParametricTransform.precomputeImageToTemplateMatrix followed by
+    # fastImageToShapeCoordinates: construct float32 matrix coefficients and
+    # offsets first, then evaluate ((m0*x + m1*y) + m2*z) + offset. The
+    # center-relative expression is algebraically equivalent but rounds at
+    # different points and changes the registration derivatives on anisotropic
+    # grids.
     coordinates = np.empty((y_indices.size, z_indices.size, 3), dtype=np.float32)
     for axis in range(3):
-        value = np.float32(rotation[axis, 0] * physical[0])
-        value = np.float32(value + np.float32(rotation[axis, 1] * physical[1]))
-        value = np.float32(value + np.float32(rotation[axis, 2] * physical[2]))
-        value = np.float32(value + transform[axis + 3])
-        value = np.float32(value / template_res[axis])
-        value = np.float32(value + template_center[axis])
-        coordinates[..., axis] = np.float32(value / scale)
+        matrix = np.empty(3, dtype=np.float32)
+        for source_axis in range(3):
+            matrix[source_axis] = np.float32(
+                np.float32(rotation[axis, source_axis] * image_res[source_axis])
+                / template_res[axis]
+            )
+
+        translated = np.float32(0.0)
+        for source_axis in range(3):
+            term = np.float32(rotation[axis, source_axis] * np.float32(-image_center[source_axis]))
+            term = np.float32(term * image_res[source_axis])
+            translated = np.float32(translated + term)
+        translated = np.float32(translated + transform[axis + 3])
+        offset = np.float32(translated / template_res[axis])
+        offset = np.float32(offset + template_center[axis])
+        offset = np.float32(offset / scale)
+
+        value = np.float32(matrix[0] * np.float32(x))
+        value = np.float32(value + np.float32(matrix[1] * y_grid))
+        value = np.float32(value + np.float32(matrix[2] * z_grid))
+        coordinates[..., axis] = np.float32(value + offset)
     return coordinates
 
 
@@ -885,6 +922,7 @@ def register_toads_atlas_rigid(
     scale: float = 1.0,
     image_center_xyz: ArrayLike | None = None,
     template_center_xyz: ArrayLike | None = None,
+    precomputed_affine: bool = False,
 ) -> ToadsRigidRegistrationResult:
     """Run the selected exact-membership rigid registration loop on a small grid.
 
@@ -942,6 +980,7 @@ def register_toads_atlas_rigid(
             scale=scale,
             image_center_xyz=image_center_xyz,
             template_center_xyz=template_center_xyz,
+            precomputed_affine=precomputed_affine,
         )
 
     history: list[ToadsRigidRegistrationIteration] = []
@@ -966,6 +1005,7 @@ def register_toads_atlas_rigid(
             scale=scale,
             image_center_xyz=image_center_xyz,
             template_center_xyz=template_center_xyz,
+            precomputed_affine=precomputed_affine,
         )
         current_energy = energy_at(transform)
         if not np.isfinite(current_energy):

@@ -116,6 +116,7 @@ def continue_default_membership_through_registration_control(
             max_iterations=max_registration_iterations,
             energy_tolerance=registration_energy_tolerance,
             minimum_lambda=minimum_lambda,
+            precomputed_affine=True,
         )
         final_transform = registration.transform.copy()
         final_bounds = _bounds_for_transform(
