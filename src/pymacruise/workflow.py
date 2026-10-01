@@ -176,7 +176,7 @@ def _ants_available() -> bool:
             return False
         importlib.import_module("ants")
         return True
-    except (ImportError, ValueError):
+    except (ImportError, OSError, ValueError):
         return False
 
 
@@ -195,7 +195,11 @@ def _workflow_atlas_preflight(profile: WorkflowProfile) -> dict[str, Any]:
         if not asset_path.is_relative_to(atlas_root):
             raise ValueError(f"Atlas asset path escapes descriptor directory: {relative}")
         if asset_path.suffixes[-2:] != [".nii", ".gz"] or not asset_path.is_file():
-            raise FileNotFoundError(f"Missing or uncompressed atlas asset: {asset_path}")
+            raise FileNotFoundError(
+                f"Missing or uncompressed bundled atlas asset: {asset_path}. "
+                "Restore the packaged atlas data or reinstall PyMaCRUISE with its "
+                "bundled atlas resources, then retry."
+            )
         try:
             image = nib.load(str(asset_path))
         except (OSError, nib.filebasedimages.ImageFileError) as exc:
@@ -279,6 +283,10 @@ def preflight_workflow(
     if output_dir.exists() and not output_dir.is_dir():
         raise NotADirectoryError(f"Workflow output path is not a directory: {output_dir}")
     manifest_path = output_dir / "run.json"
+    if manifest_path.is_symlink():
+        raise FileExistsError(
+            f"Refusing to write through symlinked preflight manifest: {manifest_path}"
+        )
     if manifest_path.exists() and not overwrite:
         raise FileExistsError(
             f"Preflight manifest already exists: {manifest_path}; use --overwrite to replace it"

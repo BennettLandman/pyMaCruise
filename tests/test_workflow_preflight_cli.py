@@ -164,6 +164,32 @@ def test_preflight_output_collision_and_overwrite_preserve_other_files(
     assert sentinel.read_bytes() == b"preserved"
 
 
+def test_preflight_overwrite_refuses_symlinked_manifest(tmp_path, monkeypatch) -> None:
+    inputs = _write_input_set(tmp_path / "inputs")
+    config_path = _write_config(tmp_path / "config", inputs)
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+    output_dir = tmp_path / "config" / "run-output"
+    output_dir.mkdir()
+    external_target = tmp_path / "outside.json"
+    original = b"preserve this file\n"
+    external_target.write_bytes(original)
+    (output_dir / "run.json").symlink_to(external_target)
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        with pytest.raises(FileExistsError, match="symlinked preflight manifest"):
+            main(
+                [
+                    "workflow-preflight",
+                    "--config",
+                    str(config_path),
+                    "--overwrite",
+                ]
+            )
+
+    assert external_target.read_bytes() == original
+    assert (output_dir / "run.json").is_symlink()
+
+
 def test_preflight_reports_actionable_missing_ants_guidance(monkeypatch) -> None:
     config = workflow.WorkflowConfig(
         "base", "t1.nii.gz", "maseg.nii.gz", "mask.nii.gz", "out"
@@ -171,6 +197,38 @@ def test_preflight_reports_actionable_missing_ants_guidance(monkeypatch) -> None
     monkeypatch.setattr(workflow, "_ants_available", lambda: False)
     with pytest.raises(workflow.WorkflowPreflightError, match=r"pymacruise\[ants\]"):
         workflow._check_workflow_dependencies(config)
+
+
+def test_ants_native_import_error_gets_actionable_guidance(monkeypatch) -> None:
+    config = workflow.WorkflowConfig(
+        "base", "t1.nii.gz", "maseg.nii.gz", "mask.nii.gz", "out"
+    )
+    original_find_spec = workflow.importlib.util.find_spec
+
+    def find_spec(name: str):
+        if name == "ants":
+            return object()
+        return original_find_spec(name)
+
+    def import_module(name: str):
+        if name == "ants":
+            raise OSError("native library unavailable")
+        raise AssertionError(f"unexpected import: {name}")
+
+    monkeypatch.setattr(workflow.importlib.util, "find_spec", find_spec)
+    monkeypatch.setattr(workflow.importlib, "import_module", import_module)
+    with pytest.raises(workflow.WorkflowPreflightError, match=r"pymacruise\[ants\]"):
+        workflow._check_workflow_dependencies(config)
+
+
+def test_missing_bundled_atlas_payload_has_restore_guidance(tmp_path, monkeypatch) -> None:
+    descriptor = tmp_path / "toads_atlas.txt"
+    descriptor.write_text("File: missing.nii.gz\n", encoding="utf-8")
+    monkeypatch.setattr(
+        workflow, "get_bundled_atlas_descriptor", lambda _name: descriptor
+    )
+    with pytest.raises(FileNotFoundError, match="Restore the packaged atlas data"):
+        workflow._workflow_atlas_preflight(workflow.WorkflowProfile.BASE)
 
 
 def test_workflow_config_rejects_unknown_fields_and_non_array_labels(tmp_path) -> None:
