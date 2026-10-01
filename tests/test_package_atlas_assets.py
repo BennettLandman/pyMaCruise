@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -151,28 +153,42 @@ def _assert_isolated_wheel_install(wheel: Path, target: Path) -> None:
     )
     assert result.returncode == 0, f"isolated wheel install failed:\n{result.stdout}\n{result.stderr}"
 
+    source_hashes = _source_descriptor_asset_hashes()
     script = r"""
 from pathlib import Path
+import hashlib
+import json
 import pymacruise
+import nibabel as nib
 from pymacruise.atlas_resources import get_bundled_atlas_descriptor, get_bundled_atlas_root
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_atlas_type_membership import read_toads_atlas_class_types
 from pymacruise.lesion_atlas_priors import load_lesion_atlas_priors, load_lesion_atlas_topology
+import os
 target = Path(__import__('os').environ["PYMACRUISE_INSTALL_TARGET"]).resolve()
 assert Path(pymacruise.__file__).resolve().is_relative_to(target)
 root = get_bundled_atlas_root()
 assert root == (target / "pymacruise" / "data" / "atlases").resolve()
-assert len(load_toads_atlas(get_bundled_atlas_descriptor("cruise-atlas-10obj-toads2008.txt")).structures) == 11
+default = load_toads_atlas(get_bundled_atlas_descriptor("cruise-atlas-10obj-toads2008.txt"))
+assert len(default.structures) == 11
+assert nib.aff2axcodes(nib.load(str(default.topology.path)).affine) == ("R", "A", "S")
+assert all(nib.aff2axcodes(nib.load(str(image.path)).affine) == ("R", "A", "S") for image in default.shapes.values())
 descriptor = get_bundled_atlas_descriptor("lesionToads-atlas-2012/cruise-atlas-12obj-toads2012.txt")
 assert len(read_toads_atlas_class_types(descriptor)) == 13
-load_lesion_atlas_topology(descriptor)
+toads2012_topology = load_lesion_atlas_topology(descriptor)
+assert nib.aff2axcodes(toads2012_topology.image.affine) == ("R", "A", "S")
 lesion = get_bundled_atlas_descriptor("lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt")
 assert len(load_lesion_atlas_priors(lesion, ["T1_MPRAGE", "FLAIR"]).structures) == 13
-assert all(Path(path).exists() for path in (descriptor, lesion))
+lesion_topology = load_lesion_atlas_topology(lesion)
+assert nib.aff2axcodes(lesion_topology.image.affine) == ("R", "A", "S")
+expected_hashes = json.loads(os.environ["PYMACRUISE_ATLAS_HASHES"])
+for relative, expected in expected_hashes.items():
+    assert hashlib.sha256((root / relative).read_bytes()).hexdigest() == expected, relative
 """
     env = os.environ.copy()
     env["PYTHONPATH"] = os.fspath(target)
     env["PYMACRUISE_INSTALL_TARGET"] = os.fspath(target)
+    env["PYMACRUISE_ATLAS_HASHES"] = json.dumps(source_hashes)
     result = subprocess.run(
         [sys.executable, "-c", script],
         cwd=target.parent,
@@ -182,6 +198,24 @@ assert all(Path(path).exists() for path in (descriptor, lesion))
         check=False,
     )
     assert result.returncode == 0, f"installed wheel atlas resolution failed:\n{result.stdout}\n{result.stderr}"
+
+
+def _source_descriptor_asset_hashes() -> dict[str, str]:
+    atlas_root = PROJECT_ROOT / "data" / "atlases"
+    hashes: dict[str, str] = {}
+    for descriptor, _ in ATLAS_CASES.items():
+        path = atlas_root / descriptor
+        hashes[path.relative_to(atlas_root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("File:"):
+                continue
+            relative = Path(line.partition(":")[2].strip())
+            assert not relative.is_absolute() and ".." not in relative.parts
+            asset = (path.parent / relative).resolve()
+            assert asset.is_relative_to(atlas_root.resolve()) and asset.is_file()
+            key = asset.relative_to(atlas_root.resolve()).as_posix()
+            hashes[key] = hashlib.sha256(asset.read_bytes()).hexdigest()
+    return hashes
 
 
 def _assert_descriptor_references_are_bundled(root: Path, descriptor: Path) -> None:
