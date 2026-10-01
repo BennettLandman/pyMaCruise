@@ -1,0 +1,22 @@
+		// relations
+		segmentation.computeRelations();
+		//segmentation.displayRelationList();
+		
+		if (debug) System.out.print("relation initialization time: " + (System.currentTimeMillis()-start_time)+"\n"); 
+		
+		segmentation.computeVariances();
+		if (debug) MedicUtilPublic.displayMessage(segmentation.displayVariances());
+		segmentation.computeChannelWeights();
+		
+		fireProgressStateChanged(90);
+		// memberships & energy
+		//segmentation.setInit();
+		//segmentation.reSetGMflag();
+		energy = segmentation.computeMemberships();
+		//segmentation.reSetInit();
+		segmentation.setGMflag();
+		userInterface.setGlobalDataText("initial energy : "+energy+"\n");
+			
+		if (debug) System.out.print("membership initialization time: " + (System.currentTimeMillis()-start_time)+"\n"); 
+			
+		Eprev = energy;

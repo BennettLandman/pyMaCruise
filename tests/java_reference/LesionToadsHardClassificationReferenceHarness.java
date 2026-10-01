@@ -44,11 +44,11 @@ public final class LesionToadsHardClassificationReferenceHarness {
             for (int k = 0; k < 3; k++) mems[x][0][0][k] = values[x][k];
             lesion[x][0][0] = lesionValues[x];
         }
-        byte[] labels = {10, 20, 30, 99};
+        byte[] labels = {-106, 20, 30, 99};
         byte[][][] out = generateClassification(mems, lesion, labels, 3, 3);
         System.out.print("{\"source_method\":\"LesionToadSegmentation.generateClassification\",");
         System.out.print("\"source_sha256\":\"545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99\",");
-        System.out.print("\"template_labels\":[10,20,30,99],\"lesion_class\":3,\"labels\":[");
+        System.out.print("\"template_labels\":[-106,20,30,99],\"lesion_class\":3,\"labels\":[");
         for (int x = 0; x < 10; x++) {
             if (x > 0) System.out.print(",");
             System.out.print(out[x][0][0]);

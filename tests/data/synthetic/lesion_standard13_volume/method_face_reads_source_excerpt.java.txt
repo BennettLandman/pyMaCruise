@@ -1,0 +1,41 @@
+					if (smoothing > 0.0f) { 
+						ngb = 0.0f;
+						ngbS = 0.0f;
+						ngbL = 0.0f;
+						ngbB = 0.0f;
+						// case by case	: X+
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x+1][y][z][m]*mems[x+1][y][z][m];
+						}
+						ngbL += lesionMembership[x+1][y][z]*lesionMembership[x+1][y][z];
+						ngbB += blackHoleMem[x+1][y][z]*blackHoleMem[x+1][y][z];
+						// case by case	: X-
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x-1][y][z][m]*mems[x-1][y][z][m];
+						}
+						ngbL += lesionMembership[x-1][y][z]*lesionMembership[x-1][y][z];
+						ngbB += blackHoleMem[x-1][y][z]*blackHoleMem[x-1][y][z];
+						// case by case	: Y+
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x][y+1][z][m]*mems[x][y+1][z][m];
+						}
+						ngbL += lesionMembership[x][y+1][z]*lesionMembership[x][y+1][z];
+						ngbB += blackHoleMem[x][y+1][z]*blackHoleMem[x][y+1][z];
+						// case by case	: Y-
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x][y-1][z][m]*mems[x][y-1][z][m];
+						}
+						ngbL += lesionMembership[x][y-1][z]*lesionMembership[x][y-1][z];
+						ngbB += blackHoleMem[x][y-1][z]*blackHoleMem[x][y-1][z];
+						// case by case	: Z+
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x][y][z+1][m]*mems[x][y][z+1][m];
+						}
+						ngbL += lesionMembership[x][y][z+1]*lesionMembership[x][y][z+1];
+						ngbB += blackHoleMem[x][y][z+1]*blackHoleMem[x][y][z+1];
+						// case by case	: Z-
+						for (int m=0;m<classes;m++) if (m!=k) {
+							ngb += mems[x][y][z-1][m]*mems[x][y][z-1][m];
+						}
+						ngbL += lesionMembership[x][y][z-1]*lesionMembership[x][y][z-1];
+						ngbB += blackHoleMem[x][y][z-1]*blackHoleMem[x][y][z-1];

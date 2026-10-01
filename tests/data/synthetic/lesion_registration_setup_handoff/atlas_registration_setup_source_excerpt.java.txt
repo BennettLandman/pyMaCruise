@@ -1,0 +1,7 @@
+	public final void updateShapeRegistration(float[][][][] mems_, String transformType_, int iter_, int lvl_, float cf_) {
+		// memberships, iterations
+		mems = mems_;
+		itMax = iter_;
+		levels = lvl_;
+		subsample = 2;
+		couplingFactor = cf_;

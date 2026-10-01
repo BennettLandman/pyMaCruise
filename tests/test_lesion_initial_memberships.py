@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -9,6 +10,12 @@ from pymacruise.lesion_initial_memberships import lesion_initial_memberships
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_initial_memberships"
+HARNESS = Path(__file__).parent / "java_reference" / "LesionInitialMembershipsReferenceHarness.java"
+REFERENCE = ROOT / "java_reference.json"
+INPUT = ROOT / "padded_multichannel_ras.nii.gz"
+HARNESS_SHA256 = "6e0f694c4e70314570f65ce5f3da96ce15ea8e17b484ede2298c6c92bdd9bdd3"
+REFERENCE_SHA256 = "9154852aa7c73c1566e00c476a6fe9ee9013075e4a838b2f4a99c1b4193b8b80"
+INPUT_SHA256 = "d0c48b0e7333b2d62273d9114c2b6636dce22a4e9dd0150cb501beedbcd8827e"
 
 
 def _fixture():
@@ -29,8 +36,11 @@ def test_lesion_initial_memberships_matches_selected_java_harness_bits():
     result = lesion_initial_memberships(
         data, centroids, crop_bounds=bounds, pad_border=metadata["pad_border"]
     )
-    reference = json.loads((ROOT / "java_reference.json").read_text())
+    reference = json.loads(REFERENCE.read_text())
 
+    assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == HARNESS_SHA256
+    assert hashlib.sha256(REFERENCE.read_bytes()).hexdigest() == REFERENCE_SHA256
+    assert hashlib.sha256(INPUT.read_bytes()).hexdigest() == INPUT_SHA256
     assert reference["source_sha256"] == (
         "72a1a47dae9c448022707ee68917eb5ca70d64b763f38582fa31304463732c08"
     )
@@ -42,8 +52,9 @@ def test_lesion_initial_memberships_matches_selected_java_harness_bits():
     expected = expected.reshape(data.shape[1:] + (centroids.shape[1],))
     np.testing.assert_array_equal(result.memberships.view(np.int32), expected.view(np.int32))
     assert result.active_bounds == ((1, 6), (1, 7), (1, 8))
-    assert np.count_nonzero(result.memberships[0]) == 0
-    assert np.count_nonzero(result.memberships[-1]) == 0
+    for axis in range(3):
+        for face in (0, -1):
+            assert np.count_nonzero(np.take(result.memberships, face, axis=axis)) == 0
     assert result.memberships[1, 1, 1, 0] == np.float32(2.0)
     assert np.array_equal(data, before_data)
     assert np.array_equal(centroids, before_centroids)

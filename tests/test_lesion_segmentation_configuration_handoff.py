@@ -16,6 +16,7 @@ ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "lesion_segmentation_configuration_handoff"
 HARNESS = ROOT / "java_reference" / "LesionToadsSegmentationConfigurationHandoffReferenceHarness.java"
 REFERENCE = FIXTURE / "java_reference.json"
+WRAPPER_EXCERPT = FIXTURE / "wrapper_configuration_source_excerpt.java.txt"
 SOURCE_HASHES = {
     "segmentation": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
     "wrapper": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
@@ -32,6 +33,22 @@ def test_configuration_handoff_matches_java_setters_and_order() -> None:
     fixture = json.loads((FIXTURE / "input.json").read_text())
     assert ref["source_sha256"] == SOURCE_HASHES
     assert ref["harness_sha256"] == hashlib.sha256(HARNESS.read_bytes()).hexdigest()
+    wrapper_excerpt = WRAPPER_EXCERPT.read_bytes()
+    assert ref["wrapper_excerpt_sha256"] == hashlib.sha256(wrapper_excerpt).hexdigest()
+    wrapper_text = wrapper_excerpt.decode("utf-8")
+    source_calls = [
+        "segmentation.initCentroids(centroids);",
+        "segmentation.setLesionCentroid(",
+        "segmentation.setBlackHoleCentroid(",
+        "if (lesionWeight)",
+        "segmentation.setLesionWeight();",
+        "segmentation.reSetLesionWeight();",
+        "segmentation.setIntensityMax(",
+        "segmentation.setIntensityScale(",
+        "segmentation.setGMflag();",
+    ]
+    positions = [wrapper_text.index(call) for call in source_calls]
+    assert positions == sorted(positions)
     assert ref["source_methods"] == [
         "setLesionWeight/reSetLesionWeight",
         "setIntensityMax",

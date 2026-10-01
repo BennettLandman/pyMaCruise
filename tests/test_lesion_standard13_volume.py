@@ -10,11 +10,23 @@ from nibabel.orientations import aff2axcodes
 
 from pymacruise.lesion_standard13_voxel import compute_lesion_toads_standard13_voxel
 from pymacruise.lesion_standard13_volume import run_lesion_toads_standard13_volume
+from pymacruise.lesion_similarity import compute_lesion_toads_similarity
+from pymacruise.lesion_standard13_voxel import STANDARD13_NAMES, STANDARD13_TYPES
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_standard13_volume"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionToadsStandard13VolumeReferenceHarness.java"
 SOURCE_SHA = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
-HARNESS_SHA = "82f432d5944ad2a1720df24a4405cd1516523899d2bfab7e82fa868f5b3586ed"
+HARNESS_SHA = "e5350b1988f65f2bb521619952ebd896242e708d503dba48c4c9913236bdc969"
+SOURCE_EXCERPT_HASHES = {
+    "traversal": "e4ec0a95bd65e7f1452ca80e08e8aecb3bfd2165d2db738738b84091e484b882",
+    "face_reads": "b31e2b9108d4d65a3b01dfc2511edd6ae33d82a92bc3caf1adcef17c787a0847",
+    "normalization_objective": "22ba167e0ed2b778d9ca1512a7551c08f0b13516a9e1d8adda7f8d413c49b033",
+}
+SOURCE_EXCERPTS = {
+    "traversal": ROOT / "method_volume_traversal_source_excerpt.java.txt",
+    "face_reads": ROOT / "method_face_reads_source_excerpt.java.txt",
+    "normalization_objective": ROOT / "method_normalization_objective_source_excerpt.java.txt",
+}
 CLASSES = 13
 
 
@@ -81,6 +93,31 @@ def test_standard13_volume_matches_source_order_java_harness() -> None:
     assert reference["source_sha256"] == SOURCE_SHA
     assert reference["image_sha256"] == image_hash
     assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == HARNESS_SHA
+    assert reference["source_excerpt_sha256"] == SOURCE_EXCERPT_HASHES
+    for name, path in SOURCE_EXCERPTS.items():
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == SOURCE_EXCERPT_HASHES[name]
+    traversal = SOURCE_EXCERPTS["traversal"].read_text()
+    assert "for (int x=1;x<nx-1;x++) for (int y=1;y<ny-1;y++) for (int z=1;z<nz-1;z++)" in traversal
+    face_reads = SOURCE_EXCERPTS["face_reads"].read_text()
+    face_markers = ["// case by case\t: X+", "// case by case\t: X-", "// case by case\t: Y+",
+                    "// case by case\t: Y-", "// case by case\t: Z+", "// case by case\t: Z-"]
+    assert [face_reads.index(marker) for marker in face_markers] == sorted(
+        face_reads.index(marker) for marker in face_markers
+    )
+    normalization = SOURCE_EXCERPTS["normalization_objective"].read_text()
+    assert "mems[x][y][z][k] = mems[x][y][z][k]/den;" in normalization
+    assert "dist += energy[k]*mems[x][y][z][k]*mems[x][y][z][k];" in normalization
+
+    # The entire RAS NIfTI must match the in-memory image formula used by the
+    # independent Java harness, including boundary voxels that the update loop
+    # leaves untouched.
+    x, y, z = np.indices(values.shape[:3], dtype=np.int32)
+    ti = (x * 7 + y * 5 + z * 3 + ((x * y) % 3) * 2) % 16
+    fi = (x * 3 + y * 7 + z * 5 + ((y * z) % 4) * 3) % 15
+    expected_image = np.empty_like(values)
+    expected_image[..., 0] = np.float32(0.4) + np.float32(0.025) * ti.astype(np.float32)
+    expected_image[..., 1] = np.float32(0.55) + np.float32(0.02) * fi.astype(np.float32)
+    np.testing.assert_array_equal(values, expected_image)
     state = _state()
     state_before = {
         name: value.copy() for name, value in state.items() if isinstance(value, np.ndarray)
@@ -101,6 +138,15 @@ def test_standard13_volume_matches_source_order_java_harness() -> None:
         "running_objective_bits": _flat_bits(result.running_objective),
         "objective_bits": _flat_bits(result.objective),
     }
+    similarity = compute_lesion_toads_similarity(
+        state["class_centroids"], state["class_stddev"], state["lesion_centroid"],
+        state["lesion_stddev"], state["channel_weights"],
+        tuple(kind.lower() for kind in STANDARD13_TYPES), STANDARD13_NAMES,
+        prior_scale=0.1, t1_channel=0,
+        black_hole_similarity=np.zeros(CLASSES, dtype=np.float32),
+    )
+    actual["class_similarity_bits"] = _flat_bits(similarity.class_similarity)
+    actual["lesion_similarity_bits"] = _flat_bits(similarity.lesion_similarity)
     for name, bits in actual.items():
         assert bits == reference[name], name
 

@@ -1,0 +1,10 @@
+		for (int x=1;x<nx-1;x++) for (int y=1;y<ny-1;y++) for (int z=1;z<nz-1;z++) {
+			den = 0;
+			
+			
+			// precompute the priors
+			if (priorCoefficient > 0) {
+				shape = atlas.getTransformedShape(x,y,z);
+			}
+			
+			for (int k=0;k<classes;k++) if (shape[k]>0) {

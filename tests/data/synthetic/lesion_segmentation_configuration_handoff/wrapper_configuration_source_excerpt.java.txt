@@ -1,0 +1,10 @@
+		segmentation.initCentroids(centroids);
+		segmentation.setLesionCentroid(preprocess.initialLesionCentroid(atlas.getLesionPriors(modality,nc)));
+		segmentation.setBlackHoleCentroid(preprocess.initialBlackHoleCentroid(atlas.getBlackHolePriors(modality,nc)));
+		if (lesionWeight) 
+			segmentation.setLesionWeight();
+		else
+			segmentation.reSetLesionWeight();
+		segmentation.setIntensityMax(preprocess.getIntensityMax());
+		segmentation.setIntensityScale(preprocess.getIntensityScale());
+		segmentation.setGMflag();

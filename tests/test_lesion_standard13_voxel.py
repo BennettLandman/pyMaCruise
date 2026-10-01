@@ -18,7 +18,10 @@ from pymacruise.lesion_standard13_voxel import (
 )
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_standard13_voxel"
+WRAPPER_EXCERPT = ROOT / "wrapper_initial_membership_source_excerpt.java.txt"
 SOURCE_SHA = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+WRAPPER_SHA = "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
+WRAPPER_EXCERPT_SHA = "ffe1304226cad722ea12c12654a31889c2f988870e64105e7f2a84aecb43fd6c"
 
 
 def _state() -> dict[str, np.ndarray | float | int]:
@@ -74,6 +77,20 @@ def test_standard13_profile_composes_selected_initial_membership_voxel() -> None
     image_sha = hashlib.sha256(image_values.astype("<f4", copy=False).tobytes()).hexdigest()
     reference = json.loads((ROOT / "java_reference.json").read_text())
     assert reference["source_sha256"] == SOURCE_SHA
+    assert reference["wrapper_source_sha256"] == WRAPPER_SHA
+    wrapper_excerpt = WRAPPER_EXCERPT.read_bytes()
+    assert hashlib.sha256(wrapper_excerpt).hexdigest() == WRAPPER_EXCERPT_SHA
+    wrapper_text = wrapper_excerpt.decode("utf-8")
+    wrapper_calls = [
+        "segmentation.computeRelations();",
+        "segmentation.computeVariances();",
+        "segmentation.computeChannelWeights();",
+        "energy = segmentation.computeMemberships();",
+        "segmentation.setGMflag();",
+    ]
+    assert [wrapper_text.index(call) for call in wrapper_calls] == sorted(
+        wrapper_text.index(call) for call in wrapper_calls
+    )
     assert reference["image_sha256"] == image_sha
     assert reference["class_names"] == list(STANDARD13_NAMES)
     assert reference["class_types"] == list(STANDARD13_TYPES)

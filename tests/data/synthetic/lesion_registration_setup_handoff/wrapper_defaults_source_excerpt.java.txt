@@ -1,0 +1,2 @@
+	private	String		registrationMode = "rigid";
+	private	int			alignIter = 1;

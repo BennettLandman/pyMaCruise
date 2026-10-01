@@ -38,6 +38,7 @@ public final class LesionToadsStandard13VolumeReferenceHarness {
     }
     static int bits(float v){return Float.floatToIntBits(v);}
     static String vec(float[] a){StringBuilder s=new StringBuilder("[");boolean first=true;for(float v:a){if(!first)s.append(',');first=false;s.append(Integer.toUnsignedLong(bits(v)));}return s.append(']').toString();}
+    static String flat2(float[][] a){float[] f=new float[a.length*a[0].length];int i=0;for(float[] row:a)for(float v:row)f[i++]=v;return vec(f);}
     static String flat4(float[][][][] a){float[] f=new float[N*N*N*a[0][0][0].length];int i=0;for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++)for(int k=0;k<a[0][0][0].length;k++)f[i++]=a[x][y][z][k];return vec(f);}
     static String flat3(float[][][] a){float[] f=new float[N*N*N];int i=0;for(int x=0;x<N;x++)for(int y=0;y<N;y++)for(int z=0;z<N;z++)f[i++]=a[x][y][z];return vec(f);}
     static float sf(float shape){float twice=2.0f*shape;return 1.0f<twice?1.0f:twice;}
@@ -119,7 +120,8 @@ public final class LesionToadsStandard13VolumeReferenceHarness {
             +",\"outlier_membership_bits\":"+flat3(OUTMEM)+",\"lesion_relation_bits\":"+flat3(LREL)
             +",\"denominator_bits\":"+flat3(DEN)+",\"lesion_energy_bits\":"+flat3(LE)
             +",\"black_hole_energy_bits\":"+flat3(BHE)+",\"running_objective_bits\":"+flat3(RUNNING)
-            +",\"objective_bits\":"+Integer.toUnsignedLong(bits(objective))+"}");
+            +",\"objective_bits\":"+Integer.toUnsignedLong(bits(objective))
+            +",\"class_similarity_bits\":"+flat2(CLASS_SIM)+",\"lesion_similarity_bits\":"+vec(LESION_SIM)+"}");
     }
     public static void main(String[] args){run();}
 }

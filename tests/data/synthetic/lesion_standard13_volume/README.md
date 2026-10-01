@@ -14,8 +14,16 @@ the GM map does not modulate the lesion. The harness holds transformed
 shapes, relation flags, and distance maps fixed; it checks the source-ordered
 x/y/z update, including six-face reads after earlier voxel mutations, all
 membership/energy outputs, border preservation, running objective, and final
-objective. The selected FLAIR PowerTable lookup values are pinned in the
-harness and their scalar lookup has separate tests.
+objective. The global class and lesion similarity arrays are emitted by the
+harness and compared to the existing Python similarity kernel. The complete
+NIfTI voxel data are checked against the independent harness formula, including
+boundary voxels untouched by the pass. The selected FLAIR PowerTable lookup
+values are pinned in the harness and their scalar lookup has separate tests.
+
+Three pinned excerpts from `LesionToadSegmentation.computeMemberships()` lock
+the source x/y/z traversal, six-face read order, normalization, and energy
+accumulation. Together with the adjacent dependent-voxel assertion, these
+verify that later voxels read earlier in-place updates.
 
 Regenerate the Java reference with:
 

@@ -34,6 +34,16 @@ def test_transformed_template_matches_selected_java_rigid_mapping() -> None:
     np.testing.assert_allclose(nib.affines.voxel_sizes(image.affine), (0.9, 1.0, 1.1), atol=1e-6)
     atlas = np.asarray(image.dataobj)
     assert atlas.shape == tuple(ref["template_shape"])
+    # Pin the complete image input to the in-memory label construction in the
+    # Java harness. Output equality alone would leave unsampled atlas voxels
+    # free to drift without revealing that the two references used different
+    # inputs.
+    gx, gy, gz = np.indices(atlas.shape)
+    expected_atlas = (1 + ((gx * 7 + gy * 3 + gz * 5 + gx * gy + 2 * gz * gy) % 17)).astype(
+        np.uint8
+    )
+    expected_atlas[0, 0, 0] = 42
+    np.testing.assert_array_equal(atlas, expected_atlas)
     assert atlas[0, 0, 0] == 42 and ref["background_label"] == 1
     before = atlas.copy()
 

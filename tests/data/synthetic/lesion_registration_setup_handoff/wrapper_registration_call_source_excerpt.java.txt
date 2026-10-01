@@ -1,0 +1,16 @@
+		segmentation.initCentroids(centroids);
+		segmentation.setLesionCentroid(preprocess.initialLesionCentroid(atlas.getLesionPriors(modality,nc)));
+		segmentation.setBlackHoleCentroid(preprocess.initialBlackHoleCentroid(atlas.getBlackHolePriors(modality,nc)));
+		if (lesionWeight) 
+			segmentation.setLesionWeight();
+		else
+			segmentation.reSetLesionWeight();
+		segmentation.setIntensityMax(preprocess.getIntensityMax());
+		segmentation.setIntensityScale(preprocess.getIntensityScale());
+		segmentation.setGMflag();
+		if (verbose) MedicUtilPublic.displayMessage("initial "+segmentation.displayCentroids()); 
+		if (verbose) MedicUtilPublic.displayMessage("initial "+segmentation.displayLesionCentroid());
+		if (verbose) MedicUtilPublic.displayMessage("initial "+segmentation.displayBlackHoleCentroid());
+		
+		// re-initialize the atlas alignment
+		atlas.updateShapeRegistration(segmentation.getMemberships(), registrationMode, alignIter, 1, 1.0f);

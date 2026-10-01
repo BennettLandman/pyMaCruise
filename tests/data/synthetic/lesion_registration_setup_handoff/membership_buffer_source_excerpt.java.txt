@@ -1,0 +1,2 @@
+			mems = new float[nx][ny][nz][classes];
+	public final float[][][][] getMemberships() { return mems; }
