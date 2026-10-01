@@ -8,13 +8,16 @@ Command, run from the `pymacruise` repository root:
 ./.venv/bin/pytest -q tests/test_plus_ace_branch.py
 ```
 
-Result: **2 passed, 0 failed, 0 skipped, 0 warnings** in 3.62 seconds.
+Result: **2 passed, 0 failed, 0 skipped, 0 warnings** in 3.63 seconds.
 
 The tests cover two fixed synthetic branches on aligned RAS `.nii.gz` images:
 
-- A segmentation containing lesion label 202, which is in the selected plus
-  overlooked-label list.
-- The same segmentation with that region retained as ordinary label 200.
+- A segmentation containing a label-202 boundary-overlook patch.
+- The same segmentation with that region retained as label 200, the control.
+
+Label 202 is not the LesionTOADS atlas lesion class. These paired images test
+boundary-label behavior and do not satisfy the separate P40 lesion/no-lesion
+workflow criterion.
 
 Each branch routes the segmentation through the public plus boundary adapter,
 compares raw and TOADS-WM-cleaned images against the existing source-mapped
@@ -22,8 +25,9 @@ boundary operations, routes six fixed atlas/TOADS tissue images through plus
 tissue update and compares GM/WM/mask with the public combiner, then routes
 the cleaned boundary and updated GM/WM through plus ACE and compares all ACE
 outputs with the public ACE API using the selected mode-3 merge. It also checks
-RAS output geometry, confirms that the lesion/no-lesion boundaries differ,
-and verifies that all loaded input image arrays remain unchanged.
+RAS output geometry, confirms that boundaries for the label-202 patch and
+label-200 control differ, and verifies that all loaded input image arrays
+remain unchanged.
 
 The second test calls ordinary `ace_enhance` with no plus options on the
 established base ACE synthetic fixture. Enhanced GM, skeleton, and thinned

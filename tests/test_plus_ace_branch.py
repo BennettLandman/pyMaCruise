@@ -31,8 +31,12 @@ TISSUE_INPUTS = (
 )
 
 
-def _load_inputs(lesion: bool):
-    segmentation_name = "segmentation_lesion" if lesion else "segmentation_no_lesion"
+def _load_inputs(has_overlook_patch: bool):
+    segmentation_name = (
+        "segmentation_label202_overlook_patch"
+        if has_overlook_patch
+        else "segmentation_label200_control"
+    )
     inputs = {
         "segmentation": nib.load(FIXTURE / f"{segmentation_name}.nii.gz"),
         "toads_wm_boundary": nib.load(FIXTURE / "toads_wm_boundary.nii.gz"),
@@ -50,13 +54,13 @@ def _snapshot(inputs) -> dict[str, np.ndarray]:
     }
 
 
-def test_plus_boundary_tissue_ace_branch_with_and_without_lesion_label() -> None:
+def test_plus_boundary_tissue_ace_branch_with_overlook_patch_and_control() -> None:
     options = PlusPipelineOptions()
     branch_outputs = {}
     saved_inputs = []
 
-    for lesion in (True, False):
-        inputs = _load_inputs(lesion)
+    for has_overlook_patch in (True, False):
+        inputs = _load_inputs(has_overlook_patch)
         before = _snapshot(inputs)
         saved_inputs.append((inputs, before))
 
@@ -101,16 +105,15 @@ def test_plus_boundary_tissue_ace_branch_with_and_without_lesion_label() -> None
             np.testing.assert_array_equal(actual_image.dataobj, direct_image.dataobj)
             np.testing.assert_array_equal(actual_image.affine, direct_image.affine)
             assert nib.aff2axcodes(actual_image.affine) == ("R", "A", "S")
-        branch_outputs[lesion] = (boundary, tissue, ace)
+        branch_outputs[has_overlook_patch] = (boundary, tissue, ace)
 
-    # The selected boundary ignores lesion label 202. The paired branch keeps
-    # the same source geometry and upstream tissue products but changes the
-    # generated boundary where that label occupied the cortical region.
-    lesion_boundary = np.asarray(branch_outputs[True][0].raw_boundary.dataobj)
-    ordinary_boundary = np.asarray(branch_outputs[False][0].raw_boundary.dataobj)
-    assert np.any(lesion_boundary != ordinary_boundary)
-    assert np.any(lesion_boundary)
-    assert np.any(ordinary_boundary)
+    # Label 202 is a plus boundary-overlook label, not the LesionTOADS lesion
+    # class. The paired branch changes the boundary in the cortical region.
+    patch_boundary = np.asarray(branch_outputs[True][0].raw_boundary.dataobj)
+    control_boundary = np.asarray(branch_outputs[False][0].raw_boundary.dataobj)
+    assert np.any(patch_boundary != control_boundary)
+    assert np.any(patch_boundary)
+    assert np.any(control_boundary)
 
     for inputs, before in saved_inputs:
         for name, image in inputs.items():

@@ -5,10 +5,12 @@ testing the plus branch from multi-atlas segmentation boundary construction
 through tissue-map combination and ACE. It contains a 24³ 1 mm isotropic
 concentric tissue phantom and aligned NIfTI inputs in RAS orientation.
 
-`segmentation_lesion.nii.gz` contains a compact patch coded as label 202,
-which is in the selected plus boundary's overlooked-label list.
-`segmentation_no_lesion.nii.gz` is identical except that patch retains label
-200. Both are passed through the same boundary operation and TOADS-WM cleanup.
+`segmentation_label202_overlook_patch.nii.gz` contains a compact patch coded as
+label 202, which the selected plus boundary operation treats as an overlooked
+label. `segmentation_label200_control.nii.gz` is identical except that patch
+retains label 200. Label 202 is not the LesionTOADS atlas class whose descriptor
+type is `lesion`; this phantom checks boundary-label filtering only. Both images
+are passed through the same boundary operation and TOADS-WM cleanup.
 The atlas and TOADS maps are fixed synthetic upstream products; the test does
 not run TOADS, LesionTOADS, N4, or any full plus workflow.
 
@@ -20,4 +22,4 @@ checked against its previously committed Java reference outputs.
 Regenerate fixture volumes with `make_phantom.py` from the repository root's
 `pymacruise` directory. The ACE gray/white dimensions and analytic geometry
 match `../ace/`; this directory separately commits all images needed by the
-composed branch and the lesion/no-lesion segmentation variants.
+composed branch and the label-202/label-200 segmentation variants.

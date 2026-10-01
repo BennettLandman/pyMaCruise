@@ -19,18 +19,18 @@ def main() -> None:
     gray = np.where((radius > 5.0) & (radius <= 9.0), 220.0, 0.0).astype(np.float32)
     brain = (radius <= 10.0).astype(np.uint8)
 
-    no_lesion = np.zeros(SHAPE, dtype=np.int16)
-    no_lesion[(radius <= 4.0)] = 201
-    no_lesion[(radius > 4.0) & (radius <= 10.0)] = 200
-    lesion = no_lesion.copy()
-    # A compact patch in the cortical-label region uses an overlooked lesion
-    # code. The paired no-lesion input retains label 200 at these voxels.
-    lesion[8:12, 14:18, 10:14] = 202
+    label200_control = np.zeros(SHAPE, dtype=np.int16)
+    label200_control[(radius <= 4.0)] = 201
+    label200_control[(radius > 4.0) & (radius <= 10.0)] = 200
+    label202_overlook_patch = label200_control.copy()
+    # The patch changes to selected boundary-overlook label 202; this is not
+    # the LesionTOADS atlas class named type=lesion.
+    label202_overlook_patch[8:12, 14:18, 10:14] = 202
     toads_wm_boundary = np.where(radius <= 4.0, 0.5, 0.0).astype(np.float32)
 
     files = {
-        "segmentation_lesion.nii.gz": lesion,
-        "segmentation_no_lesion.nii.gz": no_lesion,
+        "segmentation_label202_overlook_patch.nii.gz": label202_overlook_patch,
+        "segmentation_label200_control.nii.gz": label200_control,
         "toads_wm_boundary.nii.gz": toads_wm_boundary,
         "multi_atlas_gm.nii.gz": gray.astype(np.uint8),
         "multi_atlas_wm.nii.gz": white.astype(np.uint8),
