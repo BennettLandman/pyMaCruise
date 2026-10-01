@@ -16,6 +16,8 @@ from pymacruise.toads_initial_thinning_statistics_membership import (
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "toads_initial_thinning_startup"
+JAVA_HARNESS = Path(__file__).parent / "java_reference" / "ToadsInitialStatisticsMembershipContinuationReferenceHarness.java"
+JAVA_HARNESS_SHA256 = "c5ba87e67e029cac0061d6528431ddd4af1a8c98f1fa13fbe6c30178342ac3c7"
 
 
 def _load(name: str) -> np.ndarray:
@@ -33,7 +35,12 @@ def _java_float_digest(values: np.ndarray) -> str:
     return hashlib.sha256(np.asarray(values, dtype=">f4").tobytes(order="C")).hexdigest()
 
 
+def _float_bits(values: np.ndarray) -> list[int]:
+    return np.asarray(values, dtype=np.float32).ravel().view(np.int32).tolist()
+
+
 def test_startup_first_thinning_statistics_and_next_membership_compose() -> None:
+    assert hashlib.sha256(JAVA_HARNESS.read_bytes()).hexdigest() == JAVA_HARNESS_SHA256
     spec = json.loads((ROOT / "spec.json").read_text())
     params = spec["parameters"]
     images = _load("images_ras.nii.gz").astype(np.float32)
@@ -91,6 +98,7 @@ def test_startup_first_thinning_statistics_and_next_membership_compose() -> None
         intensity_field=fields,
         psf_bias=bias,
     )
+    java_reference = json.loads((ROOT / "continuation_java_reference.json").read_text())
 
     assert continued.stage_order == (
         *startup.stage_order,
@@ -105,6 +113,27 @@ def test_startup_first_thinning_statistics_and_next_membership_compose() -> None
     assert np.isfinite(continued.centroids).all()
     assert np.isfinite(continued.class_standard_deviations).all()
     assert np.isfinite(continued.membership_pass.memberships).all()
+    assert java_reference["source_order"] == [
+        "P18cyn:startup membership and first thinning",
+        "computeExactCentroids",
+        "computeExactVariances",
+        "computeCentroidSimilarity",
+        "computeExactMemberships",
+    ]
+    assert java_reference["source_sha256"] == first_stage_reference["toads_source_sha256"]
+    assert java_reference["startup_membership_sha256"] == first_stage_reference["membership_sha256"]
+    assert java_reference["post_thinning_segmentation_sha256"] == first_stage_reference["segmentation_sha256"]
+    assert _float_bits(continued.centroids) == [
+        value for channel in java_reference["updated_centroids_bits"] for value in channel
+    ]
+    assert _float_bits(continued.class_standard_deviations) == [
+        value for channel in java_reference["standard_deviation_bits"] for value in channel
+    ]
+    assert _java_float_digest(continued.centroid_similarity) == java_reference["centroid_similarity_sha256"]
+    assert _java_float_digest(continued.membership_pass.class_data_energy) == java_reference["class_energy_sha256"]
+    assert _java_float_digest(continued.membership_pass.denominator) == java_reference["denominator_sha256"]
+    assert _java_float_digest(continued.membership_pass.memberships) == java_reference["updated_membership_sha256"]
+    assert int(np.asarray(continued.membership_pass.objective, dtype=np.float32).view(np.int32)) == java_reference["objective_bits"]
     np.testing.assert_allclose(
         continued.membership_pass.memberships[1:-1, 1:-1, 1:-1].sum(axis=-1),
         1.0,
