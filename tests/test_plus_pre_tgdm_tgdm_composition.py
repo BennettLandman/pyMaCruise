@@ -6,6 +6,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 import pymacruise.plus_composition as composition
 from pymacruise.plus_composition import run_plus_pre_tgdm_and_tgdm
@@ -53,11 +54,13 @@ def test_plus_pre_tgdm_and_tgdm_routes_explicit_seed_and_preserves_grid(
 ) -> None:
     events: list[str] = []
     routed: list[tuple[object, ...]] = []
+    normalized_pre_inputs: list[tuple[object, ...]] = []
     original_pre = composition.run_plus_pre_tgdm_stages
     original_tgdm = composition.run_plus_tgdm_stage
 
     def traced_pre(*args, **kwargs):
         events.append("pre_tgdm")
+        normalized_pre_inputs.append(args)
         return original_pre(*args, **kwargs)
 
     def traced_tgdm(*args, **kwargs):
@@ -67,11 +70,24 @@ def test_plus_pre_tgdm_and_tgdm_routes_explicit_seed_and_preserves_grid(
 
     monkeypatch.setattr(composition, "run_plus_pre_tgdm_stages", traced_pre)
     monkeypatch.setattr(composition, "run_plus_tgdm_stage", traced_tgdm)
-    inputs = _inputs()
+    ras_inputs = _inputs()
+    flipped_data = np.flip(np.asarray(ras_inputs[0].dataobj), axis=0).copy()
+    left_affine = ras_inputs[0].affine.copy()
+    left_affine[0, 0] *= -1
+    left_affine[0, 3] = ras_inputs[0].affine[0, 0] * (ras_inputs[0].shape[0] - 1)
+    non_ras_segmentation = nib.Nifti1Image(flipped_data, left_affine)
+    assert nib.aff2axcodes(non_ras_segmentation.affine) == ("L", "A", "S")
+    inputs = (non_ras_segmentation, *ras_inputs[1:])
     before = [np.asarray(image.dataobj).copy() for image in inputs]
-    result = run_plus_pre_tgdm_and_tgdm(*inputs, options=PlusPipelineOptions())
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        result = run_plus_pre_tgdm_and_tgdm(*inputs, options=PlusPipelineOptions())
 
     assert events == ["pre_tgdm", "tgdm"]
+    assert nib.aff2axcodes(normalized_pre_inputs[0][0].affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(
+        normalized_pre_inputs[0][0].dataobj,
+        ras_inputs[0].dataobj,
+    )
     assert len(routed) == 1
     assert routed[0][0] is inputs[8]
     assert routed[0][1] is result.pre_tgdm.tissue.wm

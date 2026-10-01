@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import nibabel as nib
 import numpy as np
 
+from pymacruise.image_io import normalize_image_to_ras
 from pymacruise.plus_pipeline import (
     PlusPipelineOptions,
     PlusPreTGDMResult,
@@ -81,24 +82,26 @@ def run_plus_pre_tgdm_and_tgdm(
         "TOADS mask",
         "topology-corrected initial membership",
     )
-    reference: nib.spatialimages.SpatialImage | None = None
+    ras_inputs: list[nib.spatialimages.SpatialImage] = []
     for name, image in zip(names, inputs, strict=True):
         if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):
             raise ValueError(f"{name} must be a NIfTI image")
         if len(image.shape) != 3:
             raise ValueError(f"{name} must be a 3D scalar image")
-        if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
-            raise ValueError(f"{name} must already be oriented RAS")
+        ras_inputs.append(normalize_image_to_ras(image, source_name=name))
+
+    reference: nib.spatialimages.SpatialImage | None = None
+    for name, image in zip(names, ras_inputs, strict=True):
         if reference is None:
             reference = image
         elif image.shape != reference.shape or not np.allclose(
             image.affine, reference.affine, rtol=0.0, atol=1e-4
         ):
-            raise ValueError(f"{name} must match the supplied crop-ready RAS grid")
+            raise ValueError(f"{name} must match the supplied crop-ready RAS grid after reorientation")
 
-    pre = run_plus_pre_tgdm_stages(*inputs[:8], options=options)
+    pre = run_plus_pre_tgdm_stages(*ras_inputs[:8], options=options)
     nested = run_plus_tgdm_stage(
-        topology_corrected_initial_membership,
+        ras_inputs[8],
         pre.tissue.wm,
         pre.tissue.gm,
         pre.ace.enhanced_gray_matter,
