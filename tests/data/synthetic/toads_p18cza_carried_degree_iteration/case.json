@@ -1,0 +1,21 @@
+{
+  "case_name": "P18cyz thinning to carried degree-one exact iteration",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "previous_polynomial_degree": 1,
+  "maximum_polynomial_degree": 3,
+  "low_energy_ratio": 0.01,
+  "observed_energy_ratio": 1.1715328693389893,
+  "field_initialization": "use the preceding P18cyw degree-one fitted field",
+  "centroid_initialization": "use the preceding P18cyw exact centroid output",
+  "closest_labels": "use the P18cyx continuing branch relation refresh output",
+  "transformed_shape_values": "fixed all-zero array matching memberships",
+  "source_formula_harnesses": [
+    "ToadsPostThinningExactFieldReferenceHarness",
+    "ToadsPostThinningExactIterationReferenceHarness"
+  ],
+  "scope": "one carried-degree degree-one iteration on a synthetic RAS grid; not a complete TOADS workflow"
+}
