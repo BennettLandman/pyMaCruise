@@ -1,5 +1,5 @@
 {
-  "description": "Finite synthetic post-membership input for selected 13-class LesionTOADS growth followed by next-iteration thinning. One center voxel has unset skeleton and is eligible for a single growth event; each class has interior segmentation support.",
+  "description": "Finite synthetic post-membership and image input for selected 13-class LesionTOADS growth, next-iteration thinning, and post-thinning statistics. One center voxel has unset skeleton and is eligible for a single growth event; each class has interior segmentation support.",
   "shape_xyz": [
     17,
     17,
@@ -20,7 +20,11 @@
       17,
       30
     ],
-    "ordering": 30
+    "ordering": 30,
+    "images": [
+      31,
+      33
+    ]
   },
   "object_types": [
     "object",
@@ -37,6 +41,51 @@
     "object",
     "object"
   ],
+  "modalities": [
+    "T1_MPRAGE",
+    "FLAIR"
+  ],
+  "initial_class_centroids": [
+    [
+      0.15000000596046448,
+      0.2800000011920929,
+      0.4099999964237213,
+      0.5400000214576721,
+      0.6700000166893005,
+      0.800000011920929,
+      0.9300000071525574,
+      1.059999942779541,
+      1.190000057220459,
+      1.3200000524520874,
+      1.4500000476837158,
+      1.5800000429153442,
+      1.7100000381469727
+    ],
+    [
+      0.20000000298023224,
+      0.33000001311302185,
+      0.46000000834465027,
+      0.5899999737739563,
+      0.7200000286102295,
+      0.8500000238418579,
+      0.9800000190734863,
+      1.1100000143051147,
+      1.2400000095367432,
+      1.3700000047683716,
+      1.5,
+      1.6299999952316284,
+      1.7599999904632568
+    ]
+  ],
+  "initial_lesion_centroids": [
+    0.5,
+    0.75
+  ],
+  "initial_black_hole_centroids": [
+    0.0,
+    0.0
+  ],
+  "outlier_membership_constant": 0.0,
   "growth_center_xyz": [
     7,
     8,
@@ -70,6 +119,6 @@
     ]
   ],
   "intended_use": "synthetic method-reference test only; not patient or atlas data",
-  "sha256_nii_gz": "f7bb7c0ebaea6234ec6971a9bbfb2712d0bc41c5d73d17ee771d59c674fc5366",
-  "sha256_uncompressed_float32le": "b0a0d03b9fb8bfbf8e47ec857e8547e5b0ee4eff7d0a6f4e4192b57bc1279d13"
+  "sha256_nii_gz": "232881312080f7a92ab2abd9d798e7dedf4941898a77961f2c90e7c47456249a",
+  "sha256_uncompressed_float32le": "50897ab981213a2ab35f9e94a22bdb4c31e6f5ec24a71b00e4cdd6993495d2f8"
 }

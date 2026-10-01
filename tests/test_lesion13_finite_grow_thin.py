@@ -15,6 +15,7 @@ from pymacruise.lesion_growth import (
     propagate_lesion_toads_growing,
 )
 from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
+from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after_next_iteration_thinning
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
@@ -31,6 +32,8 @@ ROOT = Path(__file__).parent / "data/synthetic/lesion13_finite_grow_thin"
 SPEC = json.loads((ROOT / "fixture.json").read_text(encoding="utf-8"))
 REFERENCE = json.loads((ROOT / "java_reference.json").read_text(encoding="utf-8"))
 THIN_HARNESS = Path(__file__).parent / "java_reference/Lesion13ClassNextThinningReferenceHarness.java"
+STATISTICS_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinningStatisticsReferenceHarness.java"
+POWER_TABLE = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic/utilities/PowerTable.java"
 TYPES = tuple(SPEC["object_types"])
 CLASSES = int(SPEC["class_count"])
 LESION = int(SPEC["lesion_class"])
@@ -84,6 +87,29 @@ def _expected_thinning_bytes(result) -> bytes:
     return b"".join(fields)
 
 
+def _statistics_input_bytes(images, memberships, segmentation, lesion, black, centroids, lesion_centroid, black_centroid) -> bytes:
+    fields = [
+        np.asarray(centroids, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(lesion_centroid, dtype=">f4").tobytes(),
+        np.asarray(black_centroid, dtype=">f4").tobytes(),
+    ]
+    for x in range(segmentation.shape[0]):
+        for y in range(segmentation.shape[1]):
+            for z in range(segmentation.shape[2]):
+                fields.extend((
+                    np.asarray(images[x, y, z], dtype=">f4").tobytes(),
+                    np.asarray(memberships[x, y, z], dtype=">f4").tobytes(),
+                    struct.pack(">i", int(segmentation[x, y, z])),
+                    np.asarray(lesion[x, y, z], dtype=">f4").tobytes(),
+                    np.asarray(black[x, y, z], dtype=">f4").tobytes(),
+                ))
+    return b"".join(fields)
+
+
+def _float_bits(values):
+    return np.asarray(values, dtype=np.float32).view(np.uint32).astype(np.uint64).tolist()
+
+
 def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: Path) -> None:
     assert REFERENCE["lesion_toads_source_sha256"] == "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
     assert REFERENCE["wrapper_source_sha256"] == "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
@@ -91,6 +117,8 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert hashlib.sha256(THIN_HARNESS.read_bytes()).hexdigest() == REFERENCE["thin_harness_sha256"]
     assert hashlib.sha256(HEAP.read_bytes()).hexdigest() == REFERENCE["binary_heap_sha256"]
     assert hashlib.sha256(NUMERICS.read_bytes()).hexdigest() == REFERENCE["numerics_sha256"]
+    assert hashlib.sha256(STATISTICS_HARNESS.read_bytes()).hexdigest() == REFERENCE["statistics_harness_sha256"]
+    assert hashlib.sha256(POWER_TABLE.read_bytes()).hexdigest() == REFERENCE["power_table_sha256"]
     image_path = ROOT / "finite_13class_grow_thin_ras.nii.gz"
     assert hashlib.sha256(image_path.read_bytes()).hexdigest() == SPEC["sha256_nii_gz"]
     image = nib.load(str(image_path))
@@ -102,6 +130,7 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     memberships = packed[..., 2:15]
     lesion, black = packed[..., 15], packed[..., 16]
     shapes, order = packed[..., 17:30], packed[..., 30]
+    images = packed[..., 31:33]
     assert memberships.shape[-1] == len(TYPES) == CLASSES == 13
     assert np.isfinite(packed).all()
     assert tuple(packed.shape[:3]) == tuple(SPEC["shape_xyz"])
@@ -188,3 +217,57 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     subprocess.run([java, "-cp", str(classes_dir), "Lesion13ClassNextThinningReferenceHarness", str(thin_input), str(thin_output)], check=True, capture_output=True, text=True)
     assert thin_output.read_bytes() == _expected_thinning_bytes(thinned)
     assert len(thinned.run.events) > 0
+
+    centroid_options = {
+        "mode": "none",
+        "modalities": tuple(SPEC["modalities"]),
+        "lesion_power_exponents": (0.4, 1.2),
+    }
+    initial_centroids = np.asarray(SPEC["initial_class_centroids"], dtype=np.float32)
+    initial_lesion = np.asarray(SPEC["initial_lesion_centroids"], dtype=np.float32)
+    initial_black = np.asarray(SPEC["initial_black_hole_centroids"], dtype=np.float32)
+    outlier = np.full(seg.shape, SPEC["outlier_membership_constant"], dtype=np.float32)
+    refreshed = refresh_statistics_after_next_iteration_thinning(
+        thinned,
+        images,
+        memberships,
+        lesion,
+        black,
+        outlier,
+        initial_centroids,
+        initial_lesion,
+        initial_black,
+        TYPES,
+        centroid_options=centroid_options,
+        channel_weight_options={"outlier_distance": 1.0},
+        flair_channel=1,
+    )
+    stats_input, stats_output = tmp_path / "stats-in.bin", tmp_path / "stats-out.json"
+    stats_input.write_bytes(_statistics_input_bytes(
+        images,
+        memberships,
+        thinned.run.segmentation,
+        lesion,
+        black,
+        initial_centroids,
+        initial_lesion,
+        initial_black,
+    ))
+    subprocess.run(
+        [javac, "-d", str(classes_dir), str(POWER_TABLE), str(STATISTICS_HARNESS)],
+        check=True, capture_output=True, text=True,
+    )
+    java_stats = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostThinningStatisticsReferenceHarness", str(stats_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_stats["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    assert java_stats["wrapper_sha256"] == REFERENCE["wrapper_source_sha256"]
+    assert java_stats["class"] == _float_bits(refreshed.statistics.centroids.class_centroids)
+    assert java_stats["aux_centroids"][0] == _float_bits(refreshed.statistics.centroids.lesion_centroids)
+    assert java_stats["aux_centroids"][1] == _float_bits(refreshed.statistics.centroids.black_hole_centroids)
+    assert java_stats["class_std"] == _float_bits(refreshed.statistics.variances.class_standard_deviation.reshape(-1))
+    assert java_stats["lesion_std"] == _float_bits(refreshed.statistics.variances.lesion_standard_deviation)
+    assert java_stats["blackhole_std"] == _float_bits(refreshed.statistics.variances.black_hole_standard_deviation)
+    assert java_stats["weights"] == _float_bits(refreshed.statistics.channel_weights)
+    assert refreshed.stage_order[-3:] == ("computeCentroids", "computeVariances", "computeChannelWeights")
