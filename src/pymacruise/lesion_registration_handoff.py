@@ -44,7 +44,7 @@ def _bounds_for_transform(
     image_dims = tuple(int(value) for value in image_dimensions_xyz)
     template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
     image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
-    rotation = _rotation_matrix(transform[:3])
+    rotation = _rotation_matrix(transform[:3], java_float32_norm=True)
     matrix = np.empty((3, 4), dtype=np.float32)
     centers = np.asarray(image_dims, dtype=np.float32) / np.float32(2.0)
     template_centers = np.asarray(values.shape, dtype=np.float32) / np.float32(2.0)
@@ -153,7 +153,9 @@ def register_lesion_membership_handoff(
         )
         transform = optimization.transform.copy()
 
-    rotation = _rotation_matrix(transform[:3]).astype(np.float32, copy=True)
+    rotation = _rotation_matrix(
+        transform[:3], java_float32_norm=True
+    ).astype(np.float32, copy=True)
     bounds = tuple(
         _bounds_for_transform(
             shape,

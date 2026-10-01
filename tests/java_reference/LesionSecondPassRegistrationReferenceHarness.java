@@ -1,0 +1,153 @@
+import edu.jhmi.rad.medic.libraries.ImageFunctions;
+import edu.jhmi.rad.medic.methods.ParametricTransform;
+import edu.jhmi.rad.medic.structures.RotationMatrix;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.security.MessageDigest;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.zip.GZIPInputStream;
+
+/** Selected registerShapes excerpt for a carried second GM membership pass. */
+public final class LesionSecondPassRegistrationReferenceHarness {
+    private static final int NX=17, NY=17, NZ=17, CLASSES=13;
+    private static float[] START;
+    private static final float[] R={1.0f,1.0f,1.0f};
+    private static final int SUBSAMPLE=2, IT_MAX=10, IT_SUPP=10;
+    private static final float MIN_EDIFF=1e-6f, MIN_LAMBDA=0.001f, FACTOR=1.5f;
+    private static float[][][][] SHAPES;
+    private static float[][][][] MEMBERSHIPS;
+    private static final ParametricTransform MODEL=new ParametricTransform(
+        "rigid",NX/2.0f,NY/2.0f,NZ/2.0f,R[0],R[1],R[2],NX,NY,NZ,
+        NX/2.0f,NY/2.0f,NZ/2.0f,R[0],R[1],R[2],NX,NY,NZ);
+
+    private static void readNifti(String file) throws Exception {
+        byte[] raw;
+        try(GZIPInputStream in=new GZIPInputStream(new FileInputStream(file));ByteArrayOutputStream out=new ByteArrayOutputStream()) { in.transferTo(out);raw=out.toByteArray(); }
+        ByteBuffer b=ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN);
+        if(b.getInt(0)!=348 || b.getShort(70)!=16 || b.getShort(72)!=32) throw new IllegalArgumentException("expected float32 NIfTI-1");
+        if(b.getShort(42)!=NX || b.getShort(44)!=NY || b.getShort(46)!=NZ || b.getShort(48)!=CLASSES*2) throw new IllegalArgumentException("unexpected registration fixture dimensions");
+        int offset=(int)b.getFloat(108);float[] values=new float[NX*NY*NZ*CLASSES*2];
+        for(int q=0;q<values.length;q++)values[q]=b.getFloat(offset+4*q);
+        MEMBERSHIPS=new float[NX][NY][NZ][CLASSES];SHAPES=new float[CLASSES][NX][NY][NZ];
+        for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<CLASSES;k++){
+            int mi=x+NX*(y+NY*(z+NZ*k));int si=x+NX*(y+NY*(z+NZ*(CLASSES+k)));
+            MEMBERSHIPS[x][y][z][k]=values[mi];SHAPES[k][x][y][z]=values[si];
+        }
+    }
+    private static float[] coefficients(float[][][][] mem,float[] trans,boolean derivative) {
+        float[] h=new float[6],g=new float[6];float cost=0.0f,norm=0.0f;
+        float[][] rot=ParametricTransform.computeRotation(trans);
+        RotationMatrix rm=new RotationMatrix();rm.setParameters(trans[0],trans[1],trans[2]);
+        float[][] da=rm.derivatives(1.0f,0.0f,0.0f),db=rm.derivatives(0.0f,1.0f,0.0f),dc=rm.derivatives(0.0f,0.0f,1.0f);
+        for(int x=0;x<NX;x+=SUBSAMPLE)for(int y=0;y<NY;y+=SUBSAMPLE)for(int z=0;z<NZ;z+=SUBSAMPLE)for(int k=1;k<CLASSES;k++) {
+            float[] xi=MODEL.imageToTemplate(x,y,z,trans,rot,1.0f);
+            float p=ImageFunctions.linearInterpolation(SHAPES[k],0.0f,xi[0],xi[1],xi[2],NX,NY,NZ);
+            if(p>0.0f) {
+                float m=mem[x][y][z][k];
+                if(derivative) {
+                    float dx=ImageFunctions.linearInterpolationXderivative(SHAPES[k],xi[0],xi[1],xi[2],NX,NY,NZ);
+                    float dy=ImageFunctions.linearInterpolationYderivative(SHAPES[k],xi[0],xi[1],xi[2],NX,NY,NZ);
+                    float dz=ImageFunctions.linearInterpolationZderivative(SHAPES[k],xi[0],xi[1],xi[2],NX,NY,NZ);
+                    float[][] dxi=MODEL.imageToTemplateDerivatives(x,y,z,trans,rot,da,db,dc,1.0f);
+                    for(int i=0;i<6;i++) {
+                        float dp=dx*dxi[0][i]+dy*dxi[1][i]+dz*dxi[2][i];
+                        h[i]+=2.0f*m*m*dp*dp;
+                        g[i]+=2.0f*m*m*p*dp;
+                    }
+                    cost+=m*m*p*p;
+                } else cost+=m*m*p*p;
+                norm+=p*p;
+            }
+        }
+        float[] out=new float[15];out[0]=cost/norm;out[1]=norm;out[14]=cost;
+        for(int i=0;i<6;i++){out[2+i]=g[i]/norm;out[8+i]=h[i]/norm;}
+        return out;
+    }
+    private static String v(float[] a) {StringBuilder s=new StringBuilder("[");for(int i=0;i<a.length;i++){if(i>0)s.append(',');s.append(Float.toString(a[i]));}return s.append(']').toString();}
+    private static String matrix(float[][] a) {StringBuilder s=new StringBuilder("[");for(int i=0;i<a.length;i++){if(i>0)s.append(',');s.append(v(a[i]));}return s.append(']').toString();}
+    private static String inputDigest(boolean shape) throws Exception {
+        MessageDigest digest=MessageDigest.getInstance("SHA-256");
+        for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<CLASSES;k++) {
+            int bits=Float.floatToRawIntBits(shape?SHAPES[k][x][y][z]:MEMBERSHIPS[x][y][z][k]);
+            digest.update((byte)(bits>>>24));digest.update((byte)(bits>>>16));digest.update((byte)(bits>>>8));digest.update((byte)bits);
+        }
+        StringBuilder out=new StringBuilder();for(byte value:digest.digest())out.append(String.format("%02x",value));return out.toString();
+    }
+    private static String sampledPriorDigest(float[] trans) throws Exception {
+        MessageDigest digest=MessageDigest.getInstance("SHA-256");
+        float[][] rotation=ParametricTransform.computeRotation(trans);
+        for(int x=0;x<NX;x+=SUBSAMPLE)for(int y=0;y<NY;y+=SUBSAMPLE)for(int z=0;z<NZ;z+=SUBSAMPLE) {
+            float[] xi=MODEL.imageToTemplate(x,y,z,trans,rotation,1.0f);
+            for(int k=1;k<CLASSES;k++) {
+                float value=ImageFunctions.linearInterpolation(SHAPES[k],0.0f,xi[0],xi[1],xi[2],NX,NY,NZ);
+                int bits=Float.floatToRawIntBits(value);
+                digest.update((byte)(bits>>>24));digest.update((byte)(bits>>>16));digest.update((byte)(bits>>>8));digest.update((byte)bits);
+            }
+        }
+        StringBuilder out=new StringBuilder();for(byte value:digest.digest())out.append(String.format("%02x",value));return out.toString();
+    }
+    private static String mappedCoordinateDigest(float[] trans) throws Exception {
+        MessageDigest digest=MessageDigest.getInstance("SHA-256");
+        float[][] rotation=ParametricTransform.computeRotation(trans);
+        for(int x=0;x<NX;x+=SUBSAMPLE)for(int y=0;y<NY;y+=SUBSAMPLE)for(int z=0;z<NZ;z+=SUBSAMPLE) {
+            float[] xi=MODEL.imageToTemplate(x,y,z,trans,rotation,1.0f);
+            for(int k=1;k<CLASSES;k++)for(int axis=0;axis<3;axis++) {
+                int bits=Float.floatToRawIntBits(xi[axis]);
+                digest.update((byte)(bits>>>24));digest.update((byte)(bits>>>16));digest.update((byte)(bits>>>8));digest.update((byte)bits);
+            }
+        }
+        StringBuilder out=new StringBuilder();for(byte value:digest.digest())out.append(String.format("%02x",value));return out.toString();
+    }
+    private static float[] mappedCoordinates(float[] trans) {
+        float[] values=new float[(NX/SUBSAMPLE+1)*(NY/SUBSAMPLE+1)*(NZ/SUBSAMPLE+1)*3];
+        float[][] rotation=ParametricTransform.computeRotation(trans);int at=0;
+        for(int x=0;x<NX;x+=SUBSAMPLE)for(int y=0;y<NY;y+=SUBSAMPLE)for(int z=0;z<NZ;z+=SUBSAMPLE) {
+            float[] xi=MODEL.imageToTemplate(x,y,z,trans,rotation,1.0f);
+            for(int axis=0;axis<3;axis++)values[at++]=xi[axis];
+        }
+        return values;
+    }
+    private static String bounds(float[] trans) {
+        float[][] rot=ParametricTransform.computeRotation(trans);
+        StringBuilder out=new StringBuilder("[");
+        for(int k=0;k<CLASSES;k++) {
+            if(k>0)out.append(',');int[] lo={NX,NY,NZ},hi={0,0,0};int count=0;
+            for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++) {
+                float[] p=MODEL.imageToTemplate(x,y,z,trans,rot,1.0f);
+                if(ImageFunctions.linearInterpolation(SHAPES[k],0.0f,p[0],p[1],p[2],NX,NY,NZ)>0.0f) {
+                    count++;if(x<lo[0])lo[0]=x;if(y<lo[1])lo[1]=y;if(z<lo[2])lo[2]=z;
+                    if(x>hi[0])hi[0]=x;if(y>hi[1])hi[1]=y;if(z>hi[2])hi[2]=z;
+                }
+            }
+            out.append("{\"lower\":[").append(lo[0]).append(',').append(lo[1]).append(',').append(lo[2]).append("],\"upper\":[").append(hi[0]).append(',').append(hi[1]).append(',').append(hi[2]).append("],\"support_count\":").append(count).append('}');
+        }
+        return out.append(']').toString();
+    }
+    private static String optimize() throws Exception {
+        float[][][][] mem=MEMBERSHIPS;float[] trans=START.clone();float lambda=1.0f,diff=1.0f;
+        float energy=coefficients(mem,trans,false)[0];StringBuilder history=new StringBuilder("[");int n=0;
+        while(n<IT_MAX && diff>MIN_EDIFF && lambda>MIN_LAMBDA) {
+            if(n>0)history.append(',');float[] c=coefficients(mem,trans,true);float start=c[0],trialEnergy=start;int rejects=0;boolean accepted=false;
+            StringBuilder trials=new StringBuilder("[");float[] acceptedTransform=trans;
+            while(true) {
+                float[] trial=new float[6];for(int i=0;i<6;i++)trial[i]=trans[i]+lambda/c[8+i]*c[2+i];
+                float[] trialCoefficients=coefficients(mem,trial,false);trialEnergy=trialCoefficients[0];if(trials.length()>1)trials.append(',');trials.append("{\"transform\":").append(v(trial)).append(",\"energy\":").append(Float.toString(trialEnergy)).append(",\"coefficients\":").append(v(trialCoefficients)).append(",\"sampled_prior_sha256\":\"").append(sampledPriorDigest(trial)).append("\",\"mapped_xyz_sha256\":\"").append(mappedCoordinateDigest(trial)).append("\",\"mapped_xyz\":").append(v(mappedCoordinates(trial))).append("}");
+                if(trialEnergy>start){acceptedTransform=trial;lambda*=FACTOR;accepted=true;break;}
+                lambda/=FACTOR;rejects++;if(rejects>IT_SUPP)break;
+            }
+            float relative=(trialEnergy-start)/trialEnergy;diff=relative;
+            if(accepted)trans=acceptedTransform;energy=trialEnergy;
+            history.append("{\"trials\":").append(trials.append(']')).append(",\"coefficients\":").append(v(c)).append(",\"accepted\":").append(accepted).append(",\"rejected_trials\":").append(rejects).append(",\"transform\":").append(v(trans)).append(",\"energy\":").append(Float.toString(energy)).append(",\"relative_change\":").append(Float.toString(relative)).append(",\"lambda\":").append(Float.toString(lambda)).append('}');n++;
+        }
+        String stop=n>=IT_MAX?"iteration_limit":(diff<=MIN_EDIFF?"min_energy_change":"lambda_floor");
+        return "{\"iterations\":"+history.append(']')+",\"transform\":"+v(trans)+",\"energy\":"+Float.toString(energy)+",\"lambda\":"+Float.toString(lambda)+",\"stop_reason\":\""+stop+"\",\"rotation\":"+matrix(ParametricTransform.computeRotation(trans))+",\"bounds\":"+bounds(trans)+"}";
+    }
+    public static void main(String[] args) throws Exception {
+        if(args.length!=7)throw new IllegalArgumentException("expected NIfTI followed by six carried transform values");
+        START=new float[6];for(int i=0;i<6;i++)START[i]=Float.parseFloat(args[i+1]);
+        readNifti(args[0]);
+        String result=optimize();
+        System.out.println(result.substring(0,result.length()-1)+",\"start_transform\":"+v(START)+",\"membership_sha256\":\""+inputDigest(false)+"\",\"atlas_prior_sha256\":\""+inputDigest(true)+"\"}");
+    }
+}

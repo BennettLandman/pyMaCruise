@@ -21,6 +21,7 @@ from pymacruise.lesion_next_iteration_registration import register_after_next_gm
 from pymacruise.lesion_next_iteration_branch import continue_after_next_iteration_registration
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
+from pymacruise.lesion_shapes import lesion_registration_volume_coefficients, sample_lesion_shape_prior
 from test_lesion_nan_post_registration_growth_reference import (
     HARNESS as GROW_HARNESS,
     HEAP,
@@ -52,6 +53,13 @@ REGISTRATION_HARNESS = Path(__file__).parent / "java_reference/LesionPostThinnin
 BRANCH_HARNESS = Path(__file__).parent / "java_reference/LesionNextIterationBranchReferenceHarness.java"
 OUTPUT_HARNESS = Path(__file__).parent / "java_reference/LesionPostRegistrationOutputsReferenceHarness.java"
 REGISTERED_SHAPES_HARNESS = Path(__file__).parent / "java_reference/LesionRegisteredShapeVolumeReferenceHarness.java"
+SECOND_PASS_REGISTRATION_HARNESS = Path(__file__).parent / "java_reference/LesionSecondPassRegistrationReferenceHarness.java"
+SECOND_PASS_REGISTRATION_REFERENCE = json.loads(
+    (Path(__file__).parent / "data/synthetic/lesion13_second_gm_registration/fixture.json").read_text(encoding="utf-8")
+)
+SECOND_PASS_REGISTRATION_INPUT = (
+    Path(__file__).parent / "data/synthetic/lesion13_second_gm_registration/registration_inputs_ras.nii.gz"
+)
 JAVA_UPSTREAM = Path(__file__).parent / "java_reference/upstream/edu/jhmi/rad/medic"
 MEDIC_UTIL_STUB = Path(__file__).parent / "java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java"
 TYPES = tuple(SPEC["object_types"])
@@ -799,6 +807,274 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     }.items():
         assert java_next_ratio[key] == f"{int(np.asarray(value, np.float32).view(np.uint32)):08x}", key
 
+    # The next wrapper pass uses the newly updated memberships, while atlas
+    # priors remain in atlas space. The rigid transform is carried forward
+    # from the preceding registerShapes call; membership's transformed priors
+    # above are not reused as atlas-space registration inputs.
+    generated_second_input = tmp_path / "second-pass-registration-ras.nii.gz"
+    assert hashlib.sha256(SECOND_PASS_REGISTRATION_HARNESS.read_bytes()).hexdigest() == (
+        SECOND_PASS_REGISTRATION_REFERENCE["java_reference"]["harness_sha256"]
+    )
+    assert SECOND_PASS_REGISTRATION_REFERENCE["working_space"] == "RAS"
+    assert SECOND_PASS_REGISTRATION_REFERENCE["java_reference"]["sources"]["RotationMatrix.java"] == (
+        REGISTRATION_REFERENCE["source_sha256"]["RotationMatrix.java"]
+    )
+    second_registration_image = nib.Nifti1Image(
+        np.concatenate((actual_next.class_memberships, atlas_shapes), axis=-1).astype(np.float32),
+        registration_image_input.affine,
+    )
+    nib.save(second_registration_image, str(generated_second_input))
+    generated_second = nib.load(str(generated_second_input))
+    assert nib.aff2axcodes(generated_second.affine) == ("R", "A", "S")
+    second_registration_input = nib.load(str(SECOND_PASS_REGISTRATION_INPUT))
+    assert hashlib.sha256(SECOND_PASS_REGISTRATION_INPUT.read_bytes()).hexdigest() == (
+        SECOND_PASS_REGISTRATION_REFERENCE["input_materialization"]["sha256"]
+    )
+    assert nib.aff2axcodes(second_registration_input.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(generated_second.affine, second_registration_input.affine)
+    np.testing.assert_array_equal(
+        np.asarray(generated_second.dataobj, dtype=np.float32),
+        np.asarray(second_registration_input.dataobj, dtype=np.float32),
+    )
+    reloaded_second_input = second_registration_input
+    second_registration_input_path = SECOND_PASS_REGISTRATION_INPUT
+    assert nib.aff2axcodes(reloaded_second_input.affine) == ("R", "A", "S")
+    second_input_data = np.asarray(reloaded_second_input.dataobj, dtype=np.float32)
+    np.testing.assert_array_equal(second_input_data[..., :CLASSES], actual_next.class_memberships)
+    np.testing.assert_array_equal(second_input_data[..., CLASSES:], atlas_shapes)
+    second_registration = register_after_next_gm_membership_update(
+        next_membership,
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        registration.registration.transform,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        align_shapes=True,
+        init_align_iter=REGISTRATION_SPEC["init_align_iter"],
+    )
+    assert second_registration.stage_order[-1] == "registerShapes"
+    second_registration_sources = [*registration_sources[:-1], SECOND_PASS_REGISTRATION_HARNESS]
+    subprocess.run(
+        [javac, "-d", str(classes_dir), *(str(path) for path in second_registration_sources)],
+        check=True, capture_output=True, text=True,
+    )
+    second_java_registration = json.loads(subprocess.run(
+        [
+            java, "-cp", str(classes_dir), "LesionSecondPassRegistrationReferenceHarness",
+            str(second_registration_input_path),
+            *(str(float(value)) for value in registration.registration.transform),
+        ],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert second_java_registration["membership_sha256"] == hashlib.sha256(
+        np.asarray(actual_next.class_memberships, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    assert second_java_registration["atlas_prior_sha256"] == hashlib.sha256(
+        np.asarray(atlas_shapes, dtype=">f4").tobytes(order="C")
+    ).hexdigest()
+    np.testing.assert_array_equal(
+        np.asarray(second_java_registration["start_transform"], np.float32),
+        registration.registration.transform,
+    )
+    second_optimization = second_registration.registration.optimization
+    assert second_optimization is not None
+    assert second_optimization.stop_reason == second_java_registration["stop_reason"]
+    assert len(second_optimization.iterations) == len(second_java_registration["iterations"])
+    np.testing.assert_array_equal(
+        second_registration.registration.transform,
+        np.asarray(second_java_registration["transform"], np.float32),
+    )
+    _assert_f32(second_optimization.energy, second_java_registration["energy"], "second registration energy")
+    _assert_f32(second_optimization.lambda_value, second_java_registration["lambda"], "second registration lambda")
+    second_initial_coefficients = lesion_registration_volume_coefficients(
+        tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+        actual_next.class_memberships,
+        image_dimensions_xyz=seg.shape,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        transform=tuple(float(value) for value in registration.registration.transform),
+        offset=0,
+        subsample=2,
+    )
+    expected_coefficients = second_java_registration["iterations"][0]["coefficients"]
+    for actual_value, expected_value, label in (
+        (second_initial_coefficients.energy, expected_coefficients[0], "initial energy"),
+        (second_initial_coefficients.normalized_gradient, expected_coefficients[2:8], "gradient"),
+        (second_initial_coefficients.normalized_hessian, expected_coefficients[8:14], "Hessian"),
+    ):
+        actual_values = np.asarray(actual_value, dtype=np.float32).reshape(-1)
+        expected_values = np.asarray(expected_value, dtype=np.float32).reshape(-1)
+        np.testing.assert_array_equal(actual_values.view(np.uint32), expected_values.view(np.uint32), err_msg=label)
+    for iteration_index, (step, expected) in enumerate(zip(
+        second_optimization.iterations, second_java_registration["iterations"], strict=True
+    )):
+        assert step.result.accepted == expected["accepted"]
+        assert step.result.rejected_trials == expected["rejected_trials"]
+        np.testing.assert_array_equal(step.result.transform, np.asarray(expected["transform"], np.float32))
+        _assert_f32(step.result.energy, expected["energy"], "second registration iteration energy")
+        _assert_f32(step.result.relative_change, expected["relative_change"], "second registration relative change")
+        _assert_f32(step.result.lambda_value, expected["lambda"], "second registration iteration lambda")
+        assert len(step.trial_energies) == len(expected["trials"])
+        for trial_index, expected_trial in enumerate(expected["trials"]):
+            np.testing.assert_array_equal(
+                step.trial_transforms[trial_index], np.asarray(expected_trial["transform"], np.float32)
+            )
+            python_trial_coefficients = lesion_registration_volume_coefficients(
+                tuple(atlas_shapes[..., k] for k in range(CLASSES)),
+                actual_next.class_memberships,
+                image_dimensions_xyz=seg.shape,
+                image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+                template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+                transform=tuple(float(value) for value in step.trial_transforms[trial_index]),
+                offset=0,
+                subsample=2,
+            )
+            if iteration_index == 0 and trial_index == 2:
+                trial_transform = tuple(float(value) for value in step.trial_transforms[trial_index])
+                rotation_case = SECOND_PASS_REGISTRATION_REFERENCE["registration_state"][
+                    "over_unit_rotation_regression"
+                ]
+                rotation_parameter_bits = [
+                    f"{int(value):08x}"
+                    for value in np.asarray(trial_transform[:3], np.float32).view(np.uint32)
+                ]
+                assert rotation_parameter_bits == rotation_case["rotation_parameter_bits"]
+                assert np.linalg.norm(np.asarray(trial_transform[:3], np.float64)) > 1.0
+                sampled_values = []
+                mapped_values = []
+                mapped_voxels = []
+                for sx in range(0, seg.shape[0], 2):
+                    for sy in range(0, seg.shape[1], 2):
+                        for sz in range(0, seg.shape[2], 2):
+                            voxel_mapped = None
+                            for class_index in range(1, CLASSES):
+                                sample = sample_lesion_shape_prior(
+                                    atlas_shapes[..., class_index],
+                                    (sx, sy, sz),
+                                    image_dimensions_xyz=seg.shape,
+                                    image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+                                    template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+                                    transform=trial_transform,
+                                    class_index=class_index,
+                                    bbox_low_xyz=(0, 0, 0),
+                                    bbox_high_xyz=seg.shape,
+                                )
+                                sampled_values.append(sample.value)
+                                mapped_values.extend(sample.template_xyz)
+                                if class_index == 1:
+                                    voxel_mapped = sample.template_xyz
+                            mapped_voxels.extend(voxel_mapped)
+                java_mapped = np.asarray(expected_trial["mapped_xyz"], np.float32)
+                python_mapped = np.asarray(mapped_voxels, np.float32)
+                assert f"{int(java_mapped[0].view(np.uint32)):08x}" == (
+                    rotation_case["java_mapped_xyz_first_sample_bits"][0]
+                )
+                differing_coordinates = np.flatnonzero(
+                    python_mapped.view(np.uint32) != java_mapped.view(np.uint32)
+                )
+                if differing_coordinates.size:
+                    first_difference = int(differing_coordinates[0])
+                    parameter_values = np.asarray(trial_transform[:3], dtype=np.float32)
+                    java_norm_squared = np.float32(
+                        np.float32(np.float32(parameter_values[0] * parameter_values[0])
+                                   + np.float32(parameter_values[1] * parameter_values[1]))
+                        + np.float32(parameter_values[2] * parameter_values[2])
+                    )
+                    python_norm_squared = sum(float(value) * float(value) for value in parameter_values)
+                    raise AssertionError(
+                        f"second registration mapped coordinate differs at sampled voxel "
+                        f"{first_difference // 3}, axis {first_difference % 3}: "
+                        f"Python={python_mapped[first_difference]!r} "
+                        f"0x{int(python_mapped[first_difference].view(np.uint32)):08x}; "
+                        f"Java={java_mapped[first_difference]!r} "
+                        f"0x{int(java_mapped[first_difference].view(np.uint32)):08x}; "
+                        f"rotation_params={parameter_values.tolist()}, "
+                        f"Java norm2={float(java_norm_squared)}, Python norm2={python_norm_squared}"
+                    )
+                python_mapped_hash = hashlib.sha256(
+                    np.asarray(mapped_values, dtype=">f4").tobytes(order="C")
+                ).hexdigest()
+                assert python_mapped_hash == expected_trial["mapped_xyz_sha256"]
+                python_sample_hash = hashlib.sha256(
+                    np.asarray(sampled_values, dtype=">f4").tobytes(order="C")
+                ).hexdigest()
+                assert python_sample_hash == expected_trial["sampled_prior_sha256"]
+            java_trial_coefficients = np.asarray(expected_trial["coefficients"], np.float32)
+            _assert_f32(
+                python_trial_coefficients.norm, java_trial_coefficients[1],
+                f"second registration trial {trial_index} shape norm",
+            )
+            _assert_f32(
+                python_trial_coefficients.cost, java_trial_coefficients[14],
+                f"second registration trial {trial_index} weighted cost",
+            )
+            _assert_f32(
+                python_trial_coefficients.energy, java_trial_coefficients[0],
+                f"second registration trial {trial_index} energy from coefficients",
+            )
+            _assert_f32(step.trial_energies[trial_index], expected_trial["energy"], "second registration trial energy")
+            if np.isnan(expected_trial["energy"]):
+                assert not (step.result.accepted and trial_index == len(expected["trials"]) - 1)
+    assert np.array_equal(
+        second_registration.registration.rotation,
+        np.asarray(second_java_registration["rotation"], np.float32),
+    )
+    for bounds, expected in zip(
+        second_registration.registration.shape_bounds, second_java_registration["bounds"], strict=True
+    ):
+        assert bounds.lower_xyz == tuple(expected["lower"])
+        assert bounds.upper_xyz == tuple(expected["upper"])
+        assert bounds.support_count == expected["support_count"]
+
+    # The second convergence/limit decision consumes the second membership
+    # ratio only after registerShapes. A negative terminal iteration limit
+    # selects stop-without-growth in both the wrapper excerpt and Python path.
+    second_control = continue_after_next_iteration_registration(
+        second_registration,
+        segmentation=next_thinned.run.segmentation,
+        skeleton=next_thinned.run.skeleton,
+        ordering=next_thinned.run.ordering,
+        class_volume=next_thinned.run.class_volume,
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=2,
+        n_iter_max=-2,
+        max_distance=0.1,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+    )
+    assert second_control.stage_order[-4:] == (
+        "convergence_check", "iteration_limit_check",
+        "updateClassificationFromLabels", "updateLesionClassifcation",
+    )
+    assert second_control.branch.stop
+    assert second_control.branch.iteration_limit_stop
+    assert not second_control.branch.run_growing
+    second_control_input = tmp_path / "second-pass-control.bin"
+    second_control_input.write_bytes(struct.pack(
+        ">3f2i?",
+        float(next_membership.energy_ratio.previous_energy),
+        float(actual_next.objective),
+        0.1,
+        2,
+        -2,
+        False,
+    ))
+    subprocess.run(
+        [javac, "-d", str(classes_dir), str(NUMERICS), str(BRANCH_HARNESS)],
+        check=True, capture_output=True, text=True,
+    )
+    second_java_control = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionNextIterationBranchReferenceHarness", str(second_control_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert second_java_control["ratio_bits"] == f"{int(next_membership.energy_ratio.energy_ratio.view(np.uint32)):08x}"
+    assert second_java_control["convergence_stop"] == second_control.branch.convergence_stop
+    assert second_java_control["iteration_limit_stop"] == second_control.branch.iteration_limit_stop is True
+    assert second_java_control["stop"] == second_control.branch.stop is True
+    assert second_java_control["run_growing"] == second_control.branch.run_growing is False
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):
@@ -806,4 +1082,7 @@ def _assert_f32(actual: float, expected: float, label: str) -> None:
         return
     actual_bits = int(np.asarray(actual, dtype=np.float32).view(np.uint32))
     expected_bits = int(np.asarray(expected, dtype=np.float32).view(np.uint32))
-    assert actual_bits == expected_bits, label
+    assert actual_bits == expected_bits, (
+        f"{label}: actual={actual!r} bits=0x{actual_bits:08x}; "
+        f"expected={expected!r} bits=0x{expected_bits:08x}"
+    )

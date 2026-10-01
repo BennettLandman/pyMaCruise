@@ -56,7 +56,7 @@ def transform_registered_lesion_shape_priors(
     if np.any(image_res == 0) or np.any(template_res <= 0) or not np.isfinite(image_res).all() or not np.isfinite(template_res).all():
         raise ValueError("resolutions must be finite and template values positive")
 
-    rotation = _rotation_matrix(transform[:3])
+    rotation = _rotation_matrix(transform[:3], java_float32_norm=True)
     image_center = np.asarray(image_dims, dtype=np.float32) / np.float32(2.0)
     template_center = np.asarray(shapes[0].shape, dtype=np.float32) / np.float32(2.0)
     matrix = np.empty((3, 4), dtype=np.float32)

@@ -155,6 +155,7 @@ def sample_toad_shape_prior(
     scale: float = 1.0,
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
+    _java_float32_norm: bool = False,
 ) -> ToadShapeSample:
     """Sample a source TOADS shape prior at one input-grid voxel.
 
@@ -224,7 +225,9 @@ def sample_toad_shape_prior(
         default = np.float32(1.0 if class_index == 0 else 0.0)
         return ToadShapeSample(default, None)
 
-    matrix = _rotation_matrix(transform_values[:3])
+    matrix = _rotation_matrix(
+        transform_values[:3], java_float32_norm=_java_float32_norm
+    )
     physical = tuple(
         np.float32(
             np.float32(np.float32(point[axis]) * scale_value - image_center[axis])
@@ -255,10 +258,19 @@ def sample_toad_shape_prior(
     return ToadShapeSample(result, tuple(mapped))
 
 
-def _rotation_matrix(parameters: np.ndarray) -> np.ndarray:
+def _rotation_matrix(
+    parameters: np.ndarray, *, java_float32_norm: bool = False
+) -> np.ndarray:
     """Recreate ``RotationMatrix.setParameters`` from selected source."""
     a, b, c = (float(value) for value in parameters)
-    norm = float(np.sqrt(a * a + b * b + c * c))
+    if java_float32_norm:
+        # LesionTOADS evaluates a*a + b*b + c*c as float before Math.sqrt
+        # widens the result. Other callers retain the validated TOADS path.
+        norm_squared = np.float32(np.float32(a * a) + np.float32(b * b))
+        norm_squared = np.float32(norm_squared + np.float32(c * c))
+        norm = float(np.sqrt(float(norm_squared)))
+    else:
+        norm = float(np.sqrt(a * a + b * b + c * c))
     if norm > 1.0:
         magnitude = norm % 2.0
         if magnitude > 1.0:

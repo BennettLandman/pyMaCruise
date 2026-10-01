@@ -171,6 +171,7 @@ def sample_lesion_shape_prior(
         scale=float(scale_value),
         image_center_xyz=image_center_xyz,
         template_center_xyz=template_center_xyz,
+        _java_float32_norm=True,
     )
     if bounds.template_xyz is None:
         return LesionShapeSample(default, None)
