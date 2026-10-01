@@ -1238,6 +1238,147 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     ], check=True, capture_output=True, text=True)
     assert third_thin_output.read_bytes() == _expected_thinning_bytes(third_thinned)
 
+    # Continue this exact third thinning state through the selected statistics
+    # refresh and GM-enabled membership pass. Centroids and membership maps
+    # are carried from the preceding iteration; only thinned labels and the
+    # registered shape samples change at this seam.
+    third_statistics = refresh_statistics_after_next_iteration_thinning(
+        third_thinned,
+        images,
+        actual_next.class_memberships,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+        actual_next.outlier_membership,
+        next_statistics.statistics.centroids.class_centroids,
+        next_statistics.statistics.centroids.lesion_centroids,
+        next_statistics.statistics.centroids.black_hole_centroids,
+        TYPES,
+        centroid_options=centroid_options,
+        channel_weight_options={"outlier_distance": 1.0},
+        flair_channel=1,
+    )
+    assert third_statistics.stage_order[-3:] == (
+        "computeCentroids", "computeVariances", "computeChannelWeights"
+    )
+    third_stats_input = tmp_path / "third-stats-in.bin"
+    third_stats_input.write_bytes(_statistics_input_bytes(
+        images,
+        actual_next.class_memberships,
+        third_thinned.run.segmentation,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+        next_statistics.statistics.centroids.class_centroids,
+        next_statistics.statistics.centroids.lesion_centroids,
+        next_statistics.statistics.centroids.black_hole_centroids,
+    ))
+    java_third_stats = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostThinningStatisticsReferenceHarness", str(third_stats_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_third_stats["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    assert java_third_stats["wrapper_sha256"] == REFERENCE["wrapper_source_sha256"]
+    assert java_third_stats["class"] == _float_bits(third_statistics.statistics.centroids.class_centroids)
+    assert java_third_stats["aux_centroids"][0] == _float_bits(third_statistics.statistics.centroids.lesion_centroids)
+    assert java_third_stats["aux_centroids"][1] == _float_bits(third_statistics.statistics.centroids.black_hole_centroids)
+    assert java_third_stats["class_std"] == _float_bits(third_statistics.statistics.variances.class_standard_deviation.reshape(-1))
+    assert java_third_stats["lesion_std"] == _float_bits(third_statistics.statistics.variances.lesion_standard_deviation)
+    assert java_third_stats["blackhole_std"] == _float_bits(third_statistics.statistics.variances.black_hole_standard_deviation)
+    assert java_third_stats["weights"] == _float_bits(third_statistics.statistics.channel_weights)
+
+    third_zero_variance_nan = bool(
+        np.any(third_statistics.statistics.variances.class_standard_deviation == 0.0)
+        or np.any(third_statistics.statistics.variances.lesion_standard_deviation == 0.0)
+    )
+    third_membership_update = run_lesion_toads_next_gm_membership_update(
+        third_statistics,
+        images,
+        second_registered_shapes,
+        SPEC["shape_priors"],
+        SPEC["smoothing_priors"],
+        direct,
+        actual_next.class_memberships,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+        actual_next.outlier_membership,
+        actual_next.lesion_relation,
+        ventricle,
+        gray_matter,
+        brainstem,
+        previous_energy=float(next_membership.membership.objective),
+        outlier_energy=SPEC["outlier_energy"],
+        lesion_power_exponent=SPEC["lesion_power_exponent"],
+        source_zero_variance_nan=third_zero_variance_nan,
+    )
+    assert third_membership_update.stage_order[-2:] == (
+        "computeMemberships:GMflag=true", "energyRatio"
+    )
+    third_membership_input = tmp_path / "third-membership-in.bin"
+    third_membership_input.write_bytes(_membership_input_bytes(
+        images,
+        second_registered_shapes,
+        direct,
+        actual_next.class_memberships,
+        actual_next.lesion_membership,
+        actual_next.black_hole_membership,
+        actual_next.outlier_membership,
+        actual_next.lesion_relation,
+        ventricle,
+        gray_matter,
+        brainstem,
+        third_statistics,
+        SPEC["shape_priors"],
+        SPEC["smoothing_priors"],
+    ))
+    java_third_membership = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionPostThinningStandard13MembershipReferenceHarness", str(third_membership_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    actual_third = third_membership_update.membership
+    assert java_third_membership["source_sha256"] == REFERENCE["lesion_toads_source_sha256"]
+    for key, values in {
+        "class_membership_bits": actual_third.class_memberships,
+        "class_energy_bits": actual_third.class_energies,
+        "lesion_membership_bits": actual_third.lesion_membership,
+        "black_hole_membership_bits": actual_third.black_hole_membership,
+        "outlier_membership_bits": actual_third.outlier_membership,
+        "lesion_relation_bits": actual_third.lesion_relation,
+        "denominator_bits": actual_third.denominator,
+        "lesion_energy_bits": actual_third.lesion_energy,
+        "black_hole_energy_bits": actual_third.black_hole_energy,
+        "running_objective_bits": actual_third.running_objective,
+    }.items():
+        assert java_third_membership[key] == _flat_float_bits(values), key
+    assert java_third_membership["objective_bits"] == _float_bits(actual_third.objective)
+    absent_prior_classes = np.flatnonzero(~np.any(second_registered_shapes > 0.0, axis=(0, 1, 2)))
+    for class_index in absent_prior_classes:
+        np.testing.assert_array_equal(
+            actual_third.class_memberships[..., class_index],
+            np.zeros(seg.shape, dtype=np.float32),
+        )
+    third_nonpositive_shapes = second_registered_shapes[1:-1, 1:-1, 1:-1] <= 0.0
+    assert np.any(third_nonpositive_shapes)
+    assert np.all(
+        actual_third.class_memberships[1:-1, 1:-1, 1:-1][third_nonpositive_shapes] == 0.0
+    )
+    third_ratio_input = tmp_path / "third-energy-ratio-in.bin"
+    third_ratio_input.write_bytes(struct.pack(
+        ">2f", float(next_membership.membership.objective), float(actual_third.objective)
+    ))
+    java_third_ratio = json.loads(subprocess.run(
+        [java, "-cp", str(classes_dir), "LesionDynamicEnergyRatioReferenceHarness", str(third_ratio_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    for key, value in {
+        "previous_energy_bits": third_membership_update.energy_ratio.previous_energy,
+        "current_energy_bits": third_membership_update.energy_ratio.current_energy,
+        "difference_bits": third_membership_update.energy_ratio.difference,
+        "numerator_bits": third_membership_update.energy_ratio.numerator,
+        "denominator_bits": third_membership_update.energy_ratio.denominator,
+        "quotient_bits": third_membership_update.energy_ratio.quotient,
+        "energy_ratio_bits": third_membership_update.energy_ratio.energy_ratio,
+    }.items():
+        assert java_third_ratio[key] == f"{int(np.asarray(value, np.float32).view(np.uint32)):08x}", key
+
 
 def _assert_f32(actual: float, expected: float, label: str) -> None:
     if np.isnan(actual) or np.isnan(expected):
