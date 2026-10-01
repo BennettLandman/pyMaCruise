@@ -168,6 +168,7 @@ def process_next_lesion_toads_thinning_item(
     lesion_class: int,
     use_lesion_max: bool = False,
     empty_label: int = -1,
+    source_faithful_nan: bool = False,
     _in_place: bool = False,
 ) -> LesionToadsThinningQueueStep:
     """Apply one popped item, its topology-constrained update, and scheduling.
@@ -175,7 +176,9 @@ def process_next_lesion_toads_thinning_item(
     The supplied max heap is popped in place. Image and scalar state are copied
     before edits, and a stale/out-of-grid item is discarded with no image
     changes. This composes a single event only; it does not initialize the
-    frontier or run the outer queue/limit loop.
+    frontier or run the outer queue/limit loop. In ``source_faithful_nan``
+    mode, an event with NaN inputs is accepted only when the selected Java
+    class-volume gate skips its topology update.
     """
     labels = np.asarray(segmentation)
     skel = np.asarray(skeleton)
@@ -187,6 +190,8 @@ def process_next_lesion_toads_thinning_item(
     order_map = np.asarray(ordering, dtype=np.float32)
     volumes = np.asarray(class_volume, dtype=np.float32)
     minimums = np.asarray(minimum_class_volume, dtype=np.float32)
+    if not isinstance(source_faithful_nan, (bool, np.bool_)):
+        raise TypeError("source_faithful_nan must be boolean")
     if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
         raise ValueError("segmentation must be a 3-D integer grid")
     if skel.shape != labels.shape or not np.issubdtype(skel.dtype, np.integer):
@@ -210,7 +215,11 @@ def process_next_lesion_toads_thinning_item(
         raise ValueError("queue must be a TOADS max heap")
     if not queue:
         raise ValueError("cannot process an empty LesionTOADS thinning queue")
-    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_mems, shapes, order_map, volumes, minimums)):
+    numeric_inputs = (mems, lesion_mems, black_mems, shapes, order_map, volumes, minimums)
+    if source_faithful_nan:
+        if any(np.isinf(array).any() for array in numeric_inputs):
+            raise ValueError("source_faithful_nan permits NaN values, not infinities")
+    elif not all(np.isfinite(array).all() for array in numeric_inputs):
         raise ValueError("all membership, ordering, and volume values must be finite")
 
     updated_labels = labels.astype(np.int16, copy=not _in_place)
@@ -227,11 +236,20 @@ def process_next_lesion_toads_thinning_item(
         and 1 <= y < labels.shape[1] - 1
         and 1 <= z < labels.shape[2] - 1
     )
-    if (
+    would_process = (
         in_bounds
         and 0 <= processing_class < classes
         and updated_skeleton[x, y, z] == processing_class
         and updated_volumes[processing_class] > minimums[processing_class]
+    )
+    if source_faithful_nan and would_process and any(
+        np.isnan(array).any() for array in numeric_inputs
+    ):
+        raise ValueError(
+            "source-faithful NaN mode only supports events rejected by the selected Java eligibility checks"
+        )
+    if (
+        would_process
     ):
         slices = (slice(x - 1, x + 2), slice(y - 1, y + 2), slice(z - 1, z + 2))
         transition = lesion_toads_thinning_voxel_transition(
@@ -300,6 +318,7 @@ def run_lesion_toads_thinning_queue(
     lesion_class: int,
     use_lesion_max: bool = False,
     empty_label: int = -1,
+    source_faithful_nan: bool = False,
 ) -> LesionToadsThinningQueueRun:
     """Run the selected ``propagateThinning`` outer heap/limit loop.
 
@@ -310,10 +329,14 @@ def run_lesion_toads_thinning_queue(
     ``-limit`` is therefore processed, and the following loop check stops.
     Frontier initialization and ``max(100, volumeRatio*volume)`` setup remain
     separate so this runner accepts the already initialized/source-configured
-    state explicitly.
+    state explicitly. The optional source-faithful NaN path supports only
+    events skipped by Java's eligibility comparisons; active NaN topology
+    updates remain unsupported.
     """
     if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
         raise ValueError("queue must be a TOADS max heap")
+    if not isinstance(source_faithful_nan, (bool, np.bool_)):
+        raise TypeError("source_faithful_nan must be boolean")
     limit32 = np.float32(limit)
     if not np.isfinite(limit32) or limit32 < np.float32(0.0):
         raise ValueError("limit must be finite and nonnegative")
@@ -342,6 +365,7 @@ def run_lesion_toads_thinning_queue(
             lesion_class=lesion_class,
             use_lesion_max=use_lesion_max,
             empty_label=empty_label,
+            source_faithful_nan=source_faithful_nan,
             _in_place=True,
         )
         summary = step.transition
@@ -381,6 +405,7 @@ def propagate_lesion_toads_thinning(
     limit: float,
     use_lesion_max: bool = False,
     empty_label: int = -1,
+    source_faithful_nan: bool = False,
 ) -> LesionToadsThinningPass:
     """Compose selected ``initThinningLabels`` and ``propagateThinning``.
 
@@ -388,7 +413,10 @@ def propagate_lesion_toads_thinning(
     ``Numerics.max(100, volumeRatio*volume[k])`` after initializer volumes
     have been computed. The caller supplies lesion memberships, atlas-derived
     transformed shape samples, and the preexisting ordering field; those
-    upstream estimates are outside this isolated thinning pass.
+    upstream estimates are outside this isolated thinning pass. The optional
+    source-faithful NaN mode preserves Java comparison and heap behavior for
+    the validated skipped-event path only; active NaN topology updates remain
+    unsupported.
     """
     ratio = np.float32(volume_ratio)
     if not np.isfinite(ratio) or ratio < np.float32(0.0):
@@ -403,12 +431,20 @@ def propagate_lesion_toads_thinning(
         initial_available,
         lesion_class=lesion_class,
         use_lesion_max=use_lesion_max,
+        source_faithful_nan=source_faithful_nan,
     )
     product = np.float32(ratio * frontier.class_volume)
-    minimums = np.asarray(
-        [value if value > np.float32(100.0) else np.float32(100.0) for value in product],
-        dtype=np.float32,
-    )
+    if source_faithful_nan:
+        # Numerics.max(100.0f, NaN) returns its second operand because
+        # `100.0f > NaN` is false; preserve that NaN in the source path.
+        minimums = np.where(
+            np.float32(100.0) > product, np.float32(100.0), product
+        ).astype(np.float32)
+    else:
+        minimums = np.asarray(
+            [value if value > np.float32(100.0) else np.float32(100.0) for value in product],
+            dtype=np.float32,
+        )
     run = run_lesion_toads_thinning_queue(
         segmentation,
         frontier.skeleton,
@@ -426,6 +462,7 @@ def propagate_lesion_toads_thinning(
         lesion_class=lesion_class,
         use_lesion_max=use_lesion_max,
         empty_label=empty_label,
+        source_faithful_nan=source_faithful_nan,
     )
     return LesionToadsThinningPass(frontier, minimums, run)
 
@@ -770,6 +807,7 @@ def initialize_lesion_toads_thinning_frontier(
     lesion_class: int,
     use_lesion_max: bool = False,
     zero: float = 1.0e-10,
+    source_faithful_nan: bool = False,
 ) -> LesionToadsThinningInitialization:
     """Initialize the selected LesionTOADS thinning state and max heap.
 
@@ -779,7 +817,11 @@ def initialize_lesion_toads_thinning_frontier(
     with priority ``-1 / maxMembershipRatio``. The selected Java
     ``bestMembership`` quirk and float32 evaluation order are shared with the
     growing-frontier adapter above. Outer planes remain as supplied because
-    the source initialization loops only over interior voxels.
+    the source initialization loops only over interior voxels. By default,
+    nonfinite memberships are rejected. ``source_faithful_nan=True`` allows
+    already-computed NaNs through initialization and the selected pass's
+    eligibility comparisons when Java skips all active topology updates;
+    infinities remain unsupported.
     """
     labels = np.asarray(segmentation)
     mems = np.asarray(memberships, dtype=np.float32)
@@ -788,6 +830,8 @@ def initialize_lesion_toads_thinning_frontier(
     skeleton = np.asarray(initial_skeleton)
     available = np.asarray(initial_available)
     types = tuple(object_types)
+    if not isinstance(source_faithful_nan, (bool, np.bool_)):
+        raise TypeError("source_faithful_nan must be boolean")
     if labels.ndim != 3 or any(size < 3 for size in labels.shape):
         raise ValueError("segmentation must be a 3-D grid with every dimension at least 3")
     if not np.issubdtype(labels.dtype, np.integer) or np.issubdtype(labels.dtype, np.bool_):
@@ -805,7 +849,13 @@ def initialize_lesion_toads_thinning_frontier(
         raise ValueError("initial_skeleton must be an integer grid matching segmentation")
     if available.shape != (*labels.shape, classes) or available.dtype != np.bool_:
         raise ValueError("initial_available must be a boolean grid matching segmentation and classes")
-    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)):
+    memberships_are_finite = all(
+        np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)
+    )
+    if source_faithful_nan:
+        if any(np.isinf(array).any() for array in (mems, lesion_mems, black_hole_mems)):
+            raise ValueError("source_faithful_nan permits NaN values, not infinities")
+    elif not memberships_are_finite:
         raise ValueError("membership arrays must contain only finite values")
     if isinstance(lesion_class, (bool, np.bool_)) or not isinstance(lesion_class, (int, np.integer)):
         raise ValueError("lesion_class must be an integer class index")
@@ -885,7 +935,10 @@ def initialize_lesion_toads_thinning_frontier(
                     use_lesion_max=bool(use_lesion_max),
                     zero=zero_value,
                 )
-                priority = np.float32(-np.float32(np.float32(1.0) / ratio))
+                # Java parses `-1.0f / ratio` as (-1.0f) / ratio. Besides
+                # matching finite values, retaining that operation order pins
+                # the sign bit when the source ratio is NaN.
+                priority = np.float32(np.float32(-1.0) / ratio)
                 item = ToadsHeapItem(priority, x, y, z, current)
                 heap.add(priority, x, y, z, current)
                 inserted.append(item)
