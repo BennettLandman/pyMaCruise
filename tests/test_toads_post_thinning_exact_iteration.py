@@ -449,3 +449,9 @@ def test_p18cyt_registration_methods_and_source_inspected_control_order(tmp_path
     java_energy = np.asarray([java["energy_bits"]], dtype=np.int32).view(np.float32)
     np.testing.assert_allclose(java_transform, registration.transform, rtol=3e-5, atol=3e-6)
     np.testing.assert_allclose(java_energy, [registration.energy], rtol=3e-5, atol=3e-6)
+    assert int(registration.iterations[-1].lambda_value.view(np.int32)) == java["lambda_bits"]
+    python_bounds = [
+        [*bound.lower_xyz, *bound.upper_xyz]
+        for bound in aligned.handoff.shape_bounds
+    ]
+    assert python_bounds == java["bounds"]
