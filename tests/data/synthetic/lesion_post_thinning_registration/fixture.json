@@ -1,0 +1,108 @@
+{
+  "description": "P39am GMflag=true class memberships and fixed class shape priors from the folded synthetic P39ak RAS fixture",
+  "dimensions": [
+    17,
+    17,
+    17,
+    26
+  ],
+  "frame_order": [
+    "membership_0",
+    "membership_1",
+    "membership_2",
+    "membership_3",
+    "membership_4",
+    "membership_5",
+    "membership_6",
+    "membership_7",
+    "membership_8",
+    "membership_9",
+    "membership_10",
+    "membership_11",
+    "membership_12",
+    "shape_prior_0",
+    "shape_prior_1",
+    "shape_prior_2",
+    "shape_prior_3",
+    "shape_prior_4",
+    "shape_prior_5",
+    "shape_prior_6",
+    "shape_prior_7",
+    "shape_prior_8",
+    "shape_prior_9",
+    "shape_prior_10",
+    "shape_prior_11",
+    "shape_prior_12"
+  ],
+  "affine_ras_mm": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "initial_transform": [
+    0.03,
+    -0.02,
+    0.01,
+    0.1,
+    -0.1,
+    0.05
+  ],
+  "image_resolutions_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "template_resolutions_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "subsample": 2,
+  "init_align_iter": 10,
+  "source_call_order": [
+    "computeMemberships(GMflag=true)",
+    "energyRatio",
+    "registerShapes"
+  ],
+  "membership_nan_objective_does_not_gate_registration": true,
+  "source_fixture_sha256": "c4bf46e6d75984e226589d0c87eb3d135d72f9fa548c857c3d9361176c3dcc73",
+  "fixture_sha256": "25804aeb8d75a9e859133046492f0e6650406b0a465bd44515f9a186d7af6e68",
+  "membership_count": 63869,
+  "membership_nan_count": 0,
+  "shape_support_per_class": [
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913,
+    4913
+  ]
+}
