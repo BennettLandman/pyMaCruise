@@ -224,8 +224,8 @@ def test_selected_single_channel_exact_refit_statistics_membership_sequence(tmp_
     assert energy_delta == 0.0, f"max same-input membership class-energy difference was {energy_delta:.9g}"
 
 
-def test_p18cyt_membership_registration_and_control_match_vandycruise(tmp_path: Path) -> None:
-    """Check the one-channel P18cyt membership output at the selected wrapper seam."""
+def test_p18cyt_registration_methods_and_source_inspected_control_order(tmp_path: Path) -> None:
+    """Check Java registration methods and the inspected one-channel wrapper seam."""
     next_thinning, image, centroids, field, closest = _continuation_state()
     shape = np.zeros((*image.shape, 11), dtype=np.float32)
     exponent_map = np.empty((1, 11), dtype=np.float32)
