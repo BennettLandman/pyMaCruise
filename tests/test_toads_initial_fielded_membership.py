@@ -36,6 +36,22 @@ def test_initial_11_class_membership_follows_field_attachment_order() -> None:
 
     fields = [data["field"][..., channel] for channel in range(data["images"].shape[-1])]
     originals = [field.copy() for field in fields]
+    input_arrays = {
+        "image_values": data["images"],
+        "initial_memberships": data["initial_memberships"],
+        "transformed_shapes": data["transformed_shapes"],
+        "closest_labels": data["closest_labels"],
+        "psf_bias": data["psf_bias"],
+        **{f"channel_fields[{index}]": field for index, field in enumerate(fields)},
+        **{
+            name: value
+            for name, value in parameters.items()
+            if isinstance(value, np.ndarray)
+        },
+    }
+    input_snapshots = {
+        name: values.copy() for name, values in input_arrays.items()
+    }
     result = toads_initial_default_atlas_membership_after_field_attachment(
         image_values=data["images"],
         initial_memberships=data["initial_memberships"],
@@ -52,6 +68,8 @@ def test_initial_11_class_membership_follows_field_attachment_order() -> None:
     for channel, field in enumerate(fields):
         assert result.field_state.field_by_channel[channel] is field
         np.testing.assert_array_equal(field, originals[channel])
+    for name, original in input_snapshots.items():
+        np.testing.assert_array_equal(input_arrays[name], original)
     assert tuple(stage.removeprefix("fixed:") for stage in result.stage_order) == tuple(
         REFERENCE["stage_order"]
     )

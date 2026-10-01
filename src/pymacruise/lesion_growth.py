@@ -829,7 +829,10 @@ def initialize_lesion_toads_thinning_frontier(
                 skeleton_out[x, y, z] = current
                 available_out[x, y, z, :] = False
                 available_out[x, y, z, current] = True
-                if types[current] in _LESION_OBJECT_TYPES:
+                # initThinningLabels gates the special lesion/black-hole
+                # membership contribution by the configured lesion class
+                # index, not by the class's descriptive object type.
+                if current == int(lesion_class):
                     if use_lesion_max:
                         increment = _lesion_score(
                             mems[x, y, z, current],

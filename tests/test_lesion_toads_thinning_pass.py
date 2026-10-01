@@ -6,7 +6,10 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 
-from pymacruise.lesion_growth import propagate_lesion_toads_thinning
+from pymacruise.lesion_growth import (
+    initialize_lesion_toads_thinning_frontier,
+    propagate_lesion_toads_thinning,
+)
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_toads_thinning_pass"
@@ -72,3 +75,24 @@ def test_selected_lesion_toads_thinning_pass_matches_java() -> None:
         item = result.run.queue.pop_first()
         remaining.append([_signed_bits(item.value), item.x, item.y, item.z, item.label])
     assert remaining == REFERENCE["remaining"]
+
+
+def test_thinning_volume_special_memberships_follow_lesion_class_index() -> None:
+    """Only lesionClass gets auxiliary lesion/black-hole volume terms."""
+    image = nib.load(str(ROOT / "thinning_pass_inputs.nii.gz"))
+    frames = np.asarray(image.dataobj, dtype=np.float32)
+    result = initialize_lesion_toads_thinning_frontier(
+        frames[..., 0].astype(np.int16),
+        frames[..., 2:5],
+        ("object", "lesion", "blackhole"),
+        frames[..., 5],
+        frames[..., 6],
+        frames[..., 1].astype(np.int16),
+        frames[..., 10:13] > 0.5,
+        lesion_class=1,
+    )
+    # The selected Java harness uses a generic name for class 2, but the
+    # segmentation assigns class 1 and class 2 voxels. This intentionally
+    # renames class 2 to BLACKHOLE in Python to prove that the extra terms are
+    # controlled by lesionClass, not the object's string name.
+    assert [_signed_bits(v) for v in result.class_volume] == REFERENCE["initial_volume_bits"]

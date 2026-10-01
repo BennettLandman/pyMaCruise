@@ -27,6 +27,12 @@ class LesionToadsRepeatedIterationPass:
     starting_class_memberships: np.ndarray
     starting_segmentation: np.ndarray
     starting_relation_map: np.ndarray
+    starting_lesion_membership: np.ndarray
+    starting_black_hole_membership: np.ndarray
+    starting_skeleton: np.ndarray
+    starting_available: np.ndarray
+    starting_ordering: np.ndarray
+    starting_class_volume: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -89,6 +95,13 @@ def run_lesion_toads_repeated_iterations(
         starting_class_memberships = prior_membership.class_memberships.copy()
         starting_segmentation = branch.segmentation.copy()
         starting_relation_map = branch.relations.relation_map.copy()
+        starting_lesion_membership = prior_membership.lesion_membership.copy()
+        starting_black_hole_membership = prior_membership.black_hole_membership.copy()
+        assert branch.growing is not None
+        starting_skeleton = branch.growing.skeleton.copy()
+        starting_available = branch.growing.available.copy()
+        starting_ordering = branch.growing.ordering.copy()
+        starting_class_volume = branch.growing.class_volume.copy()
         continuing = run_lesion_toads_continuing_iteration(
             branch,
             images,
@@ -129,6 +142,12 @@ def run_lesion_toads_repeated_iterations(
                 starting_class_memberships,
                 starting_segmentation,
                 starting_relation_map,
+                starting_lesion_membership,
+                starting_black_hole_membership,
+                starting_skeleton,
+                starting_available,
+                starting_ordering,
+                starting_class_volume,
             )
         )
         branch = registration_branch.branch

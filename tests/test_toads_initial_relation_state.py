@@ -26,11 +26,17 @@ def test_initial_relation_state_matches_selected_java_startup_sequence() -> None
     segmentation = np.asarray(reference["segmentation"], dtype=np.int8).reshape(shape)
     membership_bits = np.asarray(reference["membership_float_bits"], dtype=np.uint32)
     memberships = membership_bits.view(np.float32).reshape((*shape, classes))
+    segmentation_before = segmentation.copy()
+    memberships_before = memberships.copy()
 
     actual = toads_initialize_relation_state(
         segmentation, memberships, reference["limit"]
     )
 
+    # Startup relation, boundary, and closest-label preparation reads the
+    # caller's initialized state; it must not mutate either input in place.
+    np.testing.assert_array_equal(segmentation, segmentation_before)
+    np.testing.assert_array_equal(memberships, memberships_before)
     np.testing.assert_array_equal(actual.relation.relation_map.ravel(), reference["relation_map"])
     np.testing.assert_array_equal(
         actual.relation.relation_membership.ravel().astype(np.int8),

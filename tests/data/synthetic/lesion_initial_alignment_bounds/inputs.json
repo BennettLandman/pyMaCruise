@@ -1,0 +1,25 @@
+{
+  "source_alignment_fixture": "../lesion_initial_atlas_alignment",
+  "shape_niftis": [
+    "shape_0_bounded_ras.nii.gz",
+    "shape_1_bounded_ras.nii.gz",
+    "shape_2_bounded_ras.nii.gz"
+  ],
+  "shape_sha256": {
+    "shape_0_bounded_ras.nii.gz": "d87929fa977bf1e0beda67b2699ace3770b8f7d3bd295b66f303a7d644cc1f30",
+    "shape_1_bounded_ras.nii.gz": "1d9f3afda09fe1fc906eb62497adb5eee9f1938bb76abc7ec44d7d04b1282db4",
+    "shape_2_bounded_ras.nii.gz": "31c70f39320b255a5267f43ade138d11f39c7ac2d8b6299898ed34429908686d"
+  },
+  "shape_dimensions_xyz": [
+    35,
+    37,
+    36
+  ],
+  "axis_codes": [
+    "R",
+    "A",
+    "S"
+  ],
+  "support_rule": "class k: x=[3+k,31-k), y=[4,33-k), z=[2+k,32)",
+  "shape_formula": "selected folded positive values inside support; zero outside"
+}

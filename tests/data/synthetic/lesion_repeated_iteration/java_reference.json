@@ -1,13 +1,28 @@
 {
   "source_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+  "loop_state_sha256": "9b48cf4b348191ce44ecaf218a6737ec040f1888842689fa856c489238f73916",
+  "thinning_initial_volume_bits": [
+    [
+      1125533315,
+      1131764732,
+      1118575019,
+      1092790189
+    ],
+    [
+      1124884544,
+      1130432471,
+      1122308289,
+      1091367901
+    ]
+  ],
   "energy_bits": [
     1111800585,
     1104291819,
-    1103987936
+    1103984215
   ],
   "ratio_bits": [
     1058765745,
-    1018610633
+    1018758954
   ],
   "stop_reasons": [
     "continue",
@@ -48,5 +63,52 @@
     "run_growing": false,
     "stop_reason": "iteration_limit"
   },
-  "harness_sha256": "5570a34eed7b943454acb25c61b74dc5ac80736321afc43e50081009ae13f260"
+  "convergence_cases": [
+    {
+      "n_iter_max": 2,
+      "max_distance_bits": 1060320051,
+      "ratio_bits": 1058765745,
+      "passes": 1,
+      "stop": true,
+      "run_growing": true,
+      "stop_reason": "convergence",
+      "stage_order": [
+        "propagateThinning",
+        "computeCentroids",
+        "computeVariances",
+        "computeChannelWeights",
+        "computeMemberships",
+        "energyRatio",
+        "registerShapes",
+        "convergenceCheck",
+        "iterationLimitCheck",
+        "propagateGrowing",
+        "updateClassificationFromLabels",
+        "updateLesionClassifcation"
+      ]
+    },
+    {
+      "n_iter_max": -2,
+      "max_distance_bits": 1060320051,
+      "ratio_bits": 1058765745,
+      "passes": 1,
+      "stop": true,
+      "run_growing": false,
+      "stop_reason": "convergence",
+      "stage_order": [
+        "propagateThinning",
+        "computeCentroids",
+        "computeVariances",
+        "computeChannelWeights",
+        "computeMemberships",
+        "energyRatio",
+        "registerShapes",
+        "convergenceCheck",
+        "iterationLimitCheck",
+        "updateClassificationFromLabels",
+        "updateLesionClassifcation"
+      ]
+    }
+  ],
+  "harness_sha256": "fbf227096a013ce95eef78469188f7fb18db7b63521c3c1b33a7f5a972c9757b"
 }

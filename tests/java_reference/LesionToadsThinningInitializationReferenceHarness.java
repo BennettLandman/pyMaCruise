@@ -103,7 +103,7 @@ public final class LesionToadsThinningInitializationReferenceHarness {
             in.skeleton[x][y][z] = (byte)current;
             for (int k=0; k<CLASSES; k++) {
                 if (current==k) {
-                    float value = k==1 || k==2
+                    float value = k==1
                         ? lesionScore(in.memberships[x][y][z][k], in.lesion[x][y][z], in.blackHole[x][y][z], useLesionMax)
                         : in.memberships[x][y][z][k];
                     volume[k] += value;
