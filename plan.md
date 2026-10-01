@@ -49,7 +49,7 @@ The port is complete when the base MaCRUISE workflow (T1 + MaSeg) and the select
 ## Working rules
 
 - Execute rows in dependency order. A row is **validated** only when its stated checks pass and evidence (test name/report, metrics, or source decision) is recorded. Do not fill a validation date before that evidence exists.
-- For every **Done** row, record one full-repository `pytest` run, its pass count, and the exact tested commit in the dated full-suite report linked from that row. The September 28 and September 29 reports cover different implementation runs; use the report named by each row when historical progress notes show other counts. Focused test counts remain supplemental.
+- For every **Done** row, record validation appropriate to its scope: focused tests and the closest affected integration tests for localized changes; a full-repository `pytest` run only at major workflow-integration milestones and final acceptance, or sooner when a change crosses multiple algorithm families or shared image/geometry contracts. Include the exact command, pass/fail/skip counts, duration, and tested commit in the row or its linked report. Existing full-suite reports remain valid historical evidence for their stated commits; do not rerun the multi-minute suite merely to close a localized row.
 - Keep test data synthetic until the Synthetic Readiness Gate. That gate requires fixtures for geometry, label maps, tissue boundaries, bias fields, transforms, surfaces, and lesion cases, and automated tests that pass without downloading or mounting subject data.
 - Commit deterministic synthetic input volumes and small expected-result fixtures. Generate large or derivable fixtures in tests when doing so is simpler and deterministic; commit the generator and its seed. Every fixture must have a description, dimensions, spacing/affine, value or label meaning, provenance (synthetic), and license note where relevant.
 - Use the MATLAB/JIST wrappers as workflow/parameter contracts and VandyCRUISE as the selected algorithm reference. Reuse NiBabel, NumPy, SciPy, ANTsPy, and scikit-image for general operations where behavior matches. Select mesh I/O/geometry tools only as needed for scientific surface outputs; do not add rendering/viewer tools to the port. Do not substitute a generic algorithm for TOADS, topology correction, ACE, GVF, or CRUISE/TGDM without equivalence evidence.
@@ -60,7 +60,7 @@ The port is complete when the base MaCRUISE workflow (T1 + MaSeg) and the select
 
 ## Step-by-step acceptance table
 
-Full-suite evidence for completed rows is recorded in dated reports under `docs/reports/` and linked from the corresponding row. Each entry names the row-specific test or artifact evidence and cites one full-suite run; use each row's linked report because counts differ across historical commits.
+Validation evidence for completed rows is recorded in the row or a linked report under `docs/reports/`. Each entry names the row-specific focused and/or integration checks and the tested commit; major integration gates and final acceptance also cite the corresponding full-suite run. Historical rows may retain full-suite evidence from their original implementation commits.
 
 Dates use `YYYY-MM-DD`. `—` means not started/not yet validated. Status values: **Done** (documentation/planning artifact complete), **Started**, **Blocked**, and **Not started**. “Done” on the plan row means the plan exists; it does not imply implementation or validation.
 
