@@ -21,7 +21,14 @@
   "classes": 11,
   "field_degree": 1,
   "source_order": ["channel0.computeExact3DPolynomialField.degree1", "channel1.computeExact3DPolynomialField.degree1"],
-  "java_reference": "ToadsPostThinningExactFieldReferenceHarness, run independently on each selected channel",
-  "reference_scope": "formula harness for selected one-channel source kernel applied in channel order; not source-class execution",
-  "deferred": ["multichannel exact centroids and variances after these newly fitted fields", "image-variance estimation and multichannel membership/objective pass using the updated fields"]
+  "java_reference": "ToadsPostThinningExactFieldReferenceHarness, run independently on each selected channel; then ToadsDefault11DynamicMultichannelMembershipReferenceHarness consumes both newly fitted fields",
+  "reference_scope": "selected formula harnesses, not source-class execution; the dynamic continuation recomputes two-channel centroids, assigned-class deviations, and membership/objective from the supplied fitted fields",
+  "dynamic_continuation": {
+    "source_order": ["P18czo channel0/1 degree-one field fit", "P18czo exact centroid update", "P18czo exact assigned-class deviation update", "P18czo exact membership/objective pass"],
+    "java_harness": "tests/java_reference/ToadsDefault11DynamicMultichannelMembershipReferenceHarness.java",
+    "image_variance_estimation": "not recomputed; selected synthetic fixture image variances, modality weights, and class weights are fixed inputs",
+    "shape_maps": "zero-valued synthetic transformed shape maps",
+    "working_state": "synthetic RAS 14x14x14, two ordered channels, 11 classes, selected grow/thin state"
+  },
+  "deferred": ["image-variance estimation from dynamic data", "nonzero shape/prior maps in the connected two-channel continuation", "full TOADS workflow"]
 }

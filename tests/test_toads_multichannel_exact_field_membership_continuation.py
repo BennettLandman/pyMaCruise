@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+
+import nibabel as nib
+import numpy as np
+
+from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
+from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
+from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
+from pymacruise.toads_math import toads_optimized_centroid_similarity
+from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
+
+
+ROOT = Path(__file__).parent
+CASE_DIR = ROOT / "data/synthetic/toads_p18czo_multichannel_exact_field"
+CASE = json.loads((CASE_DIR / "case.json").read_text())
+SOURCE_DIR = ROOT / "data/synthetic" / CASE["source_fixture_directory"]
+JAVA_HARNESS = ROOT.parent / "scripts/run_java_toads_default_11_dynamic_multichannel_membership_reference.sh"
+SOURCE_SHA256 = "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+POWER_TABLE_SHA256 = "2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae"
+
+
+def _load(path: Path) -> nib.Nifti1Image:
+    return nib.load(str(path))
+
+
+def _float_bits(values: np.ndarray) -> list[int]:
+    return np.asarray(values, dtype=np.float32).ravel().view(np.int32).astype(int).tolist()
+
+
+def _sha(values: np.ndarray) -> str:
+    return hashlib.sha256(np.asarray(values, dtype="<f4").tobytes(order="C")).hexdigest()
+
+
+def _labels(values: str) -> np.ndarray:
+    result = np.empty(len(values), dtype=np.int16)
+    for i, value in enumerate(values):
+        result[i] = ord(value) - ord("0") if value <= "9" else ord(value) - ord("a") + 10
+    return result.reshape((14, 14, 14))
+
+
+def test_refitted_two_channel_fields_flow_through_java_referenced_statistics_and_membership(tmp_path: Path) -> None:
+    channel_names = [entry.split(" / ")[0] for entry in CASE["channel_order"]]
+    field_names = [entry.split(" / ")[1] for entry in CASE["channel_order"]]
+    image_volumes = tuple(_load(SOURCE_DIR / name) for name in channel_names)
+    field_volumes = tuple(_load(SOURCE_DIR / name) for name in field_names)
+    membership_volume = _load(SOURCE_DIR / "exact_memberships.nii.gz")
+    segmentation_volume = _load(CASE_DIR / CASE["segmentation"])
+    affine = image_volumes[0].affine
+    for volume in (*image_volumes, *field_volumes, membership_volume, segmentation_volume):
+        assert nib.aff2axcodes(volume.affine) == tuple(CASE["axis_codes"])
+        np.testing.assert_allclose(volume.affine, affine, rtol=0, atol=1e-6)
+    np.testing.assert_allclose(nib.affines.voxel_sizes(affine), CASE["voxel_spacing_mm"], atol=1e-6)
+
+    images = np.stack(tuple(np.asarray(v.dataobj, dtype=np.float32) for v in image_volumes), axis=-1)
+    fields = np.stack(tuple(np.asarray(v.dataobj, dtype=np.float32) for v in field_volumes), axis=-1)
+    memberships = np.asarray(membership_volume.dataobj, dtype=np.float32)
+    segmentation = np.asarray(segmentation_volume.dataobj, dtype=np.int16)
+    stats = json.loads((SOURCE_DIR / "statistics_inputs.json").read_text())
+    params = json.loads((SOURCE_DIR / "membership_parameters.json").read_text())
+    old_centers = np.stack((
+        np.asarray(stats["initial_centroids"], dtype=np.float32),
+        np.asarray([(11 - k) / 12.0 for k in range(11)], dtype=np.float32),
+    ))
+    exponents = np.asarray(stats["category_exponents"], dtype=np.float32)
+    exponents = np.repeat(exponents[None, :], 2, axis=0)
+    result = toads_multichannel_exact_field_refit(
+        images, memberships, segmentation, old_centers, fields
+    )
+    field_path = tmp_path / "two_channel_fields.bin"
+    field_path.write_bytes(np.asarray(result.fields, dtype="<f4").tobytes(order="C"))
+    reference = json.loads(subprocess.run(
+        [str(JAVA_HARNESS), str(field_path)], check=True, capture_output=True, text=True
+    ).stdout)
+    assert reference["source_sha256"] == SOURCE_SHA256
+    assert reference["power_table_source_sha256"] == POWER_TABLE_SHA256
+    assert "supplied two-channel fields" in reference["reference_scope"]
+
+    centers = toads_default_exact_centroid_update(
+        images, memberships, old_centers, exponents,
+        intensity_field=result.fields, smoothness=stats["centroid_smoothness"],
+    )
+    deviations = toads_default_exact_class_variances(
+        images, memberships, centers, segmentation, intensity_field=result.fields
+    )
+    assert _float_bits(centers[0]) == reference["centroids_channel0_bits"]
+    assert _float_bits(centers[1]) == reference["centroids_channel1_bits"]
+    assert _float_bits(deviations[0]) == reference["deviations_channel0_bits"]
+    assert _float_bits(deviations[1]) == reference["deviations_channel1_bits"]
+
+    categories = np.asarray(params["category_exponents"], dtype=np.float32)
+    exponent_by_channel = np.empty((2, 11), dtype=np.float32)
+    exponent_by_channel[:, 0] = 1.0
+    exponent_by_channel[:, 1:3] = categories[0]
+    exponent_by_channel[:, 3:8] = categories[1]
+    exponent_by_channel[:, 8:11] = categories[2]
+    similarity = toads_optimized_centroid_similarity(
+        centers, deviations, np.asarray(params["image_variances"], dtype=np.float32), params["prior_scale"]
+    )
+    shapes = np.asarray(_load(SOURCE_DIR / "transformed_shapes.nii.gz").dataobj, dtype=np.float32)
+    closest = np.asarray(_load(SOURCE_DIR / "membership_closest_labels.nii.gz").dataobj, dtype=np.int8)
+    membership_result = toads_default_atlas_membership_pass(
+        image_values=images,
+        initial_memberships=memberships,
+        centroids=centers,
+        exponent_by_channel_class=exponent_by_channel,
+        modality_weights=np.asarray(params["modality_weights"], dtype=np.float32),
+        class_variance_weights=np.asarray(params["class_variance_weights"], dtype=np.float32),
+        image_variances=np.asarray(params["image_variances"], dtype=np.float32),
+        transformed_shapes=shapes,
+        closest_labels=closest,
+        smoothing_priors=np.asarray(params["smoothing_priors"], dtype=np.float32),
+        centroid_similarity=similarity,
+        atlas_shape_priors=np.asarray(params["atlas_shape_priors"], dtype=np.float32),
+        smoothing=params["smoothing"],
+        prior_factor=params["prior_factor"],
+        prior_coefficient=params["prior_coefficient"],
+        intensity_field=result.fields,
+    )
+    assert _sha(membership_result.memberships) == reference["membership_sha256"]
+    assert _sha(membership_result.denominator) == reference["denominator_sha256"]
+    assert _sha(membership_result.class_data_energy) == reference["class_energy_sha256"]
+    assert int(np.asarray(membership_result.objective, dtype=np.float32).view(np.int32)) == reference["objective_bits"]
