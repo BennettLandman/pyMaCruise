@@ -14,6 +14,7 @@ from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_opt
 from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
 from pymacruise.toads_relations import toads_refresh_relation_state
 from pymacruise.toads_thinning import toads_propagate_thinning
+from pymacruise.toads_iteration import toads_stopping_iteration
 from test_toads_multichannel_shape_growth_relations import (
     BASE_CASE, BASE_CASE_DIR, CASE, CASE_DIR, SOURCE_DIR, _decode_labels,
     _membership_state, _run_relation,
@@ -25,6 +26,8 @@ ROOT = Path(__file__).parent
 THINNING_HARNESS = ROOT.parent / "scripts/run_java_toads_post_registration_next_thinning_reference.sh"
 FIELD_HARNESS = ROOT.parent / "scripts/run_java_toads_post_thinning_exact_field_reference.sh"
 MEMBERSHIP_HARNESS = ROOT.parent / "scripts/run_java_toads_p18czp_actual_next_loop_membership_reference.sh"
+TERMINAL_LABELS_HARNESS = ROOT.parent / "scripts/run_java_toads_p18czp_terminal_labels_reference.sh"
+CONTROL_REFERENCE = ROOT / "java_reference/ToadsP18cytRegisteredIterationReferenceHarness.java"
 
 
 def _sha(values: np.ndarray) -> str:
@@ -57,6 +60,14 @@ def _membership_input(labels, images, fields, memberships, old_centers, shapes, 
         np.asarray(old_centers, dtype="<f4").tobytes(order="C"),
         np.asarray(shapes, dtype="<f4").tobytes(order="C"),
         np.asarray(closest, dtype=np.int8).tobytes(order="C"),
+    ))
+
+
+def _terminal_labels_input(segmentation, template_labels, previous_classification) -> bytes:
+    return b"".join((
+        np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
+        np.asarray(template_labels, dtype=np.int8).tobytes(order="C"),
+        np.asarray(previous_classification, dtype=np.int8).tobytes(order="C"),
     ))
 
 
@@ -227,3 +238,52 @@ def test_shape_growth_relation_refresh_flows_through_next_thinning_fields_and_me
     assert np.count_nonzero(refreshed_boundary) > 0
     assert np.count_nonzero(refreshed_closest[..., 1:] >= 0) > 0
     assert java_membership["reference_scope"].startswith("selected Java formula harness on explicitly supplied next-loop state")
+
+    # Terminal control and label transfer are independent of atlas-transform
+    # optimization: preserve the actual refreshed membership objective and
+    # its prior objective, while treating the registration result as fixed.
+    previous_energy = np.float32(current_pass.objective)
+    current_energy = np.float32(refreshed_membership.objective)
+    ratio = np.float32(2.0) * np.float32(previous_energy - current_energy)
+    ratio = np.float32(np.abs(np.float32(ratio / np.float32(previous_energy + current_energy))))
+    threshold = np.nextafter(ratio, np.float32(np.inf))
+    previous_classification = np.full(thinning.segmentation.shape, -1, dtype=np.int8)
+    template_labels = np.asarray([0, 11, 22, 33, 44, 55, 66, 77, 88, 99, 110], dtype=np.int8)
+    terminal = toads_stopping_iteration(
+        previous_energy, current_energy, 3, 5, threshold,
+        thinning.segmentation, thinning.skeleton, refreshed_membership.memberships,
+        np.asarray(growth_java["post_growth_ordering_bits"], dtype=np.int32).view(np.float32).reshape(grown.shape),
+        thinning.class_volumes, template_labels, previous_classification,
+        do_growing=False,
+    )
+    assert terminal.control.stop and not terminal.control.run_growing
+    assert terminal.growing is None
+
+    control_classes = tmp_path / "p18czp_control_classes"
+    subprocess.run(["javac", "-d", str(control_classes), str(CONTROL_REFERENCE)], check=True, capture_output=True, text=True)
+    control_java = json.loads(subprocess.run(
+        ["java", "-cp", str(control_classes), "ToadsP18cytRegisteredIterationReferenceHarness",
+         str(int(np.asarray([previous_energy], dtype=np.float32).view(np.int32)[0])),
+         str(int(np.asarray([current_energy], dtype=np.float32).view(np.int32)[0])),
+         str(int(np.asarray([threshold], dtype=np.float32).view(np.int32)[0])), "3", "5", "false", "true"],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert control_java["source_sha256"] == "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d"
+    assert control_java["ratio_bits"] == int(np.asarray([terminal.control.energy_ratio]).view(np.int32)[0])
+    assert control_java["stop"] is True and control_java["run_growing"] is False
+    assert control_java["order"] == [
+        "computeExactMemberships", "energyRatio", "atlas.registerShapes",
+        "convergenceCheck", "iterationLimitCheck", "updateClassificationFromLabels",
+    ]
+
+    terminal_input = tmp_path / "p18czp_terminal_labels.bin"
+    terminal_input.write_bytes(_terminal_labels_input(
+        thinning.segmentation, template_labels, previous_classification,
+    ))
+    java_terminal = json.loads(subprocess.run(
+        ["sh", str(TERMINAL_LABELS_HARNESS), str(terminal_input), *(str(v) for v in grown.shape), "11"],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert java_terminal["source_sha256"] == "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+    np.testing.assert_array_equal(terminal.classification.ravel(), java_terminal["classification"])
+    assert terminal.changed_classification_voxels == java_terminal["changed_voxels"]
