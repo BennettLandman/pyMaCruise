@@ -1,0 +1,17 @@
+{
+  "case_name": "P18cyv thinning to one-channel degree-one exact iteration",
+  "source_fixture": "toads_post_registration_branch",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "field_initialization": "use the preceding P18cyt degree-one fitted field",
+  "initial_centroids": "use the preceding P18cyt exact centroid output",
+  "closest_labels": "use the P18cyu continuing branch relation refresh output",
+  "transformed_shapes": "fixed all-zero array matching memberships",
+  "source_harnesses": [
+    "ToadsPostThinningExactFieldReferenceHarness",
+    "ToadsPostThinningExactIterationReferenceHarness"
+  ],
+  "scope": "selected one-channel degree-one continuation with fixed synthetic atlas and relation inputs; no registration rerun or full TOADS workflow"
+}
