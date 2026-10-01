@@ -1,0 +1,15 @@
+{
+  "case_name": "P18czi registration/control branch through next-loop thinning",
+  "source_fixture": "toads_post_registration_branch/membership_maps.nii.gz",
+  "source_fixture_axis_codes": ["R", "A", "S"],
+  "spatial_repeat_factor": 3,
+  "channel_count": 1,
+  "membership_class_count": 11,
+  "iteration": 7,
+  "maximum_iterations": 8,
+  "volume_ratio": 0.5,
+  "thinning_limit": 3.0,
+  "transformed_shape_values": "fixed all-zero maps",
+  "source_reference": "selected VandyCRUISE MultipleToadSegmentation short-constructor thinning harness",
+  "scope": "synthetic RAS one-channel, 11-class P18czi branch continuation; no full TOADS claim"
+}
