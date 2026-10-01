@@ -284,6 +284,34 @@ def test_p18cyt_membership_registration_and_control_match_vandycruise(tmp_path: 
 
     objective = np.float32(membership_pass.objective)
     previous_energy = np.float32(objective * np.float32(1.01))
+    ratio_harness = ROOT / "java_reference/ToadsP18cyqEnergyControlReferenceHarness.java"
+    assert hashlib.sha256(ratio_harness.read_bytes()).hexdigest() == (
+        "d831bae542aaa7ae79d9c741d93aa7fcc3265e9e32bc5dffc88abb30d12dfcdc"
+    )
+    subprocess.run(
+        ["javac", "-d", str(tmp_path), str(ratio_harness)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    def float_bits(value: float) -> str:
+        return str(int(np.asarray([value], dtype=np.float32).view(np.int32)[0]))
+
+    java_control = subprocess.run(
+        [
+            "java", "-cp", str(tmp_path), "ToadsP18cyqEnergyControlReferenceHarness",
+            float_bits(previous_energy), float_bits(objective), float_bits(1e-4), "3", "5", "false",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    java_control_reference = json.loads(java_control.stdout)
+    assert java_control_reference["call_order"] == [
+        "computeExactMemberships", "energyRatio", "registerShapes",
+        "convergenceCheck", "iterationLimitCheck",
+    ]
     common = dict(
         image_resolutions_mm=(1.0, 1.0, 1.0),
         template_resolutions_mm=(1.0, 1.0, 1.0),
@@ -311,6 +339,9 @@ def test_p18cyt_membership_registration_and_control_match_vandycruise(tmp_path: 
         )
     )
     assert aligned.control.energy_ratio.view(np.int32) == ratio.view(np.int32)
+    assert java_control_reference["ratio_bits"] == int(ratio.view(np.int32))
+    assert java_control_reference["stop"] is aligned.control.stop
+    assert java_control_reference["run_growing"] is aligned.control.run_growing
     assert aligned.stage_order == (
         "computeExactMemberships",
         "energyRatio",
