@@ -1124,3 +1124,21 @@ similarity group passed 8 tests in 7.82 seconds on implementation commit
 report](reports/toads-initial-similarity-2026-10-02.md). The composition check
 uses a two-class synthetic atlas and does not yet validate an 11-class complete
 startup or execute the exact membership pass.
+
+
+### Initial statistics through exact membership pass (P18cyaq)
+
+The selected startup now has a bounded composition that computes assigned-class
+deviations, image-wide variance weights, and centroid similarities in source
+order, then passes them to the exact membership/energy sweep. Atlas shape
+sampling, relation maps, closest labels, exponents, modality weights, and
+source priors remain explicit fixed inputs at this seam. This composition
+checks the stage wiring; it does not make those upstream maps part of the
+registration startup or claim a combined Java result.
+
+The focused synthetic RAS and selected-kernel reference group passed 18 tests
+in 4.40 seconds on implementation commit
+`6fd8b12b6b048f3cf8f25bcb041b0d073542e13b`; see the [P18cyaq
+report](reports/toads-initial-statistics-membership-2026-10-02.md). The exact
+membership kernel and component statistics have separate Java-reference
+checks; atlas transform sampling and iterative TOADS remain open.
