@@ -16,6 +16,8 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 
+from pymacruise.image_io import normalize_image_to_ras
+
 
 class ToadsAtlasError(ValueError):
     """Raised when a TOADS atlas descriptor or one of its images is invalid."""
@@ -57,6 +59,16 @@ class ToadsAtlasData:
     topology: np.ndarray
     shapes: dict[str, np.ndarray]
     source_axis_codes: dict[str, tuple[str, str, str]]
+
+
+@dataclass(frozen=True)
+class ToadsAtlasRASData:
+    """Atlas voxel arrays in canonical RAS axis order for Python algorithms."""
+
+    topology: np.ndarray
+    shapes: dict[str, np.ndarray]
+    source_axis_codes: dict[str, tuple[str, str, str]]
+    template_resolution_mm: tuple[float, float, float]
 
 
 _MODALITY_ALIASES = {
@@ -114,8 +126,13 @@ def _resolve_image(
         raise ToadsAtlasError(f"Cannot load {role} atlas image {path}: {exc}") from exc
     if len(image.shape) != 3:
         raise ToadsAtlasError(f"{role} atlas image must be 3D, got {image.shape}: {path}")
+    # Preflight records the RAS array dimensions/spacing that the Python path
+    # will use. The data-loading API performs the user-visible warning and
+    # returns the actual reoriented voxels; this metadata-only operation keeps
+    # atlas resolution separate from algorithm execution.
+    image = nib.as_closest_canonical(image)
     if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
-        raise ToadsAtlasError(f"{role} atlas image is not stored in RAS voxel orientation: {path}")
+        raise ToadsAtlasError(f"{role} atlas image cannot be represented in RAS voxel orientation: {path}")
     zooms = tuple(float(value) for value in nib.affines.voxel_sizes(image.affine))
     return ToadsAtlasImage(
         role,
@@ -396,3 +413,76 @@ def load_toads_atlas_data(
     for name, image in atlas.shapes.items():
         loaded[name] = read_image(image)
     return ToadsAtlasData(loaded.pop("topology"), loaded, source_codes)
+
+
+def load_toads_atlas_ras_data(atlas: ToadsAtlas) -> ToadsAtlasRASData:
+    """Load topology and shape maps in RAS array order for Python processing.
+
+    Unlike :func:`load_toads_atlas_data`, this returns the compressed NIfTI
+    voxel order after axis-only RAS normalization. It is intended for the
+    Python registration/segmentation APIs, whose image arrays are RAS ordered;
+    it must not be substituted into Java-source-index comparison harnesses.
+    Descriptor spacing is returned separately because the selected atlas
+    loader uses those values, even when NIfTI header zooms differ.
+    """
+    source_codes: dict[str, tuple[str, str, str]] = {}
+
+    def read_ras(item: ToadsAtlasImage) -> np.ndarray:
+        try:
+            relative = item.path.relative_to(atlas.descriptor.parent).as_posix()
+            image = nib.load(str(item.path))
+        except (ValueError, OSError, nib.filebasedimages.ImageFileError) as exc:
+            raise ToadsAtlasError(f"Cannot load atlas image {item.path}: {exc}") from exc
+        source_orientation = tuple(nib.aff2axcodes(image.affine))
+        if len(image.shape) != 3:
+            raise ToadsAtlasError(f"Atlas image must be 3D: {item.path}")
+        try:
+            normalized = normalize_image_to_ras(image, source_name=f"TOADS atlas {item.role}")
+        except ValueError as exc:
+            raise ToadsAtlasError(f"Cannot normalize atlas image {item.path}: {exc}") from exc
+        if tuple(nib.aff2axcodes(normalized.affine)) != ("R", "A", "S"):
+            raise ToadsAtlasError(f"Atlas image could not be normalized to RAS: {item.path}")
+        values = np.asanyarray(normalized.dataobj)
+        if values.ndim != 3 or not np.isfinite(values).all():
+            raise ToadsAtlasError(f"Atlas image contains invalid voxel data: {item.path}")
+        if tuple(int(v) for v in values.shape) != item.shape:
+            raise ToadsAtlasError(
+                f"RAS atlas shape {values.shape} disagrees with preflight shape {item.shape}: {item.path}"
+            )
+        source_codes[relative] = source_orientation  # type: ignore[assignment]
+        return np.array(values, copy=True)
+
+    topology = read_ras(atlas.topology)
+    shapes = {name: read_ras(image) for name, image in atlas.shapes.items()}
+    for name, values in shapes.items():
+        if values.shape != topology.shape:
+            raise ToadsAtlasError(
+                f"Shape map {name!r} has grid {values.shape}, expected topology grid {topology.shape}"
+            )
+    if not np.issubdtype(topology.dtype, np.integer):
+        raise ToadsAtlasError("TOADS topology image must contain integer labels")
+    return ToadsAtlasRASData(
+        topology,
+        shapes,
+        source_codes,
+        atlas.shape_voxel_sizes_mm,
+    )
+
+
+def toads_atlas_shapes_in_structure_order(
+    atlas: ToadsAtlas,
+    ras_data: ToadsAtlasRASData,
+) -> np.ndarray:
+    """Stack RAS shape maps as ``(x,y,z,classes)`` in descriptor order."""
+    if not isinstance(ras_data, ToadsAtlasRASData):
+        raise TypeError("ras_data must be ToadsAtlasRASData")
+    names = tuple(structure.name for structure in atlas.structures)
+    missing = [name for name in names if name not in ras_data.shapes]
+    if missing:
+        raise ToadsAtlasError(f"RAS atlas data is missing structure shape(s): {missing}")
+    if not names:
+        raise ToadsAtlasError("Atlas descriptor has no structures")
+    return np.stack(
+        tuple(np.asarray(ras_data.shapes[name], dtype=np.float32) for name in names),
+        axis=-1,
+    )

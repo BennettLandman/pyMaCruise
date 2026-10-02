@@ -12,8 +12,11 @@ from pymacruise.toads_atlas import (
     ToadsAtlas,
     ToadsAtlasError,
     ToadsAtlasImage,
+    ToadsStructure,
     load_toads_atlas,
     load_toads_atlas_data,
+    load_toads_atlas_ras_data,
+    toads_atlas_shapes_in_structure_order,
 )
 
 
@@ -143,3 +146,47 @@ def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
     np.testing.assert_array_equal(data.topology, source)
     np.testing.assert_array_equal(data.shapes["Test"], source)
     assert data.source_axis_codes["topology.nii.gz"] == ("L", "P", "S")
+
+
+def test_toads_atlas_python_arrays_reorient_to_ras_and_follow_descriptor_order(tmp_path) -> None:
+    source = np.arange(2 * 3 * 4, dtype=np.int16).reshape((2, 3, 4))
+    affine = np.diag((-1.0, -1.0, 1.0, 1.0))
+    affine[:3, 3] = (1.0, 2.0, 0.0)
+    topology_path = tmp_path / "topology.nii.gz"
+    background_path = tmp_path / "background.nii.gz"
+    foo_path = tmp_path / "foo.nii.gz"
+    for path, values in (
+        (topology_path, source),
+        (background_path, source + 100),
+        (foo_path, source + 200),
+    ):
+        nib.save(nib.Nifti1Image(values, affine), path)
+    atlas = ToadsAtlas(
+        tmp_path / "atlas.txt",
+        (ToadsStructure("Foo", 2, "object"), ToadsStructure("Background", 1, "mask")),
+        ToadsAtlasImage("topology.nii.gz", topology_path, source.shape, (1.0,) * 3, (0.8,) * 3),
+        {
+            "Background": ToadsAtlasImage("background", background_path, source.shape, (1.0,) * 3, (0.8,) * 3),
+            "Foo": ToadsAtlasImage("foo", foo_path, source.shape, (1.0,) * 3, (0.8,) * 3),
+        },
+        1,
+        source.shape,
+        (0.8, 0.8, 0.8),
+        (1, 1, 1, 1),
+        (),
+    )
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS") as captured:
+        ras = load_toads_atlas_ras_data(atlas)
+
+    expected = source[::-1, ::-1, :]
+    assert len(captured) == 3
+    assert ras.source_axis_codes["topology.nii.gz"] == ("L", "P", "S")
+    assert ras.template_resolution_mm == (0.8, 0.8, 0.8)
+    np.testing.assert_array_equal(ras.topology, expected)
+    np.testing.assert_array_equal(ras.shapes["Background"], expected + 100)
+    np.testing.assert_array_equal(ras.shapes["Foo"], expected + 200)
+    stacked = toads_atlas_shapes_in_structure_order(atlas, ras)
+    assert stacked.shape == (*source.shape, 2)
+    np.testing.assert_array_equal(stacked[..., 0], (expected + 200).astype(np.float32))
+    np.testing.assert_array_equal(stacked[..., 1], (expected + 100).astype(np.float32))

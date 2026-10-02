@@ -86,6 +86,16 @@ from pymacruise.toads_alignment_startup import (
     prepare_toads_alignment_startup,
     register_toads_alignment_startup,
 )
+from pymacruise.toads_atlas import (
+    ToadsAtlas,
+    ToadsAtlasData,
+    ToadsAtlasRASData,
+    load_toads_atlas,
+    load_toads_atlas_data,
+    load_toads_atlas_ras_data,
+    load_toads_intensity_priors,
+    toads_atlas_shapes_in_structure_order,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -170,4 +180,12 @@ __all__ = [
     "prepare_toads_alignment_startup",
     "ToadsAlignmentRegistration",
     "register_toads_alignment_startup",
+    "ToadsAtlas",
+    "ToadsAtlasData",
+    "ToadsAtlasRASData",
+    "load_toads_atlas",
+    "load_toads_atlas_data",
+    "load_toads_atlas_ras_data",
+    "load_toads_intensity_priors",
+    "toads_atlas_shapes_in_structure_order",
 ]
