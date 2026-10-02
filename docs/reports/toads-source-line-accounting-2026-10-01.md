@@ -3,7 +3,7 @@
 ## Current planning estimate
 
 As re-reviewed on 2026-10-02 at implementation commit
-`b6b231d8f3eeed914187c577b6423b6e1fb1681a` with the full synthetic suite, the estimate remains
+`dcb707fec0425c3e28fe7b20bf2b2c5822a061be` with the full synthetic suite, the estimate remains
 **3,400–4,800 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–35%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -52,11 +52,14 @@ from newly validated source operation groups and recompute the denominator
 when the selected file set or source revisions change.
 
 The TOADS startup composition through initial membership and first thinning
-was reviewed with the full synthetic suite at
-`b6b231d8f3eeed914187c577b6423b6e1fb1681a`. These adapters connect
-already-counted relation, deviation, image-variance, similarity, membership,
-and thinning operations; they do not establish an additional complete source
-method or independently countable algorithm family. The estimate therefore
-remains 3,400–4,800 of 13,651 lines (about 25–35%) pending a curated
-method-to-source-line map. The suite passed 1,054 tests with 11 expected RAS
-warnings in 1,826.52 seconds; see the [current full-suite report](full-pytest-2026-10-02-toads-initial-thinning.md).
+was extended through a synthetic selected 11-class atlas registration result
+at implementation commit `dcb707fec0425c3e28fe7b20bf2b2c5822a061be`. This
+latest adapter adds an actual registration-to-membership data handoff to the
+validated compositions, but no additional Java algorithm method family; its
+increment to the source-line numerator is therefore **0 lines**. It builds
+on already-counted relation, deviation, image-variance, similarity,
+shape-sampling, and membership operations. The source-line interval remains
+3,400–4,800 of 13,651 lines (about 25–35%) pending a curated
+method-to-source-line map. The full suite passed **1,060 tests**, with 11
+expected RAS warnings in 1,862.37 seconds; see the [current full-suite
+report](full-pytest-2026-10-02-registered-startup-membership.md).

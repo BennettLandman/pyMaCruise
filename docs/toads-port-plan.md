@@ -1178,3 +1178,28 @@ passed 35 tests in 7.77 seconds on implementation commit
 report](reports/toads-shape-volume-2026-10-02.md). The volume comparison uses
 `3e-7` absolute tolerance against the pointwise adapter and is not an
 independent Java whole-volume reference.
+
+
+### Registered startup through refreshed statistics and exact membership (P18cyat)
+
+`compute_registered_toads_initial_membership` carries the recropped image,
+initialized memberships and centroids, constructor segmentation, descriptor
+class order, closest-label map, and post-registration transformed shape
+samples from one atlas-startup result into the selected statistics and exact
+membership composition. The channel-first RAS image is moved to the
+class-last convention used by the numerical kernels. Exponents, tissue
+modality weights, atlas shape/smoothing weights, and effective coefficients
+remain explicit inputs because the current startup result does not resolve
+those settings. This adapter does not estimate the correction field, run
+TOADS iteration, or establish a whole-wrapper Java comparison.
+
+The focused synthetic group builds an actual selected 11-class RAS atlas,
+runs atlas registration, and compares the resulting adapter output with a
+direct call to the exact-membership kernel. Six tests passed in 17.79 seconds;
+the full suite passed 1,060 tests with 11 expected RAS warnings in
+1,862.37 seconds on implementation commit
+`dcb707fec0425c3e28fe7b20bf2b2c5822a061be`. See the [P18cyat
+report](reports/toads-registered-initial-membership-2026-10-02.md) and [full
+suite report](reports/full-pytest-2026-10-02-registered-startup-membership.md).
+This establishes synthetic integration only, not a combined Java wrapper
+oracle or complete TOADS iteration.
