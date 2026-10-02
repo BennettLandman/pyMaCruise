@@ -13,6 +13,12 @@ from .lesion_initial_memberships import (
     lesion_initial_memberships,
 )
 from .lesion_shapes import LesionRegistrationPyramidResult, register_lesion_shapes_pyramid
+from .lesion_atlas_priors import (
+    LesionAtlasPriors,
+    LesionAtlasShapePriors,
+    load_lesion_atlas_priors,
+    load_lesion_atlas_shape_priors,
+)
 
 
 _CALL_ORDER = (
@@ -36,6 +42,21 @@ class LesionInitialAtlasAlignment:
     pyramid_levels: int
     registration_scale_factor: int
     coupling_factor: np.float32
+
+
+@dataclass(frozen=True)
+class LesionLoadedAtlasInitialAlignment:
+    """Initial membership and registration using the bundled 13-class atlas.
+
+    The descriptor supplies class-order intensity means and the separate shape
+    loader supplies its matching RAS priors. Keeping both loaded products in
+    the result makes their shared order available to subsequent selected
+    thinning/registration stages without inventing a remapping.
+    """
+
+    priors: LesionAtlasPriors
+    shape_priors: LesionAtlasShapePriors
+    alignment: LesionInitialAtlasAlignment
 
 
 def initialize_lesion_atlas_alignment(
@@ -103,3 +124,49 @@ def initialize_lesion_atlas_alignment(
         registration_scale_factor=2,
         coupling_factor=np.float32(1.0),
     )
+
+
+def initialize_lesion_atlas_alignment_from_descriptor(
+    descriptor_path: str,
+    padded_images: ArrayLike,
+    preprocessing_transform: ArrayLike,
+    *,
+    crop_bounds: tuple[tuple[int, int], tuple[int, int], tuple[int, int]],
+    pad_border: int,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    init_align_iterations: int = 50,
+    pyramid_levels: int = 4,
+) -> LesionLoadedAtlasInitialAlignment:
+    """Load the selected T1/FLAIR 13-class atlas and initialize its alignment.
+
+    ``padded_images`` is the already normalized, source-ordered T1_MPRAGE and
+    FLAIR pair with shape ``(2, x, y, z)``. The atlas descriptor provides the
+    class centroids, and all thirteen shape maps are loaded in that same class
+    order before invoking the source-matched initial-membership and rigid
+    registration adapters. Image normalization, crop construction, transform
+    estimation, topology initialization, and thinning are intentionally not
+    synthesized here; those are separate upstream/next stages.
+    """
+    priors = load_lesion_atlas_priors(descriptor_path, ("T1", "FLAIR"))
+    shapes = load_lesion_atlas_shape_priors(descriptor_path)
+    if priors.structures != shapes.structures:
+        raise ValueError("loaded intensity and shape atlases do not share class order")
+    if len(priors.structures) != 13:
+        raise ValueError("selected LesionTOADS alignment requires the 13-class atlas")
+    data = np.asarray(padded_images, dtype=np.float32)
+    if data.ndim != 4 or data.shape[0] != 2:
+        raise ValueError("padded_images must have shape (2, x, y, z) in T1_MPRAGE/FLAIR order")
+    alignment = initialize_lesion_atlas_alignment(
+        data,
+        priors.intensity_priors,
+        tuple(shapes.shape_maps[item.name] for item in priors.structures),
+        preprocessing_transform,
+        crop_bounds=crop_bounds,
+        pad_border=pad_border,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolutions_mm,
+        init_align_iterations=init_align_iterations,
+        pyramid_levels=pyramid_levels,
+    )
+    return LesionLoadedAtlasInitialAlignment(priors, shapes, alignment)
