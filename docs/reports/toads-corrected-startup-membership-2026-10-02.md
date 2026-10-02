@@ -38,3 +38,11 @@ adapter comparison is not an independent combined Java wrapper oracle.
 
 The full repository suite has not yet been rerun on this commit, so P18cyaw
 remains Started.
+
+## Source-order clarification
+
+This is an explicit field-injected membership experiment, not the selected
+wrapper's initial membership order. The wrapper's registered startup attaches
+unity correction fields and begins at degree zero; its first fit is gated in a
+later loop. See the source-faithful startup path and evidence in
+[P18cybd](toads-unity-field-startup-2026-10-02.md).

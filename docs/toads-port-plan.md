@@ -1245,8 +1245,9 @@ seconds on commit `7d83dc95e90762baa1a334ae8496e85c0202f25e`. Segmentation,
 skeleton, and processed-event count agree with direct calls using the same
 registered relation and transformed-shape state. See the [focused report](reports/toads-corrected-startup-thinning-2026-10-02.md).
 This is bounded synthetic integration, not a combined Java wrapper result or
-full TOADS run; growing and later iteration remain separate. P18cyax remains
-Started pending full-suite evidence.
+full TOADS run; growing and later iteration remain separate. This experiment
+injects a requested fitted field and is not the selected wrapper's startup
+field state. P18cyax remains Started pending full-suite evidence.
 
 
 ### Field-corrected registered startup membership (P18cyaw)
@@ -1260,7 +1261,10 @@ membership result matches direct calls to the component operations and differs
 from the no-field control. Selected method references validate the fit and
 statistics/membership kernels separately. See the [focused report](reports/toads-corrected-startup-membership-2026-10-02.md).
 This does not continue through thinning/growing or establish full TOADS
-equivalence. P18cyaw remains Started pending full-suite evidence.
+equivalence. This is a field-injected experiment, not the selected wrapper's
+initial membership schedule. The wrapper starts with unity correction fields
+and degree zero; see [P18cybd](reports/toads-unity-field-startup-2026-10-02.md).
+P18cyaw remains Started pending full-suite evidence.
 
 
 ### Registered startup to degree-three correction field (P18cyav)
@@ -1273,8 +1277,10 @@ the focused startup/membership/field group passed 13 tests in 30.21 seconds on
 commit `a4c0a581de32eb3922f67cd0c9e67a607459de24`; the fitted normal system
 matches the Java formula reference exactly and the complete field is within
 `2e-6`. See the [focused validation report](reports/toads-registered-field-refit-2026-10-02.md).
-This is wrapper-state composition, not a complete TOADS iteration. P18cyav
-remains Started pending full-suite evidence.
+This is a selected-degree fit composition over registered arrays, not the
+wrapper's startup field update. The wrapper initializes fields to unity and
+starts at degree zero; see [P18cybd](reports/toads-unity-field-startup-2026-10-02.md).
+P18cyav remains Started pending full-suite evidence.
 
 
 ### Carried degree through field/statistics/membership continuation (P18cyba)
@@ -1305,6 +1311,21 @@ statistics/membership stages. See the [validation report](reports/toads-multicha
 This adapter composes existing kernels; the multi-channel wrapper call path,
 registration, topology, growth, and full TOADS workflow remain open.
 P18cybb remains Started pending full-suite evidence.
+
+
+### Source-faithful unity-field startup and degree-zero first loop (P18cybd)
+
+Source review pinned to `AlgorithmMultipleToads.java` and
+`InhomogeneityCorrection2.java` confirmed that the wrapper creates unity
+fields, sets initial `Eratio=1.0` and degree zero, computes the initial exact
+membership, then enters the loop with thinning. The first `computeCorrectionField(0)`
+does not fit. The new registered startup composition preserves this state and
+runs initial membership plus first thinning without a premature degree-three
+fit. Its focused synthetic RAS test passed 1 test in 21.86 seconds. See the
+[source and validation report](reports/toads-unity-field-startup-2026-10-02.md).
+This corrects interpretation of P18cyav/cyaw/cyax: those are explicit
+field-fit/injection experiments and not the initial selected-wrapper schedule.
+P18cybd remains Started pending full-suite evidence.
 
 
 ### Multi-channel membership through registration and next thinning (P18cybc)

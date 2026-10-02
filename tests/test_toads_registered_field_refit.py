@@ -14,6 +14,7 @@ from pymacruise.toads_registered_field_refit import (
     fit_registered_toads_correction_fields,
 )
 from pymacruise.toads_registered_initial_membership import compute_registered_toads_initial_membership
+from pymacruise.toads_registered_unity_field_startup import compute_registered_toads_unity_field_startup
 from pymacruise.toads_thinning import toads_propagate_thinning
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_field_refit"
@@ -110,6 +111,58 @@ def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_pa
     np.testing.assert_array_equal(result.thinning.segmentation, expected_thinning.segmentation)
     np.testing.assert_array_equal(result.thinning.skeleton, expected_thinning.skeleton)
     assert result.thinning.processed_items == expected_thinning.processed_items
+
+
+def test_registered_wrapper_startup_keeps_unity_field_and_degree_zero(tmp_path: Path) -> None:
+    descriptor = FIXTURE / "atlas-11.txt"
+    t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
+    mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
+    run = register_toads_from_atlas_assets(
+        t1, mask, descriptor, levels=1, max_iterations=1,
+        refinement_iterations=1, padding=2,
+    )
+    settings = dict(
+        exponent_by_channel_class=np.full((1, 11), 2.0, dtype=np.float32),
+        modality_weights=np.ones(1, dtype=np.float32),
+        smoothing_priors=np.ones(11, dtype=np.float32),
+        atlas_shape_priors=np.ones(11, dtype=np.float32),
+        smoothing=np.float32(0.2 / 6.0 / 11.0),
+        prior_factor=np.float32(0.2),
+        prior_coefficient=np.float32(2.0 / 11.0),
+    )
+    result = compute_registered_toads_unity_field_startup(run, **settings)
+
+    image_shape = run.template_refresh.recropped_images.shape[1:]
+    assert result.degree_state == 0
+    assert result.energy_ratio == np.float32(1.0)
+    assert result.fields.shape == image_shape + (1,)
+    np.testing.assert_array_equal(result.fields, np.ones(result.fields.shape, dtype=np.float32))
+    assert result.stage_order == (
+        "registered_startup.initializeCorrectionFieldsToUnity",
+        "registered_startup.computeVariances",
+        "registered_startup.computeImageVariance",
+        "registered_startup.computeCentroidSimilarity",
+        "registered_startup.computeExactMemberships",
+        "iteration1.propagateThinning",
+    )
+
+    direct_membership = compute_registered_toads_initial_membership(
+        run, **settings, intensity_field=result.fields,
+    )
+    np.testing.assert_array_equal(
+        result.statistics_membership.membership_pass.memberships,
+        direct_membership.membership_pass.memberships,
+    )
+    direct_thinning = toads_propagate_thinning(
+        run.segmentation_constructor.segmentation,
+        direct_membership.membership_pass.memberships,
+        run.relation_state.relation.class_adjacency,
+        run.transformed_shape_priors,
+        volume_ratio=0.5,
+        limit=3.0,
+    )
+    np.testing.assert_array_equal(result.thinning.segmentation, direct_thinning.segmentation)
+    np.testing.assert_array_equal(result.thinning.skeleton, direct_thinning.skeleton)
 
 
 @pytest.mark.parametrize("degree", [0, 4, True])

@@ -42,3 +42,12 @@ and fixture commit `a4c0a581de32eb3922f67cd0c9e67a607459de24`.
 
 The full repository suite has not yet been rerun on this commit. P18cyav
 remains Started pending the next major integration checkpoint.
+
+## Source-order clarification
+
+This report validates an explicitly requested degree-three field fit from
+registered arrays; it does not establish that the selected wrapper fits a
+degree-three field at startup. Source inspection shows the wrapper constructs
+unity fields, sets `deg=0` and `Eratio=1.0`, and only calls the field update
+inside the later loop. The source-faithful initial schedule is implemented
+separately in [P18cybd](toads-unity-field-startup-2026-10-02.md).

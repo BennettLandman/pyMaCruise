@@ -30,3 +30,10 @@ relation, membership, and thinning primitives have their own source-reference
 tests. This composition is not an independent combined Java wrapper oracle,
 does not include the following growing pass, and is not full TOADS equivalence.
 The full repository suite has not yet been rerun, so P18cyax remains Started.
+
+## Source-order clarification
+
+This is a bounded field-injected membership/thinning experiment. The selected
+wrapper does not perform a degree-three field fit at startup: correction
+fields start at unity and degree zero. See [P18cybd](toads-unity-field-startup-2026-10-02.md)
+for the source-faithful registered startup sequence.
