@@ -32,4 +32,6 @@ packaged-wheel output (zero differing voxels).
 The CLI/result change does not alter the segmentation. Focused command
 `./.venv/bin/python -m pytest tests/test_toads_loop_cli.py::test_toads_loop_cli_writes_terminal_classification_in_native_ras tests/test_toads_registered_first_iteration_cycle.py tests/test_toads_initial_registration_control.py -q`:
 **3 passed, 0 failed, 0 skipped in 49.28s**. Repository-wide full-suite
-evidence remains pending.
+validation then passed **1,101 tests, 0 failed, 0 skipped, 11 expected RAS
+warnings in 1,636.28s** on implementation commit
+`f6f900d1156ef44cf4230d460e665fb88385f91b`; see [the full-suite checkpoint](full-pytest-2026-10-02-shape-bounds-and-stop-telemetry.md).

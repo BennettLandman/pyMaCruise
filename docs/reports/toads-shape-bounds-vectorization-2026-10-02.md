@@ -18,6 +18,7 @@ avoid allocating full-grid coordinate arrays on human-sized volumes.
 - The source-checkout 2-iteration run took **5.73s** and was bit-identical to the pre-change profiled-wheel output (**0 differing voxels**).
 
 These checks establish output parity for the available synthetic fixture and
-selected source-reference cases. The repository-wide full suite has not yet
-been rerun on this optimization, so the plan item remains Started until the
-next full-suite checkpoint.
+selected source-reference cases. The repository-wide full suite subsequently
+passed **1,101 tests, 0 failed, 0 skipped, 11 expected RAS warnings in
+1,636.28s** on implementation commit
+`f6f900d1156ef44cf4230d460e665fb88385f91b`; see [the full-suite checkpoint](full-pytest-2026-10-02-shape-bounds-and-stop-telemetry.md).
