@@ -13,6 +13,7 @@ from .toads_inhomogeneity_exact_fit import ToadsExactChebyshevFieldFit
 from .toads_initial_statistics_membership import ToadsInitialStatisticsMembership
 from .toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
 from .toads_registered_initial_membership import compute_registered_toads_initial_membership
+from .toads_thinning import ToadsThinningPass, toads_propagate_thinning
 
 
 @dataclass(frozen=True)
@@ -28,10 +29,11 @@ class ToadsRegisteredFieldRefit:
 
 @dataclass(frozen=True)
 class ToadsRegisteredCorrectedStartup:
-    """Correction field and first field-aware exact-membership update."""
+    """Correction field, first field-aware membership update, and thinning."""
 
     field_refit: ToadsRegisteredFieldRefit
     statistics_membership: ToadsInitialStatisticsMembership
+    thinning: ToadsThinningPass
     stage_order: tuple[str, ...]
 
 
@@ -110,14 +112,19 @@ def compute_registered_toads_corrected_initial_membership(
     prior_coefficient: float,
     prior_scale: float = 0.05,
     degree: int = 3,
+    volume_ratio: float = 0.5,
+    thinning_limit: float = 3.0,
     psf_bias: Any | None = None,
 ) -> ToadsRegisteredCorrectedStartup:
-    """Fit fields, then run the selected field-aware initial membership pass.
+    """Fit fields, run field-aware initial membership, and propagate thinning.
 
     This connects the selected registered startup's correction constructor to
-    the existing initial statistics/exact-membership composition. All atlas,
-    smoothing, prior, and modality settings remain caller-supplied rather than
-    being guessed from the compact synthetic profile.
+    the existing initial statistics/exact-membership composition and first
+    thinning transition. Atlas, smoothing, prior, and modality settings remain
+    caller-supplied rather than being guessed from the compact synthetic
+    profile. The registered relation state is reused because the source's
+    relation refresh follows field attachment without intervening membership
+    or segmentation mutation.
     """
     field_refit = fit_registered_toads_correction_fields(alignment_run, degree=degree)
     membership = compute_registered_toads_initial_membership(
@@ -133,14 +140,41 @@ def compute_registered_toads_corrected_initial_membership(
         intensity_field=field_refit.fields,
         psf_bias=psf_bias,
     )
+    try:
+        segmentation = np.asarray(alignment_run.segmentation_constructor.segmentation)
+        memberships = np.asarray(
+            alignment_run.segmentation_initialization.memberships, dtype=np.float32
+        )
+        shapes = np.asarray(alignment_run.transformed_shape_priors, dtype=np.float32)
+        adjacency = np.asarray(alignment_run.relation_state.relation.class_adjacency)
+    except AttributeError as exc:
+        raise TypeError("alignment_run is missing relation or shape state for initial thinning") from exc
+    if adjacency.shape != (memberships.shape[-1], memberships.shape[-1]):
+        raise ValueError("registered relation adjacency must match the membership class order")
+    if shapes.shape != memberships.shape:
+        raise ValueError("registered transformed shape priors must match the membership maps")
+    # The wrapper recomputes relation state after attaching the fitted field.
+    # No membership or segmentation mutation occurs between those stages, so
+    # the relation state built by the registered startup is the same state.
+    thinning = toads_propagate_thinning(
+        segmentation,
+        membership.membership_pass.memberships,
+        adjacency,
+        shapes,
+        volume_ratio=volume_ratio,
+        limit=thinning_limit,
+    )
     return ToadsRegisteredCorrectedStartup(
         field_refit=field_refit,
         statistics_membership=membership,
+        thinning=thinning,
         stage_order=(
             *field_refit.stage_order,
             "registered_startup.computeVariances",
             "registered_startup.computeImageVariance",
             "registered_startup.computeCentroidSimilarity",
             "registered_startup.computeExactMemberships",
+            "registered_startup.initThinningLabels",
+            "registered_startup.propagateThinning",
         ),
     )

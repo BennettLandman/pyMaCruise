@@ -14,6 +14,7 @@ from pymacruise.toads_registered_field_refit import (
     fit_registered_toads_correction_fields,
 )
 from pymacruise.toads_registered_initial_membership import compute_registered_toads_initial_membership
+from pymacruise.toads_thinning import toads_propagate_thinning
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_field_refit"
 HARNESS = ROOT / "java_reference" / "ToadsExactPolynomialFieldReferenceHarness.java"
@@ -79,6 +80,8 @@ def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_pa
         "registered_startup.computeImageVariance",
         "registered_startup.computeCentroidSimilarity",
         "registered_startup.computeExactMemberships",
+        "registered_startup.initThinningLabels",
+        "registered_startup.propagateThinning",
     )
     expected_field = np.asarray(java["field_bits"], dtype=np.int32).view(np.float32).reshape(segmentation.shape)
     np.testing.assert_array_equal(field_refit.fits[0].normal_matrix.ravel(), np.asarray(java["normal"], dtype=np.float64))
@@ -96,6 +99,17 @@ def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_pa
         corrected.membership_pass.memberships,
         uncorrected.membership_pass.memberships,
     )
+    expected_thinning = toads_propagate_thinning(
+        segmentation,
+        corrected.membership_pass.memberships,
+        run.relation_state.relation.class_adjacency,
+        run.transformed_shape_priors,
+        volume_ratio=0.5,
+        limit=3.0,
+    )
+    np.testing.assert_array_equal(result.thinning.segmentation, expected_thinning.segmentation)
+    np.testing.assert_array_equal(result.thinning.skeleton, expected_thinning.skeleton)
+    assert result.thinning.processed_items == expected_thinning.processed_items
 
 
 @pytest.mark.parametrize("degree", [0, 4, True])
