@@ -1089,3 +1089,21 @@ The focused atlas/startup, relation, and Java-reference variance group passed
 `1aaa5419dc4a97086f6f80cd3e1ceb18603b58a2`; see the [P18cyam
 report](reports/toads-initial-variance-2026-10-02.md). This is a component
 composition, not the initial membership/energy pass or a full TOADS run.
+
+
+### Initial image-wide variance weights (P18cyan)
+
+The selected `computeMemberships()` startup sequence next computes the
+image-level variance weights used by the optimized tissue membership terms.
+The adapter carries the normalized image, seeded exact memberships, initialized
+centroids, and class deviations into the already source-checked image-variance
+kernel. It excludes MASK, processes the full grid, and preserves source
+float32 accumulation and zero-residual behavior. Initial correction fields are
+unity, so no extra field array is introduced.
+
+The focused synthetic atlas/startup and Java-reference kernel group passed 45
+tests in 8.01 seconds on implementation commit
+`5a4aca2567bcfa138020ab3d410337e1b55cee20`; see the [P18cyan
+report](reports/toads-initial-image-variance-2026-10-02.md). This slice does
+not yet calculate centroid similarities or execute the initial exact
+membership/energy sweep.
