@@ -316,3 +316,16 @@ pymacruise dura --t1 T1.nii.gz \
 The synthetic integration test compares the seven Dura outputs with the direct
 API after one evolution pass. This example does not perform the second TOADS
 pass.
+
+The selected second-pass handoff can be exercised with the Dura stripped T1
+and corrected brain mask:
+
+```text
+pymacruise toads-loop --t1-n4 dura_outputs/stripped_t1.nii.gz \
+  --brain-mask dura_outputs/brain_mask.nii.gz \
+  --output second_pass/Classification.nii.gz \
+  --dura-output-dir second_pass/dura_inputs
+```
+
+This uses the current native-RAS working space. The historical SPECTRE
+registration and inverse transfer are not implemented in this handoff.

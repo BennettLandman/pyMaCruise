@@ -1497,3 +1497,15 @@ and the original T1 reference. Its seven output images match direct
 geometry. The focused handoff test passed 1 test in 15.90 seconds. This closes
 only the selected CLI/data seam; the second TOADS pass and full wrapper remain
 open. See [the P18cybp report](reports/toads-dura-cli-handoff-2026-10-02.md).
+
+### Synthetic second TOADS pass after Dura (P18cybq)
+
+The Dura CLI's stripped T1 and corrected brain mask now feed a second
+`toads-loop` invocation on the compact synthetic atlas. The test exercises
+first-pass TOADS, one Dura evolution pass, and second-pass TOADS; it verifies
+the second classification and exported maps return on native RAS with uint8
+labels and float32 memberships. The focused test passed 1 test in 33.54
+seconds. This follows the selected source's sequence, but uses native RAS input
+instead of the historical SPECTRE transfer and does not include downstream
+cerebellum removal, crop, topology, ACE, GVF, or TGDM. It is not full workflow
+equivalence. See [the P18cybq report](reports/toads-dura-second-toads-2026-10-02.md).

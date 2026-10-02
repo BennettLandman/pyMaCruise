@@ -137,3 +137,77 @@ def test_toads_wrapper_outputs_feed_the_dura_cli_and_match_api(tmp_path) -> None
         assert written.shape == nib.load(str(t1)).shape
         assert nib.aff2axcodes(written.affine) == ("R", "A", "S")
         np.testing.assert_array_equal(np.asarray(written.dataobj), np.asarray(reference.dataobj))
+
+
+def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
+    atlas_dir = tmp_path / "atlas"
+    atlas_dir.mkdir()
+    for asset in ATLAS.parent.glob("*.nii.gz"):
+        shutil.copy2(asset, atlas_dir / asset.name)
+    descriptor_text = ATLAS.read_text(encoding="utf-8")
+    dura_names = {
+        "Csf1": "SulcalCSF",
+        "Csf2": "Ventricles",
+        "Gm1": "CerebellarGM",
+        "Gm2": "CerebralGM",
+        "Gm3": "Caudate",
+        "Gm4": "Thalamus",
+        "Gm5": "Putamen",
+        "Wm1": "Brainstem",
+        "Wm2": "CerebellarWM",
+        "Wm3": "CerebralWM",
+    }
+    for source_name, output_name in dura_names.items():
+        descriptor_text = descriptor_text.replace(source_name, output_name)
+    descriptor = atlas_dir / "atlas-dura.txt"
+    descriptor.write_text(descriptor_text, encoding="utf-8")
+
+    t1 = FIXTURE / "t1.nii.gz"
+    mask = FIXTURE / "brain-mask.nii.gz"
+    first_dura_inputs = tmp_path / "first-toads-dura-inputs"
+    first_pass = tmp_path / "first-pass.nii.gz"
+    common_options = [
+        "--atlas-descriptor", str(descriptor),
+        "--registration-levels", "1",
+        "--registration-iterations", "1",
+        "--registration-max-iterations", "1",
+        "--padding", "2",
+        "--maximum-iterations", "2",
+        "--relation-limit", "1",
+    ]
+    assert main([
+        "toads-loop", "--t1-n4", str(t1), "--brain-mask", str(mask),
+        "--output", str(first_pass), "--dura-output-dir", str(first_dura_inputs),
+        *common_options,
+    ]) == 0
+
+    dura_output_dir = tmp_path / "dura"
+    assert main([
+        "dura", "--t1", str(t1),
+        "--white", str(first_dura_inputs / "t1_wmfill.nii.gz"),
+        "--gray", str(first_dura_inputs / "t1_gm.nii.gz"),
+        "--white-mask", str(first_dura_inputs / "t1_wmmask.nii.gz"),
+        "--output-dir", str(dura_output_dir), "--max-iterations", "1",
+    ]) == 0
+
+    second_pass = tmp_path / "second-pass.nii.gz"
+    second_dura_inputs = tmp_path / "second-toads-dura-inputs"
+    assert main([
+        "toads-loop",
+        "--t1-n4", str(dura_output_dir / "stripped_t1.nii.gz"),
+        "--brain-mask", str(dura_output_dir / "brain_mask.nii.gz"),
+        "--output", str(second_pass), "--dura-output-dir", str(second_dura_inputs),
+        *common_options,
+    ]) == 0
+
+    reference = nib.load(str(t1))
+    for path in (first_pass, second_pass, second_dura_inputs / "stripped_t1_gm.nii.gz"):
+        assert path.is_file()
+    second_labels = nib.load(str(second_pass))
+    assert second_labels.shape == reference.shape
+    assert nib.aff2axcodes(second_labels.affine) == ("R", "A", "S")
+    assert second_labels.get_data_dtype().name == "uint8"
+    second_gm = nib.load(str(second_dura_inputs / "stripped_t1_gm.nii.gz"))
+    assert second_gm.shape == reference.shape
+    assert nib.aff2axcodes(second_gm.affine) == ("R", "A", "S")
+    assert second_gm.get_data_dtype().name == "float32"
