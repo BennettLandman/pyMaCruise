@@ -43,6 +43,12 @@ from .toads_segmentation_initialization import (
     ToadsSegmentationInitialization,
     initialize_toads_segmentation_state,
 )
+from .toads_segmentation_constructor import (
+    ToadsSegmentationConstructorState,
+    initialize_toads_segmentation_constructor_state,
+)
+from .toads_initial_relation_state import toads_initialize_relation_state
+from .toads_relations import ToadsRelationState
 
 
 @dataclass(frozen=True)
@@ -187,6 +193,8 @@ class ToadsAtlasAlignmentRun:
     template_refresh: ToadsPostRegistrationTemplateRefresh
     post_refresh_registration: ToadsPostRefreshRegistration
     segmentation_initialization: ToadsSegmentationInitialization
+    segmentation_constructor: ToadsSegmentationConstructorState
+    relation_state: ToadsRelationState
     modality: str
 
 
@@ -309,6 +317,7 @@ def register_toads_from_atlas_assets(
     padding: int = 10,
     background_ratio: float = 0.0,
     refinement_iterations: int = 5,
+    relation_limit: int = 3,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
 ) -> ToadsAtlasAlignmentRun:
@@ -386,6 +395,10 @@ def register_toads_from_atlas_assets(
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
+    segmentation_constructor = initialize_toads_segmentation_constructor_state(
+        template_refresh.transformed_topology,
+        [structure.label for structure in loaded_atlas.structures],
+    )
     segmentation_initialization = initialize_toads_segmentation_state(
         images=template_refresh.recropped_images,
         centroids=startup.centroids,
@@ -394,6 +407,11 @@ def register_toads_from_atlas_assets(
         lesion_prior_by_channel=lesion_priors,
         crop_border=padding,
     )
+    relation_state = toads_initialize_relation_state(
+        segmentation_constructor.segmentation,
+        segmentation_initialization.memberships,
+        relation_limit,
+    )
     return ToadsAtlasAlignmentRun(
         loaded_atlas,
         atlas_data,
@@ -401,5 +419,7 @@ def register_toads_from_atlas_assets(
         template_refresh,
         post_refresh_registration,
         segmentation_initialization,
+        segmentation_constructor,
+        relation_state,
         modality,
     )

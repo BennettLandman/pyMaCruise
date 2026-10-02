@@ -108,6 +108,10 @@ from pymacruise.toads_segmentation_initialization import (
     ToadsSegmentationInitialization,
     initialize_toads_segmentation_state,
 )
+from pymacruise.toads_segmentation_constructor import (
+    ToadsSegmentationConstructorState,
+    initialize_toads_segmentation_constructor_state,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -208,4 +212,6 @@ __all__ = [
     "register_toads_after_template_refresh",
     "ToadsSegmentationInitialization",
     "initialize_toads_segmentation_state",
+    "ToadsSegmentationConstructorState",
+    "initialize_toads_segmentation_constructor_state",
 ]

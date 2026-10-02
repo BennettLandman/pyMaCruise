@@ -163,6 +163,23 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
             )
         ],
     )
+    constructor = result.segmentation_constructor
+    assert constructor.call_order == (
+        "segmentation.constructor.mapTemplateLabels",
+        "segmentation.constructor.initializeSegmentationAndSkeleton",
+        "segmentation.constructor.initializeRelationAndBoundaryState",
+    )
+    np.testing.assert_array_equal(constructor.classification_labels, result.template_refresh.transformed_topology)
+    assert set(np.unique(constructor.segmentation)).issubset({0, 1})
+    np.testing.assert_array_equal(constructor.segmentation, constructor.skeleton)
+    np.testing.assert_array_equal(constructor.segmentation, constructor.relation_map)
+    assert constructor.available.shape == (*constructor.segmentation.shape, 2)
+    assert not np.any(constructor.available)
+    assert not np.any(constructor.boundary_distances)
+    assert int(constructor.class_volumes.sum()) == constructor.segmentation.size
+    assert result.relation_state.relation.class_count == 2
+    assert result.relation_state.boundary_distances.shape == (*constructor.segmentation.shape, 2)
+    assert result.relation_state.closest_labels.shape == (*constructor.segmentation.shape, 4)
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )
@@ -187,3 +204,14 @@ def test_atlas_lesion_priors_follow_source_missing_and_present_rules(tmp_path) -
     )
     with pytest.raises(ValueError, match="Non-finite lesion prior"):
         load_toads_lesion_priors(descriptor, ["MPRAGE"])
+
+
+def test_segmentation_constructor_rejects_unknown_template_labels() -> None:
+    from pymacruise.toads_segmentation_constructor import (
+        initialize_toads_segmentation_constructor_state,
+    )
+
+    labels = np.zeros((3, 4, 5), dtype=np.uint8)
+    labels[1, 1, 1] = 9
+    with pytest.raises(ValueError, match="absent from the atlas descriptor"):
+        initialize_toads_segmentation_constructor_state(labels, [1, 2])
