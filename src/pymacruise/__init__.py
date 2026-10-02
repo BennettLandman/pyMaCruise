@@ -128,6 +128,10 @@ from pymacruise.toads_initial_statistics_membership import (
     ToadsInitialStatisticsMembership,
     compute_toads_initial_statistics_membership,
 )
+from pymacruise.toads_initial_statistics_thinning import (
+    ToadsInitialStatisticsThinning,
+    compute_toads_initial_statistics_thinning,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -238,4 +242,6 @@ __all__ = [
     "initialize_toads_centroid_similarity",
     "ToadsInitialStatisticsMembership",
     "compute_toads_initial_statistics_membership",
+    "ToadsInitialStatisticsThinning",
+    "compute_toads_initial_statistics_thinning",
 ]
