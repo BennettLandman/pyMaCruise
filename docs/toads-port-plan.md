@@ -918,3 +918,20 @@ recreate all internal transform-model state transitions of Java
 `initShapeRegistration`/`updateShapeRegistration`, compare end-to-end registration
 against Java, or run TOADS iterations. The next integration slice should pin
 those selected wrapper state transitions before increasing the claim.
+
+
+### Completed substage: selected rigid-registration setup handoff (P18cyae)
+
+`register_toads_alignment_startup` now exposes a `ToadsRigidRegistrationSetup`
+record for the selected `AlgorithmMultipleToads` source sequence. It preserves
+the exact-membership array reference, null `best` candidates, `approx=classes`
+with `useApprox=false`, six-element zero initialization followed by the
+preprocessing transform, rigid mode, iteration/level inputs, subsample factor
+2, and image center. The existing numerical pyramid consumes this recorded
+state's memberships, transform, level count, and iteration count.
+
+Focused startup/registration tests passed 27 cases in 1.48 seconds on
+implementation commit `845eecfa43b9862ce81e7d9322aeedccf4593b7b`. The report
+pins the selected source files and lists the values tested. This is a setup-state
+translation plus synthetic wiring check, not execution of the Java wrapper or
+full TOADS comparison; subsequent algorithm steps remain open.
