@@ -358,3 +358,19 @@ added on all sides, with zero padding beyond the source grid; the same bounds
 are applied to all three maps. Outputs retain their input types and are saved
 as RAS `.nii.gz` files. The default edge width is the selected wrapper value
 of five voxels.
+
+## `pymacruise prepare-cruise-inputs`
+
+```text
+pymacruise prepare-cruise-inputs --gm Toads2_gm.nii.gz \
+  --wm-fill Toads2_wmfill.nii.gz --wm-mask Toads2_wmmask.nii.gz \
+  [--segmentation MaSeg.nii.gz --remove-cerebellum] \
+  --output-dir cruise_inputs [--edge-width 5] [--provenance run.json]
+```
+
+This composes the selected postpass operations in order: optional MaSeg
+brainstem/cerebellum removal, one positive-GM-derived crop shared by all tissue
+maps, then (6,18) topology correction of cropped WM-fill painted by cropped
+WM-mask. It writes the three cropped maps and corrected WM-fill on native
+cropped RAS geometry. Base workflow defaults are used; multi-atlas topology
+refinement is not enabled by this command.

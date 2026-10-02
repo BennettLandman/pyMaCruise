@@ -31,6 +31,7 @@ from pymacruise.toads_dura import run_dura_removal
 from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
 from pymacruise.toads_cerebellum import remove_brainstem_and_cerebellum
 from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
+from pymacruise.toads_cruise_preparation import prepare_toads_cruise_inputs
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
@@ -190,6 +191,19 @@ def build_parser() -> argparse.ArgumentParser:
     tissue_crop.add_argument("--output-dir", required=True, type=Path)
     tissue_crop.add_argument("--edge-width", type=int, default=5)
     _add_provenance_option(tissue_crop)
+
+    cruise_inputs = commands.add_parser(
+        "prepare-cruise-inputs",
+        help="optionally clean, crop, and topology-correct second-pass TOADS maps before ACE",
+    )
+    cruise_inputs.add_argument("--gm", required=True, type=Path)
+    cruise_inputs.add_argument("--wm-fill", required=True, type=Path)
+    cruise_inputs.add_argument("--wm-mask", required=True, type=Path)
+    cruise_inputs.add_argument("--segmentation", type=Path, help="required with --remove-cerebellum")
+    cruise_inputs.add_argument("--remove-cerebellum", action="store_true")
+    cruise_inputs.add_argument("--edge-width", type=int, default=5)
+    cruise_inputs.add_argument("--output-dir", required=True, type=Path)
+    _add_provenance_option(cruise_inputs)
 
     toads = commands.add_parser(
         "toads-loop",
@@ -790,6 +804,66 @@ def main(argv: list[str] | None = None) -> int:
                 "edge_width": args.edge_width,
                 "bounds": [list(axis) for axis in cropped.crop_parameters.bounds],
             },
+            outputs=output_paths,
+        )
+    elif args.command == "prepare-cruise-inputs":
+        prepared = prepare_toads_cruise_inputs(
+            _load_nifti_gz(args.gm),
+            _load_nifti_gz(args.wm_fill),
+            _load_nifti_gz(args.wm_mask),
+            segmentation=(
+                None if args.segmentation is None else _load_nifti_gz(args.segmentation)
+            ),
+            remove_cerebellum=args.remove_cerebellum,
+            crop_edge_width=args.edge_width,
+        )
+        output_paths = {
+            "gm_crop": args.output_dir / "gm_cropped.nii.gz",
+            "wm_fill_crop": args.output_dir / "wmfill_cropped.nii.gz",
+            "wm_mask_crop": args.output_dir / "wmmask_cropped.nii.gz",
+            "wm_fill_topology_corrected": args.output_dir / "wmfill_topology_corrected.nii.gz",
+        }
+        collisions = [path for path in output_paths.values() if path.exists()]
+        if collisions:
+            raise FileExistsError(
+                "Refusing to overwrite prepared CRUISE input(s): "
+                + ", ".join(str(path) for path in collisions)
+            )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        images = {
+            "gm_crop": prepared.gray_matter,
+            "wm_fill_crop": prepared.white_matter_fill,
+            "wm_mask_crop": prepared.white_matter_mask,
+            "wm_fill_topology_corrected": prepared.topology_corrected_white_matter_fill,
+        }
+        for name, image in images.items():
+            _save_nifti_gz(image, output_paths[name])
+            print(f"Wrote {output_paths[name]} (RAS)")
+        parameters = {
+            "remove_cerebellum": args.remove_cerebellum,
+            "removed_voxel_counts": prepared.removed_voxel_counts,
+            "crop_edge_width": args.edge_width,
+            "crop_bounds": [list(axis) for axis in prepared.crop_parameters.bounds],
+            "topology": {
+                "foreground_background_connectivity": "(6,18)",
+                "paint_threshold": 0.5,
+                "lowest_level": 0.0,
+                "highest_level": 1.0,
+                "regularize": 1e-4,
+                "multi_atlas_refinement": False,
+            },
+            "stage_order": prepared.stage_order,
+        }
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={
+                "gm": args.gm,
+                "wm_fill": args.wm_fill,
+                "wm_mask": args.wm_mask,
+                "segmentation": args.segmentation,
+            },
+            parameters=parameters,
             outputs=output_paths,
         )
     elif args.command == "surface-extract":

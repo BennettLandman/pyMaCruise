@@ -1532,3 +1532,14 @@ eight-array selected-Java identity-grid integration passed 7 tests in 33.37
 seconds. Exact JIST agreement is limited to the identity physical-grid case;
 post-crop topology/ACE/GVF/TGDM remain downstream work. See [the P18cybs
 report](reports/toads-second-pass-gm-crop-2026-10-02.md).
+
+### Second-pass TOADS preparation through WM topology correction (P18cybt)
+
+The new `prepare-cruise-inputs` API/CLI composes optional brainstem/cerebellum
+cleanup, GM-derived shared crop, and the selected (6,18) topology correction
+on cropped WM-fill using cropped WM-mask as paint. It records crop bounds,
+removed counts, and stage order, and writes the three cropped tissue maps plus
+corrected WM-fill. The preparation, crop, cleanup, and topology test group
+passed 19 tests in 1.29 seconds. This reaches the pre-ACE handoff; ACE/GVF/TGDM
+and full workflow equivalence remain open. See [the P18cybt
+report](reports/toads-cruise-preparation-2026-10-02.md).
