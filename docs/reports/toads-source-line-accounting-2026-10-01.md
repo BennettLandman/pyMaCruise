@@ -3,7 +3,7 @@
 ## Current planning estimate
 
 As re-reviewed on 2026-10-02 at implementation commit
-`ee350877e61f97adb050d185bfb34f7bfd067ade`, the current estimate remains
+`b6b231d8f3eeed914187c577b6423b6e1fb1681a` with the full synthetic suite, the estimate remains
 **3,400–4,800 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–35%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -51,11 +51,12 @@ line mapping is maintained. For each periodic plan update, refresh the range
 from newly validated source operation groups and recompute the denominator
 when the selected file set or source revisions change.
 
-The latest atlas-backed startup and post-refresh registration continuation
-were reviewed with the full synthetic suite at `ee350877e61f97adb050d185bfb34f7bfd067ade`.
-The new adapter connects already-counted intensity-membership and rigid-
-registration operation groups; it does not establish an additional complete
-source method or independently countable algorithm family. The estimate is
-therefore unchanged pending a curated method-to-source-line map. The full suite
-passed 1,049 tests with 11 expected RAS warnings in 1,682.82 seconds; see the
-[full-suite report](full-pytest-2026-10-02-toads-atlas-registration.md).
+The TOADS startup composition through initial membership and first thinning
+was reviewed with the full synthetic suite at
+`b6b231d8f3eeed914187c577b6423b6e1fb1681a`. These adapters connect
+already-counted relation, deviation, image-variance, similarity, membership,
+and thinning operations; they do not establish an additional complete source
+method or independently countable algorithm family. The estimate therefore
+remains 3,400–4,800 of 13,651 lines (about 25–35%) pending a curated
+method-to-source-line map. The suite passed 1,054 tests with 11 expected RAS
+warnings in 1,826.52 seconds; see the [current full-suite report](full-pytest-2026-10-02-toads-initial-thinning.md).
