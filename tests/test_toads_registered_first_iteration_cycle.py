@@ -16,6 +16,10 @@ from pymacruise.toads_registered_first_exact_iteration import (
 from pymacruise.toads_registered_first_iteration_cycle import (
     continue_registered_first_exact_iteration_through_next_thinning,
 )
+from pymacruise.toads_registered_loop import (
+    ToadsRegisteredLoopConfig,
+    run_registered_toads_loop,
+)
 from pymacruise.toads_registered_membership_branch_cycle import (
     continue_registered_membership_through_branch,
 )
@@ -602,3 +606,25 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         )
         np.testing.assert_array_equal(actual_classification, expected_classification)
         assert terminal_branch.changed_classification_voxels == expected_class_diff
+
+        assembled = run_registered_toads_loop(
+            run,
+            ToadsRegisteredLoopConfig(
+                category_exponents=categories,
+                class_variance_weights=run.initial_variances.standard_deviations,
+                maximum_iterations=4,
+                convergence_threshold=0.04,
+                relation_limit=1,
+                max_registration_iterations=1,
+                registration_energy_tolerance=0.0,
+                **settings,
+            ),
+        )
+        assert len(assembled.exact_iterations) == 4
+        assert len(assembled.registered_cycles) == 4
+        np.testing.assert_array_equal(
+            assembled.exact_iterations[-1].membership_pass.memberships,
+            fourth.membership_pass.memberships,
+        )
+        np.testing.assert_array_equal(assembled.classification, actual_classification)
+        assert assembled.changed_classification_voxels == expected_class_diff

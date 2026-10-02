@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 from .toads_alignment_startup import ToadsAtlasAlignmentRun
+from .toads_registered_first_iteration_cycle import ToadsRegisteredFirstIterationCycle
 from .toads_multichannel_carried_degree_iteration import (
     ToadsMultichannelCarriedDegreeIteration,
     continue_toads_multichannel_through_carried_degree_iteration,
@@ -46,8 +47,11 @@ def continue_registered_cycle_through_following_exact_iteration(
     """
     if not isinstance(alignment_run, ToadsAtlasAlignmentRun):
         raise TypeError("alignment_run must be a selected registered TOADS run")
-    if not isinstance(registered_cycle, ToadsRegisteredMembershipBranchCycle):
-        raise TypeError("registered_cycle must be a selected registered-membership cycle")
+    if not isinstance(
+        registered_cycle,
+        (ToadsRegisteredFirstIterationCycle, ToadsRegisteredMembershipBranchCycle),
+    ):
+        raise TypeError("registered_cycle must be a selected continuing registered cycle")
     branch = registered_cycle.registered_iteration.branch
     if (
         registered_cycle.next_thinning is None

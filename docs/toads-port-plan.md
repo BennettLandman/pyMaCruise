@@ -1443,3 +1443,17 @@ voxel count match the selected label-transfer kernel. This is synthetic
 composition over source-checked stages, not complete TOADS equivalence. See the
 [validation report](reports/toads-registered-fourth-terminal-branch-2026-10-02.md).
 P18cybl remains Started pending full-suite evidence.
+
+### Callable registered loop runner (P18cym)
+
+A new Python entry point assembles the selected registered TOADS startup and
+iteration loop through final classification. It preserves carried degree and
+field state, exact statistics/memberships, rigid registration, control, and
+state refresh for continuing branches. On the compact four-iteration RAS
+case, it matched the separate stage-by-stage composition; the focused test
+passed 1 test in 55.86 seconds. This is a callable synthetic loop over
+selected kernels, not a Java wrapper match or full two-pass MaCRUISE/dura
+workflow. Source-line coverage is not recalculated until source mapping is
+reviewed at a full-suite checkpoint. See the [validation
+report](reports/toads-registered-loop-runner-2026-10-02.md). P18cym remains
+Started.
