@@ -81,8 +81,10 @@ from pymacruise.toads_output_io import (
     toads_output_images,
 )
 from pymacruise.toads_alignment_startup import (
+    ToadsAlignmentRegistration,
     ToadsAlignmentStartup,
     prepare_toads_alignment_startup,
+    register_toads_alignment_startup,
 )
 
 __all__ = [
@@ -166,4 +168,6 @@ __all__ = [
     "save_toads_dura_wrapper_outputs",
     "ToadsAlignmentStartup",
     "prepare_toads_alignment_startup",
+    "ToadsAlignmentRegistration",
+    "register_toads_alignment_startup",
 ]

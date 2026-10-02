@@ -4,7 +4,10 @@ import numpy as np
 import nibabel as nib
 import pytest
 
-from pymacruise.toads_alignment_startup import prepare_toads_alignment_startup
+from pymacruise.toads_alignment_startup import (
+    prepare_toads_alignment_startup,
+    register_toads_alignment_startup,
+)
 
 
 def _synthetic_inputs():
@@ -102,4 +105,44 @@ def test_startup_rejects_invalid_atlas_contract(priors, template_resolution) -> 
     with pytest.raises(ValueError):
         prepare_toads_alignment_startup(
             t1, mask, topology, priors, template_resolution
+        )
+
+
+def test_startup_memberships_feed_selected_exact_rigid_atlas_pyramid() -> None:
+    t1, mask, topology, priors = _synthetic_inputs()
+    startup = prepare_toads_alignment_startup(
+        t1, mask, topology, priors, (1.0, 1.0, 1.0)
+    )
+    xx, yy, zz = np.indices((15, 13, 11), dtype=np.float32)
+    centers = ((7, 6, 5), (5, 5, 4), (9, 7, 6), (6, 8, 5))
+    atlas_shapes = np.empty((15, 13, 11, 4), dtype=np.float32)
+    for klass, (cx, cy, cz) in enumerate(centers):
+        distance = (xx - cx) ** 2 + 1.3 * (yy - cy) ** 2 + 0.8 * (zz - cz) ** 2
+        atlas_shapes[..., klass] = np.exp(-distance / np.float32(18.0))
+    atlas_shapes[..., 0] = np.float32(1.0)
+    memberships_before = startup.initial_memberships.copy()
+
+    result = register_toads_alignment_startup(
+        startup,
+        atlas_shapes,
+        levels=2,
+        max_iterations=1,
+    )
+
+    assert result.startup is startup
+    assert len(result.registration.levels) == 1
+    assert result.registration.levels[0].scale == 2
+    assert result.registration.transform.shape == (6,)
+    assert np.isfinite(result.registration.transform).all()
+    np.testing.assert_array_equal(startup.initial_memberships, memberships_before)
+
+
+def test_registration_rejects_shape_class_order_mismatch() -> None:
+    t1, mask, topology, priors = _synthetic_inputs()
+    startup = prepare_toads_alignment_startup(
+        t1, mask, topology, priors, (1.0, 1.0, 1.0)
+    )
+    with pytest.raises(ValueError, match="startup class order"):
+        register_toads_alignment_startup(
+            startup, np.ones((9, 8, 7, 3), dtype=np.float32), levels=2
         )

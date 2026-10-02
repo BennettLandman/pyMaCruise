@@ -17,6 +17,10 @@ from numpy.typing import ArrayLike, NDArray
 from .toads_crop import crop_toads_images, find_toads_crop_bounds, transform_toads_topology
 from .toads_initialization import initial_exact_memberships, initial_intensity_centroids
 from .toads_preprocessing import ToadsIntensityResult, ToadsRASGeometry, prepare_toads_intensity, toads_ras_geometry
+from .toads_registration_sampling import (
+    ToadsRigidRegistrationPyramidResult,
+    register_toads_atlas_rigid_pyramid,
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,7 @@ class ToadsAlignmentStartup:
     cropped_images: NDArray[np.float32]
     cropped_topology: NDArray
     transform: NDArray[np.float32]
+    template_resolution_mm: tuple[float, float, float]
     centroids: NDArray[np.float32]
     initial_memberships: NDArray[np.float32]
     stage_order: tuple[str, ...]
@@ -128,6 +133,7 @@ def prepare_toads_alignment_startup(
         cropped_images=crop.images,
         cropped_topology=cropped_topology,
         transform=crop.transform,
+        template_resolution_mm=tuple(float(v) for v in template_resolution),
         centroids=centroids,
         initial_memberships=memberships,
         stage_order=(
@@ -138,3 +144,57 @@ def prepare_toads_alignment_startup(
             "initialMemberships",
         ),
     )
+
+
+@dataclass(frozen=True)
+class ToadsAlignmentRegistration:
+    """Initial exact-membership atlas-pyramid registration result."""
+
+    startup: ToadsAlignmentStartup
+    registration: ToadsRigidRegistrationPyramidResult
+
+
+def register_toads_alignment_startup(
+    startup: ToadsAlignmentStartup,
+    atlas_shape_priors: ArrayLike,
+    *,
+    levels: int,
+    max_iterations: int = 50,
+    energy_tolerance: float = 1e-6,
+    minimum_lambda: float = 1e-3,
+) -> ToadsAlignmentRegistration:
+    """Run the selected exact-membership rigid pyramid from startup state.
+
+    This connects the initialized memberships to the selected
+    ``registerShapesPyramid`` numerical operation. As in the Java atlas
+    method, class zero (MASK/background) is excluded from registration. Shape
+    priors are on the template grid and use the same descriptor class order as
+    the startup intensity priors. Atlas loading, the preceding
+    ``updateShapeRegistration`` setup, and subsequent TOADS stages remain
+    separate.
+    """
+    if not isinstance(startup, ToadsAlignmentStartup):
+        raise TypeError("startup must be a ToadsAlignmentStartup")
+    shapes = np.asarray(atlas_shape_priors, dtype=np.float32)
+    expected_classes = startup.initial_memberships.shape[-1]
+    if shapes.ndim != 4 or shapes.shape[-1] != expected_classes:
+        raise ValueError("atlas_shape_priors must be (template_x,template_y,template_z,classes) in startup class order")
+    if not np.isfinite(shapes).all():
+        raise ValueError("atlas_shape_priors must be finite")
+    registered_classes = np.ones(expected_classes, dtype=bool)
+    registered_classes[0] = False
+    registration = register_toads_atlas_rigid_pyramid(
+        startup.initial_memberships,
+        shapes,
+        levels=levels,
+        image_resolutions_mm=tuple(
+            float(v) for v in np.abs(startup.geometry.signed_image_resolutions_mm)
+        ),
+        template_resolutions_mm=startup.template_resolution_mm,
+        initial_transform=tuple(float(v) for v in startup.transform),
+        registered_classes=registered_classes,
+        max_iterations=max_iterations,
+        energy_tolerance=energy_tolerance,
+        minimum_lambda=minimum_lambda,
+    )
+    return ToadsAlignmentRegistration(startup, registration)
