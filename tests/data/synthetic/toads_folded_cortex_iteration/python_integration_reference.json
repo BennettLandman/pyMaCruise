@@ -1,0 +1,34 @@
+{
+  "shape": [
+    27,
+    25,
+    23
+  ],
+  "initial_label_counts": [
+    11557,
+    1157,
+    2811
+  ],
+  "thinning_processed": 866,
+  "topology_gate_calls": {
+    "accepted": 1354,
+    "rejected": 740
+  },
+  "thinning_segmentation_sha256": "23072e386044808996b8a1a445f836c6881580fbc58e5dc01a1285918516538f",
+  "thinning_skeleton_sha256": "5113075f02c74fe1859170b0e75e3493f8eade67d2bbfa8fc5cf1b0ffe4b02e6",
+  "membership_sha256": "991c6369f5484f6becac3a9b86441300d8238595d2f382554dc5c262f2ac5d19",
+  "membership_energy_float32_bits": 1127488547,
+  "control_energy_ratio_float32_bits": 1073556553,
+  "control_flags": [
+    false,
+    true,
+    false,
+    true
+  ],
+  "growing_processed": 1815,
+  "growing_segmentation_sha256": "c1e070b1379e279e2af8dc4bbc75654188a122b172258c4a00566467843f3e5e",
+  "growing_skeleton_sha256": "fe932a8e256de3330a13bef385bf8ac4991a513080434b47c2071b2f4695f64c",
+  "relation_map_sha256": "f466718f7e9c162abfabcf63061441f191be668d02fd8539e3f3e58e42397d2c",
+  "boundary_distance_sha256": "3b0a980ddef08f87a39156bc855293bbd29ac7c4c911918c04530e9a81888047",
+  "closest_labels_sha256": "03079062585cb97a92cf70e60c2918f5c2469d4dddede0c3a9f136de6389e8b0"
+}
