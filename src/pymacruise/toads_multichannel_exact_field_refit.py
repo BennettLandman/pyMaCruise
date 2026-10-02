@@ -45,8 +45,8 @@ def toads_multichannel_exact_field_refit(
     labels = np.asarray(segmentation)
     centers = np.asarray(centroids, dtype=np.float32)
     initial_fields = np.asarray(fields, dtype=np.float32)
-    if images.ndim != 4 or images.shape[-1] < 2:
-        raise ValueError("image_values must be a channel-last multi-channel 4-D array")
+    if images.ndim != 4 or images.shape[-1] < 1:
+        raise ValueError("image_values must be a channel-last 4-D array with at least one channel")
     channels = images.shape[-1]
     if mem.ndim != 4 or mem.shape[:3] != images.shape[:3] or mem.shape[-1] != 11:
         raise ValueError("memberships must match the image grid and selected 11 classes")
