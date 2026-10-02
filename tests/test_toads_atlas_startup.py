@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import nibabel as nib
 import numpy as np
 
@@ -81,6 +83,11 @@ def _synthetic_subject():
 
 
 def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> None:
+    parameters = inspect.signature(register_toads_from_atlas_assets).parameters
+    assert parameters["levels"].default == 4
+    assert parameters["max_iterations"].default == 50
+    assert parameters["modality"].default == "T1_MPRAGE"
+
     descriptor = _write_atlas(tmp_path)
     t1, mask = _synthetic_subject()
 

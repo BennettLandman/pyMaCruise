@@ -287,7 +287,7 @@ def register_toads_from_atlas_assets(
     brain_mask: nib.spatialimages.SpatialImage,
     atlas: ToadsAtlas | str | Path,
     *,
-    levels: int,
+    levels: int = 4,
     max_iterations: int = 50,
     modality: str = "T1_MPRAGE",
     padding: int = 10,
