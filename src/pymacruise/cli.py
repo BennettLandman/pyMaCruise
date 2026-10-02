@@ -28,6 +28,7 @@ from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
+from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
@@ -173,6 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument("--t1-n4", required=True, type=Path)
     toads.add_argument("--brain-mask", required=True, type=Path)
     toads.add_argument("--output", required=True, type=Path, help="native-grid classification .nii.gz")
+    toads.add_argument("--dura-output-dir", type=Path, help="optional directory for the four source-scaled Dura-removal inputs")
     toads.add_argument("--atlas-descriptor", type=Path)
     toads.add_argument("--modality", default="T1_MPRAGE")
     toads.add_argument("--registration-levels", type=int, default=4)
@@ -360,6 +362,19 @@ def main(argv: list[str] | None = None) -> int:
             dtype=np.uint8,
         )
         _save_nifti_gz(output_image, args.output)
+        outputs: dict[str, Path | list[Path]] = {"classification": args.output}
+        if args.dura_output_dir is not None:
+            if result.wrapper_output_buffers is None:
+                raise RuntimeError("selected TOADS loop did not return Dura-removal wrapper outputs")
+            dura_outputs = save_toads_dura_wrapper_outputs(
+                result.wrapper_output_buffers,
+                ras_t1,
+                args.dura_output_dir,
+                input_name=args.t1_n4,
+            )
+            outputs["dura_removal_inputs"] = list(dura_outputs.values())
+            for name, path in dura_outputs.items():
+                print(f"Wrote Dura-removal input {name}: {path}")
         print(
             f"Wrote {args.output}; iterations={len(result.exact_iterations)}, "
             f"changed_classification_voxels={result.changed_classification_voxels} (RAS)"
@@ -377,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
                 "maximum_distance": args.maximum_distance,
                 "category_exponents": args.category_exponents,
             },
-            outputs={"classification": args.output},
+            outputs=outputs,
         )
     elif args.command == "prepare-raw":
         result = prepare_raw(

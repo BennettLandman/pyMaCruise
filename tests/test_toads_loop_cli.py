@@ -14,6 +14,7 @@ ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11
 
 def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path) -> None:
     output = tmp_path / "classification.nii.gz"
+    dura_output_dir = tmp_path / "dura-inputs"
     result = main(
         [
             "toads-loop",
@@ -25,6 +26,8 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path) -
             str(ATLAS),
             "--output",
             str(output),
+            "--dura-output-dir",
+            str(dura_output_dir),
             "--registration-levels",
             "1",
             "--registration-iterations",
@@ -46,6 +49,16 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path) -
     assert saved.shape == reference.shape
     assert nib.aff2axcodes(saved.affine) == ("R", "A", "S")
     assert saved.get_data_dtype().name == "uint8"
+    dura_outputs = sorted(dura_output_dir.glob("*.nii.gz"))
+    assert len(dura_outputs) == 5  # Classification plus the four float inputs.
+    for path in dura_outputs:
+        image = nib.load(str(path))
+        assert image.shape == reference.shape
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+        if path.name.endswith("_Toads_seg.nii.gz"):
+            assert image.get_data_dtype().name == "uint8"
+        else:
+            assert image.get_data_dtype().name == "float32"
 
 
 def test_toads_loop_help_exposes_required_native_inputs(capsys) -> None:

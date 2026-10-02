@@ -277,7 +277,7 @@ pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
   [--padding 10] [--maximum-iterations 50] \
   [--convergence-threshold 1e-4] [--relation-limit 3] \
   [--maximum-distance 1e-4] [--category-exponents 2 2 2] \
-  [--provenance run.json]
+  [--dura-output-dir DURA_INPUTS_DIR] [--provenance run.json]
 ```
 
 ### Inputs and assumptions
@@ -288,13 +288,14 @@ pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
 | `--brain-mask PATH` | Yes | User-provided binary brain mask on the T1 physical grid. Non-RAS T1 or mask images are reoriented with a visible warning. |
 | `--atlas-descriptor PATH` | No | Defaults to the bundled base TOADS descriptor. Referenced atlas images must remain beside the descriptor using its declared relative paths and `.nii.gz` format. |
 | `--output PATH` | Yes | Native-grid terminal classification, compressed `.nii.gz`; existing output is not overwritten. |
+| `--dura-output-dir PATH` | No | Optional directory for the classification and four source-scaled float32 Dura-removal inputs (CSF, GM, WM fill, WM mask), all restored to native RAS. Existing output collisions are rejected. |
 | Registration and loop options | No | Selected source controls with defaults shown above. `--category-exponents` sets CSF, GM, and WM exponents for the single T1 channel. |
 
 ### Output
 
 The command writes one uint8 classification map on the original T1 grid with
 RAS orientation and affine. Labels are restored from the registered crop using
-the selected TOADS padding and x-fast uncrop semantics. The standalone command
-does not remove dura, run the second MaCRUISE TOADS pass, create CRUISE output
-products, or execute the complete base/plus workflow. The broader workflow CLI
+the selected TOADS padding and x-fast uncrop semantics. The optional Dura-removal files are inputs for a later stage; this command
+does not execute dura removal, run the second MaCRUISE TOADS pass, create final
+CRUISE output products, or execute the complete base/plus workflow. The broader workflow CLI
 and synthetic full-workflow validation remain open.

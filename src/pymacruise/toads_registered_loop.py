@@ -16,6 +16,12 @@ from numpy.typing import NDArray
 
 from .toads_alignment_startup import ToadsAtlasAlignmentRun
 from .toads_crop import uncrop_toads_buffer
+from .toads_dura_outputs import (
+    ToadsDuraRemovalProducts,
+    ToadsWrapperOutputBuffers,
+    adapt_toads_wrapper_outputs,
+    generate_toads_dura_removal_outputs,
+)
 from .toads_registered_first_exact_iteration import (
     ToadsRegisteredFirstExactIteration,
     continue_registered_unity_startup_through_first_exact_iteration,
@@ -80,6 +86,8 @@ class ToadsRegisteredLoopResult:
     classification: NDArray[np.int8] | None
     native_classification: NDArray[np.int8] | None
     changed_classification_voxels: int | None
+    dura_removal_products: ToadsDuraRemovalProducts | None
+    wrapper_output_buffers: ToadsWrapperOutputBuffers | None
 
 
 def run_registered_toads_loop(
@@ -206,6 +214,8 @@ def run_registered_toads_loop(
 
     final_branch = current_cycle.registered_iteration.branch
     native_classification = None
+    dura_products = None
+    wrapper_outputs = None
     if final_branch.classification is not None:
         bounds = alignment_run.template_refresh.bounds
         cropped_shape = tuple(int(v) for v in final_branch.classification.shape)
@@ -236,6 +246,19 @@ def run_registered_toads_loop(
             np.int8(1),
         )
         native_classification = native_buffer.reshape(native_shape, order="F")
+        final_segmentation = current_cycle.final_segmentation
+        dura_products = generate_toads_dura_removal_outputs(
+            current_exact.membership_pass.memberships,
+            final_segmentation,
+            tuple(item.name for item in alignment_run.atlas.structures),
+        )
+        wrapper_outputs = adapt_toads_wrapper_outputs(
+            dura_products,
+            final_branch.classification,
+            native_shape,
+            bounds,
+            padding_by_axis[0],
+        )
     return ToadsRegisteredLoopResult(
         alignment_run=alignment_run,
         startup=startup,
@@ -244,4 +267,6 @@ def run_registered_toads_loop(
         classification=final_branch.classification,
         native_classification=native_classification,
         changed_classification_voxels=final_branch.changed_classification_voxels,
+        dura_removal_products=dura_products,
+        wrapper_output_buffers=wrapper_outputs,
     )

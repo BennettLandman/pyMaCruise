@@ -21,9 +21,10 @@ Command:
 ./.venv/bin/pytest -q tests/test_toads_loop_cli.py
 ```
 
-Result: **2 passed, 0 failed, 0 skipped in 17.81 seconds**.
+Result: **2 passed, 0 failed, 0 skipped in 15.24 seconds**.
 
 The synthetic run uses a compact 11-class atlas and one registration level;
-the written output has the input T1 shape, `uint8` labels, and RAS orientation.
-A separate help check verifies that corrected T1, brain mask, and output are
-required arguments. Full-suite and packaged-install CLI evidence is pending.
+the primary output has the input T1 shape, `uint8` labels, and RAS orientation.
+The optional directory contains the wrapper classification and four float32
+Dura inputs; each has native T1 shape and RAS geometry. A separate help check
+verifies that corrected T1, brain mask, and output are required arguments. Full-suite and packaged-install CLI evidence is pending.

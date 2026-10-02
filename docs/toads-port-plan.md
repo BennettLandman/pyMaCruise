@@ -1465,8 +1465,10 @@ Started.
 
 The registered loop runner is available as `pymacruise toads-loop`. It takes
 an N4-corrected T1 and matching user brain mask, uses the bundled base atlas by
-default, restores terminal labels to native RAS, and writes `.nii.gz`. The
-compact synthetic run and help contract passed 2 tests in 17.81 seconds. This
+default, restores terminal labels to native RAS, and writes `.nii.gz`. An
+optional output directory writes the selected classification plus four
+source-scaled float32 Dura-removal input maps in RAS. The compact synthetic
+run and help contract passed 2 tests in 15.24 seconds. This
 command omits N4 execution, dura removal, the second MaCRUISE pass, and the
 full base/plus workflow CLI. See [the input/output reference](cli-help.md) and
 [validation report](reports/toads-loop-cli-2026-10-02.md). P18cyn remains

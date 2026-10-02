@@ -35,6 +35,7 @@ class ToadsRegisteredMembershipBranchCycle:
     registered_iteration: ToadsDefaultMembershipRegisteredIteration
     next_transformed_shape_priors: NDArray[np.float32] | None
     next_thinning: ToadsPostRegistrationNextThinning | None
+    final_segmentation: NDArray
     stage_order: tuple[str, ...]
 
 
@@ -148,11 +149,17 @@ def continue_registered_membership_through_branch(
             f"iteration{iteration + 1}.initThinningLabels",
             f"iteration{iteration + 1}.propagateThinning",
         ))
+    final_segmentation = (
+        branch.growing.segmentation.copy()
+        if branch.growing is not None
+        else np.asarray(segmentation).copy()
+    )
     return ToadsRegisteredMembershipBranchCycle(
         membership_pass=membership_pass,
         registration_control=registration,
         registered_iteration=registered,
         next_transformed_shape_priors=next_shapes,
         next_thinning=next_thinning,
+        final_segmentation=final_segmentation,
         stage_order=tuple(stages),
     )
