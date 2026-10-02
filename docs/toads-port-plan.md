@@ -1408,3 +1408,15 @@ against Java formulas; this integration case does not assume a fit when its
 source ratio gate does not schedule one. See the [validation
 report](reports/toads-registered-third-exact-iteration-2026-10-02.md).
 P18cybi remains Started pending full-suite evidence.
+
+### Iteration-three membership through registration and selected branch (P18cybj)
+
+The P18cybi exact membership result now reaches the selected rigid registration,
+energy-ratio and stop checks, then follows the source terminal or continuing
+branch. It derives its state from the preceding loop; continuing cases refresh
+relations and shape priors and enter iteration-four thinning. The compact RAS
+integration test passed 1 test in 26.91 seconds. It verifies identity of the
+membership handoff, selected energy-ratio arithmetic, and the next-thinning
+state when applicable. See the [validation
+report](reports/toads-third-membership-branch-cycle-2026-10-02.md).
+P18cybj remains Started pending full-suite evidence.
