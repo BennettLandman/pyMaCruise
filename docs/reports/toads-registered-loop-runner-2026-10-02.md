@@ -7,8 +7,10 @@ atlas run, initializes unity correction fields and exact memberships, performs
 initial thinning, then carries each exact statistics/membership update
 through registration and the continuing or terminal branch. Continuing cycles
 reuse their transformed shape, relation, availability, and thinning state.
-Terminal classification and changed-voxel count are returned with all
-intermediate exact iterations and registered cycle records.
+Terminal crop-space classification and changed-voxel count are returned with all
+intermediate exact iterations and registered cycle records. The result also
+restores classification to the original native RAS voxel grid using the
+selected x-fast uncrop buffer and symmetric crop padding.
 
 The runner composes existing source-checked operations; it adds no generic
 segmentation substitute or new numerical kernel. It requires at least two
@@ -24,7 +26,7 @@ Command:
 ./.venv/bin/pytest -q tests/test_toads_registered_first_iteration_cycle.py
 ```
 
-Result: **1 passed, 0 failed, 0 skipped in 57.79 seconds**.
+Result: **1 passed, 0 failed, 0 skipped in 55.94 seconds**.
 
 On the compact synthetic RAS atlas/T1/mask run, the manually assembled
 degree-zero path continues to match direct selected-kernel calls. The runner

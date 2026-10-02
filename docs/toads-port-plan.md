@@ -1451,9 +1451,10 @@ iteration loop through final classification. It preserves carried degree and
 field state, exact statistics/memberships, rigid registration, control, and
 state refresh for continuing branches. The compact RAS validation keeps direct-kernel checks for the manually
 composed degree-zero path and separately exercises the runner through a
-four-iteration forced degree ramp `[0,1,2,3]`; the focused test passed 1 test
-in 57.79 seconds. The positive field-fit formulas have separate Java-harness
-evidence in P18cybb/P18cyba. This is a callable synthetic loop over
+four-iteration forced degree ramp `[0,1,2,3]`, then restores terminal labels
+to the original native RAS grid with the selected uncrop buffer behavior. The
+focused test passed 1 test in 55.94 seconds. Positive field-fit formulas
+have separate Java-harness evidence in P18cybb/P18cyba. This is a callable synthetic loop over
 selected kernels, not a Java wrapper match or full two-pass MaCRUISE/dura
 workflow. Source-line coverage is not recalculated until source mapping is
 reviewed at a full-suite checkpoint. See the [validation

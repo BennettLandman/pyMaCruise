@@ -15,6 +15,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .toads_alignment_startup import ToadsAtlasAlignmentRun
+from .toads_crop import uncrop_toads_buffer
 from .toads_registered_first_exact_iteration import (
     ToadsRegisteredFirstExactIteration,
     continue_registered_unity_startup_through_first_exact_iteration,
@@ -77,6 +78,7 @@ class ToadsRegisteredLoopResult:
     exact_iterations: tuple[Any, ...]
     registered_cycles: tuple[Any, ...]
     classification: NDArray[np.int8] | None
+    native_classification: NDArray[np.int8] | None
     changed_classification_voxels: int | None
 
 
@@ -203,11 +205,43 @@ def run_registered_toads_loop(
         current_iteration = next_iteration
 
     final_branch = current_cycle.registered_iteration.branch
+    native_classification = None
+    if final_branch.classification is not None:
+        bounds = alignment_run.template_refresh.bounds
+        cropped_shape = tuple(int(v) for v in final_branch.classification.shape)
+        crop_extent = (
+            bounds[1] - bounds[0] + 1,
+            bounds[3] - bounds[2] + 1,
+            bounds[5] - bounds[4] + 1,
+        )
+        padding_by_axis = tuple(
+            (size - extent) // 2
+            for size, extent in zip(cropped_shape, crop_extent, strict=True)
+        )
+        if any(
+            size - extent != 2 * padding
+            for size, extent, padding in zip(
+                cropped_shape, crop_extent, padding_by_axis, strict=True
+            )
+        ) or len(set(padding_by_axis)) != 1:
+            raise RuntimeError("registered output crop does not preserve the selected symmetric padding")
+        native_shape = tuple(
+            int(value) for value in alignment_run.template_refresh.native_images.shape[1:]
+        )
+        native_buffer = uncrop_toads_buffer(
+            final_branch.classification,
+            native_shape,
+            bounds,
+            padding_by_axis[0],
+            np.int8(1),
+        )
+        native_classification = native_buffer.reshape(native_shape, order="F")
     return ToadsRegisteredLoopResult(
         alignment_run=alignment_run,
         startup=startup,
         exact_iterations=tuple(exact_iterations),
         registered_cycles=tuple(registered_cycles),
         classification=final_branch.classification,
+        native_classification=native_classification,
         changed_classification_voxels=final_branch.changed_classification_voxels,
     )

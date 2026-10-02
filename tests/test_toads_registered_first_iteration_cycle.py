@@ -35,6 +35,7 @@ from pymacruise.toads_registered_unity_field_startup import (
 )
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
 from pymacruise.toads_control import toads_classification_from_labels, toads_energy_ratio
+from pymacruise.toads_crop import uncrop_toads_buffer
 from pymacruise.toads_relations import toads_refresh_relation_state
 from pymacruise.toads_thinning import toads_propagate_growing, toads_propagate_thinning
 
@@ -629,3 +630,20 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         assert assembled_terminal.control.stop
         np.testing.assert_array_equal(assembled.classification, assembled_terminal.classification)
         assert assembled.changed_classification_voxels == assembled_terminal.changed_classification_voxels
+        native_shape = run.template_refresh.native_images.shape[1:]
+        bounds = run.template_refresh.bounds
+        padding = (
+            run.template_refresh.recropped_images.shape[1] - (bounds[1] - bounds[0] + 1)
+        ) // 2
+        expected_native_buffer = uncrop_toads_buffer(
+            assembled.classification,
+            native_shape,
+            bounds,
+            padding,
+            np.int8(1),
+        )
+        assert assembled.native_classification.shape == native_shape
+        np.testing.assert_array_equal(
+            assembled.native_classification,
+            expected_native_buffer.reshape(native_shape, order="F"),
+        )
