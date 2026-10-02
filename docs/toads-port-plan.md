@@ -947,3 +947,19 @@ set, the T1 prior vector had 11 finite values, and the descriptor spacing was
 0.9375 mm. The operation materialized 542,270,592 bytes of arrays. It read
 bundled atlas resources only, not subject MRI, and it is not a segmentation or
 registration validation. Details and the command are in [the smoke report](reports/toads-bundled-atlas-ras-smoke-2026-10-02.md).
+
+
+### Corrected signed RAS spacing handoff (P18cyaf)
+
+The startup-to-registration adapter now passes
+`ToadsRASGeometry.signed_image_resolutions_mm` unchanged. The selected
+`MultipleToadPreprocess.getSignedImageResolutions()` values for RAS voxel axes
+are `(-sx, -sy, +sz)`; the previous `abs(...)` conversion discarded source
+coordinate direction in the registration map. Descriptor template spacing
+continues to be passed separately.
+
+The focused startup and registration group passed 43 tests in 1.25 seconds on
+implementation commit `0d15a143d4f8321266e82e8272c5910bac92fb56`. It includes
+the Java-reference signed-landmark mapping test and a new adapter-level
+assertion that the exact signed tuple reaches the setup record. The source class
+hash and scope are recorded in [the P18cyaf report](reports/toads-signed-ras-spacing-2026-10-02.md).
