@@ -1509,3 +1509,15 @@ seconds. This follows the selected source's sequence, but uses native RAS input
 instead of the historical SPECTRE transfer and does not include downstream
 cerebellum removal, crop, topology, ACE, GVF, or TGDM. It is not full workflow
 equivalence. See [the P18cybq report](reports/toads-dura-second-toads-2026-10-02.md).
+
+### Second-pass brainstem and cerebellum map cleanup (P18cybr)
+
+The selected optional wrapper step transfers MaSeg labels onto second-pass
+TOADS maps and zeros labels 35, 38–41, and 71–73 in GM, WM-fill, and WM-mask.
+The Python API uses nearest-neighbor physical-grid transfer and preserves the
+map's dtype; the new `remove-cerebellum` CLI writes all three cleaned maps.
+The focused synthetic tests passed 2 tests in 3.73 seconds and cover every
+excluded label, retained/background voxels, output types, and RAS geometry.
+This is exact for identical RAS physical grids; arbitrary source-to-reference
+geometry is not claimed to match JIST's orientation-only operation. See [the
+P18cybr report](reports/toads-cerebellum-removal-2026-10-02.md).

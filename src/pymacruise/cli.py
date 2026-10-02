@@ -29,6 +29,7 @@ from pymacruise.thickness import closest_point_thickness, levelset_subtraction_t
 from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
 from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
+from pymacruise.toads_cerebellum import remove_brainstem_and_cerebellum
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
@@ -166,6 +167,17 @@ def build_parser() -> argparse.ArgumentParser:
     dura.add_argument("--output-dir", required=True, type=Path)
     dura.add_argument("--max-iterations", type=int, default=5)
     _add_provenance_option(dura)
+
+    cerebellum = commands.add_parser(
+        "remove-cerebellum",
+        help="zero brainstem/cerebellum labels from second-pass TOADS tissue maps",
+    )
+    cerebellum.add_argument("--segmentation", required=True, type=Path, help="MaSeg label map .nii.gz")
+    cerebellum.add_argument("--gm", required=True, type=Path, help="second-pass TOADS GM map .nii.gz")
+    cerebellum.add_argument("--wm-fill", required=True, type=Path, help="second-pass TOADS WM-fill map .nii.gz")
+    cerebellum.add_argument("--wm-mask", required=True, type=Path, help="second-pass TOADS WM-mask map .nii.gz")
+    cerebellum.add_argument("--output-dir", required=True, type=Path)
+    _add_provenance_option(cerebellum)
 
     toads = commands.add_parser(
         "toads-loop",
@@ -693,6 +705,42 @@ def main(argv: list[str] | None = None) -> int:
             },
             parameters=dura_parameters,
             outputs=dura_outputs,
+        )
+    elif args.command == "remove-cerebellum":
+        maps = {
+            "gm": args.gm,
+            "wm_fill": args.wm_fill,
+            "wm_mask": args.wm_mask,
+        }
+        segmentation = _load_nifti_gz(args.segmentation)
+        output_names = {
+            "gm": "gm_cerebellum_removed.nii.gz",
+            "wm_fill": "wmfill_cerebellum_removed.nii.gz",
+            "wm_mask": "wmmask_cerebellum_removed.nii.gz",
+        }
+        output_paths = {key: args.output_dir / name for key, name in output_names.items()}
+        collisions = [path for path in output_paths.values() if path.exists()]
+        if collisions:
+            raise FileExistsError(
+                "Refusing to overwrite cerebellum-removal output(s): "
+                + ", ".join(str(path) for path in collisions)
+            )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        for key, input_path in maps.items():
+            result = remove_brainstem_and_cerebellum(
+                _load_nifti_gz(input_path), segmentation
+            )
+            _save_nifti_gz(result.image, output_paths[key])
+            print(
+                f"Wrote {output_paths[key]}; transferred brainstem/cerebellum "
+                f"voxels={result.removed_voxels} (RAS)"
+            )
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"segmentation": args.segmentation, **maps},
+            parameters={"removed_labels": sorted((35, 38, 39, 40, 41, 71, 72, 73)), "interpolation": "nearest_neighbor"},
+            outputs=output_paths,
         )
     elif args.command == "surface-extract":
         if args.output.suffix.lower() != ".vtk":

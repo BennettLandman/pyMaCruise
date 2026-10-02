@@ -329,3 +329,18 @@ pymacruise toads-loop --t1-n4 dura_outputs/stripped_t1.nii.gz \
 
 This uses the current native-RAS working space. The historical SPECTRE
 registration and inverse transfer are not implemented in this handoff.
+
+## `pymacruise remove-cerebellum`
+
+```text
+pymacruise remove-cerebellum --segmentation MaSeg.nii.gz \
+  --gm Toads2_gm.nii.gz --wm-fill Toads2_wmfill.nii.gz \
+  --wm-mask Toads2_wmmask.nii.gz --output-dir cerebrum_maps \
+  [--provenance run.json]
+```
+
+The CLI nearest-neighbor transfers the integer MaSeg label map to each TOADS
+map grid, then zeros labels 35, 38–41, and 71–73. It preserves each input
+map's scalar dtype and writes three RAS `.nii.gz` files. Physical-affine
+transfer has only been compared with the selected JIST operation on identical
+RAS grids; arbitrary origin/spacing changes remain unvalidated.
