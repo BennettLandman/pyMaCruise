@@ -982,3 +982,12 @@ in 1.20 seconds on tested tree commit
 signed-coordinate landmark tests are included; the new assertions specifically
 check the setup geometry. This does not validate later registration levels or
 full TOADS behavior. See [the P18cyag report](reports/toads-registration-ras-geometry-2026-10-02.md).
+
+
+### Selected wrapper defaults for atlas startup (P18cyah)
+
+`register_toads_from_atlas_assets` defaults to the selected wrapper profile:
+`T1_MPRAGE`, four registration pyramid levels, and 50 iterations. Callers can
+continue to specify smaller settings for fast synthetic slices; these are
+explicit overrides rather than silent changes to the selected profile. The
+source call and focused tests are recorded in [the P18cyah report](reports/toads-wrapper-defaults-2026-10-02.md).
