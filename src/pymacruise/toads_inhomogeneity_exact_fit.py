@@ -1,10 +1,10 @@
-"""Selected exact-membership degree-one global TOADS field refit.
+"""Selected exact-membership global TOADS polynomial field refit.
 
 This implements the ``EXACT`` branch of VandyCRUISE
 ``InhomogeneityCorrection2.computeExact3DPolynomialField`` for the selected
 TOADS defaults: stride three, q=2, optimized-image weights, a global
-Chebyshev field, and the equal-variance mode. Degree two/three and alternate
-constructors remain separate paths.
+Chebyshev field, and the equal-variance mode. Degrees one through three use
+the selected wrapper's coefficient counts and explicit basis order.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ class ToadsExactChebyshevFieldFit:
     correction_mask: NDArray[np.bool_]
 
 
-def fit_toads_exact_chebyshev_field_degree1(
+def fit_toads_exact_chebyshev_field(
     image_values: Any,
     memberships: Any,
     segmentation: Any,
@@ -38,6 +38,7 @@ def fit_toads_exact_chebyshev_field_degree1(
     field: Any,
     *,
     background_class_index: int = 0,
+    degree: int = 1,
 ) -> ToadsExactChebyshevFieldFit:
     """Refit an attached global field from the complete class-membership map.
 
@@ -49,6 +50,7 @@ def fit_toads_exact_chebyshev_field_degree1(
     sampling, full-grid scaling, float32 field evaluation, and mask-mean
     centering are retained.
 
+    ``degree`` selects the supported source basis size (4, 10, or 20 terms).
     ``field`` is mutated in place on the non-background mask, matching the
     source's attached-array update. Image, memberships, segmentation, and
     centroids are read-only inputs. A singular or nonfinite system raises
@@ -80,14 +82,18 @@ def fit_toads_exact_chebyshev_field_degree1(
         raise ValueError("background_class_index is outside the class map")
     if np.any(seg < 0) or np.any(seg >= mem.shape[-1]):
         raise ValueError("segmentation contains a class outside the membership maps")
+    if isinstance(degree, bool) or not isinstance(degree, (int, np.integer)) or int(degree) not in (1, 2, 3):
+        raise ValueError("degree must be one of the selected supported values: 1, 2, or 3")
+    degree = int(degree)
 
     mask = seg != background
     if not np.any(mask):
         raise ValueError("source correction mask is empty")
 
     dimensions = image.shape
-    rhs = np.zeros(4, dtype=np.float64)
-    normal = np.zeros((4, 4), dtype=np.float64)
+    n_parameters = (4, 10, 20)[degree - 1]
+    rhs = np.zeros(n_parameters, dtype=np.float64)
+    normal = np.zeros((n_parameters, n_parameters), dtype=np.float64)
     power_table = {"optimized_csf": (0.0, 2.0, 1.0), "optimized_gm": (0.0, 2.0, 1.0), "optimized_wm": (0.0, 2.0, 1.0)}
     # The selected descriptor consists of MASK, optimized CSF, optimized GM,
     # and optimized WM classes; all three wrapper power defaults are 1.0.
@@ -104,7 +110,7 @@ def fit_toads_exact_chebyshev_field_degree1(
             for z in range(0, nz, 3):
                 if not mask[x, y, z]:
                     continue
-                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=1)
+                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
                 for klass in range(mem.shape[-1]):
                     if klass == background:
                         continue
@@ -130,10 +136,10 @@ def fit_toads_exact_chebyshev_field_degree1(
                     matrix_term = np.float32(membership_squared * optimized_weight)
                     matrix_term = np.float32(matrix_term * image[x, y, z])
                     matrix_term = np.float32(matrix_term * image[x, y, z])
-                    for row in range(4):
+                    for row in range(n_parameters):
                         rhs[row] += float(np.float32(vector_term * basis[row]))
                         row_term = np.float32(matrix_term * basis[row])
-                        for column in range(4):
+                        for column in range(n_parameters):
                             normal[row, column] += float(np.float32(row_term * basis[column]))
 
     full_volume = np.float32(nx * ny * nz)
@@ -155,9 +161,9 @@ def fit_toads_exact_chebyshev_field_degree1(
             for z in range(nz):
                 if not mask[x, y, z]:
                     continue
-                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=1)
+                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
                 value = np.float32(0.0)
-                for index in range(4):
+                for index in range(n_parameters):
                     value = np.float32(float(coefficients[index]) * float(basis[index]) + float(value))
                 field_values[x, y, z] = value
                 mean = np.float32(mean + value)
@@ -171,3 +177,24 @@ def fit_toads_exact_chebyshev_field_degree1(
                     field_values[x, y, z] = np.float32(field_values[x, y, z] + offset)
 
     return ToadsExactChebyshevFieldFit(field_values, coefficients, normal, rhs, mask.copy())
+
+
+def fit_toads_exact_chebyshev_field_degree1(
+    image_values: Any,
+    memberships: Any,
+    segmentation: Any,
+    centroids: Any,
+    field: Any,
+    *,
+    background_class_index: int = 0,
+) -> ToadsExactChebyshevFieldFit:
+    """Backward-compatible entry point for the exact degree-one field fit."""
+    return fit_toads_exact_chebyshev_field(
+        image_values,
+        memberships,
+        segmentation,
+        centroids,
+        field,
+        background_class_index=background_class_index,
+        degree=1,
+    )
