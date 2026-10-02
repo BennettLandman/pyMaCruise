@@ -10,7 +10,9 @@ from numpy.typing import NDArray
 
 from .toads_default_atlas_membership import DEFAULT_ATLAS_CLASS_TYPES
 from .toads_inhomogeneity_exact_fit import ToadsExactChebyshevFieldFit
+from .toads_initial_statistics_membership import ToadsInitialStatisticsMembership
 from .toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
+from .toads_registered_initial_membership import compute_registered_toads_initial_membership
 
 
 @dataclass(frozen=True)
@@ -21,6 +23,15 @@ class ToadsRegisteredFieldRefit:
     fits: tuple[ToadsExactChebyshevFieldFit, ...]
     degree: int
     channel_order: tuple[int, ...]
+    stage_order: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ToadsRegisteredCorrectedStartup:
+    """Correction field and first field-aware exact-membership update."""
+
+    field_refit: ToadsRegisteredFieldRefit
+    statistics_membership: ToadsInitialStatisticsMembership
     stage_order: tuple[str, ...]
 
 
@@ -84,4 +95,52 @@ def fit_registered_toads_correction_fields(
         degree=degree,
         channel_order=refit.channel_order,
         stage_order=(f"registered_startup.computeExact3DPolynomialField.degree{degree}",),
+    )
+
+
+def compute_registered_toads_corrected_initial_membership(
+    alignment_run: Any,
+    *,
+    exponent_by_channel_class: Any,
+    modality_weights: Any,
+    smoothing_priors: Any,
+    atlas_shape_priors: Any,
+    smoothing: float,
+    prior_factor: float,
+    prior_coefficient: float,
+    prior_scale: float = 0.05,
+    degree: int = 3,
+    psf_bias: Any | None = None,
+) -> ToadsRegisteredCorrectedStartup:
+    """Fit fields, then run the selected field-aware initial membership pass.
+
+    This connects the selected registered startup's correction constructor to
+    the existing initial statistics/exact-membership composition. All atlas,
+    smoothing, prior, and modality settings remain caller-supplied rather than
+    being guessed from the compact synthetic profile.
+    """
+    field_refit = fit_registered_toads_correction_fields(alignment_run, degree=degree)
+    membership = compute_registered_toads_initial_membership(
+        alignment_run,
+        exponent_by_channel_class=exponent_by_channel_class,
+        modality_weights=modality_weights,
+        smoothing_priors=smoothing_priors,
+        atlas_shape_priors=atlas_shape_priors,
+        smoothing=smoothing,
+        prior_factor=prior_factor,
+        prior_coefficient=prior_coefficient,
+        prior_scale=prior_scale,
+        intensity_field=field_refit.fields,
+        psf_bias=psf_bias,
+    )
+    return ToadsRegisteredCorrectedStartup(
+        field_refit=field_refit,
+        statistics_membership=membership,
+        stage_order=(
+            *field_refit.stage_order,
+            "registered_startup.computeVariances",
+            "registered_startup.computeImageVariance",
+            "registered_startup.computeCentroidSimilarity",
+            "registered_startup.computeExactMemberships",
+        ),
     )
