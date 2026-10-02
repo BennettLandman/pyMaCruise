@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
 from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
@@ -9,7 +11,11 @@ from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_opt
 from pymacruise.toads_initial_relation_state import toads_initialize_relation_state
 from pymacruise.toads_multichannel_carried_degree_iteration import (
     continue_toads_multichannel_through_carried_degree_iteration,
+    continue_toads_multichannel_iteration_through_next_thinning,
 )
+from pymacruise.toads_post_registration_next_thinning import toads_post_registration_next_thinning
+from pymacruise.toads_thinning import toads_propagate_thinning
+from test_toads_p18czb_registered_handoff import _atlas
 from test_toads_post_thinning_exact_field_ramp import _java_fit, _load_inputs, _next_thinning_with_fixture
 
 
@@ -159,3 +165,76 @@ def test_multichannel_degree_zero_keeps_attached_fields_and_updates_statistics()
     assert result.field_refit is None
     assert result.stage_order[-6] == "next_iteration.computeExact3DPolynomialField.degree0.noop"
     np.testing.assert_array_equal(fields, original_fields)
+
+
+def test_multichannel_memberships_continue_through_registration_growth_and_next_thinning():
+    next_thinning, images, fields, centers, labels, memberships, settings = _case()
+    exact = continue_toads_multichannel_through_carried_degree_iteration(
+        next_thinning,
+        images,
+        centers,
+        fields,
+        **settings,
+    )
+    relation = next_thinning.branch.relations.relation
+    thinning = toads_propagate_thinning(
+        labels,
+        memberships,
+        relation.class_adjacency,
+        settings["transformed_shapes"],
+        volume_ratio=0.5,
+        limit=3.0,
+    )
+    next_thinning = replace(next_thinning, thinning=thinning)
+    relations = toads_initialize_relation_state(thinning.segmentation, memberships, 1)
+    previous_energy = float(np.float32(exact.membership_pass.objective * np.float32(1.01)))
+    registered = continue_toads_multichannel_iteration_through_next_thinning(
+        exact,
+        _atlas(images[..., 0]),
+        np.zeros_like(memberships),
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        previous_energy=previous_energy,
+        iteration=1,
+        maximum_iterations=5,
+        convergence_threshold=0.0001,
+        segmentation=thinning.segmentation,
+        skeleton=thinning.skeleton,
+        ordering=np.zeros(thinning.segmentation.shape, dtype=np.float32),
+        class_volumes=thinning.class_volumes,
+        boundary_distances=relations.boundary_distances,
+        template_labels=np.asarray([0, 4, 7, 9, 11, 13, 17, 19, 21, 23, 25], dtype=np.int8),
+        previous_classification=np.full(thinning.segmentation.shape, -1, dtype=np.int8),
+        relation_limit=1,
+        do_growing=True,
+        initial_available=thinning.available,
+        subsample=2,
+        max_registration_iterations=2,
+        registration_energy_tolerance=0.0,
+    )
+    branch = registered.registered_iteration.branch
+    assert registered.registration_control.handoff.membership_pass is exact.membership_pass
+    assert registered.registration_control.handoff.registration is not None
+    assert branch.control.stop is False
+    assert branch.growing is not None and branch.relations is not None
+    assert registered.next_thinning.branch is branch
+    direct = toads_post_registration_next_thinning(branch, np.zeros_like(memberships))
+    np.testing.assert_array_equal(
+        registered.next_thinning.thinning.segmentation,
+        direct.thinning.segmentation,
+    )
+    np.testing.assert_array_equal(
+        registered.next_thinning.thinning.skeleton,
+        direct.thinning.skeleton,
+    )
+    assert registered.stage_order[-8:] == (
+        "atlas.registerShapes() -> registerAllShapes()",
+        "convergenceCheck",
+        "iterationLimitCheck",
+        "propagateGrowing",
+        "computeRelations",
+        "computeBoundaryDistances",
+        "computeClosestLabels",
+        "next_iteration.propagateThinning",
+    )

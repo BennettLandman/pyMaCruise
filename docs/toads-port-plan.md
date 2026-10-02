@@ -1305,3 +1305,16 @@ statistics/membership stages. See the [validation report](reports/toads-multicha
 This adapter composes existing kernels; the multi-channel wrapper call path,
 registration, topology, growth, and full TOADS workflow remain open.
 P18cybb remains Started pending full-suite evidence.
+
+
+### Multi-channel membership through registration and next thinning (P18cybc)
+
+The multi-channel carried-degree result now continues through actual synthetic
+rigid atlas registration, energy/convergence control, growth, relation-state
+refresh, and the next thinning pass. The affected module passed 3 tests in
+25.55 seconds; the wrapper verifies the exact membership result reaches
+registration and the next thinning agrees with a direct selected component
+call. See the [validation report](reports/toads-multichannel-registered-cycle-2026-10-02.md).
+This is composition evidence over separately Java-checked stages, not a
+combined Java wrapper execution or complete TOADS result. P18cybc remains
+Started pending full-suite evidence.
