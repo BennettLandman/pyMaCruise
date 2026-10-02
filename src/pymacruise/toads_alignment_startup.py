@@ -34,6 +34,10 @@ from .toads_post_registration_template_refresh import (
     ToadsPostRegistrationTemplateRefresh,
     toads_post_registration_template_refresh,
 )
+from .toads_post_refresh_registration import (
+    ToadsPostRefreshRegistration,
+    register_toads_after_template_refresh,
+)
 
 
 @dataclass(frozen=True)
@@ -176,6 +180,7 @@ class ToadsAtlasAlignmentRun:
     atlas_data: ToadsAtlasRASData
     alignment: ToadsAlignmentRegistration
     template_refresh: ToadsPostRegistrationTemplateRefresh
+    post_refresh_registration: ToadsPostRefreshRegistration
     modality: str
 
 
@@ -297,6 +302,7 @@ def register_toads_from_atlas_assets(
     modality: str = "T1_MPRAGE",
     padding: int = 10,
     background_ratio: float = 0.0,
+    refinement_iterations: int = 5,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
 ) -> ToadsAtlasAlignmentRun:
@@ -313,14 +319,15 @@ def register_toads_from_atlas_assets(
         raise TypeError("atlas must be a ToadsAtlas or a descriptor path")
     atlas_data = load_toads_atlas_ras_data(loaded_atlas)
     priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
-    mask_labels = [
-        structure.label
-        for structure in loaded_atlas.structures
+    mask_structure_indices = [
+        index
+        for index, structure in enumerate(loaded_atlas.structures)
         if structure.topology.lower() == "mask"
     ]
-    if len(mask_labels) != 1:
+    if len(mask_structure_indices) != 1:
         raise ValueError("TOADS descriptor must identify exactly one mask/background structure")
-    background_label = mask_labels[0]
+    background_class_index = mask_structure_indices[0]
+    background_label = loaded_atlas.structures[background_class_index].label
     startup = prepare_toads_alignment_startup(
         t1_n4,
         brain_mask,
@@ -359,10 +366,24 @@ def register_toads_from_atlas_assets(
         background_ratio=background_ratio,
         background_label=background_label,
     )
+    post_refresh_registration = register_toads_after_template_refresh(
+        recropped_images=template_refresh.recropped_images,
+        centroids=startup.centroids,
+        atlas_shapes=shape_priors,
+        initial_transform=template_refresh.recropped_transform,
+        image_resolutions_mm=alignment.setup.signed_image_resolutions_mm,
+        template_resolutions_mm=alignment.setup.template_resolutions_mm,
+        background_class_index=background_class_index,
+        crop_border=padding,
+        max_iterations=refinement_iterations,
+        energy_tolerance=energy_tolerance,
+        minimum_lambda=minimum_lambda,
+    )
     return ToadsAtlasAlignmentRun(
         loaded_atlas,
         atlas_data,
         alignment,
         template_refresh,
+        post_refresh_registration,
         modality,
     )

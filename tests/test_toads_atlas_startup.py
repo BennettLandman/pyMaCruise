@@ -97,6 +97,7 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
         descriptor,
         levels=2,
         max_iterations=1,
+        refinement_iterations=1,
     )
 
     assert result.atlas.descriptor == descriptor.resolve()
@@ -121,3 +122,14 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     )
     assert result.template_refresh.recropped_images.shape[1:] == result.template_refresh.transformed_topology.shape
     assert np.isfinite(result.template_refresh.recropped_images).all()
+    assert result.post_refresh_registration.call_order == (
+        "segmentation.initCentroids",
+        "preprocess.initialMemberships",
+        "atlas.updateShapeRegistration",
+        "atlas.registerShapes()",
+    )
+    assert result.post_refresh_registration.memberships.shape == (
+        *result.template_refresh.recropped_images.shape[1:], 2
+    )
+    assert result.post_refresh_registration.registered_classes.tolist() == [False, True]
+    assert np.isfinite(result.post_refresh_registration.final_transform).all()
