@@ -76,7 +76,7 @@ def _synthetic_subject():
         + z[inside] * 0.19
         + ((x[inside] + 2 * y[inside] + z[inside]) % 7) * 0.13
     )
-    affine = np.eye(4)
+    affine = np.diag((0.8, 1.2, 1.5, 1.0))
     return nib.Nifti1Image(values, affine), nib.Nifti1Image(mask, affine)
 
 
@@ -100,5 +100,7 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
         "gm.nii.gz": ("R", "A", "S"),
     }
     assert result.alignment.startup.initial_memberships.shape[-1] == 2
+    assert result.alignment.setup.signed_image_resolutions_mm == (-0.8, -1.2, 1.5)
+    assert result.alignment.setup.template_resolutions_mm == (1.0, 1.0, 1.0)
     assert result.alignment.registration.levels[0].scale == 2
     assert np.isfinite(result.alignment.registration.transform).all()
