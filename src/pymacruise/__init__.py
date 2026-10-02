@@ -80,6 +80,10 @@ from pymacruise.toads_output_io import (
     save_toads_outputs,
     toads_output_images,
 )
+from pymacruise.toads_alignment_startup import (
+    ToadsAlignmentStartup,
+    prepare_toads_alignment_startup,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -160,4 +164,6 @@ __all__ = [
     "toads_output_images",
     "save_toads_outputs",
     "save_toads_dura_wrapper_outputs",
+    "ToadsAlignmentStartup",
+    "prepare_toads_alignment_startup",
 ]
