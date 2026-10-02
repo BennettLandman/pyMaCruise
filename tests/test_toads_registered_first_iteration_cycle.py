@@ -16,6 +16,9 @@ from pymacruise.toads_registered_first_exact_iteration import (
 from pymacruise.toads_registered_first_iteration_cycle import (
     continue_registered_first_exact_iteration_through_next_thinning,
 )
+from pymacruise.toads_registered_membership_branch_cycle import (
+    continue_registered_membership_through_branch,
+)
 from pymacruise.toads_registered_second_exact_iteration import (
     continue_registered_first_cycle_through_second_exact_iteration,
 )
@@ -269,3 +272,58 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         correction_disabled.membership_pass.memberships,
         second.membership_pass.memberships,
     )
+
+    prior_branch = result.registered_iteration.branch
+    prior_growing = prior_branch.growing
+    prior_relations = prior_branch.relations
+    assert prior_growing is not None and prior_relations is not None
+    second_cycle = continue_registered_membership_through_branch(
+        run,
+        second.membership_pass,
+        previous_energy=exact.membership_pass.objective,
+        iteration=2,
+        maximum_iterations=3,
+        convergence_threshold=0.04,
+        segmentation=result.next_thinning.thinning.segmentation,
+        skeleton=result.next_thinning.thinning.skeleton,
+        ordering=prior_growing.ordering,
+        class_volumes=result.next_thinning.thinning.class_volumes,
+        boundary_distances=prior_relations.boundary_distances,
+        template_labels=np.asarray(
+            [item.label for item in run.atlas.structures], dtype=np.int8
+        ),
+        previous_classification=run.segmentation_constructor.classification_labels,
+        relation_limit=1,
+        do_growing=False,
+        initial_transform=result.registration_control.handoff.transform,
+        initial_available=result.next_thinning.thinning.available,
+        subsample=2,
+        max_registration_iterations=1,
+        registration_energy_tolerance=0.0,
+        minimum_lambda=1e-3,
+    )
+    assert second_cycle.membership_pass is second.membership_pass
+    assert second_cycle.registration_control.handoff.registration is not None
+    assert second_cycle.registration_control.control.energy_ratio == toads_energy_ratio(
+        exact.membership_pass.objective,
+        second.membership_pass.objective,
+    )
+    if second_cycle.registered_iteration.branch.control.stop:
+        assert second_cycle.next_thinning is None
+        assert second_cycle.registered_iteration.branch.classification is not None
+    else:
+        assert second_cycle.next_thinning is not None
+        assert second_cycle.registered_iteration.branch.growing is not None
+        assert second_cycle.registered_iteration.branch.relations is not None
+        direct_next = toads_propagate_thinning(
+            second_cycle.registered_iteration.branch.growing.segmentation,
+            second.membership_pass.memberships,
+            second_cycle.registered_iteration.branch.relations.relation.class_adjacency,
+            second_cycle.next_transformed_shape_priors,
+            volume_ratio=0.5,
+            limit=3.0,
+        )
+        np.testing.assert_array_equal(
+            second_cycle.next_thinning.thinning.segmentation,
+            direct_next.segmentation,
+        )

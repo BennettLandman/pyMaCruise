@@ -1381,3 +1381,16 @@ seconds. Positive-degree fitting remains covered by the separate carried-degree
 Java-reference rows, not by this iteration-two composition. See the [validation
 report](reports/toads-registered-second-exact-iteration-2026-10-02.md).
 P18cybg remains Started pending full-suite evidence.
+
+### Iteration-two membership through registration and selected branch (P18cybh)
+
+P18cybg's exact membership result now flows through the actual rigid
+registration and source control decision. The adapter derives iteration state
+from the prior registered cycle and handles either terminal classification or
+continuing growth, relation refresh, updated shape-prior transformation, and
+next thinning. Its compact RAS test passed 1 test in 20.44 seconds. Selected
+Java registration and branch-control references are covered by the related
+P18cyx/P18cyt evidence. This composition is not a combined Java wrapper run or
+full TOADS equivalence. See the [validation
+report](reports/toads-second-membership-branch-cycle-2026-10-02.md).
+P18cybh remains Started pending full-suite evidence.
