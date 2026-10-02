@@ -1010,3 +1010,25 @@ has separate selected-Java reference checks, but this new descriptor-to-refresh
 chain is only synthetic wiring evidence. It ends before segmentation object
 construction, reinitialization memberships, single-scale alignment, and TOADS
 iteration. See [the P18cyai report](reports/toads-registration-template-refresh-2026-10-02.md).
+
+
+### Atlas-backed post-refresh exact registration (P18cyaj)
+
+The atlas-assets startup now continues after the post-registration crop and
+topology refresh. It initializes exact memberships on the refreshed crop,
+recomputes transformed shape bounds, excludes the atlas background class, and
+performs the selected scale-one rigid `registerShapes()` update. Subject
+spacing remains the signed RAS tuple and template spacing remains the
+descriptor value. The selected source default is five iterations; the compact
+synthetic integration uses an explicit one-iteration override.
+
+The focused group passed 44 tests in 6.37 seconds on implementation commit
+`ee350877e61f97adb050d185bfb34f7bfd067ade`, and the full synthetic suite passed
+1,049 tests with 11 expected RAS warnings in 1,682.82 seconds on that same
+commit. See the [P18cyaj report](reports/toads-post-refresh-registration-2026-10-02.md)
+and [full-suite report](reports/full-pytest-2026-10-02-toads-atlas-registration.md).
+This validates selected synthetic composition and the separately checked
+registration kernel, not a Java end-to-end registration comparison or TOADS
+segmentation iteration. The next driver slice is segmentation construction
+and initialization of centroids, intensity ranges, lesion centroid, and the
+wrapper-selected atlas-aware exact/approximate membership overload.
