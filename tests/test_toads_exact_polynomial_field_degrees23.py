@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_inhomogeneity_exact_fit import fit_toads_exact_chebyshev_field
+from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_exact_field_refit
 
 
 ROOT = Path(__file__).parent
@@ -80,3 +81,35 @@ def test_exact_polynomial_field_rejects_unsupported_degree(degree) -> None:
         fit_toads_exact_chebyshev_field(
             image, memberships, segmentation, centers, field, degree=degree,
         )
+
+
+@pytest.mark.parametrize("degree", [2, 3])
+def test_multichannel_exact_polynomial_field_matches_java_in_source_order(degree: int, tmp_path: Path) -> None:
+    image, memberships, segmentation, centers, field = _phantom()
+    images = np.stack((image, np.asarray(image * np.float32(0.83) + np.float32(0.06), dtype=np.float32)), axis=-1)
+    channel_centers = np.stack((centers, np.asarray(centers * np.float32(0.83) + np.float32(0.06), dtype=np.float32)))
+    fields = np.stack((field, field), axis=-1)
+    output = toads_multichannel_exact_field_refit(
+        images, memberships, segmentation, channel_centers, fields, degree=degree,
+    )
+    assert output.channel_order == (0, 1)
+    assert len(output.fits) == 2
+
+    build = tmp_path / "classes"
+    build.mkdir()
+    java_sources = sorted((UPSTREAM / "Jama").glob("*.java")) + sorted((UPSTREAM / "Jama" / "util").glob("*.java"))
+    java_sources += [UPSTREAM / "gov/nih/mipav/model/structures/jama/JamaMatrix.java", UPSTREAM / "edu/jhmi/rad/medic/utilities/PowerTable.java", HARNESS]
+    subprocess.run(["javac", "-d", str(build), *map(str, java_sources)], check=True, capture_output=True, text=True)
+    for channel in range(2):
+        input_path = tmp_path / f"channel_{channel}_degree{degree}.bin"
+        _write_input(input_path, segmentation, images[..., channel], memberships, fields[..., channel], channel_centers[channel])
+        reference = json.loads(subprocess.run(
+            ["java", "-cp", str(build), "ToadsExactPolynomialFieldReferenceHarness",
+             str(input_path), *(str(n) for n in segmentation.shape), "11", str(degree)],
+            check=True, capture_output=True, text=True,
+        ).stdout)
+        expected = np.asarray(reference["field_bits"], dtype=np.int32).view(np.float32).reshape(segmentation.shape)
+        np.testing.assert_array_equal(output.fits[channel].normal_matrix.ravel(), np.asarray(reference["normal"]))
+        np.testing.assert_array_equal(output.fits[channel].right_hand_side, np.asarray(reference["rhs"]))
+        np.testing.assert_allclose(output.fields[..., channel], expected, rtol=0, atol=2e-6)
+    np.testing.assert_array_equal(fields, np.stack((field, field), axis=-1))

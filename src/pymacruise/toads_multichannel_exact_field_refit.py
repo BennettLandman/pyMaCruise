@@ -1,4 +1,4 @@
-"""Fit the selected exact degree-one correction field in channel order.
+"""Fit the selected exact polynomial correction field in channel order.
 
 This bounded multichannel seam applies the existing selected single-channel
 source kernel independently to each channel, carrying one field and centroid
@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 
 from .toads_inhomogeneity_exact_fit import (
     ToadsExactChebyshevFieldFit,
-    fit_toads_exact_chebyshev_field_degree1,
+    fit_toads_exact_chebyshev_field,
 )
 
 
@@ -36,8 +36,10 @@ def toads_multichannel_exact_field_refit(
     segmentation: Any,
     centroids: Any,
     fields: Any,
+    *,
+    degree: int = 1,
 ) -> ToadsMultichannelExactFieldRefit:
-    """Refit one degree-one field per channel, preserving channel-last order."""
+    """Refit one degree-1/2/3 field per channel in source channel order."""
     images = np.asarray(image_values, dtype=np.float32)
     mem = np.asarray(memberships, dtype=np.float32)
     labels = np.asarray(segmentation)
@@ -60,12 +62,13 @@ def toads_multichannel_exact_field_refit(
     order: list[int] = []
     for channel in range(channels):
         channel_field = updated_fields[..., channel].copy()
-        fit = fit_toads_exact_chebyshev_field_degree1(
+        fit = fit_toads_exact_chebyshev_field(
             images[..., channel],
             mem,
             labels,
             centers[channel],
             channel_field,
+            degree=degree,
         )
         updated_fields[..., channel] = fit.field
         fits.append(fit)
