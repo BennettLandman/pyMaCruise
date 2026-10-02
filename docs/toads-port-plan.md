@@ -935,3 +935,15 @@ implementation commit `845eecfa43b9862ce81e7d9322aeedccf4593b7b`. The report
 pins the selected source files and lists the values tested. This is a setup-state
 translation plus synthetic wiring check, not execution of the Java wrapper or
 full TOADS comparison; subsequent algorithm steps remain open.
+
+
+### Bundled atlas payload smoke check
+
+The selected `cruise-atlas-10obj-toads2008.txt` and all its compressed maps were
+loaded with the Python RAS data API at implementation commit
+`845eecfa43b9862ce81e7d9322aeedccf4593b7b`. The 11 class maps stacked in
+descriptor order to 172×216×164×11; topology labels were exactly the descriptor
+set, the T1 prior vector had 11 finite values, and the descriptor spacing was
+0.9375 mm. The operation materialized 542,270,592 bytes of arrays. It read
+bundled atlas resources only, not subject MRI, and it is not a segmentation or
+registration validation. Details and the command are in [the smoke report](reports/toads-bundled-atlas-ras-smoke-2026-10-02.md).
