@@ -1444,7 +1444,7 @@ composition over source-checked stages, not complete TOADS equivalence. See the
 [validation report](reports/toads-registered-fourth-terminal-branch-2026-10-02.md).
 P18cybl remains Started pending full-suite evidence.
 
-### Callable registered loop runner (P18cym)
+### Callable registered loop runner (P18cybm)
 
 A new Python entry point assembles the selected registered TOADS startup and
 iteration loop through final classification. It preserves carried degree and
@@ -1458,10 +1458,10 @@ have separate Java-harness evidence in P18cybb/P18cyba. This is a callable synth
 selected kernels, not a Java wrapper match or full two-pass MaCRUISE/dura
 workflow. Source-line coverage is not recalculated until source mapping is
 reviewed at a full-suite checkpoint. See the [validation
-report](reports/toads-registered-loop-runner-2026-10-02.md). P18cym remains
+report](reports/toads-registered-loop-runner-2026-10-02.md). P18cybm remains
 Started.
 
-### Standalone registered TOADS command (P18cyn)
+### Standalone registered TOADS command (P18cybn)
 
 The registered loop runner is available as `pymacruise toads-loop`. It takes
 an N4-corrected T1 and matching user brain mask, uses the bundled base atlas by
@@ -1473,3 +1473,16 @@ command omits N4 execution, dura removal, the second MaCRUISE pass, and the
 full base/plus workflow CLI. See [the input/output reference](cli-help.md) and
 [validation report](reports/toads-loop-cli-2026-10-02.md). P18cyn remains
 Started pending full-suite and packaged-wheel checks.
+
+
+### Terminal TOADS Dura-input export (P18cybo)
+
+The registered loop now passes terminal memberships and labels through the
+selected Dura-output product adapter, x-fast native-grid uncrop, and the
+wrapper's unconditional 255 scaling. `toads-loop --dura-output-dir` persists
+the classification plus four float32 Dura inputs as RAS `.nii.gz`. Its compact
+synthetic CLI checks passed 2 tests in 15.24 seconds; output shapes, types, and
+RAS orientation were verified. This exports Dura inputs but does not run Dura
+removal or the second TOADS pass. See [the export
+report](reports/toads-terminal-dura-input-export-2026-10-02.md). P18cybo
+remains Started.
