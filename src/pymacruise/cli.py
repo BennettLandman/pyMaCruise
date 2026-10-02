@@ -282,6 +282,25 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="replace an existing run.json manifest only; do not remove other files",
     )
+    base_run = commands.add_parser(
+        "base-run",
+        help="execute the restartable synthetic/native-grid base MaCRUISE stage chain",
+    )
+    base_run.add_argument("--t1", required=True, type=Path, help="input T1 .nii.gz")
+    base_run.add_argument("--brain-mask", required=True, type=Path, help="same-grid brain mask .nii.gz")
+    base_run.add_argument("--atlas-descriptor", required=True, type=Path)
+    base_run.add_argument("--maseg", required=True, type=Path, help="same-grid MaSeg labels for cleanup and surface refinement")
+    base_run.add_argument("--output-dir", required=True, type=Path)
+    base_run.add_argument("--resume", action="store_true", help="resume from verified stage outputs in run.json")
+    base_run.add_argument("--registration-levels", type=int, default=1)
+    base_run.add_argument("--registration-iterations", type=int, default=1)
+    base_run.add_argument("--registration-max-iterations", type=int, default=1)
+    base_run.add_argument("--toads-iterations", type=int, default=2)
+    base_run.add_argument("--dura-iterations", type=int, default=1)
+    base_run.add_argument("--crop-edge-width", type=int, default=2)
+    base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
+    base_run.add_argument("--gvf-iterations", type=int, default=200)
+    base_run.add_argument("--tgdm-iterations", type=int, default=1)
     return parser
 
 
@@ -361,6 +380,29 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Preflight passed: {manifest_path}")
         print("Dry run only; no N4 correction or segmentation workflow was executed.")
         print(f"Workflow profile: {manifest['workflow_profile']}")
+    elif args.command == "base-run":
+        from pymacruise.base_workflow import BaseRunOptions, run_base_workflow
+
+        manifest_path = run_base_workflow(
+            t1_path=args.t1,
+            brain_mask_path=args.brain_mask,
+            atlas_descriptor=args.atlas_descriptor,
+            maseg_path=args.maseg,
+            output_dir=args.output_dir,
+            resume=args.resume,
+            options=BaseRunOptions(
+                registration_levels=args.registration_levels,
+                registration_iterations=args.registration_iterations,
+                registration_max_iterations=args.registration_max_iterations,
+                toads_iterations=args.toads_iterations,
+                dura_iterations=args.dura_iterations,
+                crop_edge_width=args.crop_edge_width,
+                ace_diffusion_iterations=args.ace_diffusion_iterations,
+                gvf_iterations=args.gvf_iterations,
+                tgdm_iterations=args.tgdm_iterations,
+            ),
+        )
+        print(f"Base run complete: {manifest_path} (synthetic/native-grid route; inspect stage checks and TOADS stop metadata)")
     elif args.command == "toads-loop":
         _require_nifti_gz_output(args.output)
         if args.output.exists():
