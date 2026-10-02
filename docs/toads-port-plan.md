@@ -1069,6 +1069,23 @@ seconds on implementation commit
 unknown labels, constructor array values and shapes, and the relation-state
 outputs. This is wiring evidence over synthetic data, not an independent Java
 comparison of the whole segmentation constructor. Variance and initial
-membership-energy computation remain outside this slice. The next stages are
-the selected unit inhomogeneity fields, class variance initialization, and the
-initial membership/energy pass.
+membership-energy computation remain outside this slice. P18cyam now composes
+initial variance state; the selected unity correction-field and first
+membership/energy stages remain open.
+
+
+### Initial exact class variances (P18cyam)
+
+After membership seeding and relation-state initialization, the selected
+wrapper calls `segmentation.computeVariances()`. The startup adapter uses the
+already source-checked assigned-class standard-deviation kernel for the
+selected MASK and optimized CSF/GM/WM classes. This branch scans the complete
+image grid in source x/y/z order and uses membership squared plus `1e-30f` as
+its weight. The selected correction fields begin as unity, so the adapter
+avoids allocating and multiplying a redundant unity field.
+
+The focused atlas/startup, relation, and Java-reference variance group passed
+38 tests in 7.78 seconds on implementation commit
+`1aaa5419dc4a97086f6f80cd3e1ceb18603b58a2`; see the [P18cyam
+report](reports/toads-initial-variance-2026-10-02.md). This is a component
+composition, not the initial membership/energy pass or a full TOADS run.
