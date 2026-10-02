@@ -854,8 +854,10 @@ about geometry or shape.
 The adapter is currently the selected one-channel base-TOADS path. It accepts
 atlas topology already expressed in RAS voxel-axis order and takes its spacing
 from the source descriptor. The focused startup/preprocessing/crop/initialization
-group passes 23 tests in 0.62 seconds on implementation commit
-`593f0775b412331d28f6bd3f875ef9b7ac758e1a`. The component functions have their
+group passes 23 tests in 0.64 seconds on implementation commit
+`02ac7639900c4feaa58e9d15fbeb2482c5d44daf`. The returned state separately
+records the original T1 orientation codes while its image geometry describes
+the normalized RAS grid. The component functions have their
 own selected-source evidence; this composition does not have an independent
 Java end-to-end reference and ends immediately before rigid atlas registration.
 It does not establish registration, iterative segmentation, or full TOADS
