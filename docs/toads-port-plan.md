@@ -1598,3 +1598,14 @@ source-scaled Dura maps. All six products were checked for `.nii.gz` round
 trip, 13³ grid, and RAS orientation. The full suite also passed 1,100 tests at
 commit `a7c142cead48bc13bd1e96854992d903ea3377bf`. See [the P18cybn wheel
 report](reports/toads-loop-wheel-2026-10-02.md).
+
+### Maximum registered TOADS loop-cap smoke check (P18cyby)
+
+The built wheel completed 50 registered TOADS iterations on the compact 13³
+RAS phantom with 189 changed-classification voxels. The uint8 result contains
+all 11 descriptor labels on the native grid. Registration was constrained to
+one level/one iteration to isolate the loop, and the CLI does not expose a
+stop reason, so this does not prove that the convergence threshold triggered.
+The multi-minute runtime on a tiny volume is a performance risk; human-sized
+runtime is not inferred from it. This is manual exploratory evidence, not
+pytest or Java-wrapper evidence. See [the report](reports/toads-50-iteration-cap-smoke-2026-10-02.md).
