@@ -6,11 +6,18 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
+from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
+from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
+from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_optimized_image_variance
 from pymacruise.toads_registered_first_exact_iteration import (
     continue_registered_unity_startup_through_first_exact_iteration,
 )
 from pymacruise.toads_registered_first_iteration_cycle import (
     continue_registered_first_exact_iteration_through_next_thinning,
+)
+from pymacruise.toads_registered_second_exact_iteration import (
+    continue_registered_first_cycle_through_second_exact_iteration,
 )
 from pymacruise.toads_registered_unity_field_startup import (
     compute_registered_toads_unity_field_startup,
@@ -26,7 +33,7 @@ FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS_DESCRIPTOR = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 
 
-def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() -> None:
+def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None:
     run = register_toads_from_atlas_assets(
         nib.load(str(FIXTURE / "t1.nii.gz")),
         nib.load(str(FIXTURE / "brain-mask.nii.gz")),
@@ -37,7 +44,7 @@ def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() ->
         padding=2,
     )
     settings = dict(
-        exponent_by_channel_class=np.full((1, 11), 2.0, dtype=np.float32),
+        exponent_by_channel_class=np.asarray([[1.0, *([2.0] * 10)]], dtype=np.float32),
         modality_weights=np.ones(1, dtype=np.float32),
         smoothing_priors=np.ones(11, dtype=np.float32),
         atlas_shape_priors=np.ones(11, dtype=np.float32),
@@ -50,7 +57,7 @@ def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() ->
     exact = continue_registered_unity_startup_through_first_exact_iteration(
         run,
         startup,
-        category_exponents=np.asarray([[1.0, 1.0, 1.0]], dtype=np.float32),
+        category_exponents=np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32),
         class_variance_weights=run.initial_variances.standard_deviations,
         **settings,
     )
@@ -59,7 +66,7 @@ def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() ->
         run,
         exact,
         maximum_iterations=2,
-        convergence_threshold=0.0,
+        convergence_threshold=0.04,
         relation_limit=1,
         do_growing=False,
         subsample=2,
@@ -81,7 +88,7 @@ def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() ->
     assert result.registered_iteration.branch.growing is not None
     assert result.registered_iteration.branch.relations is not None
     assert result.registered_iteration.branch.classification is None
-    assert result.next_thinning.segmentation.shape == exact.membership_pass.memberships.shape[:3]
+    assert result.next_thinning.thinning.segmentation.shape == exact.membership_pass.memberships.shape[:3]
     assert result.next_transformed_shape_priors.shape == exact.membership_pass.memberships.shape
     assert result.stage_order[-11:] == (
         "iteration1.computeExactMemberships",
@@ -148,6 +155,117 @@ def test_registered_first_exact_loop_reaches_rigid_branch_and_next_thinning() ->
         volume_ratio=0.5,
         limit=3.0,
     )
-    np.testing.assert_array_equal(result.next_thinning.segmentation, expected_thinning.segmentation)
-    np.testing.assert_array_equal(result.next_thinning.skeleton, expected_thinning.skeleton)
-    assert result.next_thinning.processed_items == expected_thinning.processed_items
+    np.testing.assert_array_equal(result.next_thinning.thinning.segmentation, expected_thinning.segmentation)
+    np.testing.assert_array_equal(result.next_thinning.thinning.skeleton, expected_thinning.skeleton)
+    assert result.next_thinning.thinning.processed_items == expected_thinning.processed_items
+
+    second_exponents = settings["exponent_by_channel_class"]
+    categories = np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32)
+    second = continue_registered_first_cycle_through_second_exact_iteration(
+        run,
+        result,
+        category_exponents=categories,
+        exponent_by_channel_class=second_exponents,
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        smoothing_priors=settings["smoothing_priors"],
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        prior_scale=settings["prior_scale"],
+        maximum_distance=0.04,
+    )
+    assert second.next_thinning is result.next_thinning
+    assert second.previous_degree == second.degree == 0
+    assert second.field_refit is None
+    assert second.energy_ratio == result.registration_control.control.energy_ratio
+    assert second.stage_order[-6:] == (
+        "next_iteration.computeExact3DPolynomialField.degree0.noop",
+        "next_iteration.computeExactCentroids",
+        "next_iteration.computeExactVariances",
+        "next_iteration.computeImageVariance",
+        "next_iteration.computeCentroidSimilarity",
+        "next_iteration.computeExactMemberships",
+    )
+
+    second_images = np.moveaxis(run.template_refresh.recropped_images, 0, -1)
+    second_memberships = result.registered_iteration.branch.handoff.membership_pass.memberships
+    second_labels = result.next_thinning.thinning.segmentation
+    second_centroids = toads_default_exact_centroid_update(
+        second_images,
+        second_memberships,
+        exact.centroids,
+        categories,
+        intensity_field=exact.fields,
+        smoothness=0.1,
+    )
+    second_deviations = toads_default_exact_class_variances(
+        second_images,
+        second_memberships,
+        second_centroids,
+        second_labels,
+        intensity_field=exact.fields,
+    )
+    second_variance, second_std = toads_optimized_image_variance(
+        second_images,
+        second_memberships[..., 1:],
+        second_centroids[:, 1:],
+        intensity_field=exact.fields,
+    )
+    second_similarity = toads_optimized_centroid_similarity(
+        second_centroids, second_deviations, second_variance, settings["prior_scale"]
+    )
+    second_membership_pass = toads_default_atlas_membership_pass(
+        image_values=second_images,
+        initial_memberships=second_memberships,
+        centroids=second_centroids,
+        exponent_by_channel_class=second_exponents,
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        image_variances=second_variance,
+        transformed_shapes=result.next_transformed_shape_priors,
+        closest_labels=result.registered_iteration.branch.relations.closest_labels,
+        smoothing_priors=settings["smoothing_priors"],
+        centroid_similarity=second_similarity,
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        intensity_field=exact.fields,
+    )
+    np.testing.assert_array_equal(second.centroids, second_centroids)
+    np.testing.assert_array_equal(second.standard_deviations, second_deviations)
+    np.testing.assert_array_equal(second.image_variance_weights, second_variance)
+    np.testing.assert_array_equal(second.image_standard_deviation, second_std)
+    np.testing.assert_array_equal(second.centroid_similarity, second_similarity)
+    np.testing.assert_array_equal(second.membership_pass.memberships, second_membership_pass.memberships)
+    np.testing.assert_array_equal(second.membership_pass.denominator, second_membership_pass.denominator)
+    assert second.membership_pass.objective == second_membership_pass.objective
+
+    correction_disabled = continue_registered_first_cycle_through_second_exact_iteration(
+        run,
+        result,
+        category_exponents=categories,
+        exponent_by_channel_class=second_exponents,
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        smoothing_priors=settings["smoothing_priors"],
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        prior_scale=settings["prior_scale"],
+        maximum_distance=0.04,
+        correct_inhomogeneity=False,
+    )
+    assert correction_disabled.degree == 0
+    assert correction_disabled.field_refit is None
+    assert correction_disabled.stage_order[-6] == (
+        "next_iteration.skipCorrectionField.inhomogeneityDisabled"
+    )
+    np.testing.assert_array_equal(exact.fields, np.ones_like(exact.fields))
+    np.testing.assert_array_equal(
+        correction_disabled.membership_pass.memberships,
+        second.membership_pass.memberships,
+    )

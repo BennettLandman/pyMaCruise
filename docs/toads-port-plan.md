@@ -1367,3 +1367,17 @@ report](reports/toads-registered-first-iteration-cycle-2026-10-02.md). A larger
 recropped phantom exceeded the selected source's fixed `MAXLB=500` relation
 table after growth; the report records this as a Java source input limit.
 P18cybf remains Started pending full-suite evidence.
+
+### Iteration-two degree decision and exact update (P18cybg)
+
+The P18cybf next-thinning state now reaches the next correction-degree check
+and exact centroid, variance, image-variance, similarity, and membership
+updates. Both correction-enabled and correction-disabled degree-zero paths
+preserve the unity field and are compared against direct selected kernels. With
+`maximum_distance=0.04`, the energy ratio does not fall below
+`sqrt(maximum_distance)=0.2`, so no fit occurs; the test confirms that source
+decision and exact second membership outputs. It passed 1 test in 16.88
+seconds. Positive-degree fitting remains covered by the separate carried-degree
+Java-reference rows, not by this iteration-two composition. See the [validation
+report](reports/toads-registered-second-exact-iteration-2026-10-02.md).
+P18cybg remains Started pending full-suite evidence.

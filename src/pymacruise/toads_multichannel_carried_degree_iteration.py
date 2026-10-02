@@ -85,6 +85,7 @@ def continue_toads_multichannel_through_carried_degree_iteration(
     prior_coefficient: float,
     prior_scale: float,
     centroid_smoothness: float = 0.1,
+    correct_inhomogeneity: bool = True,
 ) -> ToadsMultichannelCarriedDegreeIteration:
     """Continue a selected 11-class iteration with one field per image channel.
 
@@ -119,17 +120,27 @@ def continue_toads_multichannel_through_carried_degree_iteration(
         raise ValueError("fields must be a float32 array matching image_values")
     if not channel_fields.flags.writeable:
         raise ValueError("fields must be writable because the selected source updates them in place")
+    if not isinstance(correct_inhomogeneity, (bool, np.bool_)):
+        raise ValueError("correct_inhomogeneity must be boolean")
 
     ratio = np.float32(branch.control.energy_ratio)
-    degree = toads_next_inhomogeneity_degree(
-        previous_degree, polynomial_degree, ratio, low_energy_ratio
-    )
+    if correct_inhomogeneity:
+        degree = toads_next_inhomogeneity_degree(
+            previous_degree, polynomial_degree, ratio, low_energy_ratio
+        )
+    else:
+        if previous_degree != 0:
+            raise ValueError("the selected correction-disabled wrapper keeps degree at zero")
+        degree = 0
     if degree not in (0, 1, 2, 3):
         raise ValueError("this selected default-atlas continuation supports degrees zero through three")
 
     field_refit = None
     stages = [*next_thinning.stage_order]
-    if degree == 0:
+    if not correct_inhomogeneity:
+        applied_fields = channel_fields
+        stages.append("next_iteration.skipCorrectionField.inhomogeneityDisabled")
+    elif degree == 0:
         applied_fields = channel_fields
         stages.append("next_iteration.computeExact3DPolynomialField.degree0.noop")
     else:

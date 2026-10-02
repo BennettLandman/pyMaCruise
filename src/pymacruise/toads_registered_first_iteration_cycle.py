@@ -26,7 +26,10 @@ from .toads_default_membership_registered_iteration import (
 )
 from .toads_registered_first_exact_iteration import ToadsRegisteredFirstExactIteration
 from .toads_shape_volume import transform_toads_shape_priors
-from .toads_thinning import ToadsThinningPass, toads_propagate_thinning
+from .toads_post_registration_next_thinning import (
+    ToadsPostRegistrationNextThinning,
+    toads_post_registration_next_thinning,
+)
 
 
 @dataclass(frozen=True)
@@ -36,7 +39,7 @@ class ToadsRegisteredFirstIterationCycle:
     exact_iteration: ToadsRegisteredFirstExactIteration
     registration_control: ToadsDefaultMembershipRegistrationControl
     registered_iteration: ToadsDefaultMembershipRegisteredIteration
-    next_thinning: ToadsThinningPass
+    next_thinning: ToadsPostRegistrationNextThinning
     next_transformed_shape_priors: NDArray[np.float32]
     stage_order: tuple[str, ...]
 
@@ -154,14 +157,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         transform=tuple(float(value) for value in registration_control.handoff.transform),
         class_bounds=registration_control.handoff.shape_bounds,
     )
-    thinning = toads_propagate_thinning(
-        branch.growing.segmentation,
-        membership.memberships,
-        branch.relations.relation.class_adjacency,
-        next_shapes,
-        volume_ratio=0.5,
-        limit=3.0,
-    )
+    next_thinning = toads_post_registration_next_thinning(branch, next_shapes)
     stages = (
         *exact_iteration.stage_order,
         *registration_control.stage_order[1:],
@@ -173,7 +169,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         exact_iteration=exact_iteration,
         registration_control=registration_control,
         registered_iteration=registered_iteration,
-        next_thinning=thinning,
+        next_thinning=next_thinning,
         next_transformed_shape_priors=next_shapes,
         stage_order=stages,
     )
