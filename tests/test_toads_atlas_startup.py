@@ -208,6 +208,11 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     assert similarity.similarity.shape == (2, 2)
     np.testing.assert_array_equal(np.diag(similarity.similarity), np.zeros(2, dtype=np.float32))
     assert np.isfinite(similarity.similarity).all()
+    assert result.transformed_shape_priors.shape == (
+        *result.template_refresh.recropped_images.shape[1:], 2
+    )
+    assert np.isfinite(result.transformed_shape_priors).all()
+    assert np.all((result.transformed_shape_priors >= 0.0) & (result.transformed_shape_priors <= 1.0))
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )

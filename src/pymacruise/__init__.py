@@ -132,6 +132,7 @@ from pymacruise.toads_initial_statistics_thinning import (
     ToadsInitialStatisticsThinning,
     compute_toads_initial_statistics_thinning,
 )
+from pymacruise.toads_shape_volume import transform_toads_shape_priors
 
 __all__ = [
     "ImageGeometryError",
@@ -244,4 +245,5 @@ __all__ = [
     "compute_toads_initial_statistics_membership",
     "ToadsInitialStatisticsThinning",
     "compute_toads_initial_statistics_thinning",
+    "transform_toads_shape_priors",
 ]

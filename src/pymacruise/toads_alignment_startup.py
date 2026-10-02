@@ -61,6 +61,7 @@ from .toads_segmentation_initial_similarity import (
     ToadsInitialCentroidSimilarity,
     initialize_toads_centroid_similarity,
 )
+from .toads_shape_volume import transform_toads_shape_priors
 
 
 @dataclass(frozen=True)
@@ -210,6 +211,7 @@ class ToadsAtlasAlignmentRun:
     initial_variances: ToadsInitialClassVariances
     initial_image_variance: ToadsInitialImageVariance
     initial_centroid_similarity: ToadsInitialCentroidSimilarity
+    transformed_shape_priors: NDArray[np.float32]
     modality: str
 
 
@@ -447,6 +449,16 @@ def register_toads_from_atlas_assets(
         image_variance_weights=initial_image_variance.image_variance_weights,
         class_types=[structure.topology for structure in loaded_atlas.structures],
     )
+    transformed_shape_priors = transform_toads_shape_priors(
+        shape_priors,
+        image_dimensions_xyz=tuple(
+            int(value) for value in template_refresh.recropped_images.shape[1:]
+        ),
+        image_resolutions_mm=alignment.setup.signed_image_resolutions_mm,
+        template_resolutions_mm=alignment.setup.template_resolutions_mm,
+        transform=post_refresh_registration.final_transform,
+        class_bounds=post_refresh_registration.final_shape_bounds,
+    )
     return ToadsAtlasAlignmentRun(
         loaded_atlas,
         atlas_data,
@@ -459,5 +471,6 @@ def register_toads_from_atlas_assets(
         initial_variances,
         initial_image_variance,
         initial_centroid_similarity,
+        transformed_shape_priors,
         modality,
     )
