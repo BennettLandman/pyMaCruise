@@ -30,7 +30,7 @@ from pymacruise.toads_registered_unity_field_startup import (
     compute_registered_toads_unity_field_startup,
 )
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
-from pymacruise.toads_control import toads_energy_ratio
+from pymacruise.toads_control import toads_classification_from_labels, toads_energy_ratio
 from pymacruise.toads_relations import toads_refresh_relation_state
 from pymacruise.toads_thinning import toads_propagate_growing, toads_propagate_thinning
 
@@ -560,3 +560,45 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         np.testing.assert_array_equal(fourth.membership_pass.memberships, fourth_membership_pass.memberships)
         np.testing.assert_array_equal(fourth.membership_pass.denominator, fourth_membership_pass.denominator)
         assert fourth.membership_pass.objective == fourth_membership_pass.objective
+
+        third_branch = third_cycle.registered_iteration.branch
+        assert third_branch.growing is not None and third_branch.relations is not None
+        fourth_cycle = continue_registered_membership_through_branch(
+            run,
+            fourth.membership_pass,
+            previous_energy=third.membership_pass.objective,
+            iteration=4,
+            maximum_iterations=4,
+            convergence_threshold=0.04,
+            segmentation=third_cycle.next_thinning.thinning.segmentation,
+            skeleton=third_cycle.next_thinning.thinning.skeleton,
+            ordering=third_branch.growing.ordering,
+            class_volumes=third_cycle.next_thinning.thinning.class_volumes,
+            boundary_distances=third_branch.relations.boundary_distances,
+            template_labels=np.asarray(
+                [item.label for item in run.atlas.structures], dtype=np.int8
+            ),
+            previous_classification=run.segmentation_constructor.classification_labels,
+            relation_limit=1,
+            do_growing=False,
+            initial_transform=third_cycle.registration_control.handoff.transform,
+            initial_available=fourth.next_thinning.thinning.available,
+            subsample=2,
+            max_registration_iterations=1,
+            registration_energy_tolerance=0.0,
+            minimum_lambda=1e-3,
+        )
+        assert fourth_cycle.membership_pass is fourth.membership_pass
+        assert fourth_cycle.registration_control.handoff.registration is not None
+        assert fourth_cycle.registered_iteration.branch.control.stop
+        assert fourth_cycle.next_thinning is None
+        terminal_branch = fourth_cycle.registered_iteration.branch
+        actual_classification = terminal_branch.classification
+        assert actual_classification is not None
+        expected_classification, expected_class_diff = toads_classification_from_labels(
+            third_cycle.next_thinning.thinning.segmentation,
+            np.asarray([item.label for item in run.atlas.structures], dtype=np.int8),
+            run.segmentation_constructor.classification_labels,
+        )
+        np.testing.assert_array_equal(actual_classification, expected_classification)
+        assert terminal_branch.changed_classification_voxels == expected_class_diff

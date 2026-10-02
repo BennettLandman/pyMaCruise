@@ -1432,3 +1432,14 @@ This remains synthetic composition over selected kernels, not full TOADS
 equivalence. See the [validation
 report](reports/toads-registered-fourth-exact-iteration-2026-10-02.md).
 P18cybk remains Started pending full-suite evidence.
+
+### Iteration-four registration and terminal classification (P18cybl)
+
+The iteration-four exact membership maps now pass through rigid registration
+and the configured source iteration ceiling. The branch stops without a fifth
+thinning pass and transfers segmentation indices to descriptor labels. The
+compact RAS test passed 1 test in 33.73 seconds; terminal labels and changed
+voxel count match the selected label-transfer kernel. This is synthetic
+composition over source-checked stages, not complete TOADS equivalence. See the
+[validation report](reports/toads-registered-fourth-terminal-branch-2026-10-02.md).
+P18cybl remains Started pending full-suite evidence.
