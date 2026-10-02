@@ -1047,10 +1047,28 @@ exact path. If the descriptor has no `Lesions` section or does not list a
 requested modality, `getLesionPriors` supplies zero; the port follows that
 fallback.
 
-The focused atlas/startup/initialization group passed 59 tests in 6.12 seconds
-on implementation commit `80a7621501ca21ce6ba85f1d71e129697c0ce82b`. See the
+The focused atlas/startup/initialization group passed 59 tests in 6.93 seconds
+on implementation/test commit `04e7e9b346cbca0ae7285e4cf2735f6e3c56d7b7`. See the
 [P18cyak report](reports/toads-segmentation-initialization-2026-10-02.md).
 This composes previously checked source operations and does not validate the
-TOADS relation, variance, correction-field, or iterative membership stages.
-The next ready source slice is the wrapper's relation and boundary-distance
-initialization after segmentation memberships are seeded.
+TOADS constructor, variance, correction-field, or iterative membership stages.
+
+
+### Transformed atlas through constructor and relation state (P18cyal)
+
+The source `MultipleToadSegmentation` constructor maps the transformed template
+labels to descriptor-order class indices and seeds segmentation, skeleton,
+relation, availability, volume, and boundary-distance arrays. The new adapter
+recreates that class-index state on the refreshed RAS crop, then supplies it
+and the freshly initialized exact memberships to the already source-checked
+relation/boundary/closest-label sequence with the selected `limit=3`.
+
+The focused synthetic atlas/startup and relation group passed 32 tests in 9.42
+seconds on implementation commit
+`cd8d9bdf1854e2c0e79118780071c0868de7c8e1`. It checks descriptor order,
+unknown labels, constructor array values and shapes, and the relation-state
+outputs. This is wiring evidence over synthetic data, not an independent Java
+comparison of the whole segmentation constructor. Variance and initial
+membership-energy computation remain outside this slice. The next stages are
+the selected unit inhomogeneity fields, class variance initialization, and the
+initial membership/energy pass.
