@@ -51,6 +51,13 @@ TOADS_REGISTRATION_PYRAMID_FIXTURE = (
     / "synthetic"
     / "toads_registration_pyramid_optimizer"
 )
+NONFINITE_TRIAL_FIXTURE = (
+    Path(__file__).parent
+    / "data"
+    / "synthetic"
+    / "toads_registration_nonfinite_trial"
+    / "java_reference.json"
+)
 
 
 def test_source_block_mean_subsampling_matches_java_harness() -> None:
@@ -608,6 +615,49 @@ def test_pyramid_registration_levels_one_is_source_noop() -> None:
     )
     assert result.levels == ()
     np.testing.assert_array_equal(result.transform, initial)
+
+
+def test_nonfinite_registration_trial_matches_source_rejection_and_stops_scale() -> None:
+    reference = json.loads(NONFINITE_TRIAL_FIXTURE.read_text())
+    harness = (
+        Path(__file__).parent
+        / "java_reference"
+        / "ToadsNonfiniteRegistrationTrialReferenceHarness.java"
+    )
+    assert hashlib.sha256(harness.read_bytes()).hexdigest() == reference["harness_sha256"]
+    dimensions = (3, 3, 3)
+    memberships = np.full(dimensions + (2,), np.float32(0.5), dtype=np.float32)
+    shapes = np.zeros(dimensions + (2,), dtype=np.float32)
+    shapes[..., 1] = np.float32(0.5)
+    initial = np.zeros(6, dtype=np.float32)
+    bounds_low = np.zeros((2, 3), dtype=np.int64)
+    bounds_high = np.broadcast_to(np.asarray(dimensions), (2, 3)).copy()
+
+    result = register_toads_atlas_rigid(
+        memberships,
+        shapes,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=tuple(float(value) for value in initial),
+        class_bounds_low_xyz=bounds_low,
+        class_bounds_high_xyz=bounds_high,
+        registered_classes=(False, True),
+        max_iterations=5,
+    )
+
+    assert result.stop_reason == "nonfinite_relative_change"
+    assert len(result.iterations) == 1
+    actual = {
+        "accepted": result.iterations[0].accepted,
+        "rejected_trials": result.iterations[0].rejected_trials,
+        "energy_nan": bool(np.isnan(result.iterations[0].energy)),
+        "relative_change_nan": bool(np.isnan(result.iterations[0].relative_change)),
+        "outer_continues": bool(result.iterations[0].relative_change > np.float32(1e-6)),
+        "transform_unchanged": bool(np.array_equal(result.transform, initial)),
+    }
+    for key, expected in reference.items():
+        if key in actual:
+            assert actual[key] == expected, key
 
 
 def test_scaled_vectorized_registration_matches_scalar_reference_kernels() -> None:

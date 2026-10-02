@@ -21,6 +21,7 @@ dev = ["pytest>=8,<9", "build>=1.2,<2"]
 
 [project.scripts]
 pymacruise = "pymacruise.cli:main"
+pymacruise-lesion-output = "pymacruise.lesion_output_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

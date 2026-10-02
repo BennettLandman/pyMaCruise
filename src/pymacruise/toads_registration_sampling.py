@@ -966,6 +966,13 @@ def register_toads_atlas_rigid(
         raise ValueError("registered_classes must contain one flag per class")
 
     def energy_at(candidate: NDArray[np.float32]) -> np.float32:
+        # MultipleToadAtlas evaluates even a non-finite line-search trial.
+        # Its Java interpolation/comparison path yields a NaN energy, which
+        # fails the strict `E > E0` acceptance check and leaves the current
+        # transform in place. Match that result instead of raising from the
+        # Python coordinate validator.
+        if not np.isfinite(candidate).all():
+            return np.float32(np.nan)
         return vectorized_toads_registration_energy(
             mem,
             shapes,
@@ -1039,8 +1046,12 @@ def register_toads_atlas_rigid(
                 update.rejected_trials,
             )
         )
-        if update.relative_change <= tolerance:
-            stop_reason = "energy_tolerance"
+        if not update.relative_change > tolerance:
+            stop_reason = (
+                "energy_tolerance"
+                if np.isfinite(update.relative_change)
+                else "nonfinite_relative_change"
+            )
             break
         if current_lambda <= lambda_floor:
             stop_reason = "lambda_floor"

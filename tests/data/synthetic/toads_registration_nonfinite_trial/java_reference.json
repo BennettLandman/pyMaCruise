@@ -1,0 +1,10 @@
+{
+  "reference": "selected MultipleToadAtlas registerExactScaledGradientDescent source-expression harness",
+  "harness_sha256": "05504d3f9d3e9d383ff454add3656a4927ce89fd5468e857e1c55c191e386a1f",
+  "accepted": false,
+  "rejected_trials": 11,
+  "energy_nan": true,
+  "relative_change_nan": true,
+  "outer_continues": false,
+  "transform_unchanged": true
+}

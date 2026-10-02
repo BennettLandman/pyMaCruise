@@ -68,6 +68,43 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path, c
             assert image.get_data_dtype().name == "float32"
 
 
+def test_toads_loop_cli_runs_supported_multilevel_pyramid_after_nan_trial(tmp_path, capsys) -> None:
+    output = tmp_path / "classification.nii.gz"
+    result = main(
+        [
+            "toads-loop",
+            "--t1-n4",
+            str(FIXTURE / "t1.nii.gz"),
+            "--brain-mask",
+            str(FIXTURE / "brain-mask.nii.gz"),
+            "--atlas-descriptor",
+            str(ATLAS),
+            "--output",
+            str(output),
+            "--registration-levels",
+            "3",
+            "--registration-iterations",
+            "2",
+            "--registration-max-iterations",
+            "2",
+            "--maximum-iterations",
+            "2",
+        ]
+    )
+    assert result == 0
+    summary = capsys.readouterr().out
+    assert "iterations=2" in summary
+    assert "energy_threshold_reached=false" in summary
+    assert "iteration_limit_reached=true" in summary
+    image = nib.load(str(output))
+    values = np.asanyarray(image.dataobj)
+    assert values.dtype == np.uint8
+    assert image.shape == (13, 13, 13)
+    assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+    assert np.isfinite(values).all()
+    assert set(np.unique(values)) == set(range(1, 12))
+
+
 def test_toads_loop_help_exposes_required_native_inputs(capsys) -> None:
     try:
         main(["toads-loop", "--help"])
