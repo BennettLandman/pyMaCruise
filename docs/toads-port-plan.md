@@ -1209,10 +1209,14 @@ oracle or complete TOADS iteration.
 
 The source-faithful exact-membership global Chebyshev fit now supports the
 selected degree-2 and degree-3 models in addition to the existing degree-1
-path. The selected method-formula comparison uses committed 21³ folded-cortex
-RAS NIfTI fixtures and matches normal systems exactly; the largest degree-3
-coefficient difference is `2.33e-11` from solver rounding, with complete
-fields within `2e-6`. See the [focused validation report](reports/toads-exact-polynomial-field-degrees23-2026-10-02.md).
-This expands one correction algorithm method; it does not add degree ramping,
-spline mode, channel orchestration, or the complete TOADS workflow. P18cyau
-remains Started pending full-suite evidence.
+path, and the existing channel-order adapter now carries those degrees across
+multiple images. The selected method-formula comparison uses committed 21³
+folded-cortex RAS NIfTI fixtures and matches normal systems exactly; the
+largest degree-3 coefficient difference is `2.33e-11` from solver rounding,
+with complete fields within `2e-6`. The connected channel-order and iteration
+group passed 13 tests in 77.60 seconds on commit
+`4b1895e6300ecb9a597bf3ef2a164fabef0f0a5a`. See the [focused validation
+report](reports/toads-exact-polynomial-field-degrees23-2026-10-02.md). This
+expands one correction algorithm method; it does not add degree ramping,
+spline mode, or the complete TOADS workflow. P18cyau remains Started pending
+full-suite evidence.
