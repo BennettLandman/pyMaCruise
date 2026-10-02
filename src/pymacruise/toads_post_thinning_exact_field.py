@@ -35,14 +35,15 @@ def toads_post_thinning_exact_field_update(
     current_degree: int,
     polynomial_degree: int = 3,
     max_distance: float = 0.0001,
+    low_energy_ratio: float | None = None,
 ) -> ToadsPostThinningExactField:
     """Apply the source one-degree ramp and exact field update/no-op.
 
     `AlgorithmMultipleToads` starts with degree zero and increments by one
     when its previous energy ratio is strictly below `sqrt(maxDistance)`.
-    `computeCorrectionField(0)` returns without fitting; positive scheduled
-    degrees update the attached field in place using the exact-membership
-    Chebyshev method.
+    `computeCorrectionField(0)` returns without fitting; every positive
+    degree refits the attached field, including an unchanged maximum degree,
+    using the exact-membership Chebyshev method.
     """
     if not isinstance(next_thinning, ToadsPostRegistrationNextThinning):
         raise TypeError("next_thinning must be a selected post-registration thinning result")
@@ -51,14 +52,22 @@ def toads_post_thinning_exact_field_update(
         raise ValueError("field update requires a continuing registered branch")
     if isinstance(max_distance, bool) or not np.isfinite(np.float32(max_distance)) or np.float32(max_distance) < 0:
         raise ValueError("max_distance must be finite and nonnegative")
+    if low_energy_ratio is not None and (
+        isinstance(low_energy_ratio, bool)
+        or not np.isfinite(np.float32(low_energy_ratio))
+        or np.float32(low_energy_ratio) < 0
+    ):
+        raise ValueError("low_energy_ratio must be finite and nonnegative")
     previous_degree = current_degree
     degree = toads_next_inhomogeneity_degree(
         current_degree,
         polynomial_degree,
         branch.control.energy_ratio,
-        np.sqrt(np.float32(max_distance)),
+        np.float32(low_energy_ratio)
+        if low_energy_ratio is not None
+        else np.sqrt(np.float32(max_distance)),
     )
-    if degree == current_degree:
+    if degree == 0:
         return ToadsPostThinningExactField(
             next_thinning=next_thinning,
             previous_degree=previous_degree,
@@ -66,7 +75,7 @@ def toads_post_thinning_exact_field_update(
             fit=None,
             stage_order=(
                 *next_thinning.stage_order,
-                f"next_iteration.computeExact3DPolynomialField.degree{degree}.noop",
+                "next_iteration.computeExact3DPolynomialField.degree0.noop",
             ),
         )
     fit = fit_toads_exact_chebyshev_field(

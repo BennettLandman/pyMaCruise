@@ -6,10 +6,11 @@ import subprocess
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.toads_inhomogeneity_transition import toads_next_inhomogeneity_degree
 from pymacruise.toads_p18cza_carried_degree_iteration import (
-    continue_p18cyz_thinning_through_carried_degree1_iteration,
+    continue_p18cyz_thinning_through_carried_degree_iteration,
 )
 from pymacruise.toads_p18cyx_next_loop_thinning import (
     continue_p18cyx_branch_through_next_thinning,
@@ -17,23 +18,26 @@ from pymacruise.toads_p18cyx_next_loop_thinning import (
 from test_toads_p18cyx_registered_cycle import _p18cyw_state
 from test_toads_p18cyz_next_loop_thinning import _make_p18cyx
 from test_toads_post_thinning_exact_iteration import (
-    FIELD_HARNESS,
     ITERATION_HARNESS,
-    _field_input_bytes,
     _iteration_input_bytes,
     _bits,
 )
+from test_toads_post_thinning_exact_field_ramp import _java_fit
 
 ROOT = Path(__file__).parent
 CASE = json.loads(
     (ROOT / "data/synthetic/toads_p18cza_carried_degree_iteration/case.json").read_text()
 )
 RAS_FIXTURE = ROOT / "data" / "synthetic" / CASE["source_fixture"]
-FIELD_SOURCE_SHA256 = "6f09f2647a2dd4d03bea6bbdfb2979fc09dcc30834bb3b637bd7a615ed6a13e8"
 ITERATION_SOURCE_SHA256 = "63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884"
 
 
-def test_p18cyz_thinning_composes_through_carried_degree_one_java_references(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("previous_degree", "expected_degree"), [(0, 1), (1, 2), (2, 3), (3, 3)]
+)
+def test_p18cyz_thinning_composes_through_carried_degree_java_references(
+    previous_degree: int, expected_degree: int, tmp_path: Path
+) -> None:
     previous, image = _p18cyw_state()
     cycle = _make_p18cyx(previous, image)
     p18cyz = cycle.registered_iteration.branch
@@ -76,35 +80,37 @@ def test_p18cyz_thinning_composes_through_carried_degree_one_java_references(tmp
     centroids = np.asarray(previous.exact_iteration.centroids[0], dtype=np.float32).copy()
     p18cyz_result = continue_p18cyx_branch_through_next_thinning(cycle, shapes)
     ratio = np.float32(p18cyz_result.next_thinning.branch.control.energy_ratio)
+    low_energy_ratio = 0.0 if previous_degree == 3 else float(ratio + np.float32(0.001))
     scheduled_degree = toads_next_inhomogeneity_degree(
-        CASE["previous_polynomial_degree"],
+        previous_degree,
         CASE["maximum_polynomial_degree"],
         ratio,
-        CASE["low_energy_ratio"],
+        low_energy_ratio,
     )
     assert float(ratio) == CASE["observed_energy_ratio"]
-    assert scheduled_degree == 1
+    assert scheduled_degree == expected_degree
 
-    result = continue_p18cyz_thinning_through_carried_degree1_iteration(
+    result = continue_p18cyz_thinning_through_carried_degree_iteration(
         p18cyz_result.next_thinning,
         image,
         centroids,
         field,
-        previous_degree=CASE["previous_polynomial_degree"],
+        previous_degree=previous_degree,
         polynomial_degree=CASE["maximum_polynomial_degree"],
-        low_energy_ratio=CASE["low_energy_ratio"],
+        low_energy_ratio=low_energy_ratio,
         **source_args,
     )
     exact = result.exact_iteration
     labels = p18cyz_result.next_thinning.thinning.segmentation
     memberships = p18cyz_result.next_thinning.branch.handoff.membership_pass.memberships
     closest = p18cyz.relations.closest_labels
-    assert result.previous_degree == result.degree == 1
+    assert result.previous_degree == previous_degree
+    assert result.degree == scheduled_degree
     assert result.energy_ratio == ratio
     assert exact.field_update.next_thinning is p18cyz_result.next_thinning
     assert exact.stage_order[-7:] == (
         "next_iteration.propagateThinning",
-        "next_iteration.computeExact3DPolynomialField.degree1",
+        f"next_iteration.computeExact3DPolynomialField.degree{scheduled_degree}",
         "next_iteration.computeExactCentroids",
         "next_iteration.computeExactVariances",
         "next_iteration.computeImageVariance",
@@ -112,23 +118,20 @@ def test_p18cyz_thinning_composes_through_carried_degree_one_java_references(tmp
         "next_iteration.computeExactMemberships",
     )
 
-    field_input = tmp_path / "p18cza_field_input.bin"
-    field_input.write_bytes(_field_input_bytes(labels, image, memberships, original_field, centroids))
-    field_reference = json.loads(subprocess.run(
-        ["sh", str(FIELD_HARNESS), str(field_input), *(str(v) for v in image.shape), "11"],
-        check=True, capture_output=True, text=True,
-    ).stdout)
-    assert field_reference["reference_kind"] == "formula_harness_not_source_class_execution"
-    assert field_reference["inhomogeneity_upstream_source_sha256"] == FIELD_SOURCE_SHA256
+    field_reference = _java_fit(
+        tmp_path, scheduled_degree, labels, image, memberships, original_field, centroids
+    )
     java_field = np.asarray(field_reference["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
+    assert exact.field_update.fit is not None
     np.testing.assert_allclose(exact.field_update.fit.field, java_field, rtol=0, atol=2e-7)
     np.testing.assert_allclose(exact.field_update.fit.coefficients, field_reference["coefficients"], rtol=2e-6, atol=2e-8)
+    applied_field = exact.field_update.fit.field
 
     iteration_input = tmp_path / "p18cza_iteration_input.bin"
     iteration_output = tmp_path / "p18cza_iteration_output.bin"
     power_output = tmp_path / "p18cza_power_output.bin"
     iteration_input.write_bytes(_iteration_input_bytes(
-        labels, image, memberships, exact.field_update.fit.field, centroids, closest,
+        labels, image, memberships, applied_field, centroids, closest,
     ))
     reference = json.loads(subprocess.run(
         [

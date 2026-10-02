@@ -1275,3 +1275,19 @@ matches the Java formula reference exactly and the complete field is within
 `2e-6`. See the [focused validation report](reports/toads-registered-field-refit-2026-10-02.md).
 This is wrapper-state composition, not a complete TOADS iteration. P18cyav
 remains Started pending full-suite evidence.
+
+
+### Carried degree through field/statistics/membership continuation (P18cyba)
+
+The exact loop adapter now carries the degree state from the prior TOADS
+iteration and runs the selected field/statistics/membership stages after the
+next thinning. Degree zero preserves the attached field; positive degrees
+refit on every iteration, even after degree three reaches its maximum. The
+focused group passed 13 tests in 178.40 seconds, covering degree transitions
+0→1, 1→2, 2→3 and degree-three refitting. Degree fields were compared with
+the degree-specific Java formula harness; the subsequent statistics and
+membership outputs were compared with the selected Java iteration harness.
+See the [validation report](reports/toads-carried-degree-exact-iteration-2026-10-02.md).
+This is a single-channel synthetic continuation, not combined wrapper
+execution or full TOADS equivalence. P18cyba remains Started pending a
+full-suite checkpoint.

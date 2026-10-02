@@ -70,7 +70,7 @@ def _next_thinning_with_fixture(current_degree: int):
     return replace(next_thinning, branch=branch, thinning=thinning)
 
 
-@pytest.mark.parametrize("current_degree", [0, 1, 2])
+@pytest.mark.parametrize("current_degree", [0, 1, 2, 3])
 def test_exact_field_ramp_updates_one_degree_per_eligible_iteration(current_degree: int, tmp_path: Path) -> None:
     image, memberships, segmentation, initial_field, centers = _load_inputs()
     next_thinning = _next_thinning_with_fixture(current_degree)
@@ -78,13 +78,33 @@ def test_exact_field_ramp_updates_one_degree_per_eligible_iteration(current_degr
     result = toads_post_thinning_exact_field_update(
         next_thinning, image, centers, field, current_degree=current_degree,
     )
-    selected_degree = current_degree + 1
+    selected_degree = min(current_degree + 1, 3)
     java = _java_fit(tmp_path, selected_degree, segmentation, image, memberships, initial_field, centers)
     expected = np.asarray(java["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
     assert result.previous_degree == current_degree
     assert result.degree == selected_degree
     assert result.fit is not None
     assert result.stage_order[-1] == f"next_iteration.computeExact3DPolynomialField.degree{selected_degree}"
+    np.testing.assert_allclose(result.fit.field, expected, rtol=0, atol=2e-6)
+
+
+def test_maximum_positive_degree_refits_even_without_an_increment(tmp_path: Path) -> None:
+    image, memberships, segmentation, initial_field, centers = _load_inputs()
+    next_thinning = _next_thinning_with_fixture(current_degree=3)
+    field = initial_field.copy()
+    result = toads_post_thinning_exact_field_update(
+        next_thinning,
+        image,
+        centers,
+        field,
+        current_degree=3,
+        low_energy_ratio=0.0,
+    )
+    assert result.degree == result.previous_degree == 3
+    assert result.fit is not None
+    assert result.stage_order[-1] == "next_iteration.computeExact3DPolynomialField.degree3"
+    java = _java_fit(tmp_path, 3, segmentation, image, memberships, initial_field, centers)
+    expected = np.asarray(java["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
     np.testing.assert_allclose(result.fit.field, expected, rtol=0, atol=2e-6)
 
 
