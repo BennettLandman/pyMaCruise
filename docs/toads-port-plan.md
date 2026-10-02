@@ -1328,6 +1328,20 @@ field-fit/injection experiments and not the initial selected-wrapper schedule.
 P18cybd remains Started pending full-suite evidence.
 
 
+### First exact loop update from unity-field startup (P18cybe)
+
+The registered startup now continues past initial membership and thinning
+through the first source loop's degree-zero no-op, centroid/deviation refresh,
+image variance, centroid similarity, and exact membership update. The attached
+fields remain unity and the carried degree remains zero. The committed RAS
+synthetic startup test passed 1 test in 25.32 seconds and compares all refreshed
+maps and the membership objective exactly against direct calls to the selected
+kernels. See the [validation
+report](reports/toads-first-unity-degree-iteration-2026-10-02.md). This stops
+before registration and growth for the new memberships; P18cybe remains
+Started pending full-suite evidence.
+
+
 ### Multi-channel membership through registration and next thinning (P18cybc)
 
 The multi-channel carried-degree result now continues through actual synthetic

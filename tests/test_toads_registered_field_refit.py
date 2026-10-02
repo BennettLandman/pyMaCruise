@@ -9,12 +9,19 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
+from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
+from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
+from pymacruise.toads_math import toads_optimized_centroid_similarity, toads_optimized_image_variance
 from pymacruise.toads_registered_field_refit import (
     compute_registered_toads_corrected_initial_membership,
     fit_registered_toads_correction_fields,
 )
 from pymacruise.toads_registered_initial_membership import compute_registered_toads_initial_membership
 from pymacruise.toads_registered_unity_field_startup import compute_registered_toads_unity_field_startup
+from pymacruise.toads_registered_first_exact_iteration import (
+    continue_registered_unity_startup_through_first_exact_iteration,
+)
 from pymacruise.toads_thinning import toads_propagate_thinning
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_field_refit"
@@ -49,6 +56,7 @@ def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_pa
         smoothing=np.float32(0.2 / 6.0 / 11.0),
         prior_factor=np.float32(0.2),
         prior_coefficient=np.float32(2.0 / 11.0),
+        prior_scale=np.float32(0.05),
     )
     result = compute_registered_toads_corrected_initial_membership(run, **settings)
     field_refit = result.field_refit
@@ -129,6 +137,7 @@ def test_registered_wrapper_startup_keeps_unity_field_and_degree_zero(tmp_path: 
         smoothing=np.float32(0.2 / 6.0 / 11.0),
         prior_factor=np.float32(0.2),
         prior_coefficient=np.float32(2.0 / 11.0),
+        prior_scale=np.float32(0.05),
     )
     result = compute_registered_toads_unity_field_startup(run, **settings)
 
@@ -163,6 +172,103 @@ def test_registered_wrapper_startup_keeps_unity_field_and_degree_zero(tmp_path: 
     )
     np.testing.assert_array_equal(result.thinning.segmentation, direct_thinning.segmentation)
     np.testing.assert_array_equal(result.thinning.skeleton, direct_thinning.skeleton)
+
+
+def test_registered_unity_startup_continues_through_first_degree_zero_exact_loop() -> None:
+    descriptor = FIXTURE / "atlas-11.txt"
+    t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
+    mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
+    run = register_toads_from_atlas_assets(
+        t1, mask, descriptor, levels=1, max_iterations=1,
+        refinement_iterations=1, padding=2,
+    )
+    settings = dict(
+        exponent_by_channel_class=np.full((1, 11), 2.0, dtype=np.float32),
+        modality_weights=np.ones(1, dtype=np.float32),
+        smoothing_priors=np.ones(11, dtype=np.float32),
+        atlas_shape_priors=np.ones(11, dtype=np.float32),
+        smoothing=np.float32(0.2 / 6.0 / 11.0),
+        prior_factor=np.float32(0.2),
+        prior_coefficient=np.float32(2.0 / 11.0),
+        prior_scale=np.float32(0.05),
+    )
+    startup = compute_registered_toads_unity_field_startup(run, **settings)
+    result = continue_registered_unity_startup_through_first_exact_iteration(
+        run,
+        startup,
+        category_exponents=np.asarray([[1.0, 1.0, 1.0]], dtype=np.float32),
+        class_variance_weights=run.initial_variances.standard_deviations,
+        **settings,
+    )
+
+    assert result.degree == 0
+    assert result.fields is startup.fields
+    np.testing.assert_array_equal(result.fields, np.ones_like(result.fields))
+    assert result.stage_order[-6:] == (
+        "iteration1.computeCorrectionField.degree0.noop",
+        "iteration1.computeExactCentroids",
+        "iteration1.computeExactVariances",
+        "iteration1.computeImageVariance",
+        "iteration1.computeCentroidSimilarity",
+        "iteration1.computeExactMemberships",
+    )
+    assert result.membership_pass.memberships.shape == startup.thinning.segmentation.shape + (11,)
+    assert not np.array_equal(
+        result.membership_pass.memberships,
+        startup.statistics_membership.membership_pass.memberships,
+    )
+    images = np.moveaxis(run.template_refresh.recropped_images, 0, -1)
+    memberships = startup.statistics_membership.membership_pass.memberships
+    fields = startup.fields
+    centers = toads_default_exact_centroid_update(
+        images,
+        memberships,
+        run.segmentation_initialization.centroids,
+        np.asarray([[1.0, 1.0, 1.0]], dtype=np.float32),
+        intensity_field=fields,
+    )
+    deviations = toads_default_exact_class_variances(
+        images,
+        memberships,
+        centers,
+        startup.thinning.segmentation,
+        intensity_field=fields,
+    )
+    image_variance, image_std = toads_optimized_image_variance(
+        images,
+        memberships[..., 1:],
+        centers[:, 1:],
+        intensity_field=fields,
+    )
+    similarity = toads_optimized_centroid_similarity(
+        centers, deviations, image_variance, settings["prior_scale"]
+    )
+    expected_membership = toads_default_atlas_membership_pass(
+        image_values=images,
+        initial_memberships=memberships,
+        centroids=centers,
+        exponent_by_channel_class=settings["exponent_by_channel_class"],
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        image_variances=image_variance,
+        transformed_shapes=run.transformed_shape_priors,
+        closest_labels=run.relation_state.closest_labels,
+        smoothing_priors=settings["smoothing_priors"],
+        centroid_similarity=similarity,
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        intensity_field=fields,
+    )
+    np.testing.assert_array_equal(result.centroids, centers)
+    np.testing.assert_array_equal(result.class_standard_deviations, deviations)
+    np.testing.assert_array_equal(result.image_variance_weights, image_variance)
+    np.testing.assert_array_equal(result.image_standard_deviation, image_std)
+    np.testing.assert_array_equal(result.centroid_similarity, similarity)
+    np.testing.assert_array_equal(result.membership_pass.memberships, expected_membership.memberships)
+    np.testing.assert_array_equal(result.membership_pass.denominator, expected_membership.denominator)
+    assert result.membership_pass.objective == expected_membership.objective
 
 
 @pytest.mark.parametrize("degree", [0, 4, True])
