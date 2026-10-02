@@ -6,14 +6,30 @@ Python-native implementation of the MaCRUISE cortical segmentation workflow. The
 
 ## Current status — 2026-10-02
 
-**The restartable, single-command synthetic base MaCRUISE workflow is still being assembled.** Existing integration tests compose N4 → first TOADS → Dura → second TOADS → optional MaSeg cleanup → ACE → GVF → nested TGDM and produce native-grid RAS level sets, but do not yet provide verified stage restart, a complete run manifest, or convergence evidence. Compact TOADS runs hit their iteration cap; the Java and Python stopping rules match, so the threshold is not being relaxed.
+**A restartable synthetic base runner now exists; its current TOADS outputs are capped and nonconverged.** `pymacruise base-run` composes ANTsPy N4 → registered TOADS → Dura → second TOADS → MaSeg cleanup → ACE/GVF/TGDM → MaSeg refinement. It writes RAS `.nii.gz` outputs, stage logs, and `run.json` with input/output hashes, dependency signatures, attempt history, and structured TOADS stop metadata. The focused integration validates clean execution and recovery after a corrupted saved output: verified upstream stages are reused, dependent stages rerun, and scientific output hashes match.
 
-- **Runnable diagnostic:** `./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/synthetic-toads-10.nii.gz --maximum-iterations 10 --registration-levels 1 --registration-iterations 1 --loop-registration-iterations 1 --padding 2 --relation-limit 1`. It writes uint8 RAS labels 1–11; the 10-cycle run ended at ratio `0.545753181`, iteration cap reached, with output SHA-256 `779c64ba73059d716fd65fcbbec3193a2e0bd5701cd687e223c530650979d764`. This is a repeatable synthetic runtime/stop trace, not Java output equivalence or the full base run. See [the characterization report](docs/reports/synthetic-toads-loop-characterization-2026-10-02.md).
-- **Latest full suite:** `./.venv/bin/pytest -q` passed **1,110 tests, 0 failed, 0 skipped, 11 expected RAS warnings in 1,305.91 seconds** on tested commit `8b4a13a9600e94b7a33c60cbbf6f57eafda9b876`; see [the full-suite report](docs/reports/full-pytest-2026-10-02-folded-integration.md). Later approximate-TOADS and LesionTOADS commits have focused evidence only and were not part of that suite.
-- **Newly covered source behavior:** Java-shaped nonfinite TOADS registration-trial rejection; TOADS folded-cortex thinning/update/growing/relation integration; LesionTOADS atlas startup/first thinning, output CLI, and constructor state. Separate source comparisons and Python-only integration evidence are identified in their reports.
-- **Remaining blockers:** complete and restartable base orchestration with required images, stage checks, and manifest; characterize TOADS behavior without misreporting cap termination as convergence; then establish source/output comparisons and advance MaCRUISEplus. Human MRI validation remains deferred. Historical SPECTRE transfer is intentionally omitted under native-T1-RAS operation with a user-supplied T1-grid brain mask.
+**Runnable synthetic command** (from repository root; expected inputs are committed fixtures):
 
-Checklist percentages and aggregate test counts are bookkeeping, not measures of workflow completion. See [plan.md](plan.md) for step evidence and the next integration work.
+```bash
+./.venv/bin/pymacruise base-run \
+  --t1 tests/data/synthetic/toads_registered_first_iteration_cycle/t1.nii.gz \
+  --brain-mask tests/data/synthetic/toads_registered_first_iteration_cycle/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/base_workflow/maseg.nii.gz \
+  --atlas-descriptor tests/data/synthetic/toads_registered_field_refit/atlas-11.txt \
+  --output-dir build/synthetic-base-run \
+  --registration-levels 1 --registration-iterations 1 \
+  --registration-max-iterations 1 --toads-iterations 2 \
+  --dura-iterations 1 --crop-edge-width 2 \
+  --ace-diffusion-iterations 1 --tgdm-iterations 1
+```
+
+Expected final products include RAS native-grid `inner.nii.gz`, `central.nii.gz`, `outer.nii.gz`, `SEG_refine.nii.gz`, and its rule summary, alongside stage intermediates and `run.json`. Run the same command with `--resume` to verify completed stages. The compact run completes mechanically, but both TOADS passes report `energy_threshold_reached=false` and `iteration_limit_reached=true`; the manifest says `converged=false`. This is not an accepted segmentation or a Java-equivalence claim. See the [restartable base-run report](docs/reports/restartable-base-workflow-synthetic-2026-10-02.md) and [TOADS convergence trace](docs/reports/synthetic-toads-loop-characterization-2026-10-02.md).
+
+- **Focused evidence:** `./.venv/bin/python -m pytest tests/test_base_workflow_restartable.py -q` → **1 passed in 88.62s** on implementation commit `e27f0b6`. It exercises all stages, outputs, manifest, full resume, and corruption-triggered downstream rerun.
+- **Latest full suite:** `./.venv/bin/pytest -q` → **1,110 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,305.91 seconds** on tested commit `8b4a13a9600e94b7a33c60cbbf6f57eafda9b876`; the base runner commit came afterward and is not covered by that suite. See [the full-suite report](docs/reports/full-pytest-2026-10-02-folded-integration.md).
+- **Remaining blockers and next milestone:** find or construct a source-faithful synthetic case that reaches the TOADS energy threshold, or otherwise characterize the failure and runtime without relaxing source behavior; then run a full repository suite on the base-run commit. After the base workflow is validated, advance the MaCRUISEplus workflow. Human MRI validation remains deferred.
+
+Test totals and checklist progress are evidence bookkeeping, not measures of workflow completion. See [plan.md](plan.md) for the row-level validation status.
 ## Scope and target
 
 - **Base workflow:** T1-weighted MRI, MaSeg labels, and a user-provided brain mask on the T1 grid.
