@@ -24,12 +24,14 @@ Command:
 ./.venv/bin/pytest -q tests/test_toads_registered_first_iteration_cycle.py
 ```
 
-Result: **1 passed, 0 failed, 0 skipped in 55.86 seconds**.
+Result: **1 passed, 0 failed, 0 skipped in 57.79 seconds**.
 
-On the compact synthetic RAS atlas/T1/mask run with a four-iteration limit, the
-runner produces four exact membership passes and four registered branches.
-Its final membership maps, terminal classification, and changed-voxel count
-match the independently assembled stage-by-stage path in the same test. This
-validates the selected synthetic configuration only; it is not execution of
-the Java wrapper, a full-suite result, or full TOADS equivalence. Full-suite
-evidence is pending; P18cym remains Started.
+On the compact synthetic RAS atlas/T1/mask run, the manually assembled
+degree-zero path continues to match direct selected-kernel calls. The runner
+also executes a four-iteration forced-ramp case with degrees `[0, 1, 2, 3]`,
+refitting at each positive degree and reaching terminal classification. The
+selected field-fit degrees have separate Java formula-harness evidence in
+P18cybb/P18cyba; this runner test checks the carried schedule and terminal
+return contract, not each full wrapper state against Java. This is not
+execution of the Java wrapper, a full-suite result, or full TOADS equivalence.
+Full-suite evidence is pending; P18cym remains Started.

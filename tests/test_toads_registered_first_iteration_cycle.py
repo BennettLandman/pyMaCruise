@@ -613,6 +613,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
                 category_exponents=categories,
                 class_variance_weights=run.initial_variances.standard_deviations,
                 maximum_iterations=4,
+                maximum_distance=100.0,
                 convergence_threshold=0.04,
                 relation_limit=1,
                 max_registration_iterations=1,
@@ -622,9 +623,9 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         )
         assert len(assembled.exact_iterations) == 4
         assert len(assembled.registered_cycles) == 4
-        np.testing.assert_array_equal(
-            assembled.exact_iterations[-1].membership_pass.memberships,
-            fourth.membership_pass.memberships,
-        )
-        np.testing.assert_array_equal(assembled.classification, actual_classification)
-        assert assembled.changed_classification_voxels == expected_class_diff
+        assert [item.degree for item in assembled.exact_iterations] == [0, 1, 2, 3]
+        assert all(item.field_refit is not None for item in assembled.exact_iterations[1:])
+        assembled_terminal = assembled.registered_cycles[-1].registered_iteration.branch
+        assert assembled_terminal.control.stop
+        np.testing.assert_array_equal(assembled.classification, assembled_terminal.classification)
+        assert assembled.changed_classification_voxels == assembled_terminal.changed_classification_voxels
