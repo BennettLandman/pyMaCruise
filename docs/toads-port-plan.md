@@ -1353,3 +1353,17 @@ call. See the [validation report](reports/toads-multichannel-registered-cycle-20
 This is composition evidence over separately Java-checked stages, not a
 combined Java wrapper execution or complete TOADS result. P18cybc remains
 Started pending full-suite evidence.
+
+### First registered iteration through next thinning (P18cybf)
+
+The P18cybe first exact membership pass now continues in selected wrapper order
+through energy ratio, rigid atlas registration, control checks, growth,
+relation refresh, shape-prior transformation at the updated atlas pose, and
+iteration-two thinning. Constructor-zero grow ordering, first-thinning state,
+descriptor labels, and initialized boundary distances come from the registered
+run. A committed compact 13³ RAS phantom passed the focused test in 10.97
+seconds with exact direct-stage comparisons. See the [validation
+report](reports/toads-registered-first-iteration-cycle-2026-10-02.md). A larger
+recropped phantom exceeded the selected source's fixed `MAXLB=500` relation
+table after growth; the report records this as a Java source input limit.
+P18cybf remains Started pending full-suite evidence.

@@ -1,0 +1,8 @@
+{
+  "description": "Small RAS synthetic sphere with a smooth intensity field and internal intensity gradient.",
+  "shape_xyz": [13, 13, 13],
+  "affine": "identity RAS in millimeters",
+  "mask": "voxels with squared radius below 25 around voxel center (6, 6, 6)",
+  "t1": "1200*exp(-squared_radius/24) + 50*x + 25*y + 10*z",
+  "purpose": "registered first-loop integration through rigid registration, growing, relation refresh, and next thinning"
+}
