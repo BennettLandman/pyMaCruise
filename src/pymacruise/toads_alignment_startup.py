@@ -30,6 +30,10 @@ from .toads_atlas import (
     load_toads_intensity_priors,
     toads_atlas_shapes_in_structure_order,
 )
+from .toads_post_registration_template_refresh import (
+    ToadsPostRegistrationTemplateRefresh,
+    toads_post_registration_template_refresh,
+)
 
 
 @dataclass(frozen=True)
@@ -166,11 +170,12 @@ class ToadsAlignmentRegistration:
 
 @dataclass(frozen=True)
 class ToadsAtlasAlignmentRun:
-    """Loaded atlas state and bounded startup-to-pyramid registration result."""
+    """Loaded atlas state through the post-registration template refresh."""
 
     atlas: ToadsAtlas
     atlas_data: ToadsAtlasRASData
     alignment: ToadsAlignmentRegistration
+    template_refresh: ToadsPostRegistrationTemplateRefresh
     modality: str
 
 
@@ -291,6 +296,7 @@ def register_toads_from_atlas_assets(
     max_iterations: int = 50,
     modality: str = "T1_MPRAGE",
     padding: int = 10,
+    background_ratio: float = 0.0,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
 ) -> ToadsAtlasAlignmentRun:
@@ -307,6 +313,14 @@ def register_toads_from_atlas_assets(
         raise TypeError("atlas must be a ToadsAtlas or a descriptor path")
     atlas_data = load_toads_atlas_ras_data(loaded_atlas)
     priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
+    mask_labels = [
+        structure.label
+        for structure in loaded_atlas.structures
+        if structure.topology.lower() == "mask"
+    ]
+    if len(mask_labels) != 1:
+        raise ValueError("TOADS descriptor must identify exactly one mask/background structure")
+    background_label = mask_labels[0]
     startup = prepare_toads_alignment_startup(
         t1_n4,
         brain_mask,
@@ -314,6 +328,8 @@ def register_toads_from_atlas_assets(
         priors,
         atlas_data.template_resolution_mm,
         padding=padding,
+        background_ratio=background_ratio,
+        background_label=background_label,
     )
     shape_priors = toads_atlas_shapes_in_structure_order(loaded_atlas, atlas_data)
     alignment = register_toads_alignment_startup(
@@ -324,4 +340,29 @@ def register_toads_from_atlas_assets(
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
-    return ToadsAtlasAlignmentRun(loaded_atlas, atlas_data, alignment, modality)
+    template_refresh = toads_post_registration_template_refresh(
+        cropped_images=startup.cropped_images,
+        native_shape_xyz=tuple(int(value) for value in startup.intensity.image.shape),
+        previous_bounds=startup.crop_bounds,
+        padding=padding,
+        registered_crop_transform=alignment.registration.transform,
+        topology_template=atlas_data.topology,
+        image_resolution_mm=tuple(
+            abs(value) for value in startup.geometry.signed_image_resolutions_mm
+        ),
+        template_resolution_mm=atlas_data.template_resolution_mm,
+        orientation_signs=startup.geometry.orientation_signs,
+        robust_ranges=np.asarray(
+            [[startup.intensity.robust_minimum, startup.intensity.robust_maximum]],
+            dtype=np.float32,
+        ),
+        background_ratio=background_ratio,
+        background_label=background_label,
+    )
+    return ToadsAtlasAlignmentRun(
+        loaded_atlas,
+        atlas_data,
+        alignment,
+        template_refresh,
+        modality,
+    )

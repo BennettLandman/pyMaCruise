@@ -111,3 +111,13 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     assert result.alignment.setup.template_resolutions_mm == (1.0, 1.0, 1.0)
     assert result.alignment.registration.levels[0].scale == 2
     assert np.isfinite(result.alignment.registration.transform).all()
+    assert result.template_refresh.call_order == (
+        "uncropImages",
+        "findCroppingBoundaries",
+        "cropImages",
+        "setImageInfo",
+        "computeTransformedTemplate",
+        "updateTransformedTemplate",
+    )
+    assert result.template_refresh.recropped_images.shape[1:] == result.template_refresh.transformed_topology.shape
+    assert np.isfinite(result.template_refresh.recropped_images).all()
