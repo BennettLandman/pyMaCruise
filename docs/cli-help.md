@@ -344,3 +344,17 @@ map grid, then zeros labels 35, 38–41, and 71–73. It preserves each input
 map's scalar dtype and writes three RAS `.nii.gz` files. Physical-affine
 transfer has only been compared with the selected JIST operation on identical
 RAS grids; arbitrary origin/spacing changes remain unvalidated.
+
+## `pymacruise crop-tissue-maps`
+
+```text
+pymacruise crop-tissue-maps --gm Toads2_gm.nii.gz \
+  --wm-fill Toads2_wmfill.nii.gz --wm-mask Toads2_wmmask.nii.gz \
+  --output-dir cropped_maps [--edge-width 5] [--provenance run.json]
+```
+
+Positive GM voxels determine one inclusive crop box. The configured edge is
+added on all sides, with zero padding beyond the source grid; the same bounds
+are applied to all three maps. Outputs retain their input types and are saved
+as RAS `.nii.gz` files. The default edge width is the selected wrapper value
+of five voxels.

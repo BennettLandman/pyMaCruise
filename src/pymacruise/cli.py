@@ -30,6 +30,7 @@ from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
 from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
 from pymacruise.toads_cerebellum import remove_brainstem_and_cerebellum
+from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
@@ -178,6 +179,17 @@ def build_parser() -> argparse.ArgumentParser:
     cerebellum.add_argument("--wm-mask", required=True, type=Path, help="second-pass TOADS WM-mask map .nii.gz")
     cerebellum.add_argument("--output-dir", required=True, type=Path)
     _add_provenance_option(cerebellum)
+
+    tissue_crop = commands.add_parser(
+        "crop-tissue-maps",
+        help="crop second-pass GM, WM-fill, and WM-mask maps using GM support",
+    )
+    tissue_crop.add_argument("--gm", required=True, type=Path)
+    tissue_crop.add_argument("--wm-fill", required=True, type=Path)
+    tissue_crop.add_argument("--wm-mask", required=True, type=Path)
+    tissue_crop.add_argument("--output-dir", required=True, type=Path)
+    tissue_crop.add_argument("--edge-width", type=int, default=5)
+    _add_provenance_option(tissue_crop)
 
     toads = commands.add_parser(
         "toads-loop",
@@ -740,6 +752,44 @@ def main(argv: list[str] | None = None) -> int:
             command=args.command,
             inputs={"segmentation": args.segmentation, **maps},
             parameters={"removed_labels": sorted((35, 38, 39, 40, 41, 71, 72, 73)), "interpolation": "nearest_neighbor"},
+            outputs=output_paths,
+        )
+    elif args.command == "crop-tissue-maps":
+        cropped = crop_toads_tissue_maps(
+            _load_nifti_gz(args.gm),
+            _load_nifti_gz(args.wm_fill),
+            _load_nifti_gz(args.wm_mask),
+            edge_width=args.edge_width,
+        )
+        output_paths = {
+            "gm": args.output_dir / "gm_cropped.nii.gz",
+            "wm_fill": args.output_dir / "wmfill_cropped.nii.gz",
+            "wm_mask": args.output_dir / "wmmask_cropped.nii.gz",
+        }
+        collisions = [path for path in output_paths.values() if path.exists()]
+        if collisions:
+            raise FileExistsError(
+                "Refusing to overwrite crop output(s): "
+                + ", ".join(str(path) for path in collisions)
+            )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        images = {
+            "gm": cropped.gray_matter,
+            "wm_fill": cropped.white_matter_fill,
+            "wm_mask": cropped.white_matter_mask,
+        }
+        for name, image in images.items():
+            _save_nifti_gz(image, output_paths[name])
+            print(f"Wrote {output_paths[name]} (RAS; bounds={cropped.crop_parameters.bounds})")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"gm": args.gm, "wm_fill": args.wm_fill, "wm_mask": args.wm_mask},
+            parameters={
+                "threshold": 0.0,
+                "edge_width": args.edge_width,
+                "bounds": [list(axis) for axis in cropped.crop_parameters.bounds],
+            },
             outputs=output_paths,
         )
     elif args.command == "surface-extract":

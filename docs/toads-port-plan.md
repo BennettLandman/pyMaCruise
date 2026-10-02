@@ -1521,3 +1521,14 @@ excluded label, retained/background voxels, output types, and RAS geometry.
 This is exact for identical RAS physical grids; arbitrary source-to-reference
 geometry is not claimed to match JIST's orientation-only operation. See [the
 P18cybr report](reports/toads-cerebellum-removal-2026-10-02.md).
+
+### Second-pass GM-derived crop (P18cybs)
+
+The optional cerebellum-cleaned GM map now determines the selected base
+workflow crop; the same inclusive bounds and configured edge are applied to
+WM-fill and WM-mask. The API and `crop-tissue-maps` CLI reuse the checked
+`CubicVolumeCropper` port. A folded/holed RAS fixture plus the existing
+eight-array selected-Java identity-grid integration passed 7 tests in 33.37
+seconds. Exact JIST agreement is limited to the identity physical-grid case;
+post-crop topology/ACE/GVF/TGDM remain downstream work. See [the P18cybs
+report](reports/toads-second-pass-gm-crop-2026-10-02.md).
