@@ -1032,3 +1032,25 @@ registration kernel, not a Java end-to-end registration comparison or TOADS
 segmentation iteration. The next driver slice is segmentation construction
 and initialization of centroids, intensity ranges, lesion centroid, and the
 wrapper-selected atlas-aware exact/approximate membership overload.
+
+
+### Segmentation initialization state (P18cyak)
+
+`register_toads_from_atlas_assets` now follows the selected post-registration
+initialization calls. It copies initialized centroids into the segmentation
+centroid and prior-centroid state, records the source robust maximum and
+intensity scale, maps the descriptor lesion prior into normalized intensity
+space, and computes a fresh exact membership array on the refreshed image
+crop. The base wrapper explicitly uses `useApprox=false` and sets `approx` to
+the atlas class count, so its atlas-aware membership overload selects the
+exact path. If the descriptor has no `Lesions` section or does not list a
+requested modality, `getLesionPriors` supplies zero; the port follows that
+fallback.
+
+The focused atlas/startup/initialization group passed 59 tests in 6.12 seconds
+on implementation commit `80a7621501ca21ce6ba85f1d71e129697c0ce82b`. See the
+[P18cyak report](reports/toads-segmentation-initialization-2026-10-02.md).
+This composes previously checked source operations and does not validate the
+TOADS relation, variance, correction-field, or iterative membership stages.
+The next ready source slice is the wrapper's relation and boundary-distance
+initialization after segmentation memberships are seeded.
