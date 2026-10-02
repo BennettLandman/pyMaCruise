@@ -1,4 +1,4 @@
-"""One selected next-loop TOADS degree-one exact field update."""
+"""Degree-gated exact field updates after a selected TOADS thinning pass."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import numpy as np
 
 from .toads_inhomogeneity_exact_fit import (
     ToadsExactChebyshevFieldFit,
-    fit_toads_exact_chebyshev_field_degree1,
+    fit_toads_exact_chebyshev_field,
 )
 from .toads_inhomogeneity_transition import toads_next_inhomogeneity_degree
 from .toads_post_registration_next_thinning import ToadsPostRegistrationNextThinning
@@ -20,9 +20,73 @@ class ToadsPostThinningExactField:
     """The next thinning state and the field-refit stage selected by it."""
 
     next_thinning: ToadsPostRegistrationNextThinning
+    previous_degree: int
     degree: int
-    fit: ToadsExactChebyshevFieldFit
+    fit: ToadsExactChebyshevFieldFit | None
     stage_order: tuple[str, ...]
+
+
+def toads_post_thinning_exact_field_update(
+    next_thinning: ToadsPostRegistrationNextThinning,
+    image_values: Any,
+    centroids: Any,
+    field: Any,
+    *,
+    current_degree: int,
+    polynomial_degree: int = 3,
+    max_distance: float = 0.0001,
+) -> ToadsPostThinningExactField:
+    """Apply the source one-degree ramp and exact field update/no-op.
+
+    `AlgorithmMultipleToads` starts with degree zero and increments by one
+    when its previous energy ratio is strictly below `sqrt(maxDistance)`.
+    `computeCorrectionField(0)` returns without fitting; positive scheduled
+    degrees update the attached field in place using the exact-membership
+    Chebyshev method.
+    """
+    if not isinstance(next_thinning, ToadsPostRegistrationNextThinning):
+        raise TypeError("next_thinning must be a selected post-registration thinning result")
+    branch = next_thinning.branch
+    if branch.control.stop or branch.growing is None or branch.relations is None:
+        raise ValueError("field update requires a continuing registered branch")
+    if isinstance(max_distance, bool) or not np.isfinite(np.float32(max_distance)) or np.float32(max_distance) < 0:
+        raise ValueError("max_distance must be finite and nonnegative")
+    previous_degree = current_degree
+    degree = toads_next_inhomogeneity_degree(
+        current_degree,
+        polynomial_degree,
+        branch.control.energy_ratio,
+        np.sqrt(np.float32(max_distance)),
+    )
+    if degree == current_degree:
+        return ToadsPostThinningExactField(
+            next_thinning=next_thinning,
+            previous_degree=previous_degree,
+            degree=degree,
+            fit=None,
+            stage_order=(
+                *next_thinning.stage_order,
+                f"next_iteration.computeExact3DPolynomialField.degree{degree}.noop",
+            ),
+        )
+    fit = fit_toads_exact_chebyshev_field(
+        image_values,
+        branch.handoff.membership_pass.memberships,
+        next_thinning.thinning.segmentation,
+        centroids,
+        field,
+        degree=degree,
+    )
+    return ToadsPostThinningExactField(
+        next_thinning=next_thinning,
+        previous_degree=previous_degree,
+        degree=degree,
+        fit=fit,
+        stage_order=(
+            *next_thinning.stage_order,
+            f"next_iteration.computeExact3DPolynomialField.degree{degree}",
+        ),
+    )
 
 
 def toads_post_thinning_exact_field_degree1(
@@ -52,19 +116,13 @@ def toads_post_thinning_exact_field_degree1(
     )
     if degree != 1:
         raise ValueError("the selected branch energy ratio does not schedule degree one")
-    fit = fit_toads_exact_chebyshev_field_degree1(
+    result = toads_post_thinning_exact_field_update(
+        next_thinning,
         image_values,
-        branch.handoff.membership_pass.memberships,
-        next_thinning.thinning.segmentation,
         centroids,
         field,
+        current_degree=0,
     )
-    return ToadsPostThinningExactField(
-        next_thinning=next_thinning,
-        degree=degree,
-        fit=fit,
-        stage_order=(
-            *next_thinning.stage_order,
-            "next_iteration.computeExact3DPolynomialField.degree1",
-        ),
-    )
+    if result.degree != 1 or result.fit is None:
+        raise ValueError("the selected branch energy ratio does not schedule degree one")
+    return result
