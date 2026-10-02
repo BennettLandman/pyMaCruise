@@ -4,6 +4,7 @@ import inspect
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.toads_atlas import load_toads_lesion_priors
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
@@ -180,3 +181,9 @@ def test_atlas_lesion_priors_follow_source_missing_and_present_rules(tmp_path) -
         load_toads_lesion_priors(descriptor, ["MPRAGE", "FLAIR", "T2"]),
         np.asarray([0.35, 0.8, 0.0], dtype=np.float32),
     )
+    descriptor.write_text(
+        descriptor.read_text(encoding="utf-8").replace("T1_MPRAGE\t0.35", "T1_MPRAGE\tNaN"),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="Non-finite lesion prior"):
+        load_toads_lesion_priors(descriptor, ["MPRAGE"])
