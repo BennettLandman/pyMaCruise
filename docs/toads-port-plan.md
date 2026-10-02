@@ -839,3 +839,24 @@ wrapper scaling and Fortran-order reconstruction. Focused six-file
 output/adapter suite: 40 passed in 0.57 seconds on implementation commit
 `60ad9586cf8341f9312ed6fa22f4c1689f943e23`. This bridges the wrapper's final
 Dura products only; it does not demonstrate a complete TOADS workflow.
+
+### Completed substage: one-channel TOADS alignment startup composition (P18cyaa)
+
+`src/pymacruise/toads_alignment_startup.py` connects the selected
+`AlgorithmMultipleToads` setup calls through creation of the initial exact
+membership volume: mask and robust-span normalization, crop-bound discovery,
+image cropping with the source padding and transform update, topology sampling
+onto the crop grid, intensity-prior centroid initialization, and the exact
+membership initializer. The module returns each intermediate and an explicit
+source-stage order so registration can consume the result without guessing
+about geometry or shape.
+
+The adapter is currently the selected one-channel base-TOADS path. It accepts
+atlas topology already expressed in RAS voxel-axis order and takes its spacing
+from the source descriptor. The focused startup/preprocessing/crop/initialization
+group passes 23 tests in 0.62 seconds on implementation commit
+`593f0775b412331d28f6bd3f875ef9b7ac758e1a`. The component functions have their
+own selected-source evidence; this composition does not have an independent
+Java end-to-end reference and ends immediately before rigid atlas registration.
+It does not establish registration, iterative segmentation, or full TOADS
+equivalence.
