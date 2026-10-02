@@ -187,6 +187,17 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     assert result.initial_variances.standard_deviations.shape == (1, 2)
     assert np.isfinite(result.initial_variances.standard_deviations).all()
     assert np.all(result.initial_variances.standard_deviations >= 0)
+    image_variance = result.initial_image_variance
+    assert image_variance.call_order == (
+        "segmentation.computeMemberships",
+        "segmentation.computeImageVariance",
+        "segmentation.computeExactImageVariance",
+    )
+    assert image_variance.image_variance_weights.shape == (1,)
+    assert image_variance.image_standard_deviations.shape == (1,)
+    assert np.isfinite(image_variance.image_variance_weights).all()
+    assert np.isfinite(image_variance.image_standard_deviations).all()
+    np.testing.assert_array_equal(image_variance.image_variance_weights, [1.0])
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )
