@@ -1222,6 +1222,20 @@ spline mode, or the complete TOADS workflow. P18cyau remains Started pending
 full-suite evidence.
 
 
+### Field-corrected registered startup membership (P18cyaw)
+
+The registered startup can now continue from the fitted degree-three field
+through field-sensitive class deviations, image variance, centroid similarity,
+and the initial exact-membership pass. The synthetic integration group passed
+35 tests in 47.65 seconds on commit
+`0586a7772fb3a5b56da31167f869af4c1513d0d3`; it confirms the field-aware
+membership result matches direct calls to the component operations and differs
+from the no-field control. Selected method references validate the fit and
+statistics/membership kernels separately. See the [focused report](reports/toads-corrected-startup-membership-2026-10-02.md).
+This does not continue through thinning/growing or establish full TOADS
+equivalence. P18cyaw remains Started pending full-suite evidence.
+
+
 ### Registered startup to degree-three correction field (P18cyav)
 
 The registered atlas startup adapter now supplies its recropped RAS images,
