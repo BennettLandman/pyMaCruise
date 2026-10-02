@@ -1,0 +1,82 @@
+Structure Atlas File (edit at your own risks)
+
+Structures:	11
+Background	1	mask
+Csf1	2	optimized_csf
+Csf2	3	optimized_csf
+Gm1	4	optimized_gm
+Gm2	5	optimized_gm
+Gm3	6	optimized_gm
+Gm4	7	optimized_gm
+Gm5	8	optimized_gm
+Wm1	9	optimized_wm
+Wm2	10	optimized_wm
+Wm3	11	optimized_wm
+
+Topology Atlas:
+File:	topology.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+
+Shape Atlas:	1
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Orientations:	1	1	6	3
+Structure: Background
+File:	shape-0.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Csf1
+File:	shape-1.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Csf2
+File:	shape-2.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Gm1
+File:	shape-3.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Gm2
+File:	shape-4.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Gm3
+File:	shape-5.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Gm4
+File:	shape-6.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Gm5
+File:	shape-7.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Wm1
+File:	shape-8.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Wm2
+File:	shape-9.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure: Wm3
+File:	shape-10.nii.gz
+Dimensions:	15	13	11
+Resolutions:	1	1	1
+Center:	0	0	0
+
+Intensity Atlas:	0
+T1_MPRAGE	0.0	0.1	0.2	0.3	0.4	0.5	0.6	0.7	0.8	0.9	1.0

@@ -4,15 +4,14 @@ import json
 import subprocess
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 import pytest
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_registered_field_refit import fit_registered_toads_correction_fields
-from test_toads_registered_atlas_membership_integration import _synthetic_subject, _write_default_atlas
-
-
 ROOT = Path(__file__).parent
+FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_field_refit"
 HARNESS = ROOT / "java_reference" / "ToadsExactPolynomialFieldReferenceHarness.java"
 UPSTREAM = ROOT / "java_reference" / "upstream"
 
@@ -28,8 +27,10 @@ def _field_input_bytes(labels, image, memberships, field, centers) -> bytes:
 
 
 def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_path: Path) -> None:
-    descriptor = _write_default_atlas(tmp_path)
-    t1, mask = _synthetic_subject()
+    descriptor = FIXTURE / "atlas-11.txt"
+    t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
+    mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
+    assert nib.aff2axcodes(t1.affine) == nib.aff2axcodes(mask.affine) == ("R", "A", "S")
     run = register_toads_from_atlas_assets(
         t1, mask, descriptor, levels=1, max_iterations=1,
         refinement_iterations=1, padding=2,
