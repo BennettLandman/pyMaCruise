@@ -81,10 +81,12 @@ from pymacruise.toads_output_io import (
     toads_output_images,
 )
 from pymacruise.toads_alignment_startup import (
+    ToadsAtlasAlignmentRun,
     ToadsAlignmentRegistration,
     ToadsAlignmentStartup,
     prepare_toads_alignment_startup,
     register_toads_alignment_startup,
+    register_toads_from_atlas_assets,
 )
 from pymacruise.toads_atlas import (
     ToadsAtlas,
@@ -180,6 +182,8 @@ __all__ = [
     "prepare_toads_alignment_startup",
     "ToadsAlignmentRegistration",
     "register_toads_alignment_startup",
+    "ToadsAtlasAlignmentRun",
+    "register_toads_from_atlas_assets",
     "ToadsAtlas",
     "ToadsAtlasData",
     "ToadsAtlasRASData",

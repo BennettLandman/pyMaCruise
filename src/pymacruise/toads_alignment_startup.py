@@ -9,6 +9,7 @@ atlas registration. It does not perform atlas registration or TOADS evolution.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import nibabel as nib
 import numpy as np
@@ -20,6 +21,14 @@ from .toads_preprocessing import ToadsIntensityResult, ToadsRASGeometry, prepare
 from .toads_registration_sampling import (
     ToadsRigidRegistrationPyramidResult,
     register_toads_atlas_rigid_pyramid,
+)
+from .toads_atlas import (
+    ToadsAtlas,
+    ToadsAtlasRASData,
+    load_toads_atlas,
+    load_toads_atlas_ras_data,
+    load_toads_intensity_priors,
+    toads_atlas_shapes_in_structure_order,
 )
 
 
@@ -154,6 +163,16 @@ class ToadsAlignmentRegistration:
     registration: ToadsRigidRegistrationPyramidResult
 
 
+@dataclass(frozen=True)
+class ToadsAtlasAlignmentRun:
+    """Loaded atlas state and bounded startup-to-pyramid registration result."""
+
+    atlas: ToadsAtlas
+    atlas_data: ToadsAtlasRASData
+    alignment: ToadsAlignmentRegistration
+    modality: str
+
+
 def register_toads_alignment_startup(
     startup: ToadsAlignmentStartup,
     atlas_shape_priors: ArrayLike,
@@ -198,3 +217,48 @@ def register_toads_alignment_startup(
         minimum_lambda=minimum_lambda,
     )
     return ToadsAlignmentRegistration(startup, registration)
+
+
+def register_toads_from_atlas_assets(
+    t1_n4: nib.spatialimages.SpatialImage,
+    brain_mask: nib.spatialimages.SpatialImage,
+    atlas: ToadsAtlas | str | Path,
+    *,
+    levels: int,
+    max_iterations: int = 50,
+    modality: str = "T1_MPRAGE",
+    padding: int = 10,
+    energy_tolerance: float = 1e-6,
+    minimum_lambda: float = 1e-3,
+) -> ToadsAtlasAlignmentRun:
+    """Wire descriptor assets through startup and initial rigid registration.
+
+    This convenience composition loads the selected descriptor, RAS atlas
+    arrays, and the requested intensity-prior profile, then runs the bounded
+    one-channel startup and rigid-pyramid adapters. Registration levels and
+    iteration limits remain explicit call arguments; this function does not
+    infer wrapper parameters or claim TOADS iteration/workflow equivalence.
+    """
+    loaded_atlas = load_toads_atlas(atlas) if isinstance(atlas, (str, Path)) else atlas
+    if not isinstance(loaded_atlas, ToadsAtlas):
+        raise TypeError("atlas must be a ToadsAtlas or a descriptor path")
+    atlas_data = load_toads_atlas_ras_data(loaded_atlas)
+    priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
+    startup = prepare_toads_alignment_startup(
+        t1_n4,
+        brain_mask,
+        atlas_data.topology,
+        priors,
+        atlas_data.template_resolution_mm,
+        padding=padding,
+    )
+    shape_priors = toads_atlas_shapes_in_structure_order(loaded_atlas, atlas_data)
+    alignment = register_toads_alignment_startup(
+        startup,
+        shape_priors,
+        levels=levels,
+        max_iterations=max_iterations,
+        energy_tolerance=energy_tolerance,
+        minimum_lambda=minimum_lambda,
+    )
+    return ToadsAtlasAlignmentRun(loaded_atlas, atlas_data, alignment, modality)
