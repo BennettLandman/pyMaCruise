@@ -899,3 +899,22 @@ metadata, and class order; see [the P18cyac report](reports/toads-atlas-ras-load
 This loader is not yet assembled with descriptor intensity-prior lookup and the
 startup/registration adapters, and it does not validate atlas registration,
 TOADS iteration, or real-image behavior.
+
+
+### Completed substage: atlas-assets to initial-registration composition (P18cyad)
+
+`register_toads_from_atlas_assets` accepts a loaded TOADS atlas or descriptor
+path, loads its RAS topology/shapes and requested explicit modality prior,
+prepares the one-channel T1/mask startup, orders the atlas maps according to
+the descriptor, and invokes the selected exact-membership rigid pyramid. The
+levels and maximum iterations are explicit inputs, so this helper does not
+quietly invent wrapper configuration.
+
+A compact synthetic two-class descriptor and NIfTI atlas/T1/mask exercise that
+path through one scale-2 optimizer level. The focused group passed 13 tests in
+1.24 seconds on implementation commit
+`e80ef81a40195b195eae32c31a4033b8e95262c3`; see [the P18cyad report](reports/toads-atlas-startup-composition-2026-10-02.md). This composition does not
+recreate all internal transform-model state transitions of Java
+`initShapeRegistration`/`updateShapeRegistration`, compare end-to-end registration
+against Java, or run TOADS iterations. The next integration slice should pin
+those selected wrapper state transitions before increasing the claim.
