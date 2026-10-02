@@ -6,7 +6,7 @@
 
 Batch adjacent source methods that share state and call order into one implementation slice. For each slice, run focused Java-reference tests and the closest integration tests; run the full repository suite at major workflow-integration milestones and final acceptance, or sooner when a change crosses algorithm families or shared image/geometry contracts. Record each validation command, pass/fail/skip counts, duration, and tested commit in the row or linked report. Count only newly mapped selected Java method lines toward source-line progress; when a cycle only connects already-counted operations, report a zero source-line delta alongside its integration progress.
 
-Progress updates are for ongoing informal decision support, not a formal go/no-go. Show validated implementation changes, source-line delta, test evidence, remaining work, and blockers over time. The first complete synthetic base workflow will provide a useful broader assessment, but is not by itself a formal gate.
+Progress updates are for ongoing informal decision support, not a formal go/no-go. Show validated implementation changes, source-line delta, test evidence, remaining work, and blockers consistently over time so the project’s direction can be assessed from evidence. The first complete synthetic base workflow is a substantive progress update, not a pass/fail gate, deadline, or formal decision point. If validated progress is not visible over time, formal gates may be introduced later; none are established by this plan.
 
 **Estimate date: 2026-10-02.** This is a planning estimate, not a validated performance or delivery commitment. Re-estimate after the TOADS port is complete and the first end-to-end synthetic base workflow runs.
 
