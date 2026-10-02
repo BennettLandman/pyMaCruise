@@ -991,3 +991,22 @@ full TOADS behavior. See [the P18cyag report](reports/toads-registration-ras-geo
 continue to specify smaller settings for fast synthetic slices; these are
 explicit overrides rather than silent changes to the selected profile. The
 source call and focused tests are recorded in [the P18cyah report](reports/toads-wrapper-defaults-2026-10-02.md).
+
+
+### Atlas-backed initial alignment through template refresh (P18cyai)
+
+`register_toads_from_atlas_assets` now continues the selected source route after
+rigid atlas fitting: it passes the registered transform to the existing
+post-registration refresh, restores the normalized T1 to its native voxel grid,
+recomputes crop bounds with the atlas background label, crops under the fitted
+transform, and transforms topology onto the complete recropped grid. The mask
+label comes from the unique `mask` structure in the atlas descriptor; the
+background ratio is a caller-visible option with source-default zero.
+
+The compact synthetic atlas composition plus its focused startup, refresh, and
+registration tests pass 28 cases in 1.87 seconds on implementation commit
+`4adb642a69011e15a8b91476ae966ac68e3ade9e`. The crop/template refresh component
+has separate selected-Java reference checks, but this new descriptor-to-refresh
+chain is only synthetic wiring evidence. It ends before segmentation object
+construction, reinitialization memberships, single-scale alignment, and TOADS
+iteration. See [the P18cyai report](reports/toads-registration-template-refresh-2026-10-02.md).
