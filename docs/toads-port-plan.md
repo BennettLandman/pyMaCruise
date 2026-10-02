@@ -1543,3 +1543,25 @@ corrected WM-fill. The preparation, crop, cleanup, and topology test group
 passed 19 tests in 1.29 seconds. This reaches the pre-ACE handoff; ACE/GVF/TGDM
 and full workflow equivalence remain open. See [the P18cybt
 report](reports/toads-cruise-preparation-2026-10-02.md).
+
+### CRUISE core through native-grid nested TGDM (P18cybu)
+
+`run_toads_cruise_core` and `toads-cruise-core` now continue prepared
+second-pass TOADS maps through base ACE, generalized GVF, nested TGDM, and
+inverse crop. This uses ACE's base-wrapper CSF mode, the TOADS wrapper's 0.6 WM
+iso level, and selected 20-valued/exclusive-high uncrop semantics. A compact
+RAS integration executes one ACE diffusion and one iteration per TGDM profile
+and verifies native-grid outputs; the affected 21-test preparation/algorithm
+group passed in 2.18 seconds. This stops before visualization surfaces and
+does not reproduce the historical SPECTRE stage or complete Java wrapper. See
+[the P18cybu report](reports/toads-cruise-core-2026-10-02.md).
+
+### First TOADS through native-grid CRUISE core (P18cybv)
+
+The compact two-pass synthetic CLI chain now continues through Dura and second
+TOADS into the base ACE/GVF/TGDM core. The focused selector passed **1 test in
+50.62 seconds**. It verifies finite float32 inner/central/outer level sets on
+the original T1 RAS grid and consistent RAS geometry for cropped ACE/GVF
+outputs. This exercises TOADS at two selected iterations and Dura at one
+outer pass; it is not full wrapper equivalence. Historical SPECTRE and
+human-sized convergence remain open. See [the P18cybv report](reports/toads-dura-second-to-cruise-core-2026-10-02.md).

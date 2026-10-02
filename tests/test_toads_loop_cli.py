@@ -211,3 +211,32 @@ def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
     assert second_gm.shape == reference.shape
     assert nib.aff2axcodes(second_gm.affine) == ("R", "A", "S")
     assert second_gm.get_data_dtype().name == "float32"
+
+    # Continue this same first-pass -> Dura -> second-pass run through the
+    # selected base CRUISE core, rather than validating the second-pass seam
+    # in isolation. The small fixture makes the default algorithm path usable
+    # in a focused test while retaining the source crop and level-set stages.
+    core_output_dir = tmp_path / "cruise-core"
+    assert main([
+        "toads-cruise-core",
+        "--gm", str(second_dura_inputs / "stripped_t1_gm.nii.gz"),
+        "--wm-fill", str(second_dura_inputs / "stripped_t1_wmfill.nii.gz"),
+        "--wm-mask", str(second_dura_inputs / "stripped_t1_wmmask.nii.gz"),
+        "--edge-width", "2",
+        "--output-dir", str(core_output_dir),
+    ]) == 0
+    for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
+        image = nib.load(str(core_output_dir / filename))
+        assert image.shape == reference.shape
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+    for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
+        image = nib.load(str(core_output_dir / filename))
+        values = np.asarray(image.dataobj)
+        assert image.get_data_dtype().name == "float32"
+        assert np.isfinite(values).all()
+    enhanced_gm = nib.load(str(core_output_dir / "ace_enhanced_gm.nii.gz"))
+    gvf = nib.load(str(core_output_dir / "gvf.nii.gz"))
+    assert enhanced_gm.shape == gvf.shape[:3]
+    assert gvf.shape == (*enhanced_gm.shape, 3)
+    assert nib.aff2axcodes(enhanced_gm.affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(gvf.affine) == ("R", "A", "S")

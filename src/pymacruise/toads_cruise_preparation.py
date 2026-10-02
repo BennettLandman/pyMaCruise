@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import nibabel as nib
 
 from .cropping import CropParameters
+from .image_io import normalize_image_to_ras
 from .toads_cerebellum import remove_brainstem_and_cerebellum
 from .toads_tissue_crop import crop_toads_tissue_maps
 from .topology import topology_correct
@@ -22,6 +23,7 @@ from .topology import topology_correct
 class ToadsCruisePreparationResult:
     """Crop-ready tissue maps plus the selected topology-corrected WM field."""
 
+    crop_reference_gray_matter: nib.spatialimages.SpatialImage
     gray_matter: nib.spatialimages.SpatialImage
     white_matter_fill: nib.spatialimages.SpatialImage
     white_matter_mask: nib.spatialimages.SpatialImage
@@ -73,6 +75,7 @@ def prepare_toads_cruise_inputs(
         edge_width=crop_edge_width,
     )
     stages.append("cropByPositiveGrayMatter")
+    crop_reference = normalize_image_to_ras(gm, source_name="TOADS crop-reference GM")
     topology = topology_correct(
         cropped.white_matter_fill,
         cropped.white_matter_mask,
@@ -83,6 +86,7 @@ def prepare_toads_cruise_inputs(
     )
     stages.append("topologyCorrectWhiteMatterFill")
     return ToadsCruisePreparationResult(
+        crop_reference_gray_matter=crop_reference,
         gray_matter=cropped.gray_matter,
         white_matter_fill=cropped.white_matter_fill,
         white_matter_mask=cropped.white_matter_mask,

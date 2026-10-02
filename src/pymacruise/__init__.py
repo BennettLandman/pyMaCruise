@@ -133,6 +133,22 @@ from pymacruise.toads_initial_statistics_thinning import (
     compute_toads_initial_statistics_thinning,
 )
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
+from pymacruise.toads_cerebellum import (
+    CerebellumRemovalResult,
+    remove_brainstem_and_cerebellum,
+)
+from pymacruise.toads_tissue_crop import (
+    ToadsCroppedTissueMaps,
+    crop_toads_tissue_maps,
+)
+from pymacruise.toads_cruise_preparation import (
+    ToadsCruisePreparationResult,
+    prepare_toads_cruise_inputs,
+)
+from pymacruise.toads_cruise_core import (
+    ToadsCruiseCoreResult,
+    run_toads_cruise_core,
+)
 
 __all__ = [
     "ImageGeometryError",
@@ -246,4 +262,12 @@ __all__ = [
     "ToadsInitialStatisticsThinning",
     "compute_toads_initial_statistics_thinning",
     "transform_toads_shape_priors",
+    "CerebellumRemovalResult",
+    "remove_brainstem_and_cerebellum",
+    "ToadsCroppedTissueMaps",
+    "crop_toads_tissue_maps",
+    "ToadsCruisePreparationResult",
+    "prepare_toads_cruise_inputs",
+    "ToadsCruiseCoreResult",
+    "run_toads_cruise_core",
 ]

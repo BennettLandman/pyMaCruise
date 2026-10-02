@@ -32,6 +32,7 @@ from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
 from pymacruise.toads_cerebellum import remove_brainstem_and_cerebellum
 from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
 from pymacruise.toads_cruise_preparation import prepare_toads_cruise_inputs
+from pymacruise.toads_cruise_core import run_toads_cruise_core
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
@@ -204,6 +205,26 @@ def build_parser() -> argparse.ArgumentParser:
     cruise_inputs.add_argument("--edge-width", type=int, default=5)
     cruise_inputs.add_argument("--output-dir", required=True, type=Path)
     _add_provenance_option(cruise_inputs)
+
+    cruise_core = commands.add_parser(
+        "toads-cruise-core",
+        help="run second-pass preparation, ACE, GVF, and nested TGDM",
+    )
+    cruise_core.add_argument("--gm", required=True, type=Path)
+    cruise_core.add_argument("--wm-fill", required=True, type=Path)
+    cruise_core.add_argument("--wm-mask", required=True, type=Path)
+    cruise_core.add_argument("--segmentation", type=Path)
+    cruise_core.add_argument("--remove-cerebellum", action="store_true")
+    cruise_core.add_argument("--edge-width", type=int, default=5)
+    cruise_core.add_argument("--ace-diffusion-iterations", type=int, default=25)
+    cruise_core.add_argument("--gvf-lambda", type=float, default=1.0)
+    cruise_core.add_argument("--gvf-iterations", type=int, default=200)
+    cruise_core.add_argument("--gvf-solver-tolerance", type=float, default=1e-6)
+    cruise_core.add_argument("--tgdm-initial-iterations", type=int, default=6)
+    cruise_core.add_argument("--tgdm-inner-iterations", type=int, default=4)
+    cruise_core.add_argument("--tgdm-central-iterations", type=int, default=7)
+    cruise_core.add_argument("--output-dir", required=True, type=Path)
+    _add_provenance_option(cruise_core)
 
     toads = commands.add_parser(
         "toads-loop",
@@ -864,6 +885,95 @@ def main(argv: list[str] | None = None) -> int:
                 "segmentation": args.segmentation,
             },
             parameters=parameters,
+            outputs=output_paths,
+        )
+    elif args.command == "toads-cruise-core":
+        core_parameters = TGDMBaselineParameters(
+            white_matter_iso=0.6,
+            initial_iterations=args.tgdm_initial_iterations,
+            inner_iterations=args.tgdm_inner_iterations,
+            central_iterations=args.tgdm_central_iterations,
+            # The selected MATLAB command wrapper passes IterCentralSurf to
+            # the Java outer-iteration parameter as well.
+            outer_iterations=args.tgdm_central_iterations,
+        )
+        result = run_toads_cruise_core(
+            _load_nifti_gz(args.gm),
+            _load_nifti_gz(args.wm_fill),
+            _load_nifti_gz(args.wm_mask),
+            segmentation=(
+                None if args.segmentation is None else _load_nifti_gz(args.segmentation)
+            ),
+            remove_cerebellum=args.remove_cerebellum,
+            crop_edge_width=args.edge_width,
+            ace_diffusion_iterations=args.ace_diffusion_iterations,
+            gvf_lambda=args.gvf_lambda,
+            gvf_iterations=args.gvf_iterations,
+            gvf_solver_tolerance=args.gvf_solver_tolerance,
+            tgdm_parameters=core_parameters,
+        )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        images = {
+            "gm_cropped": result.preparation.gray_matter,
+            "wmfill_cropped": result.preparation.white_matter_fill,
+            "wmmask_cropped": result.preparation.white_matter_mask,
+            "wmfill_topology_corrected": result.preparation.topology_corrected_white_matter_fill,
+            "ace_enhanced_gm": result.ace.enhanced_gray_matter,
+            "ace_skeleton": result.ace.skeleton,
+            "ace_thinned_skeleton": result.ace.thinned_skeleton,
+            "gvf": result.gvf.vector_field,
+            "inner": result.inner_native,
+            "central": result.central_native,
+            "outer": result.outer_native,
+        }
+        output_paths = {name: args.output_dir / f"{name}.nii.gz" for name in images}
+        collisions = [path for path in output_paths.values() if path.exists()]
+        if collisions:
+            raise FileExistsError(
+                "Refusing to overwrite CRUISE core output(s): "
+                + ", ".join(str(path) for path in collisions)
+            )
+        for name, image in images.items():
+            _save_nifti_gz(image, output_paths[name])
+            print(f"Wrote {output_paths[name]} (RAS)")
+        core_options = {
+            "remove_cerebellum": args.remove_cerebellum,
+            "removed_voxel_counts": result.preparation.removed_voxel_counts,
+            "crop_edge_width": args.edge_width,
+            "crop_bounds": [list(axis) for axis in result.preparation.crop_parameters.bounds],
+            "ace": {
+                "intensity_threshold": 126.9,
+                "tensor_alpha": 1.6,
+                "gaussian_alpha": 1.8,
+                "diffusion_iterations": args.ace_diffusion_iterations,
+                "updated_multi_atlas_csf_mode": 0,
+            },
+            "gvf": {
+                "lambda": args.gvf_lambda,
+                "max_iterations": args.gvf_iterations,
+                "solver_tolerance": args.gvf_solver_tolerance,
+            },
+            "tgdm": asdict(core_parameters),
+            "uncrop_background": 20.0,
+            "stage_order": [
+                *result.preparation.stage_order,
+                "ACE",
+                "generalizedGVF",
+                "nestedTGDM",
+                "inverseCrop",
+            ],
+            "visualization_surfaces": False,
+        }
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={
+                "gm": args.gm,
+                "wm_fill": args.wm_fill,
+                "wm_mask": args.wm_mask,
+                "segmentation": args.segmentation,
+            },
+            parameters=core_options,
             outputs=output_paths,
         )
     elif args.command == "surface-extract":

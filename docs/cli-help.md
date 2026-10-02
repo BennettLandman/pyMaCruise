@@ -374,3 +374,24 @@ maps, then (6,18) topology correction of cropped WM-fill painted by cropped
 WM-mask. It writes the three cropped maps and corrected WM-fill on native
 cropped RAS geometry. Base workflow defaults are used; multi-atlas topology
 refinement is not enabled by this command.
+
+## `pymacruise toads-cruise-core`
+
+```text
+pymacruise toads-cruise-core --gm Toads2_gm.nii.gz \
+  --wm-fill Toads2_wmfill.nii.gz --wm-mask Toads2_wmmask.nii.gz \
+  [--segmentation MaSeg.nii.gz --remove-cerebellum] \
+  --output-dir cruise_core [--edge-width 5] \
+  [--ace-diffusion-iterations 25] [--gvf-lambda 1] \
+  [--gvf-iterations 200] [--tgdm-initial-iterations 6] \
+  [--tgdm-inner-iterations 4] [--tgdm-central-iterations 7] \
+  [--provenance run.json]
+```
+
+This continues from second-pass maps through cleanup/crop/topology,
+base-parameter ACE, generalized GVF, nested TGDM, and native-grid inverse
+crop. It writes cropped tissue maps, topology-corrected WM-fill, ACE outputs,
+the component-last GVF, and native-RAS inner/central/outer level sets. Base
+ACE does not merge updated multi-atlas CSF. The selected MATLAB wrapper passes
+the central-surface iteration option to the outer TGDM stage as well, so the
+CLI preserves that mapping. Surfaces and thickness outputs are not generated.
