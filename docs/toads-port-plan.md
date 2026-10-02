@@ -1565,3 +1565,14 @@ the original T1 RAS grid and consistent RAS geometry for cropped ACE/GVF
 outputs. This exercises TOADS at two selected iterations and Dura at one
 outer pass; it is not full wrapper equivalence. Historical SPECTRE and
 human-sized convergence remain open. See [the P18cybv report](reports/toads-dura-second-to-cruise-core-2026-10-02.md).
+
+### Optional MaSeg cleanup in the connected base sequence (P18cybw)
+
+The connected first-TOADS/Dura/second-TOADS/core CLI test now also exercises
+MaSeg brainstem/cerebellum cleanup. Its synthetic segmentation places all
+selected labels on positive GM voxels; provenance confirms eight removed
+voxels in each tissue map and source cleanup-before-crop stage order. The
+focused selector passed **1 test in 67.50 seconds**. This uses same-grid
+transfer and a compact limited-iteration workflow; it does not establish
+arbitrary-grid JIST transfer or full workflow equivalence. See [the P18cybw
+report](reports/toads-cruise-cerebellum-integration-2026-10-02.md).

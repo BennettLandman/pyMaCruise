@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import shutil
 
@@ -240,3 +241,36 @@ def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
     assert gvf.shape == (*enhanced_gm.shape, 3)
     assert nib.aff2axcodes(enhanced_gm.affine) == ("R", "A", "S")
     assert nib.aff2axcodes(gvf.affine) == ("R", "A", "S")
+
+    # Exercise the optional MaSeg branch on the same second-pass products.
+    # Place all eight selected labels on positive GM voxels so the provenance
+    # proves that cleanup happened before crop selection and core evolution.
+    gm_values = np.asarray(second_gm.dataobj)
+    selected_voxels = np.argwhere(gm_values > 0)
+    assert selected_voxels.shape[0] >= 8
+    maseg_values = np.zeros(second_gm.shape, dtype=np.uint8)
+    excluded_labels = (35, 38, 39, 40, 41, 71, 72, 73)
+    for coordinate, label in zip(selected_voxels[:8], excluded_labels, strict=True):
+        maseg_values[tuple(coordinate)] = label
+    maseg_path = tmp_path / "synthetic-maseg.nii.gz"
+    nib.save(nib.Nifti1Image(maseg_values, second_gm.affine), str(maseg_path))
+    cleanup_output_dir = tmp_path / "cruise-core-cleanup"
+    cleanup_provenance = tmp_path / "cruise-core-cleanup.json"
+    assert main([
+        "toads-cruise-core",
+        "--gm", str(second_dura_inputs / "stripped_t1_gm.nii.gz"),
+        "--wm-fill", str(second_dura_inputs / "stripped_t1_wmfill.nii.gz"),
+        "--wm-mask", str(second_dura_inputs / "stripped_t1_wmmask.nii.gz"),
+        "--segmentation", str(maseg_path), "--remove-cerebellum",
+        "--edge-width", "2", "--output-dir", str(cleanup_output_dir),
+        "--provenance", str(cleanup_provenance),
+    ]) == 0
+    cleanup_parameters = json.loads(cleanup_provenance.read_text())["parameters"]
+    assert cleanup_parameters["remove_cerebellum"] is True
+    assert cleanup_parameters["removed_voxel_counts"] == [8, 8, 8]
+    assert cleanup_parameters["stage_order"][0] == "removeBrainstemAndCerebellum"
+    for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
+        cleaned_levelset = nib.load(str(cleanup_output_dir / filename))
+        assert cleaned_levelset.shape == reference.shape
+        assert nib.aff2axcodes(cleaned_levelset.affine) == ("R", "A", "S")
+        assert np.isfinite(np.asarray(cleaned_levelset.dataobj)).all()
