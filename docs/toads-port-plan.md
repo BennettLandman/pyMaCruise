@@ -1159,3 +1159,22 @@ commit `ada020ac149e2889ede1195202101bc702adcc28`; see the [P18cyar
 report](reports/toads-initial-statistics-thinning-2026-10-02.md). Selected Java
 references remain at the component level, and topology-changing behavior on a
 large volume remains unvalidated in this composition.
+
+
+### Transformed atlas shape volume on the refreshed RAS crop (P18cyas)
+
+The atlas startup adapter now turns descriptor-order template shape maps into
+a class-last volume on the post-registration subject crop. It uses the
+selected final transform and per-class current-transform bounds, signed RAS
+spacing, source interpolation-term order, shape-slope recovery, and the
+class-zero outside-bounds fallback. The existing source point sampler remains
+the reference for individual values. The new volume is available in the
+startup result, while the exact membership composition still accepts shape
+volumes as explicit inputs.
+
+The focused atlas-startup, shape-sampler, recrop, and registration group
+passed 35 tests in 7.77 seconds on implementation commit
+`8088396d727e38187bc8bddfdd6db08d01198dda`; see the [P18cyas
+report](reports/toads-shape-volume-2026-10-02.md). The volume comparison uses
+`3e-7` absolute tolerance against the pointwise adapter and is not an
+independent Java whole-volume reference.
