@@ -49,6 +49,10 @@ from .toads_segmentation_constructor import (
 )
 from .toads_initial_relation_state import toads_initialize_relation_state
 from .toads_relations import ToadsRelationState
+from .toads_segmentation_initial_variance import (
+    ToadsInitialClassVariances,
+    initialize_toads_class_variances,
+)
 
 
 @dataclass(frozen=True)
@@ -195,6 +199,7 @@ class ToadsAtlasAlignmentRun:
     segmentation_initialization: ToadsSegmentationInitialization
     segmentation_constructor: ToadsSegmentationConstructorState
     relation_state: ToadsRelationState
+    initial_variances: ToadsInitialClassVariances
     modality: str
 
 
@@ -412,6 +417,14 @@ def register_toads_from_atlas_assets(
         segmentation_initialization.memberships,
         relation_limit,
     )
+    image_xyz_channels = np.moveaxis(template_refresh.recropped_images, 0, -1)
+    initial_variances = initialize_toads_class_variances(
+        images_xyz_channels=image_xyz_channels,
+        memberships=segmentation_initialization.memberships,
+        centroids=segmentation_initialization.centroids,
+        segmentation=segmentation_constructor.segmentation,
+        class_types=[structure.topology for structure in loaded_atlas.structures],
+    )
     return ToadsAtlasAlignmentRun(
         loaded_atlas,
         atlas_data,
@@ -421,5 +434,6 @@ def register_toads_from_atlas_assets(
         segmentation_initialization,
         segmentation_constructor,
         relation_state,
+        initial_variances,
         modality,
     )

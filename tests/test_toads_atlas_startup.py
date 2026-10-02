@@ -180,6 +180,13 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     assert result.relation_state.relation.class_count == 2
     assert result.relation_state.boundary_distances.shape == (*constructor.segmentation.shape, 2)
     assert result.relation_state.closest_labels.shape == (*constructor.segmentation.shape, 4)
+    assert result.initial_variances.call_order == (
+        "segmentation.computeVariances",
+        "segmentation.computeExactVariances",
+    )
+    assert result.initial_variances.standard_deviations.shape == (1, 2)
+    assert np.isfinite(result.initial_variances.standard_deviations).all()
+    assert np.all(result.initial_variances.standard_deviations >= 0)
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )
