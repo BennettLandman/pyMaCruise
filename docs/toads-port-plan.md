@@ -1576,3 +1576,14 @@ focused selector passed **1 test in 67.50 seconds**. This uses same-grid
 transfer and a compact limited-iteration workflow; it does not establish
 arbitrary-grid JIST transfer or full workflow equivalence. See [the P18cybw
 report](reports/toads-cruise-cerebellum-integration-2026-10-02.md).
+
+### ANTsPy N4 through the synthetic base CLI chain (P18cybx)
+
+The first stage of the compact synthetic sequence now calls the real ANTsPy
+N4 implementation with its selected default configuration. Its output feeds
+first-pass TOADS and the Dura reference; the test then completes second-pass
+TOADS and both CRUISE-core branches. The focused selector passed **1 test in
+87.76 seconds**. It is limited to two iterations per TOADS pass and one Dura
+outer pass. This confirms the executable ANTs dependency path, not full
+human-sized convergence or Java-wrapper equivalence. See [the P18cybx
+report](reports/n4-toads-dura-cruise-chain-2026-10-02.md).

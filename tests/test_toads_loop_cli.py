@@ -165,6 +165,13 @@ def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
 
     t1 = FIXTURE / "t1.nii.gz"
     mask = FIXTURE / "brain-mask.nii.gz"
+    t1_n4 = tmp_path / "t1-n4.nii.gz"
+    n4_provenance = tmp_path / "n4.json"
+    assert main([
+        "n4", "--input", str(t1), "--output", str(t1_n4),
+        "--provenance", str(n4_provenance),
+    ]) == 0
+    assert t1_n4.is_file() and n4_provenance.is_file()
     first_dura_inputs = tmp_path / "first-toads-dura-inputs"
     first_pass = tmp_path / "first-pass.nii.gz"
     common_options = [
@@ -177,17 +184,17 @@ def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
         "--relation-limit", "1",
     ]
     assert main([
-        "toads-loop", "--t1-n4", str(t1), "--brain-mask", str(mask),
+        "toads-loop", "--t1-n4", str(t1_n4), "--brain-mask", str(mask),
         "--output", str(first_pass), "--dura-output-dir", str(first_dura_inputs),
         *common_options,
     ]) == 0
 
     dura_output_dir = tmp_path / "dura"
     assert main([
-        "dura", "--t1", str(t1),
-        "--white", str(first_dura_inputs / "t1_wmfill.nii.gz"),
-        "--gray", str(first_dura_inputs / "t1_gm.nii.gz"),
-        "--white-mask", str(first_dura_inputs / "t1_wmmask.nii.gz"),
+        "dura", "--t1", str(t1_n4),
+        "--white", str(first_dura_inputs / "t1-n4_wmfill.nii.gz"),
+        "--gray", str(first_dura_inputs / "t1-n4_gm.nii.gz"),
+        "--white-mask", str(first_dura_inputs / "t1-n4_wmmask.nii.gz"),
         "--output-dir", str(dura_output_dir), "--max-iterations", "1",
     ]) == 0
 
@@ -201,7 +208,7 @@ def test_dura_stripped_t1_and_mask_feed_second_toads_cli_pass(tmp_path) -> None:
         *common_options,
     ]) == 0
 
-    reference = nib.load(str(t1))
+    reference = nib.load(str(t1_n4))
     for path in (first_pass, second_pass, second_dura_inputs / "stripped_t1_gm.nii.gz"):
         assert path.is_file()
     second_labels = nib.load(str(second_pass))
