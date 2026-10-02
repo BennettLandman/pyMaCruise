@@ -86,3 +86,45 @@ need source-grounded construction and validation before it could demonstrate
 energy-threshold convergence. The output and trace are not a Java-versus-
 Python numerical comparison. No real MRI was used. No focused pytest or full
 suite was run for this diagnostic script.
+
+## Bounded synthetic-convergence probes
+
+To check whether the cap result was specific to the original smooth intensity
+field or fuzzy shape priors, the trace script also supports intensity and
+loop-time shape-prior variants. With the default one-level, one-registration-
+iteration, `1e-4` threshold, the reproducible probes were:
+
+```bash
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-constant.nii.gz --maximum-iterations 2 --intensity-variant constant-volume --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-constant-mask.nii.gz --maximum-iterations 2 --intensity-variant constant-mask --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-linear-x.nii.gz --maximum-iterations 2 --intensity-variant linear-x --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-linear-xyz.nii.gz --maximum-iterations 2 --intensity-variant linear-xyz --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-original-scaled.nii.gz --maximum-iterations 2 --intensity-variant original-scaled --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-uniform-shapes.nii.gz --maximum-iterations 5 --shape-variant uniform-one --relation-limit 1
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py --output build/benchmarks/probe-onehot-shapes.nii.gz --maximum-iterations 5 --shape-variant topology-one-hot --relation-limit 1
+```
+
+Observed terminal ratios were respectively `0.173250198`, `0.240745962`,
+`0.238085672`, and `0.164067119`; all runs stopped at the iteration cap, not
+at the energy threshold. A constant image inside the brain mask gave the same
+two-cycle objectives and ratios as the constant-volume probe because the
+preprocessing stage zeros voxels outside the mask. Separate direct-API probes
+of linear-x intensity and a 0.001-scaled original intensity ended at ratios
+`0.23590134` and `0.38968217` after two cycles, also without convergence.
+
+The shape-prior variants replace shape arrays in the loop state **after** the
+ordinary descriptor-based atlas alignment; they characterize sensitivity of
+the iteration, not candidate end-to-end atlas assets. The topology-one-hot
+variant's five ratios were `0.749594808`, `0.183845341`, `0.080778733`,
+`0.223073974`, and `0.164067119`. The uniform-one variant's ratios were
+`1.67613351`, `0.216051474`, `0.28869465`, `0.242915615`, and `0.238085672`.
+Neither approached `1e-4`.
+
+These bounded probes did not identify a source-faithful, threshold-convergent
+synthetic setup. The restartable base runner may be reported as mechanically
+complete with its two TOADS invocations explicitly marked capped and
+nonconverged; it must not be presented as convergence-validated. A proper
+class-aligned synthetic atlas/input design remains a possible future test,
+but these experiments provide no evidence that it will converge or that the
+current output is source-equivalent. Do not relax the threshold to force the
+status flag.

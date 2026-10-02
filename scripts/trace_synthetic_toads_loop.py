@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
+from dataclasses import replace
 import hashlib
 from pathlib import Path
 import time
@@ -21,6 +22,7 @@ import numpy as np
 from pymacruise.image_io import nifti_ras_on_reference, normalize_image_to_ras
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 from pymacruise.toads_atlas import load_toads_atlas
+from pymacruise.toads_shape_volume import transform_toads_shape_priors
 import pymacruise.toads_registered_loop as registered_loop
 
 
@@ -80,6 +82,17 @@ def main() -> int:
     parser.add_argument("--padding", type=int, default=2)
     parser.add_argument("--relation-limit", type=_positive_int, default=1)
     parser.add_argument("--maximum-distance", type=float, default=1e-4)
+    parser.add_argument(
+        "--intensity-variant",
+        choices=("original", "constant-volume", "constant-mask", "linear-x", "linear-xyz", "original-scaled"),
+        default="original",
+    )
+    parser.add_argument(
+        "--shape-variant",
+        choices=("descriptor", "uniform-one", "topology-one-hot"),
+        default="descriptor",
+        help="loop-time shape-prior probe after the ordinary descriptor-based alignment",
+    )
     args = parser.parse_args()
 
     if args.registration_iterations < 0:
@@ -97,6 +110,24 @@ def main() -> int:
     t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     brain_mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
     atlas = load_toads_atlas(ATLAS)
+    original_values = np.asarray(t1.dataobj, dtype=np.float32)
+    mask_values = np.asanyarray(brain_mask.dataobj) > 0
+    coordinates = np.indices(t1.shape, dtype=np.float32)
+    intensity_variants = {
+        "original": original_values,
+        "constant-volume": np.full(t1.shape, 1000.0, dtype=np.float32),
+        "constant-mask": np.where(mask_values, 1000.0, 0.0).astype(np.float32),
+        "linear-x": np.float32(1000.0) + np.float32(20.0) * coordinates[0],
+        "linear-xyz": (
+            np.float32(1000.0)
+            + np.float32(20.0) * coordinates[0]
+            + np.float32(10.0) * coordinates[1]
+            + np.float32(5.0) * coordinates[2]
+        ),
+        "original-scaled": (original_values * np.float32(0.001)).astype(np.float32),
+    }
+    if args.intensity_variant != "original":
+        t1 = nib.Nifti1Image(intensity_variants[args.intensity_variant], t1.affine, t1.header.copy())
     start = time.perf_counter()
     alignment = register_toads_from_atlas_assets(
         t1,
@@ -109,6 +140,33 @@ def main() -> int:
         energy_tolerance=1e-6,
         minimum_lambda=1e-3,
     )
+    if args.shape_variant != "descriptor":
+        topology = alignment.atlas_data.topology
+        if args.shape_variant == "uniform-one":
+            maps = {
+                structure.name: np.ones_like(topology, dtype=np.float32)
+                for structure in atlas.structures
+            }
+        else:
+            maps = {
+                structure.name: (topology == structure.label).astype(np.float32)
+                for structure in atlas.structures
+            }
+        atlas_data = replace(alignment.atlas_data, shapes=maps)
+        shapes = np.stack(tuple(maps[structure.name] for structure in atlas.structures), axis=-1)
+        transformed = transform_toads_shape_priors(
+            shapes,
+            image_dimensions_xyz=tuple(int(value) for value in alignment.transformed_shape_priors.shape[:3]),
+            image_resolutions_mm=alignment.alignment.setup.signed_image_resolutions_mm,
+            template_resolutions_mm=alignment.alignment.setup.template_resolutions_mm,
+            transform=alignment.post_refresh_registration.final_transform,
+            class_bounds=alignment.post_refresh_registration.final_shape_bounds,
+        )
+        alignment = replace(
+            alignment,
+            atlas_data=atlas_data,
+            transformed_shape_priors=transformed,
+        )
     alignment_seconds = time.perf_counter() - start
 
     category_exponents = np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32)
@@ -154,6 +212,7 @@ def main() -> int:
         f"registration_levels:{args.registration_levels},registration_iterations:{args.registration_iterations},"
         f"loop_registration_iterations:{args.loop_registration_iterations},relation_limit:{args.relation_limit}"
     )
+    print(f"probe.intensity_variant={args.intensity_variant} shape_variant={args.shape_variant}")
     print(f"elapsed.alignment_seconds={alignment_seconds:.3f}")
     print(f"elapsed.loop_startup_seconds={sum(stage_timings.get('compute_registered_toads_unity_field_startup', [])):.3f}")
     print(f"elapsed.loop_total_seconds={loop_seconds:.3f}")
