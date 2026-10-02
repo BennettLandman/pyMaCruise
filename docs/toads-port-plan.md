@@ -1220,3 +1220,17 @@ report](reports/toads-exact-polynomial-field-degrees23-2026-10-02.md). This
 expands one correction algorithm method; it does not add degree ramping,
 spline mode, or the complete TOADS workflow. P18cyau remains Started pending
 full-suite evidence.
+
+
+### Registered startup to degree-three correction field (P18cyav)
+
+The registered atlas startup adapter now supplies its recropped RAS images,
+exact initial memberships, constructor segmentation, and centroids to the
+selected degree-three exact field fit. Per-channel fields start at unity and
+retain source channel order. On committed synthetic RAS atlas/T1/mask assets,
+the focused startup/membership/field group passed 13 tests in 30.21 seconds on
+commit `a4c0a581de32eb3922f67cd0c9e67a607459de24`; the fitted normal system
+matches the Java formula reference exactly and the complete field is within
+`2e-6`. See the [focused validation report](reports/toads-registered-field-refit-2026-10-02.md).
+This is wrapper-state composition, not a complete TOADS iteration. P18cyav
+remains Started pending full-suite evidence.
