@@ -16,7 +16,7 @@ FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 
 
-def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path) -> None:
+def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path, capsys) -> None:
     output = tmp_path / "classification.nii.gz"
     dura_output_dir = tmp_path / "dura-inputs"
     result = main(
@@ -47,6 +47,9 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path) -
         ]
     )
     assert result == 0
+    summary = capsys.readouterr().out
+    assert "iterations=2" in summary
+    assert "iteration_limit_reached=true" in summary
     assert output.is_file()
     saved = nib.load(str(output))
     reference = nib.load(str(FIXTURE / "t1.nii.gz"))

@@ -86,6 +86,9 @@ class ToadsRegisteredLoopResult:
     classification: NDArray[np.int8] | None
     native_classification: NDArray[np.int8] | None
     changed_classification_voxels: int | None
+    terminal_energy_ratio: np.float32
+    energy_threshold_reached: bool
+    iteration_limit_reached: bool
     dura_removal_products: ToadsDuraRemovalProducts | None
     wrapper_output_buffers: ToadsWrapperOutputBuffers | None
 
@@ -213,6 +216,11 @@ def run_registered_toads_loop(
         current_iteration = next_iteration
 
     final_branch = current_cycle.registered_iteration.branch
+    terminal_control = final_branch.control
+    energy_threshold_reached = bool(
+        terminal_control.energy_ratio < np.float32(config.convergence_threshold)
+    )
+    iteration_limit_reached = len(exact_iterations) >= config.maximum_iterations
     native_classification = None
     dura_products = None
     wrapper_outputs = None
@@ -267,6 +275,9 @@ def run_registered_toads_loop(
         classification=final_branch.classification,
         native_classification=native_classification,
         changed_classification_voxels=final_branch.changed_classification_voxels,
+        terminal_energy_ratio=terminal_control.energy_ratio,
+        energy_threshold_reached=energy_threshold_reached,
+        iteration_limit_reached=iteration_limit_reached,
         dura_removal_products=dura_products,
         wrapper_output_buffers=wrapper_outputs,
     )
