@@ -1486,3 +1486,14 @@ RAS orientation were verified. This exports Dura inputs but does not run Dura
 removal or the second TOADS pass. See [the export
 report](reports/toads-terminal-dura-input-export-2026-10-02.md). P18cybo
 remains Started.
+
+### Registered TOADS-to-Dura command handoff (P18cybp)
+
+The exported maps now have a tested command-line consumer. A compact synthetic
+descriptor uses the tissue names expected by the Dura stage. The TOADS command
+exports the wrapper-scaled maps; the Dura command consumes WM fill, GM, WM mask,
+and the original T1 reference. Its seven output images match direct
+`run_dura_removal` results exactly after one evolution pass, with native RAS
+geometry. The focused handoff test passed 1 test in 15.90 seconds. This closes
+only the selected CLI/data seam; the second TOADS pass and full wrapper remain
+open. See [the P18cybp report](reports/toads-dura-cli-handoff-2026-10-02.md).

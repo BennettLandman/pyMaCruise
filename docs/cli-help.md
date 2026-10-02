@@ -299,3 +299,20 @@ the selected TOADS padding and x-fast uncrop semantics. The optional Dura-remova
 does not execute dura removal, run the second MaCRUISE TOADS pass, create final
 CRUISE output products, or execute the complete base/plus workflow. The broader workflow CLI
 and synthetic full-workflow validation remain open.
+
+For the selected synthetic handoff, use the three exported maps required by
+the current Dura CLI input contract and retain the original T1 as its reference:
+
+```text
+pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
+  --output Classification.nii.gz --dura-output-dir toads_dura_inputs
+pymacruise dura --t1 T1.nii.gz \
+  --wm-fill toads_dura_inputs/T1_N4_wmfill.nii.gz \
+  --gm toads_dura_inputs/T1_N4_gm.nii.gz \
+  --wm-mask toads_dura_inputs/T1_N4_wmmask.nii.gz \
+  --output-dir dura_outputs --max-iterations 1
+```
+
+The synthetic integration test compares the seven Dura outputs with the direct
+API after one evolution pass. This example does not perform the second TOADS
+pass.

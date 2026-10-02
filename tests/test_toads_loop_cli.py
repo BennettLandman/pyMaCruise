@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 import nibabel as nib
+import numpy as np
 
 from pymacruise.cli import main
+from pymacruise.toads_dura import run_dura_removal
 
 
 ROOT = Path(__file__).parent
@@ -70,3 +73,67 @@ def test_toads_loop_help_exposes_required_native_inputs(capsys) -> None:
     assert "--t1-n4" in help_text
     assert "--brain-mask" in help_text
     assert "--output" in help_text
+
+
+def test_toads_wrapper_outputs_feed_the_dura_cli_and_match_api(tmp_path) -> None:
+    atlas_dir = tmp_path / "atlas"
+    atlas_dir.mkdir()
+    for asset in ATLAS.parent.glob("*.nii.gz"):
+        shutil.copy2(asset, atlas_dir / asset.name)
+    descriptor_text = ATLAS.read_text(encoding="utf-8")
+    dura_names = {
+        "Csf1": "SulcalCSF",
+        "Csf2": "Ventricles",
+        "Gm1": "CerebellarGM",
+        "Gm2": "CerebralGM",
+        "Gm3": "Caudate",
+        "Gm4": "Thalamus",
+        "Gm5": "Putamen",
+        "Wm1": "Brainstem",
+        "Wm2": "CerebellarWM",
+        "Wm3": "CerebralWM",
+    }
+    for source_name, output_name in dura_names.items():
+        descriptor_text = descriptor_text.replace(source_name, output_name)
+    descriptor = atlas_dir / "atlas-dura.txt"
+    descriptor.write_text(descriptor_text, encoding="utf-8")
+
+    t1 = FIXTURE / "t1.nii.gz"
+    mask = FIXTURE / "brain-mask.nii.gz"
+    toads_output = tmp_path / "toads" / "classification.nii.gz"
+    toads_dura_inputs = tmp_path / "toads-dura-inputs"
+    assert main(
+        [
+            "toads-loop", "--t1-n4", str(t1), "--brain-mask", str(mask),
+            "--atlas-descriptor", str(descriptor), "--output", str(toads_output),
+            "--dura-output-dir", str(toads_dura_inputs),
+            "--registration-levels", "1", "--registration-iterations", "1",
+            "--registration-max-iterations", "1", "--padding", "2",
+            "--maximum-iterations", "2", "--relation-limit", "1",
+        ]
+    ) == 0
+
+    white = nib.load(str(toads_dura_inputs / "t1_wmfill.nii.gz"))
+    gray = nib.load(str(toads_dura_inputs / "t1_gm.nii.gz"))
+    white_mask = nib.load(str(toads_dura_inputs / "t1_wmmask.nii.gz"))
+    expected = run_dura_removal(
+        nib.load(str(t1)), white, gray, white_mask, max_iterations=1
+    )
+    dura_output_dir = tmp_path / "dura-output"
+    assert main(
+        [
+            "dura", "--t1", str(t1), "--white", str(toads_dura_inputs / "t1_wmfill.nii.gz"),
+            "--gray", str(toads_dura_inputs / "t1_gm.nii.gz"),
+            "--white-mask", str(toads_dura_inputs / "t1_wmmask.nii.gz"),
+            "--output-dir", str(dura_output_dir), "--max-iterations", "1",
+        ]
+    ) == 0
+    for name in (
+        "stripped_t1", "corrected_white_matter", "corrected_gray_matter",
+        "brain_mask_level_set", "brain_mask", "wm_topology", "gm_topology",
+    ):
+        written = nib.load(str(dura_output_dir / f"{name}.nii.gz"))
+        reference = getattr(expected, name)
+        assert written.shape == nib.load(str(t1)).shape
+        assert nib.aff2axcodes(written.affine) == ("R", "A", "S")
+        np.testing.assert_array_equal(np.asarray(written.dataobj), np.asarray(reference.dataobj))
