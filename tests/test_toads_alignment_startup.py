@@ -87,6 +87,7 @@ def test_startup_reorients_non_ras_t1_and_mask_with_warning() -> None:
         )
 
     assert nib.aff2axcodes(result.intensity.image.affine) == ("R", "A", "S")
+    assert result.input_orientation_codes == ("L", "P", "S")
 
 
 @pytest.mark.parametrize(

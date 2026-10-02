@@ -25,6 +25,7 @@ class ToadsAlignmentStartup:
 
     intensity: ToadsIntensityResult
     geometry: ToadsRASGeometry
+    input_orientation_codes: tuple[str, str, str]
     crop_bounds: tuple[int, int, int, int, int, int]
     cropped_images: NDArray[np.float32]
     cropped_topology: NDArray
@@ -58,6 +59,7 @@ def prepare_toads_alignment_startup(
     This adapter stops at that registration input and does not claim an atlas
     fit, complete TOADS iteration, or segmentation equivalence.
     """
+    input_orientation_codes = tuple(nib.aff2axcodes(t1_n4.affine))
     intensity = prepare_toads_intensity(t1_n4, brain_mask)
     geometry = toads_ras_geometry(intensity.image)
     values = np.asarray(geometry.image.dataobj, dtype=np.float32)
@@ -121,6 +123,7 @@ def prepare_toads_alignment_startup(
     return ToadsAlignmentStartup(
         intensity=intensity,
         geometry=geometry,
+        input_orientation_codes=input_orientation_codes,
         crop_bounds=bounds,
         cropped_images=crop.images,
         cropped_topology=cropped_topology,
