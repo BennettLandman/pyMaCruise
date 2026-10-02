@@ -1105,5 +1105,22 @@ The focused synthetic atlas/startup and Java-reference kernel group passed 45
 tests in 8.01 seconds on implementation commit
 `5a4aca2567bcfa138020ab3d410337e1b55cee20`; see the [P18cyan
 report](reports/toads-initial-image-variance-2026-10-02.md). This slice does
-not yet calculate centroid similarities or execute the initial exact
-membership/energy sweep.
+not yet execute the initial exact membership/energy sweep.
+
+
+### Initial centroid-similarity prelude (P18cyap)
+
+The exact base-TOADS membership routine calls image-variance calculation, then
+computes pairwise centroid similarities inline before its voxel loop. The
+startup adapter carries the selected non-lesion descriptor order, initial
+centroids, class deviations, and normalized image-variance weights through the
+already Java-checked float32 similarity kernel. It preserves the descriptor
+class matrix including MASK, default `priorScale=0.05`, and zero diagonal.
+Lesion-specific pair dispatch and voxelwise membership/energy remain separate.
+
+The focused atlas-startup, optimized-similarity Java-reference, and pair
+similarity group passed 8 tests in 7.82 seconds on implementation commit
+`8663b867a912c5a5ff7a8ac0b009b75512e0fd15`; see the [P18cyap
+report](reports/toads-initial-similarity-2026-10-02.md). The composition check
+uses a two-class synthetic atlas and does not yet validate an 11-class complete
+startup or execute the exact membership pass.
