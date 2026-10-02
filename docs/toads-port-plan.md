@@ -1291,3 +1291,17 @@ See the [validation report](reports/toads-carried-degree-exact-iteration-2026-10
 This is a single-channel synthetic continuation, not combined wrapper
 execution or full TOADS equivalence. P18cyba remains Started pending a
 full-suite checkpoint.
+
+
+### Multi-channel carried-degree exact iteration (P18cybb)
+
+The carried-degree loop now accepts channel-last images and attached fields.
+It fits one exact field per channel in source order, then refreshes the shared
+11-class centroids, deviations, image variances, centroid similarity, and
+memberships. Two focused tests passed in 14.48 seconds: each channel's
+degree-three field matches the selected Java formula harness within `2e-6`,
+and the degree-zero case preserves both fields while continuing the shared
+statistics/membership stages. See the [validation report](reports/toads-multichannel-carried-degree-2026-10-02.md).
+This adapter composes existing kernels; the multi-channel wrapper call path,
+registration, topology, growth, and full TOADS workflow remain open.
+P18cybb remains Started pending full-suite evidence.
