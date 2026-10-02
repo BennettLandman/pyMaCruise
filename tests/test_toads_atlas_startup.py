@@ -198,6 +198,16 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
     assert np.isfinite(image_variance.image_variance_weights).all()
     assert np.isfinite(image_variance.image_standard_deviations).all()
     np.testing.assert_array_equal(image_variance.image_variance_weights, [1.0])
+    similarity = result.initial_centroid_similarity
+    assert similarity.call_order == (
+        "segmentation.computeMemberships",
+        "segmentation.computeImageVariance",
+        "segmentation.computeExactImageVariance",
+        "segmentation.computeExactMemberships.centroidSimilarity",
+    )
+    assert similarity.similarity.shape == (2, 2)
+    np.testing.assert_array_equal(np.diag(similarity.similarity), np.zeros(2, dtype=np.float32))
+    assert np.isfinite(similarity.similarity).all()
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )
