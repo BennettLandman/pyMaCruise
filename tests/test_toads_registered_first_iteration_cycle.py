@@ -19,6 +19,10 @@ from pymacruise.toads_registered_first_iteration_cycle import (
 from pymacruise.toads_registered_membership_branch_cycle import (
     continue_registered_membership_through_branch,
 )
+from pymacruise.toads_registered_following_exact_iteration import (
+    continue_registered_cycle_through_following_exact_iteration,
+)
+from pymacruise.toads_inhomogeneity_transition import toads_next_inhomogeneity_degree
 from pymacruise.toads_registered_second_exact_iteration import (
     continue_registered_first_cycle_through_second_exact_iteration,
 )
@@ -327,3 +331,87 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             second_cycle.next_thinning.thinning.segmentation,
             direct_next.segmentation,
         )
+    assert second_cycle.next_thinning is not None, "synthetic loop should continue into iteration three"
+    third = continue_registered_cycle_through_following_exact_iteration(
+        run,
+        second_cycle,
+        previous_degree=second.degree,
+        initial_centroids=second.centroids,
+        fields=exact.fields,
+        category_exponents=categories,
+        exponent_by_channel_class=second_exponents,
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        smoothing_priors=settings["smoothing_priors"],
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        prior_scale=settings["prior_scale"],
+        maximum_distance=0.04,
+    )
+    expected_degree = toads_next_inhomogeneity_degree(
+        second.degree,
+        3,
+        second_cycle.registration_control.control.energy_ratio,
+        np.sqrt(np.float32(0.04)),
+    )
+    assert third.degree == expected_degree
+    assert third.energy_ratio == second_cycle.registration_control.control.energy_ratio
+    assert third.next_thinning is second_cycle.next_thinning
+    assert (third.field_refit is None) == (third.degree == 0)
+    np.testing.assert_array_equal(exact.fields, third.field_refit.fields if third.field_refit else exact.fields)
+
+    third_images = np.moveaxis(run.template_refresh.recropped_images, 0, -1)
+    third_memberships = second_cycle.membership_pass.memberships
+    third_labels = second_cycle.next_thinning.thinning.segmentation
+    third_centroids = toads_default_exact_centroid_update(
+        third_images,
+        third_memberships,
+        second.centroids,
+        categories,
+        intensity_field=exact.fields,
+        smoothness=0.1,
+    )
+    third_deviations = toads_default_exact_class_variances(
+        third_images,
+        third_memberships,
+        third_centroids,
+        third_labels,
+        intensity_field=exact.fields,
+    )
+    third_variance, third_std = toads_optimized_image_variance(
+        third_images,
+        third_memberships[..., 1:],
+        third_centroids[:, 1:],
+        intensity_field=exact.fields,
+    )
+    third_similarity = toads_optimized_centroid_similarity(
+        third_centroids, third_deviations, third_variance, settings["prior_scale"]
+    )
+    third_membership_pass = toads_default_atlas_membership_pass(
+        image_values=third_images,
+        initial_memberships=third_memberships,
+        centroids=third_centroids,
+        exponent_by_channel_class=second_exponents,
+        modality_weights=settings["modality_weights"],
+        class_variance_weights=run.initial_variances.standard_deviations,
+        image_variances=third_variance,
+        transformed_shapes=second_cycle.next_transformed_shape_priors,
+        closest_labels=second_cycle.registered_iteration.branch.relations.closest_labels,
+        smoothing_priors=settings["smoothing_priors"],
+        centroid_similarity=third_similarity,
+        atlas_shape_priors=settings["atlas_shape_priors"],
+        smoothing=settings["smoothing"],
+        prior_factor=settings["prior_factor"],
+        prior_coefficient=settings["prior_coefficient"],
+        intensity_field=exact.fields,
+    )
+    np.testing.assert_array_equal(third.centroids, third_centroids)
+    np.testing.assert_array_equal(third.standard_deviations, third_deviations)
+    np.testing.assert_array_equal(third.image_variance_weights, third_variance)
+    np.testing.assert_array_equal(third.image_standard_deviation, third_std)
+    np.testing.assert_array_equal(third.centroid_similarity, third_similarity)
+    np.testing.assert_array_equal(third.membership_pass.memberships, third_membership_pass.memberships)
+    np.testing.assert_array_equal(third.membership_pass.denominator, third_membership_pass.denominator)
+    assert third.membership_pass.objective == third_membership_pass.objective

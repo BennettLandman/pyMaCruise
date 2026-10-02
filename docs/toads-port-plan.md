@@ -1394,3 +1394,17 @@ P18cyx/P18cyt evidence. This composition is not a combined Java wrapper run or
 full TOADS equivalence. See the [validation
 report](reports/toads-second-membership-branch-cycle-2026-10-02.md).
 P18cybh remains Started pending full-suite evidence.
+
+### Following carried-degree update from a registered cycle (P18cybi)
+
+The P18cybh continuing branch now advances through the following loop's
+correction-degree decision and exact centroid, variance, image-variance,
+similarity, and membership stages. It uses the previous degree, the selected
+energy-ratio gate, attached field state, refreshed relation maps, transformed
+shape priors, and next-thinning output. The compact RAS integration test passed
+1 test in 27.01 seconds and matched all refreshed maps and the objective to
+direct kernel calls. Positive-degree field fits remain separately checked
+against Java formulas; this integration case does not assume a fit when its
+source ratio gate does not schedule one. See the [validation
+report](reports/toads-registered-third-exact-iteration-2026-10-02.md).
+P18cybi remains Started pending full-suite evidence.
