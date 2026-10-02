@@ -188,6 +188,8 @@ class ToadsRigidRegistrationSetup:
     max_iterations: int
     levels: int
     subsample_factor: int
+    signed_image_resolutions_mm: tuple[float, float, float]
+    template_resolutions_mm: tuple[float, float, float]
     image_center_xyz: tuple[float, float, float]
     stage_order: tuple[str, ...]
 
@@ -230,6 +232,10 @@ def register_toads_alignment_startup(
         max_iterations=int(max_iterations),
         levels=int(levels),
         subsample_factor=2,
+        signed_image_resolutions_mm=tuple(
+            float(value) for value in startup.geometry.signed_image_resolutions_mm
+        ),
+        template_resolutions_mm=tuple(float(value) for value in startup.template_resolution_mm),
         image_center_xyz=tuple(
             float(size) / 2.0 for size in startup.initial_memberships.shape[:3]
         ),
@@ -253,10 +259,8 @@ def register_toads_alignment_startup(
         setup.memberships,
         shapes,
         levels=setup.levels,
-        image_resolutions_mm=tuple(
-            float(v) for v in np.abs(startup.geometry.signed_image_resolutions_mm)
-        ),
-        template_resolutions_mm=startup.template_resolution_mm,
+        image_resolutions_mm=setup.signed_image_resolutions_mm,
+        template_resolutions_mm=setup.template_resolutions_mm,
         initial_transform=tuple(float(v) for v in setup.transform),
         registered_classes=registered_classes,
         max_iterations=setup.max_iterations,

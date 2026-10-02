@@ -145,6 +145,9 @@ def test_startup_memberships_feed_selected_exact_rigid_atlas_pyramid() -> None:
     assert setup.max_iterations == 1
     assert setup.levels == 2
     assert setup.subsample_factor == 2
+    assert setup.signed_image_resolutions_mm == startup.geometry.signed_image_resolutions_mm
+    assert setup.signed_image_resolutions_mm == (-1.0, -1.0, 1.0)
+    assert setup.template_resolutions_mm == startup.template_resolution_mm
     assert setup.image_center_xyz == tuple(size / 2.0 for size in startup.initial_memberships.shape[:3])
     assert setup.stage_order == (
         "setImageInfo",
