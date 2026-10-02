@@ -879,3 +879,23 @@ This checks composition with an asymmetric synthetic atlas and exercises the
 registration kernels that have separate selected-Java evidence. It is not an
 independent Java comparison of the complete startup-to-registration chain and
 does not validate TOADS iteration or full workflow equivalence.
+
+
+### Completed substage: RAS-oriented atlas-array loading (P18cyac)
+
+`load_toads_atlas_ras_data` now provides algorithm-facing NIfTI arrays in
+canonical RAS voxel-axis order, with warnings and source-axis metadata when an
+asset needs reorientation. It checks finite 3D data and a shared atlas grid,
+requires integer topology labels, and returns the descriptor template spacing.
+`toads_atlas_shapes_in_structure_order` stacks named shape maps as
+`(x,y,z,classes)` in the descriptor structure order. The earlier
+`load_toads_atlas_data` remains the source-index-order reader for Java
+comparisons; these APIs have different, documented purposes.
+
+The focused atlas/startup/registration group passed 32 tests in 1.49 seconds on
+implementation commit `a1fa361`. Its synthetic asymmetric LPS fixture verifies
+three warnings, exact flip behavior, retained descriptor spacing, orientation
+metadata, and class order; see [the P18cyac report](reports/toads-atlas-ras-loader-2026-10-02.md).
+This loader is not yet assembled with descriptor intensity-prior lookup and the
+startup/registration adapters, and it does not validate atlas registration,
+TOADS iteration, or real-image behavior.
