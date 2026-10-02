@@ -1,9 +1,9 @@
 # PyMaCRUISE command-line input/output reference
 
 This page is the expanded `--help` contract for the supported inputs and
-outputs. The command line currently exposes preparation and individual
-scientific stages; the full base and plus workflow commands remain under
-development.
+outputs. The command line exposes preparation, individual scientific stages, and a
+standalone registered TOADS loop. The complete two-pass base and plus workflow
+commands remain under development.
 
 ## `pymacruise workflow-preflight`
 
@@ -260,9 +260,41 @@ summary statistics. Supply `--central` and `--central-output` together.
 
 ## Not currently exposed as complete tools
 
-There is no full TOADS command and no full LesionTOADS command. The repository
-contains selected supporting stages and synthetic TOADS-like or
-LesionTOADS-related components, but these do not constitute either complete
-algorithm. The TOADS/SPECTRE/BET port-vs-dependency decision remains the
-tracked blocker for the complete TOADS workflow. These standalone interfaces
-are not substitutes for either full pipeline.
+The `toads-loop` command below runs the selected registered TOADS loop, but it
+does not complete the two-pass MaCRUISE TOADS/dura workflow. There is no full
+LesionTOADS command. The user-supplied mask and native-T1 RAS working space are
+selected; historical SPECTRE preprocessing remains an explicit working-space
+deviation documented in the port plan.
+
+
+## `pymacruise toads-loop`
+
+```text
+pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
+  --output Classification.nii.gz [--atlas-descriptor ATLAS.txt] \
+  [--modality T1_MPRAGE] [--registration-levels 4] \
+  [--registration-iterations 50] [--registration-max-iterations 5] \
+  [--padding 10] [--maximum-iterations 50] \
+  [--convergence-threshold 1e-4] [--relation-limit 3] \
+  [--maximum-distance 1e-4] [--category-exponents 2 2 2] \
+  [--provenance run.json]
+```
+
+### Inputs and assumptions
+
+| Option | Required | Description and assumptions |
+|---|---:|---|
+| `--t1-n4 PATH` | Yes | 3D single-channel T1 already corrected by the standalone `n4` command; compressed `.nii.gz`. This command does not run N4. |
+| `--brain-mask PATH` | Yes | User-provided binary brain mask on the T1 physical grid. Non-RAS T1 or mask images are reoriented with a visible warning. |
+| `--atlas-descriptor PATH` | No | Defaults to the bundled base TOADS descriptor. Referenced atlas images must remain beside the descriptor using its declared relative paths and `.nii.gz` format. |
+| `--output PATH` | Yes | Native-grid terminal classification, compressed `.nii.gz`; existing output is not overwritten. |
+| Registration and loop options | No | Selected source controls with defaults shown above. `--category-exponents` sets CSF, GM, and WM exponents for the single T1 channel. |
+
+### Output
+
+The command writes one uint8 classification map on the original T1 grid with
+RAS orientation and affine. Labels are restored from the registered crop using
+the selected TOADS padding and x-fast uncrop semantics. The standalone command
+does not remove dura, run the second MaCRUISE TOADS pass, create CRUISE output
+products, or execute the complete base/plus workflow. The broader workflow CLI
+and synthetic full-workflow validation remain open.

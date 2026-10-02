@@ -9,11 +9,13 @@ import json
 from pathlib import Path
 
 import nibabel as nib
+import numpy as np
 
+from pymacruise.atlas_resources import get_bundled_atlas_descriptor
 from pymacruise.ace import ace_enhance
 from pymacruise.cortical_separation import cortical_separation
 from pymacruise.gvf import generalized_gvf_image
-from pymacruise.image_io import save_nifti_ras
+from pymacruise.image_io import nifti_ras_on_reference, normalize_image_to_ras, save_nifti_ras
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.raw_preparation import prepare_raw
 from pymacruise.segmentation_refine import refine_segmentation_by_surfaces
@@ -26,6 +28,9 @@ from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
+from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_atlas import load_toads_atlas
+from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
 from pymacruise.volume_ops import calculate_volume
 from pymacruise.workflow import load_workflow_config_file, preflight_workflow
 
@@ -161,6 +166,26 @@ def build_parser() -> argparse.ArgumentParser:
     dura.add_argument("--max-iterations", type=int, default=5)
     _add_provenance_option(dura)
 
+    toads = commands.add_parser(
+        "toads-loop",
+        help="run the selected registered base-TOADS loop from an N4-corrected RAS T1 and brain mask",
+    )
+    toads.add_argument("--t1-n4", required=True, type=Path)
+    toads.add_argument("--brain-mask", required=True, type=Path)
+    toads.add_argument("--output", required=True, type=Path, help="native-grid classification .nii.gz")
+    toads.add_argument("--atlas-descriptor", type=Path)
+    toads.add_argument("--modality", default="T1_MPRAGE")
+    toads.add_argument("--registration-levels", type=int, default=4)
+    toads.add_argument("--registration-iterations", type=int, default=50)
+    toads.add_argument("--registration-max-iterations", type=int, default=5)
+    toads.add_argument("--padding", type=int, default=10)
+    toads.add_argument("--maximum-iterations", type=int, default=50)
+    toads.add_argument("--convergence-threshold", type=float, default=1e-4)
+    toads.add_argument("--relation-limit", type=int, default=3)
+    toads.add_argument("--maximum-distance", type=float, default=1e-4)
+    toads.add_argument("--category-exponents", type=float, nargs=3, default=[2.0, 2.0, 2.0])
+    _add_provenance_option(toads)
+
     surface = commands.add_parser("surface-extract", help="extract a RAS-mm level-set surface as VTK")
     surface.add_argument("--level-set", required=True, type=Path)
     surface.add_argument("--output", required=True, type=Path, help="legacy VTK .vtk output")
@@ -275,6 +300,85 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Preflight passed: {manifest_path}")
         print("Dry run only; no N4 correction or segmentation workflow was executed.")
         print(f"Workflow profile: {manifest['workflow_profile']}")
+    elif args.command == "toads-loop":
+        _require_nifti_gz_output(args.output)
+        if args.output.exists():
+            raise FileExistsError(f"Refusing to overwrite TOADS output: {args.output}")
+        descriptor = args.atlas_descriptor or get_bundled_atlas_descriptor(
+            "cruise-atlas-10obj-toads2008.txt"
+        )
+        atlas = load_toads_atlas(descriptor)
+        t1_n4 = _load_nifti_gz(args.t1_n4)
+        brain_mask = _load_nifti_gz(args.brain_mask)
+        alignment = register_toads_from_atlas_assets(
+            t1_n4,
+            brain_mask,
+            atlas,
+            levels=args.registration_levels,
+            max_iterations=args.registration_iterations,
+            modality=args.modality,
+            padding=args.padding,
+            relation_limit=args.relation_limit,
+            energy_tolerance=1e-6,
+            minimum_lambda=1e-3,
+        )
+        class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
+        category_exponents = np.asarray([args.category_exponents], dtype=np.float32)
+        exponent_by_class = np.empty((1, len(atlas.structures)), dtype=np.float32)
+        for index, structure in enumerate(atlas.structures):
+            topology = structure.topology.lower()
+            if topology == "mask":
+                exponent_by_class[0, index] = np.float32(1.0)
+            elif topology in class_indices:
+                exponent_by_class[0, index] = category_exponents[0, class_indices[topology]]
+            else:
+                raise ValueError(f"Unsupported base-TOADS structure topology: {structure.topology!r}")
+        config = ToadsRegisteredLoopConfig(
+            category_exponents=category_exponents,
+            exponent_by_channel_class=exponent_by_class,
+            modality_weights=np.ones(1, dtype=np.float32),
+            class_variance_weights=alignment.initial_variances.standard_deviations,
+            smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
+            atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
+            smoothing=0.2 / 6.0 / len(atlas.structures),
+            prior_factor=0.2,
+            prior_coefficient=2.0 / len(atlas.structures),
+            maximum_iterations=args.maximum_iterations,
+            convergence_threshold=args.convergence_threshold,
+            relation_limit=args.relation_limit,
+            maximum_polynomial_degree=3,
+            maximum_distance=args.maximum_distance,
+            max_registration_iterations=args.registration_max_iterations,
+        )
+        result = run_registered_toads_loop(alignment, config)
+        if result.native_classification is None:
+            raise RuntimeError("selected TOADS loop returned without terminal classification")
+        ras_t1 = normalize_image_to_ras(t1_n4, source_name="N4-corrected T1 output reference")
+        output_image = nifti_ras_on_reference(
+            ras_t1,
+            result.native_classification,
+            dtype=np.uint8,
+        )
+        _save_nifti_gz(output_image, args.output)
+        print(
+            f"Wrote {args.output}; iterations={len(result.exact_iterations)}, "
+            f"changed_classification_voxels={result.changed_classification_voxels} (RAS)"
+        )
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"t1_n4": args.t1_n4, "brain_mask": args.brain_mask},
+            parameters={
+                "atlas_descriptor": str(descriptor),
+                "modality": args.modality,
+                "registration_levels": args.registration_levels,
+                "registration_iterations": args.registration_iterations,
+                "maximum_iterations": args.maximum_iterations,
+                "maximum_distance": args.maximum_distance,
+                "category_exponents": args.category_exponents,
+            },
+            outputs={"classification": args.output},
+        )
     elif args.command == "prepare-raw":
         result = prepare_raw(
             args.t1,
