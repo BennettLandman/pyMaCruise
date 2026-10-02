@@ -470,3 +470,93 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             third_cycle.next_thinning.thinning.segmentation,
             direct_third_next.segmentation,
         )
+
+        fourth = continue_registered_cycle_through_following_exact_iteration(
+            run,
+            third_cycle,
+            previous_degree=third.degree,
+            initial_centroids=third.centroids,
+            fields=exact.fields,
+            category_exponents=categories,
+            exponent_by_channel_class=second_exponents,
+            modality_weights=settings["modality_weights"],
+            class_variance_weights=run.initial_variances.standard_deviations,
+            smoothing_priors=settings["smoothing_priors"],
+            atlas_shape_priors=settings["atlas_shape_priors"],
+            smoothing=settings["smoothing"],
+            prior_factor=settings["prior_factor"],
+            prior_coefficient=settings["prior_coefficient"],
+            prior_scale=settings["prior_scale"],
+            maximum_distance=0.04,
+        )
+        assert fourth.next_thinning is third_cycle.next_thinning
+        assert fourth.energy_ratio == third_cycle.registration_control.control.energy_ratio
+        expected_fourth_degree = toads_next_inhomogeneity_degree(
+            third.degree,
+            3,
+            third_cycle.registration_control.control.energy_ratio,
+            np.sqrt(np.float32(0.04)),
+        )
+        assert fourth.degree == expected_fourth_degree
+        assert (fourth.field_refit is None) == (fourth.degree == 0)
+        np.testing.assert_array_equal(
+            exact.fields,
+            fourth.field_refit.fields if fourth.field_refit else exact.fields,
+        )
+
+        fourth_images = np.moveaxis(run.template_refresh.recropped_images, 0, -1)
+        fourth_memberships = third_cycle.membership_pass.memberships
+        fourth_labels = third_cycle.next_thinning.thinning.segmentation
+        fourth_centroids = toads_default_exact_centroid_update(
+            fourth_images,
+            fourth_memberships,
+            third.centroids,
+            categories,
+            intensity_field=exact.fields,
+            smoothness=0.1,
+        )
+        fourth_deviations = toads_default_exact_class_variances(
+            fourth_images,
+            fourth_memberships,
+            fourth_centroids,
+            fourth_labels,
+            intensity_field=exact.fields,
+        )
+        fourth_variance, fourth_std = toads_optimized_image_variance(
+            fourth_images,
+            fourth_memberships[..., 1:],
+            fourth_centroids[:, 1:],
+            intensity_field=exact.fields,
+        )
+        fourth_similarity = toads_optimized_centroid_similarity(
+            fourth_centroids,
+            fourth_deviations,
+            fourth_variance,
+            settings["prior_scale"],
+        )
+        fourth_membership_pass = toads_default_atlas_membership_pass(
+            image_values=fourth_images,
+            initial_memberships=fourth_memberships,
+            centroids=fourth_centroids,
+            exponent_by_channel_class=second_exponents,
+            modality_weights=settings["modality_weights"],
+            class_variance_weights=run.initial_variances.standard_deviations,
+            image_variances=fourth_variance,
+            transformed_shapes=third_cycle.next_transformed_shape_priors,
+            closest_labels=third_cycle.registered_iteration.branch.relations.closest_labels,
+            smoothing_priors=settings["smoothing_priors"],
+            centroid_similarity=fourth_similarity,
+            atlas_shape_priors=settings["atlas_shape_priors"],
+            smoothing=settings["smoothing"],
+            prior_factor=settings["prior_factor"],
+            prior_coefficient=settings["prior_coefficient"],
+            intensity_field=exact.fields,
+        )
+        np.testing.assert_array_equal(fourth.centroids, fourth_centroids)
+        np.testing.assert_array_equal(fourth.standard_deviations, fourth_deviations)
+        np.testing.assert_array_equal(fourth.image_variance_weights, fourth_variance)
+        np.testing.assert_array_equal(fourth.image_standard_deviation, fourth_std)
+        np.testing.assert_array_equal(fourth.centroid_similarity, fourth_similarity)
+        np.testing.assert_array_equal(fourth.membership_pass.memberships, fourth_membership_pass.memberships)
+        np.testing.assert_array_equal(fourth.membership_pass.denominator, fourth_membership_pass.denominator)
+        assert fourth.membership_pass.objective == fourth_membership_pass.objective

@@ -1420,3 +1420,15 @@ membership handoff, selected energy-ratio arithmetic, and the next-thinning
 state when applicable. See the [validation
 report](reports/toads-third-membership-branch-cycle-2026-10-02.md).
 P18cybj remains Started pending full-suite evidence.
+
+### Iteration-four carried-degree exact update (P18cybk)
+
+When P18cybj continues, its next-thinning state now enters the following
+source-degree decision and exact statistics/membership update. The compact RAS
+test passed 1 test in 31.16 seconds. It checks the scheduled degree, field
+no-op/refit behavior, and exact direct-kernel equality for centroids,
+deviations, variance, similarity, membership maps, denominator, and objective.
+This remains synthetic composition over selected kernels, not full TOADS
+equivalence. See the [validation
+report](reports/toads-registered-fourth-exact-iteration-2026-10-02.md).
+P18cybk remains Started pending full-suite evidence.
