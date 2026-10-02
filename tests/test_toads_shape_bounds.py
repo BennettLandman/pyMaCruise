@@ -7,7 +7,12 @@ import numpy as np
 import nibabel as nib
 import pytest
 
-from pymacruise.toads_shapes import compute_toad_shape_bounds, sample_toad_shape_prior
+from pymacruise.toads_shapes import (
+    _linear_closest,
+    _linear_closest_points,
+    compute_toad_shape_bounds,
+    sample_toad_shape_prior,
+)
 
 
 FIXTURE = (
@@ -104,6 +109,24 @@ def test_folded_prior_support_bounds_refresh_match_java_scan() -> None:
         observed_bounds.append((actual.lower_xyz, actual.upper_xyz))
 
     assert len(set(observed_bounds)) == len(observed_bounds)
+
+
+def test_batched_shape_interpolation_is_bitwise_scalar_equivalent() -> None:
+    rng = np.random.default_rng(20261002)
+    values = rng.normal(size=(7, 6, 5)).astype(np.float32)
+    points = [
+        np.asarray(rng.uniform(-2.0, limit, size=257), dtype=np.float32)
+        for limit in (9.0, 8.0, 7.0)
+    ]
+    batched = _linear_closest_points(values, points)
+    scalar = np.asarray(
+        [
+            _linear_closest(values, [points[axis][index] for axis in range(3)])
+            for index in range(257)
+        ],
+        dtype=np.float32,
+    )
+    np.testing.assert_array_equal(batched, scalar)
 
 
 def test_shape_sampler_preserves_source_maximum_as_exclusive_bound() -> None:

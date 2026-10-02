@@ -110,28 +110,45 @@ def compute_toad_shape_bounds(
     upper = [0, 0, 0]
     support: list[tuple[int, int, int]] | None = [] if record_support else None
     support_count = 0
-    for x in range(image_dims[0]):
-        for y in range(image_dims[1]):
-            for z in range(image_dims[2]):
-                point = (x, y, z)
-                mapped: list[np.float32] = []
-                for axis in range(3):
-                    coordinate = np.float32(matrix[axis, 0] * np.float32(x))
-                    coordinate = np.float32(
-                        coordinate + np.float32(matrix[axis, 1] * np.float32(y))
-                    )
-                    coordinate = np.float32(
-                        coordinate + np.float32(matrix[axis, 2] * np.float32(z))
-                    )
-                    coordinate = np.float32(coordinate + matrix[axis, 3])
-                    mapped.append(coordinate)
-                if _linear_closest(values, mapped) > np.float32(0.0):
-                    support_count += 1
-                    if support is not None:
-                        support.append(point)
-                    for axis in range(3):
-                        lower[axis] = min(lower[axis], point[axis])
-                        upper[axis] = max(upper[axis], point[axis])
+    voxel_count = int(np.prod(image_dims))
+    # Bound temporary memory for full-resolution atlas grids. Each chunk stays
+    # in Java's x/y/z scan order so recorded support coordinates and float32
+    # interpolation results retain the source traversal semantics.
+    chunk_size = 65_536
+    for start in range(0, voxel_count, chunk_size):
+        linear = np.arange(start, min(start + chunk_size, voxel_count), dtype=np.int64)
+        z = linear % image_dims[2]
+        y = (linear // image_dims[2]) % image_dims[1]
+        x = linear // (image_dims[1] * image_dims[2])
+        coordinates: list[np.ndarray] = []
+        for axis in range(3):
+            coordinate = np.asarray(matrix[axis, 0] * x.astype(np.float32), dtype=np.float32)
+            coordinate = np.asarray(
+                coordinate + np.asarray(matrix[axis, 1] * y.astype(np.float32), dtype=np.float32),
+                dtype=np.float32,
+            )
+            coordinate = np.asarray(
+                coordinate + np.asarray(matrix[axis, 2] * z.astype(np.float32), dtype=np.float32),
+                dtype=np.float32,
+            )
+            coordinates.append(np.asarray(coordinate + matrix[axis, 3], dtype=np.float32))
+        sampled = _linear_closest_points(values, coordinates)
+        selected = np.flatnonzero(sampled > np.float32(0.0))
+        support_count += int(selected.size)
+        if selected.size:
+            selected_x = x[selected]
+            selected_y = y[selected]
+            selected_z = z[selected]
+            lower[0] = min(lower[0], int(selected_x.min()))
+            lower[1] = min(lower[1], int(selected_y.min()))
+            lower[2] = min(lower[2], int(selected_z.min()))
+            upper[0] = max(upper[0], int(selected_x.max()))
+            upper[1] = max(upper[1], int(selected_y.max()))
+            upper[2] = max(upper[2], int(selected_z.max()))
+            if support is not None:
+                support.extend(
+                    (int(x[index]), int(y[index]), int(z[index])) for index in selected
+                )
     return ToadShapeBounds(
         tuple(lower),
         tuple(upper),
@@ -321,6 +338,42 @@ def _linear_closest(values: np.ndarray, point: list[np.float32]) -> np.float32:
     total = np.float32(terms[0] + terms[1])
     for term in terms[2:]:
         total = np.float32(total + term)
+    return total
+
+
+def _linear_closest_points(
+    values: np.ndarray, points: list[np.ndarray]
+) -> np.ndarray:
+    """Vectorized source-order interpolation for a batch of template points."""
+    indices = [
+        np.clip(np.floor(points[axis]).astype(np.int64), 0, values.shape[axis] - 2)
+        for axis in range(3)
+    ]
+    alpha = [
+        np.clip(
+            np.asarray(points[axis] - indices[axis], dtype=np.float32),
+            np.float32(0.0),
+            np.float32(1.0),
+        ).astype(np.float32, copy=False)
+        for axis in range(3)
+    ]
+    complement = [np.asarray(np.float32(1.0) - value, dtype=np.float32) for value in alpha]
+    x, y, z = indices
+    ax, ay, az = alpha
+    bx, by, bz = complement
+    terms = (
+        np.asarray(np.asarray(bx * by, dtype=np.float32) * bz * values[x, y, z], dtype=np.float32),
+        np.asarray(np.asarray(ax * by, dtype=np.float32) * bz * values[x + 1, y, z], dtype=np.float32),
+        np.asarray(np.asarray(bx * ay, dtype=np.float32) * bz * values[x, y + 1, z], dtype=np.float32),
+        np.asarray(np.asarray(bx * by, dtype=np.float32) * az * values[x, y, z + 1], dtype=np.float32),
+        np.asarray(np.asarray(ax * ay, dtype=np.float32) * bz * values[x + 1, y + 1, z], dtype=np.float32),
+        np.asarray(np.asarray(bx * ay, dtype=np.float32) * az * values[x, y + 1, z + 1], dtype=np.float32),
+        np.asarray(np.asarray(ax * by, dtype=np.float32) * az * values[x + 1, y, z + 1], dtype=np.float32),
+        np.asarray(np.asarray(ax * ay, dtype=np.float32) * az * values[x + 1, y + 1, z + 1], dtype=np.float32),
+    )
+    total = np.asarray(terms[0] + terms[1], dtype=np.float32)
+    for term in terms[2:]:
+        total = np.asarray(total + term, dtype=np.float32)
     return total
 
 
