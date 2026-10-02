@@ -148,7 +148,13 @@ def test_startup_memberships_feed_selected_exact_rigid_atlas_pyramid() -> None:
     assert setup.signed_image_resolutions_mm == startup.geometry.signed_image_resolutions_mm
     assert setup.signed_image_resolutions_mm == (-1.0, -1.0, 1.0)
     assert setup.template_resolutions_mm == startup.template_resolution_mm
+    assert setup.image_dimensions_xyz == startup.initial_memberships.shape[:3]
+    assert setup.template_dimensions_xyz == (15, 13, 11)
+    assert setup.mipav_image_orientation == 0
+    assert setup.mipav_axis_orientation_codes == (2, 3, 5)
+    assert setup.orientation_signs == (-1.0, -1.0, 1.0)
     assert setup.image_center_xyz == tuple(size / 2.0 for size in startup.initial_memberships.shape[:3])
+    assert setup.template_center_xyz == (7.5, 6.5, 5.5)
     assert setup.stage_order == (
         "setImageInfo",
         "initShapeRegistration",

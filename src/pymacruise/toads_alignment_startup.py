@@ -188,9 +188,15 @@ class ToadsRigidRegistrationSetup:
     max_iterations: int
     levels: int
     subsample_factor: int
+    image_dimensions_xyz: tuple[int, int, int]
+    template_dimensions_xyz: tuple[int, int, int]
+    mipav_image_orientation: int
+    mipav_axis_orientation_codes: tuple[int, int, int]
+    orientation_signs: tuple[float, float, float]
     signed_image_resolutions_mm: tuple[float, float, float]
     template_resolutions_mm: tuple[float, float, float]
     image_center_xyz: tuple[float, float, float]
+    template_center_xyz: tuple[float, float, float]
     stage_order: tuple[str, ...]
 
 
@@ -221,6 +227,12 @@ def register_toads_alignment_startup(
         raise ValueError("max_iterations must be a non-negative integer")
     if startup.initial_memberships.dtype != np.float32:
         raise ValueError("startup memberships must retain the source float32 representation")
+    shapes = np.asarray(atlas_shape_priors, dtype=np.float32)
+    expected_classes = startup.initial_memberships.shape[-1]
+    if shapes.ndim != 4 or shapes.shape[-1] != expected_classes:
+        raise ValueError("atlas_shape_priors must be (template_x,template_y,template_z,classes) in startup class order")
+    if not np.isfinite(shapes).all():
+        raise ValueError("atlas_shape_priors must be finite")
     setup = ToadsRigidRegistrationSetup(
         memberships=startup.initial_memberships,
         best_candidates=None,
@@ -232,6 +244,11 @@ def register_toads_alignment_startup(
         max_iterations=int(max_iterations),
         levels=int(levels),
         subsample_factor=2,
+        image_dimensions_xyz=tuple(int(v) for v in startup.initial_memberships.shape[:3]),
+        template_dimensions_xyz=tuple(int(v) for v in shapes.shape[:3]),
+        mipav_image_orientation=startup.geometry.image_orientation,
+        mipav_axis_orientation_codes=startup.geometry.axis_orientation_codes,
+        orientation_signs=startup.geometry.orientation_signs,
         signed_image_resolutions_mm=tuple(
             float(value) for value in startup.geometry.signed_image_resolutions_mm
         ),
@@ -239,6 +256,7 @@ def register_toads_alignment_startup(
         image_center_xyz=tuple(
             float(size) / 2.0 for size in startup.initial_memberships.shape[:3]
         ),
+        template_center_xyz=tuple(float(size) / 2.0 for size in shapes.shape[:3]),
         stage_order=(
             "setImageInfo",
             "initShapeRegistration",
@@ -247,12 +265,6 @@ def register_toads_alignment_startup(
             "registerShapesPyramid",
         ),
     )
-    shapes = np.asarray(atlas_shape_priors, dtype=np.float32)
-    expected_classes = startup.initial_memberships.shape[-1]
-    if shapes.ndim != 4 or shapes.shape[-1] != expected_classes:
-        raise ValueError("atlas_shape_priors must be (template_x,template_y,template_z,classes) in startup class order")
-    if not np.isfinite(shapes).all():
-        raise ValueError("atlas_shape_priors must be finite")
     registered_classes = np.ones(expected_classes, dtype=bool)
     registered_classes[0] = False
     registration = register_toads_atlas_rigid_pyramid(
