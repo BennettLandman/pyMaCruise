@@ -862,3 +862,20 @@ own selected-source evidence; this composition does not have an independent
 Java end-to-end reference and ends immediately before rigid atlas registration.
 It does not establish registration, iterative segmentation, or full TOADS
 equivalence.
+
+### Completed substage: initial exact-membership atlas-pyramid call (P18cyab)
+
+`register_toads_alignment_startup` continues P18cyaa by passing its exact
+membership volume, crop-adjusted transform, native subject spacing, and
+descriptor template spacing to `register_toads_atlas_rigid_pyramid`. It
+excludes class zero (the selected MASK/background class) from the optimizer,
+as `MultipleToadDeformableAtlas` does. Shape maps are supplied in descriptor
+class order; atlas loading and the preceding `updateShapeRegistration` state
+setup are not folded into this adapter.
+
+The focused startup and registration-sampling group passes 45 tests in 1.12
+seconds on implementation commit `23144f010e55fbf9509fb70f108510ecf8742771`.
+This checks composition with an asymmetric synthetic atlas and exercises the
+registration kernels that have separate selected-Java evidence. It is not an
+independent Java comparison of the complete startup-to-registration chain and
+does not validate TOADS iteration or full workflow equivalence.
