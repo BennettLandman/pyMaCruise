@@ -1587,3 +1587,14 @@ TOADS and both CRUISE-core branches. The focused selector passed **1 test in
 outer pass. This confirms the executable ANTs dependency path, not full
 human-sized convergence or Java-wrapper equivalence. See [the P18cybx
 report](reports/n4-toads-dura-cruise-chain-2026-10-02.md).
+
+### Packaged standalone TOADS CLI (P18cybn)
+
+The built 134 MB pure-Python wheel was installed to an ignored validation
+folder inside the repository. Its console entry point and `toads-loop --help`
+worked, the bundled base TOADS atlas descriptor resolved from the package,
+and a compact CLI run wrote a native-RAS classification plus the four
+source-scaled Dura maps. All six products were checked for `.nii.gz` round
+trip, 13³ grid, and RAS orientation. The full suite also passed 1,100 tests at
+commit `a7c142cead48bc13bd1e96854992d903ea3377bf`. See [the P18cybn wheel
+report](reports/toads-loop-wheel-2026-10-02.md).

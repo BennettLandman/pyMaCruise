@@ -20,7 +20,9 @@ warnings for RAS-normalizing commands and their reference calls. No test was
 skipped.
 
 This full-suite checkpoint validates the completed, bounded selected-source
-slices P18cyau, P18cyav, P18cyaw, P18cyax, P18cyaz–P18cybm, and P18cybo–P18cybx. Each corresponding
+slices P18cyau, P18cyav, P18cyaw, P18cyax, P18cyaz–P18cybx. The `toads-loop`
+CLI tests for P18cybn are included in the suite; its separate built-wheel smoke
+test is recorded in [the wheel report](toads-loop-wheel-2026-10-02.md). Each corresponding
 Done row in `plan.md` records this exact test result and implementation commit.
 The registered-TOADS method slices have their focused Java-reference reports
 linked from those rows. The connected workflow evidence is in the [core
