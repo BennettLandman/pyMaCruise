@@ -97,11 +97,16 @@ from pymacruise.toads_atlas import (
     load_toads_atlas_data,
     load_toads_atlas_ras_data,
     load_toads_intensity_priors,
+    load_toads_lesion_priors,
     toads_atlas_shapes_in_structure_order,
 )
 from pymacruise.toads_post_refresh_registration import (
     ToadsPostRefreshRegistration,
     register_toads_after_template_refresh,
+)
+from pymacruise.toads_segmentation_initialization import (
+    ToadsSegmentationInitialization,
+    initialize_toads_segmentation_state,
 )
 
 __all__ = [
@@ -197,7 +202,10 @@ __all__ = [
     "load_toads_atlas_data",
     "load_toads_atlas_ras_data",
     "load_toads_intensity_priors",
+    "load_toads_lesion_priors",
     "toads_atlas_shapes_in_structure_order",
     "ToadsPostRefreshRegistration",
     "register_toads_after_template_refresh",
+    "ToadsSegmentationInitialization",
+    "initialize_toads_segmentation_state",
 ]

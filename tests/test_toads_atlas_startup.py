@@ -5,6 +5,7 @@ import inspect
 import nibabel as nib
 import numpy as np
 
+from pymacruise.toads_atlas import load_toads_lesion_priors
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
 
 
@@ -128,8 +129,54 @@ def test_atlas_assets_compose_into_ras_startup_and_registration(tmp_path) -> Non
         "atlas.updateShapeRegistration",
         "atlas.registerShapes()",
     )
+    initialized = result.segmentation_initialization
+    assert initialized.call_order == (
+        "segmentation.initCentroids",
+        "segmentation.setIntensityMax",
+        "segmentation.setIntensityScale",
+        "segmentation.setLesionCentroid",
+        "preprocess.initialMemberships",
+    )
+    assert initialized.approximate_class_count == 2
+    assert initialized.use_approximate_memberships is False
+    np.testing.assert_array_equal(initialized.centroids, initialized.prior_centroids)
+    np.testing.assert_array_equal(initialized.memberships, result.post_refresh_registration.memberships)
+    np.testing.assert_allclose(
+        initialized.intensity_max,
+        [result.alignment.startup.intensity.robust_maximum],
+    )
+    np.testing.assert_allclose(
+        initialized.intensity_scale,
+        [
+            result.alignment.startup.intensity.robust_maximum
+            - result.alignment.startup.intensity.robust_minimum
+        ],
+    )
+    np.testing.assert_allclose(
+        initialized.lesion_centroid,
+        [
+            result.alignment.startup.intensity.robust_minimum
+            / (
+                result.alignment.startup.intensity.robust_maximum
+                - result.alignment.startup.intensity.robust_minimum
+            )
+        ],
+    )
     assert result.post_refresh_registration.memberships.shape == (
         *result.template_refresh.recropped_images.shape[1:], 2
     )
     assert result.post_refresh_registration.registered_classes.tolist() == [False, True]
     assert np.isfinite(result.post_refresh_registration.final_transform).all()
+
+
+def test_atlas_lesion_priors_follow_source_missing_and_present_rules(tmp_path) -> None:
+    descriptor = _write_atlas(tmp_path)
+    np.testing.assert_array_equal(load_toads_lesion_priors(descriptor, ["MPRAGE"]), [0.0])
+    descriptor.write_text(
+        descriptor.read_text(encoding="utf-8") + "\nLesions:\nT1_MPRAGE\t0.35\tFLAIR\t0.8\n",
+        encoding="utf-8",
+    )
+    np.testing.assert_array_equal(
+        load_toads_lesion_priors(descriptor, ["MPRAGE", "FLAIR", "T2"]),
+        np.asarray([0.35, 0.8, 0.0], dtype=np.float32),
+    )

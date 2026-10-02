@@ -321,6 +321,54 @@ def load_toads_intensity_priors(
     return np.stack(rows, axis=0)
 
 
+def load_toads_lesion_priors(
+    descriptor_path: str | Path,
+    modalities: tuple[str, ...] | list[str],
+) -> np.ndarray:
+    """Return the selected atlas lesion prior per requested image channel.
+
+    This follows ``MultipleToadAtlas.getLesionPriors``: absent lesion metadata
+    yields zero for every channel, and a listed but unsupported modality also
+    yields zero. Values are in caller modality order.
+    """
+    descriptor = Path(descriptor_path).resolve()
+    if not descriptor.is_file():
+        raise ToadsAtlasError(f"Missing TOADS atlas descriptor: {descriptor}")
+    if not modalities:
+        raise ToadsAtlasError("At least one image modality is required")
+    try:
+        lines = descriptor.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ToadsAtlasError(f"Cannot read TOADS atlas descriptor {descriptor}: {exc}") from exc
+
+    prior_by_modality: dict[str, np.float32] = {}
+    lesion_index = next((i for i, line in enumerate(lines) if line.startswith("Lesions")), None)
+    if lesion_index is not None:
+        if lesion_index + 1 >= len(lines):
+            raise ToadsAtlasError("TOADS Lesions section is missing its modality values")
+        tokens = lines[lesion_index + 1].split()
+        if len(tokens) % 2:
+            raise ToadsAtlasError("TOADS Lesions values must contain modality/value pairs")
+        for modality, raw_value in zip(tokens[::2], tokens[1::2], strict=True):
+            canonical = _MODALITY_ALIASES.get(modality)
+            try:
+                value = np.float32(float(raw_value))
+            except ValueError as exc:
+                raise ToadsAtlasError(f"Invalid lesion prior for modality {modality}") from exc
+            if not np.isfinite(value):
+                raise ToadsAtlasError(f"Non-finite lesion prior for modality {modality}")
+            if canonical is not None:
+                prior_by_modality[canonical] = value
+
+    result: list[np.float32] = []
+    for requested in modalities:
+        canonical = _MODALITY_ALIASES.get(requested)
+        if canonical is None:
+            raise ToadsAtlasError(f"Unsupported TOADS image modality: {requested}")
+        result.append(prior_by_modality.get(canonical, np.float32(0.0)))
+    return np.asarray(result, dtype=np.float32)
+
+
 def _metadata_file(lines: list[str], start: int) -> str:
     for line in lines[start : start + 6]:
         if line.strip().startswith("File:"):

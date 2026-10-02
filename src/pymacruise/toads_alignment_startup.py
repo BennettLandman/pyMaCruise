@@ -28,6 +28,7 @@ from .toads_atlas import (
     load_toads_atlas,
     load_toads_atlas_ras_data,
     load_toads_intensity_priors,
+    load_toads_lesion_priors,
     toads_atlas_shapes_in_structure_order,
 )
 from .toads_post_registration_template_refresh import (
@@ -37,6 +38,10 @@ from .toads_post_registration_template_refresh import (
 from .toads_post_refresh_registration import (
     ToadsPostRefreshRegistration,
     register_toads_after_template_refresh,
+)
+from .toads_segmentation_initialization import (
+    ToadsSegmentationInitialization,
+    initialize_toads_segmentation_state,
 )
 
 
@@ -174,13 +179,14 @@ class ToadsAlignmentRegistration:
 
 @dataclass(frozen=True)
 class ToadsAtlasAlignmentRun:
-    """Loaded atlas state through the post-registration template refresh."""
+    """Loaded atlas state through initial segmentation initialization."""
 
     atlas: ToadsAtlas
     atlas_data: ToadsAtlasRASData
     alignment: ToadsAlignmentRegistration
     template_refresh: ToadsPostRegistrationTemplateRefresh
     post_refresh_registration: ToadsPostRefreshRegistration
+    segmentation_initialization: ToadsSegmentationInitialization
     modality: str
 
 
@@ -319,6 +325,7 @@ def register_toads_from_atlas_assets(
         raise TypeError("atlas must be a ToadsAtlas or a descriptor path")
     atlas_data = load_toads_atlas_ras_data(loaded_atlas)
     priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
+    lesion_priors = load_toads_lesion_priors(loaded_atlas.descriptor, [modality])
     mask_structure_indices = [
         index
         for index, structure in enumerate(loaded_atlas.structures)
@@ -379,11 +386,20 @@ def register_toads_from_atlas_assets(
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
+    segmentation_initialization = initialize_toads_segmentation_state(
+        images=template_refresh.recropped_images,
+        centroids=startup.centroids,
+        robust_minimum=[startup.intensity.robust_minimum],
+        robust_maximum=[startup.intensity.robust_maximum],
+        lesion_prior_by_channel=lesion_priors,
+        crop_border=padding,
+    )
     return ToadsAtlasAlignmentRun(
         loaded_atlas,
         atlas_data,
         alignment,
         template_refresh,
         post_refresh_registration,
+        segmentation_initialization,
         modality,
     )
