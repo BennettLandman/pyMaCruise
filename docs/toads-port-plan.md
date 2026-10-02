@@ -1222,6 +1222,20 @@ spline mode, or the complete TOADS workflow. P18cyau remains Started pending
 full-suite evidence.
 
 
+### Exact-field degree ramp and degree-zero no-op (P18cyaz)
+
+The post-thinning exact-field adapter now consumes the current degree and
+previous energy ratio, applies the strict selected threshold
+`Eratio < sqrt(maxDistance)`, increments at most one degree, and leaves the
+attached field unchanged for degree zero. Degrees 1–3 use the exact
+membership fit and compare with the selected Java method harness. The focused
+group passed 15 tests in 43.29 seconds on commit
+`11e326613f2c777a82033d3df17f79118ec06ddf`; see the [validation report](reports/toads-exact-field-degree-ramp-2026-10-02.md).
+This closes the correction-degree step only; centroids, later membership,
+registration, and growth remain outside the slice. P18cyaz remains Started
+pending full-suite evidence.
+
+
 ### Field-corrected startup through first thinning (P18cyax)
 
 The selected registered path now carries its degree-three correction through
