@@ -1142,3 +1142,20 @@ in 4.40 seconds on implementation commit
 report](reports/toads-initial-statistics-membership-2026-10-02.md). The exact
 membership kernel and component statistics have separate Java-reference
 checks; atlas transform sampling and iterative TOADS remain open.
+
+
+### Initial statistics, exact membership, and first thinning (P18cyar)
+
+The selected startup composition now takes the initial RAS membership and
+segmentation state through relation/closest-label refresh, class deviations,
+image variance, centroid similarity, exact membership/energy, and the first
+thinning call. The atlas shape samples and registration state are still fixed
+upstream inputs. The focused adapter test compares intermediate relations and
+final thinning arrays to direct calls of the same components; it does not claim
+a combined Java wrapper result.
+
+The focused synthetic group passed 14 tests in 2.87 seconds on implementation
+commit `ada020ac149e2889ede1195202101bc702adcc28`; see the [P18cyar
+report](reports/toads-initial-statistics-thinning-2026-10-02.md). Selected Java
+references remain at the component level, and topology-changing behavior on a
+large volume remains unvalidated in this composition.
