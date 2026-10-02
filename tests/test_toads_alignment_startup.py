@@ -134,6 +134,25 @@ def test_startup_memberships_feed_selected_exact_rigid_atlas_pyramid() -> None:
     assert result.registration.levels[0].scale == 2
     assert result.registration.transform.shape == (6,)
     assert np.isfinite(result.registration.transform).all()
+    setup = result.setup
+    assert setup.memberships is startup.initial_memberships
+    assert setup.best_candidates is None
+    np.testing.assert_array_equal(setup.initial_zero_transform, np.zeros(6, dtype=np.float32))
+    assert setup.transform is startup.transform
+    assert setup.transform_type == "rigid"
+    assert setup.approximate_class_count == priors.shape[1]
+    assert setup.use_approximate_memberships is False
+    assert setup.max_iterations == 1
+    assert setup.levels == 2
+    assert setup.subsample_factor == 2
+    assert setup.image_center_xyz == tuple(size / 2.0 for size in startup.initial_memberships.shape[:3])
+    assert setup.stage_order == (
+        "setImageInfo",
+        "initShapeRegistration",
+        "setTransform",
+        "updateShapeRegistration",
+        "registerShapesPyramid",
+    )
     np.testing.assert_array_equal(startup.initial_memberships, memberships_before)
 
 

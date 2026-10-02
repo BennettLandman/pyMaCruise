@@ -160,6 +160,7 @@ class ToadsAlignmentRegistration:
     """Initial exact-membership atlas-pyramid registration result."""
 
     startup: ToadsAlignmentStartup
+    setup: ToadsRigidRegistrationSetup
     registration: ToadsRigidRegistrationPyramidResult
 
 
@@ -171,6 +172,24 @@ class ToadsAtlasAlignmentRun:
     atlas_data: ToadsAtlasRASData
     alignment: ToadsAlignmentRegistration
     modality: str
+
+
+@dataclass(frozen=True)
+class ToadsRigidRegistrationSetup:
+    """Selected wrapper state immediately before rigid pyramid execution."""
+
+    memberships: NDArray[np.float32]
+    best_candidates: None
+    initial_zero_transform: NDArray[np.float32]
+    transform: NDArray[np.float32]
+    transform_type: str
+    approximate_class_count: int
+    use_approximate_memberships: bool
+    max_iterations: int
+    levels: int
+    subsample_factor: int
+    image_center_xyz: tuple[float, float, float]
+    stage_order: tuple[str, ...]
 
 
 def register_toads_alignment_startup(
@@ -194,6 +213,34 @@ def register_toads_alignment_startup(
     """
     if not isinstance(startup, ToadsAlignmentStartup):
         raise TypeError("startup must be a ToadsAlignmentStartup")
+    if not isinstance(levels, (int, np.integer)) or levels < 1:
+        raise ValueError("levels must be a positive integer")
+    if not isinstance(max_iterations, (int, np.integer)) or max_iterations < 0:
+        raise ValueError("max_iterations must be a non-negative integer")
+    if startup.initial_memberships.dtype != np.float32:
+        raise ValueError("startup memberships must retain the source float32 representation")
+    setup = ToadsRigidRegistrationSetup(
+        memberships=startup.initial_memberships,
+        best_candidates=None,
+        initial_zero_transform=np.zeros(6, dtype=np.float32),
+        transform=startup.transform,
+        transform_type="rigid",
+        approximate_class_count=int(startup.initial_memberships.shape[-1]),
+        use_approximate_memberships=False,
+        max_iterations=int(max_iterations),
+        levels=int(levels),
+        subsample_factor=2,
+        image_center_xyz=tuple(
+            float(size) / 2.0 for size in startup.initial_memberships.shape[:3]
+        ),
+        stage_order=(
+            "setImageInfo",
+            "initShapeRegistration",
+            "setTransform",
+            "updateShapeRegistration",
+            "registerShapesPyramid",
+        ),
+    )
     shapes = np.asarray(atlas_shape_priors, dtype=np.float32)
     expected_classes = startup.initial_memberships.shape[-1]
     if shapes.ndim != 4 or shapes.shape[-1] != expected_classes:
@@ -203,20 +250,20 @@ def register_toads_alignment_startup(
     registered_classes = np.ones(expected_classes, dtype=bool)
     registered_classes[0] = False
     registration = register_toads_atlas_rigid_pyramid(
-        startup.initial_memberships,
+        setup.memberships,
         shapes,
-        levels=levels,
+        levels=setup.levels,
         image_resolutions_mm=tuple(
             float(v) for v in np.abs(startup.geometry.signed_image_resolutions_mm)
         ),
         template_resolutions_mm=startup.template_resolution_mm,
-        initial_transform=tuple(float(v) for v in startup.transform),
+        initial_transform=tuple(float(v) for v in setup.transform),
         registered_classes=registered_classes,
-        max_iterations=max_iterations,
+        max_iterations=setup.max_iterations,
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
-    return ToadsAlignmentRegistration(startup, registration)
+    return ToadsAlignmentRegistration(startup, setup, registration)
 
 
 def register_toads_from_atlas_assets(
