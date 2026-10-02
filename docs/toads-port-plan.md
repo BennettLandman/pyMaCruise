@@ -1203,3 +1203,16 @@ report](reports/toads-registered-initial-membership-2026-10-02.md) and [full
 suite report](reports/full-pytest-2026-10-02-registered-startup-membership.md).
 This establishes synthetic integration only, not a combined Java wrapper
 oracle or complete TOADS iteration.
+
+
+### Exact polynomial field fit at degrees two and three (P18cyau)
+
+The source-faithful exact-membership global Chebyshev fit now supports the
+selected degree-2 and degree-3 models in addition to the existing degree-1
+path. The selected method-formula comparison uses committed 21³ folded-cortex
+RAS NIfTI fixtures and matches normal systems exactly; the largest degree-3
+coefficient difference is `2.33e-11` from solver rounding, with complete
+fields within `2e-6`. See the [focused validation report](reports/toads-exact-polynomial-field-degrees23-2026-10-02.md).
+This expands one correction algorithm method; it does not add degree ramping,
+spline mode, channel orchestration, or the complete TOADS workflow. P18cyau
+remains Started pending full-suite evidence.
