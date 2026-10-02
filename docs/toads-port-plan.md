@@ -963,3 +963,20 @@ implementation commit `0d15a143d4f8321266e82e8272c5910bac92fb56`. It includes
 the Java-reference signed-landmark mapping test and a new adapter-level
 assertion that the exact signed tuple reaches the setup record. The source class
 hash and scope are recorded in [the P18cyaf report](reports/toads-signed-ras-spacing-2026-10-02.md).
+
+
+### RAS geometry recorded at registration setup (P18cyag)
+
+The inspectable registration setup also records the `setImageInfo` contract:
+subject and template dimensions, selected MIPAV orientation enums `(0, (2,3,5))`,
+RAS direction signs `(-1,-1,+1)`, signed subject spacing, descriptor template
+spacing, and both voxel-grid centers. These values are derived from the RAS
+startup geometry and the actual membership/template-prior arrays consumed by
+the optimizer.
+
+The folded asymmetric synthetic startup and registration tests pass 43 cases
+in 1.22 seconds on implementation commit
+`f6b8848bea1a3d76e9ea1d2c3e1406bc28b5bce8`. Existing Java-reference
+signed-coordinate landmark tests are included; the new assertions specifically
+check the setup geometry. This does not validate later registration levels or
+full TOADS behavior. See [the P18cyag report](reports/toads-registration-ras-geometry-2026-10-02.md).
