@@ -974,9 +974,11 @@ spacing, and both voxel-grid centers. These values are derived from the RAS
 startup geometry and the actual membership/template-prior arrays consumed by
 the optimizer.
 
-The folded asymmetric synthetic startup and registration tests pass 43 cases
-in 1.22 seconds on implementation commit
-`f6b8848bea1a3d76e9ea1d2c3e1406bc28b5bce8`. Existing Java-reference
+The folded asymmetric synthetic startup uses subject spacing `(0.8,1.2,1.5)` mm
+and 1-mm atlas spacing. The focused startup and registration tests pass 43 cases
+in 1.20 seconds on tested tree commit
+`cbd0887d248502e07cc04668d39d2206b3b38527` (geometry implementation commit
+`f6b8848bea1a3d76e9ea1d2c3e1406bc28b5bce8`). Existing Java-reference
 signed-coordinate landmark tests are included; the new assertions specifically
 check the setup geometry. This does not validate later registration levels or
 full TOADS behavior. See [the P18cyag report](reports/toads-registration-ras-geometry-2026-10-02.md).

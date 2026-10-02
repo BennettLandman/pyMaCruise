@@ -1,6 +1,7 @@
 # P18cyag: RAS geometry in the TOADS registration setup
 
-Implementation commit: `f6b8848bea1a3d76e9ea1d2c3e1406bc28b5bce8`.
+Geometry implementation commit: `f6b8848bea1a3d76e9ea1d2c3e1406bc28b5bce8`.
+Post-commit verification tree: `cbd0887d248502e07cc04668d39d2206b3b38527`.
 
 The setup record now exposes the inputs corresponding to the selected Java
 `setImageInfo` and rigid `ParametricTransform`: subject membership-grid size,
@@ -19,7 +20,8 @@ Command:
 ```
 
 Result on the exact implementation commit: **43 passed, 0 failed, 0 skipped in
-1.22 seconds**. The folded synthetic adapter test checks dimensions, orientation
+1.20 seconds**. The folded synthetic adapter test uses anisotropic subject spacing
+`(0.8,1.2,1.5)` mm against the 1-mm template and checks dimensions, orientation
 enums/signs, signed spacing, template spacing, and both centers. The same group
 includes selected Java-reference signed landmark and registration-kernel checks.
 
