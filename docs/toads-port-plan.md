@@ -1222,6 +1222,19 @@ spline mode, or the complete TOADS workflow. P18cyau remains Started pending
 full-suite evidence.
 
 
+### Field-corrected startup through first thinning (P18cyax)
+
+The selected registered path now carries its degree-three correction through
+field-sensitive statistics and exact membership into the first thinning
+transition. The focused composition/kernel group passed 13 tests in 31.57
+seconds on commit `7d83dc95e90762baa1a334ae8496e85c0202f25e`. Segmentation,
+skeleton, and processed-event count agree with direct calls using the same
+registered relation and transformed-shape state. See the [focused report](reports/toads-corrected-startup-thinning-2026-10-02.md).
+This is bounded synthetic integration, not a combined Java wrapper result or
+full TOADS run; growing and later iteration remain separate. P18cyax remains
+Started pending full-suite evidence.
+
+
 ### Field-corrected registered startup membership (P18cyaw)
 
 The registered startup can now continue from the fitted degree-three field
