@@ -91,7 +91,7 @@ The selected wrapper settings are `prior_scale=0.2` (`atlasRange` →
 
 - Focused synthetic state trace, registered-loop, and restartable-base checks:
   **5 passed in 96.18s** after applying the source wrapper's `prior_factor=0.5`
-  on the implementation working tree now committed as `0a973ad`.
+  on the implementation working tree now committed as `e4e0ce2`.
 - The 25- and 40-cycle source-sized diagnostics both completed with capped,
   nonconverged results as above.
 - Latest full suite before the atlas-range default correction:
