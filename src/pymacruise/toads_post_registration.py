@@ -11,6 +11,7 @@ not the complete topology-preserving evolution described in the papers.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -55,6 +56,7 @@ def toads_post_registration_branch(
     do_growing: bool,
     initial_available: ArrayLike | None = None,
     record_growing_events: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsPostRegistrationBranch:
     """Run only the selected wrapper branch immediately after registration.
 
@@ -95,6 +97,7 @@ def toads_post_registration_branch(
             class_volumes,
             initial_available=initial_available,
             record_events=record_growing_events,
+            progress_callback=progress_callback,
         )
         segment_after_growth = growing.segmentation
     else:
@@ -112,12 +115,16 @@ def toads_post_registration_branch(
         )
     elif control.refresh_relations:
         stages.extend(("computeRelations", "computeBoundaryDistances", "computeClosestLabels"))
+        if progress_callback is not None:
+            progress_callback("refreshing registered TOADS relations")
         relations = toads_refresh_relation_state(
             segment_after_growth,
             mem,
             boundary_distances,
             relation_limit,
         )
+        if progress_callback is not None:
+            progress_callback("registered TOADS relation refresh complete")
 
     return ToadsPostRegistrationBranch(
         handoff=handoff,

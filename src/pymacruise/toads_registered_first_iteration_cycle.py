@@ -9,7 +9,7 @@ Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -60,6 +60,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
     minimum_lambda: float = 1e-3,
     record_growing_events: bool = True,
     record_thinning_items: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsRegisteredFirstIterationCycle:
     """Run the first exact pass through the selected wrapper's next thinning.
 
@@ -117,6 +118,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         max_registration_iterations=max_registration_iterations,
         registration_energy_tolerance=registration_energy_tolerance,
         minimum_lambda=minimum_lambda,
+        progress_callback=progress_callback,
     )
 
     constructor = alignment_run.segmentation_constructor
@@ -142,6 +144,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         do_growing=do_growing,
         initial_available=startup.thinning.available,
         record_growing_events=record_growing_events,
+        progress_callback=progress_callback,
     )
     branch = registered_iteration.branch
     if branch.control.stop:
@@ -152,6 +155,8 @@ def continue_registered_first_exact_iteration_through_next_thinning(
     if branch.growing is None or branch.relations is None:
         raise RuntimeError("a continuing selected branch must grow and refresh relations")
 
+    if progress_callback is not None:
+        progress_callback("transforming TOADS shape priors after registration")
     next_shapes = transform_toads_shape_priors(
         atlas_shapes,
         image_dimensions_xyz=tuple(int(value) for value in membership.memberships.shape[:3]),
@@ -160,9 +165,14 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         transform=tuple(float(value) for value in registration_control.handoff.transform),
         class_bounds=registration_control.handoff.shape_bounds,
     )
+    if progress_callback is not None:
+        progress_callback("registered TOADS shape-prior transform complete")
+        progress_callback("starting registered-cycle thinning")
     next_thinning = toads_post_registration_next_thinning(
         branch, next_shapes, record_thinning_items=record_thinning_items
     )
+    if progress_callback is not None:
+        progress_callback("registered-cycle thinning complete")
     stages = (
         *exact_iteration.stage_order,
         *registration_control.stage_order[1:],

@@ -176,6 +176,7 @@ def run_registered_toads_loop(
         minimum_lambda=config.minimum_lambda,
         record_growing_events=config.record_growing_events,
         record_thinning_items=config.record_thinning_items,
+        progress_callback=progress_callback,
     )
     if progress_callback is not None:
         progress_callback("first registered cycle thinning complete")

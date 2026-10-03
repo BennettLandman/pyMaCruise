@@ -16,6 +16,7 @@ full-volume convergence or full TOADS behavior. See ``docs/papers/toads.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -429,6 +430,8 @@ def toads_propagate_growing(
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
     record_events: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
+    progress_interval: int = 100_000,
 ) -> ToadsGrowingPass:
     """Initialize and exhaust the selected ``propagateGrowing`` min-heap.
 
@@ -454,6 +457,8 @@ def toads_propagate_growing(
         raise ValueError("segmentation labels must be valid membership class indices")
     if volumes.shape != (mems.shape[-1],) or not np.isfinite(volumes).all():
         raise ValueError("class_volumes must be finite and match membership classes")
+    if isinstance(progress_interval, bool) or not isinstance(progress_interval, int) or progress_interval < 1:
+        raise ValueError("progress_interval must be a positive integer")
     initialized = toads_initialize_growing_queue(
         source_skeleton,
         memberships,
@@ -468,6 +473,9 @@ def toads_propagate_growing(
     current_ordering = orderings.copy()
     current_volumes = volumes.copy()
     events: list[ToadsGrowingQueueStep] = []
+    processed = 0
+    if progress_callback is not None:
+        progress_callback(f"growing queue started with {len(initialized.queue)} events")
     while initialized.queue:
         event = toads_process_next_growing_item(
             current_segmentation,
@@ -483,6 +491,11 @@ def toads_propagate_growing(
         )
         if record_events:
             events.append(event)
+        processed += 1
+        if progress_callback is not None and processed % progress_interval == 0:
+            progress_callback(
+                f"growing queue processed {processed} events; {len(initialized.queue)} remain"
+            )
         current_segmentation = event.segmentation
         current_skeleton = event.skeleton
         current_available = event.available
@@ -492,6 +505,8 @@ def toads_propagate_growing(
     remaining: list[ToadsHeapItem] = []
     while initialized.queue:
         remaining.append(initialized.queue.pop_first())
+    if progress_callback is not None:
+        progress_callback(f"growing queue complete after {processed} events")
     return ToadsGrowingPass(
         current_segmentation,
         current_skeleton,

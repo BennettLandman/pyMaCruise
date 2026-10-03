@@ -12,7 +12,7 @@ growth/classification.  Paper context: Bazin and Pham (2007, 2008),
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -57,6 +57,7 @@ def continue_default_membership_through_registration_control(
     max_registration_iterations: int = 5,
     registration_energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsDefaultMembershipRegistrationControl:
     """Apply energy ratio, optional rigid registration, then wrapper stop checks.
 
@@ -102,6 +103,8 @@ def continue_default_membership_through_registration_control(
         ).copy()
         registered = np.ones(11, dtype=bool)
         registered[0] = False
+        if progress_callback is not None:
+            progress_callback("starting registered-loop rigid atlas registration")
         registration = register_toads_atlas_rigid(
             memberships,
             shapes,
@@ -118,6 +121,8 @@ def continue_default_membership_through_registration_control(
             minimum_lambda=minimum_lambda,
             precomputed_affine=True,
         )
+        if progress_callback is not None:
+            progress_callback("registered-loop rigid atlas registration complete")
         final_transform = registration.transform.copy()
         final_bounds = _bounds_for_transform(
             shapes,

@@ -9,6 +9,7 @@ does not implement a complete TOADS iteration. Paper context: Bazin and Pham
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from numpy.typing import ArrayLike
 
@@ -49,6 +50,7 @@ def continue_default_membership_registered_iteration(
     do_growing: bool,
     initial_available: ArrayLike | None = None,
     record_growing_events: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsDefaultMembershipRegisteredIteration:
     """Compose the existing branch adapter after a completed P18cyt slice.
 
@@ -88,6 +90,7 @@ def continue_default_membership_registered_iteration(
         do_growing=do_growing,
         initial_available=initial_available,
         record_growing_events=record_growing_events,
+        progress_callback=progress_callback,
     )
     if branch.control != registration_control.control:
         raise RuntimeError("post-registration branch changed the selected P18cyt control decision")
