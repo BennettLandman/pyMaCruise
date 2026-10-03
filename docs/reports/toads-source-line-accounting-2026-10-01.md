@@ -3,9 +3,9 @@
 ## Current planning estimate
 
 As re-reviewed on 2026-10-02 at full-suite commit
-`963794e`, the estimate is
-**about 3,434–4,834 source lines represented by Python
-operations, out of 13,651 selected Java source lines (about 25–35%)**. Treat the
+`029255a`, the estimate is
+**about 3,464–4,864 source lines represented by Python
+operations, out of 13,651 selected Java source lines (about 25–36%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
 result. The detailed acceptance rows and synthetic evidence define what is
 represented; a bounded method or operation does not count its whole enclosing
@@ -51,22 +51,27 @@ line mapping is maintained. For each periodic plan update, refresh the range
 from newly validated source operation groups and recompute the denominator
 when the selected file set or source revisions change.
 
-The latest validated additions represent approximately **34 additional
-selected Java branch lines** in `MultipleToadSegmentation`: the `useApprox`
+The latest validated additions represent approximately **30 additional
+selected Java lines** for parsing and retrieving the fixed atlas Intensity
+Variance Factor used by selected membership updates (`MultipleToadDeformableAtlas.java`
+lines 270–279 and 1111–1131). They are separate from the previously counted
+approximately **34 selected Java branch lines** in `MultipleToadSegmentation`:
+the `useApprox`
 initial thinning-state arm (source lines 516–537) and selected approximate
 queue-event volume-update arms (source lines 1924–1928 and 1980–1985). These
 are partial branches within methods already represented by the port; they do
-not complete the approximate loop or establish its convergence. The line
-interval is therefore advanced by about 34, to 3,434–4,834. This remains a
-coarse estimate pending a curated method-to-source-line map, not measured
-runtime code coverage.
+not complete the approximate loop or establish its convergence. Those branch
+lines are already included in the starting interval for this update. The
+additional Intensity Variance Factor parser/accessor above advances that
+interval by about 30, to 3,464–4,864. This remains a coarse estimate pending a
+curated method-to-source-line map, not measured runtime code coverage.
 
-The full suite passed **1,119 tests**, with 11 expected RAS warnings in
-1,273.87 seconds on commit `963794e`; see the [TOADS optimization
-full-suite report](full-pytest-2026-10-02-toads-runtime-optimization.md).
-That run includes a restartable synthetic base workflow and the
-source-order-preserving inverse-prior vectorization, but the base workflow
-still records both TOADS stages as capped and nonconverged. It is not workflow
-equivalence or real-data validation. The current approximate TOADS line
-estimate remains 3,434–4,834 of 13,651 lines; the optimization adds no new
-Java source operations to that estimate.
+The full suite passed **1,125 tests**, with 11 expected RAS warnings in
+1,265.88 seconds on commit `029255a`; see the [TOADS variance-factor
+full-suite report](full-pytest-2026-10-02-toads-variance-factor-correction.md).
+That run includes a restartable synthetic base workflow, source-factor parsing
+and propagation, and a two-update Java reference comparison. The base workflow
+still records both TOADS stages as capped and nonconverged, and the 40-cycle
+small synthetic loop misses its 1e-4 convergence threshold. This is not
+whole-workflow equivalence or real-data validation. The current approximate
+TOADS line estimate is 3,464–4,864 of 13,651 lines.
