@@ -31,6 +31,8 @@ def test_python_only_toads_state_trace_schema_and_deterministic_summaries() -> N
     assert trace["prior_scale"] == 0.2
     assert trace["registration_memberships"]["pre_registration"]["sha256"]
     assert trace["registration_memberships"]["post_registration"]["sha256"]
+    assert trace["initial_state"]["centroids"]["shape"] == [1, 11]
+    assert trace["initial_state"]["class_standard_deviations"]["shape"] == [1, 11]
     first = trace["iterations"][0]
     assert first["membership"]["objective_float32_bits"].startswith("0x")
     assert first["membership"]["memberships"]["sha256"]

@@ -255,6 +255,21 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
             "memberships": _array_summary(
                 startup.statistics_membership.membership_pass.memberships
             ),
+            "centroids": _array_summary(
+                alignment.segmentation_initialization.centroids
+            ),
+            "class_standard_deviations": _array_summary(
+                startup.statistics_membership.class_variances.standard_deviations
+            ),
+            "image_variance_weights": _array_summary(
+                startup.statistics_membership.image_variance.image_variance_weights
+            ),
+            "image_standard_deviation": _array_summary(
+                startup.statistics_membership.image_variance.image_standard_deviations
+            ),
+            "centroid_similarity": _array_summary(
+                startup.statistics_membership.centroid_similarity.similarity
+            ),
             "segmentation": _array_summary(initial_thinning.segmentation),
             "skeleton": _array_summary(initial_thinning.skeleton),
             "available": _array_summary(initial_thinning.available),
