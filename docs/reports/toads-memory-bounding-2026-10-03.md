@@ -1,6 +1,6 @@
 # TOADS memory investigation — 2026-10-03
 
-The in-place queue and bounded-history implementation is committed locally as `da691f5`; the whole-brain synthetic fixture generator and environment limitations are recorded in `0708e76`. The compact thinning-item-history follow-up is in the current working tree. Commits are local and have not been pushed.
+The in-place queue and bounded-history implementation is committed locally as `da691f5`; the whole-brain synthetic fixture generator is in `0708e76`; the compact thinning-item-history follow-up is in `b897a45`; and the RSS watchdog plus the active synthetic profile command are in `3c0b132`. Commits are local and have not been pushed.
 
 ## Trigger and target
 
@@ -72,6 +72,6 @@ The whole-brain-sized synthetic base run is in progress with the watchdog set to
   --ace-diffusion-iterations 1 --tgdm-iterations 1
 ```
 
-At the latest status sample, N4 had completed, `toads-first` was active, and the Python child RSS was 4.19 GB. This is a live sample rather than the run peak. The whole-brain synthetic command has not completed yet; do not claim under-16-GB peak until the watchdog emits its final sampled RSS. `RLIMIT_AS` and `/usr/bin/time` findings explain why the watchdog was added; they are no longer blockers to observation.
+At the latest status sample, N4 had completed, `toads-first` was active, and the Python child RSS was 2.82 GB. Earlier samples reached 4.19 GB and then fell as temporary arrays were released. These are live samples, not the run peak. The whole-brain synthetic command has not completed yet; do not claim under-16-GB peak until the watchdog emits its final sampled RSS. `RLIMIT_AS` and `/usr/bin/time` findings explain why the watchdog was added; they are no longer blockers to observation.
 
 The `<16 GB` target remains unverified for Python until the run completes. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
