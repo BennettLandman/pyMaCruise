@@ -142,6 +142,9 @@ def test_default_wrapper_ordered_11_class_dispatch_matches_java() -> None:
         np.testing.assert_array_equal(result.memberships[:, :, -1], data["initial_memberships"][:, :, -1])
         assert not np.any(result.denominator[0]) and not np.any(result.denominator[-1])
 
+    assert membership_module._compiled_membership_update is not None
+    assert membership_module._compiled_membership_update.signatures
+
     for name, original in source_inputs.items():
         np.testing.assert_array_equal(data[name], original)
 
