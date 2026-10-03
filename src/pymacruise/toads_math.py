@@ -14,6 +14,110 @@ from numpy.typing import ArrayLike, NDArray
 
 _SOURCE_STEP = float(np.float32(1e-6))
 
+try:
+    from numba import njit
+except ImportError:  # Keep small reference fixtures runnable without the JIT.
+    njit = None
+
+
+def _jit_source_ordered(function):
+    return function if njit is None else njit(cache=True, fastmath=False)(function)
+
+
+@_jit_source_ordered
+def _optimized_centroid_accumulation(
+    corrected, memberships, centroids, factors, smoothness
+):
+    updated = centroids.copy()
+    nx, ny, nz, channels = corrected.shape
+    classes = memberships.shape[3]
+    damp_old = np.float32(np.float32(1.0) - smoothness)
+    for channel in range(channels):
+        for class_index in range(classes):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(1, nx - 1):
+                for y in range(1, ny - 1):
+                    for z in range(1, nz - 1):
+                        image_value = corrected[x, y, z, channel]
+                        membership = memberships[x, y, z, class_index]
+                        weight = np.float32(
+                            np.float32(factors[x, y, z, channel, class_index] * membership)
+                            * membership
+                        )
+                        numerator = np.float32(
+                            numerator + np.float32(weight * image_value)
+                        )
+                        denominator = np.float32(denominator + weight)
+            if denominator > np.float32(0.0):
+                mean = np.float32(np.float32(damp_old * numerator) / denominator)
+                retained = np.float32(smoothness * centroids[channel, class_index])
+                updated[channel, class_index] = np.float32(mean + retained)
+    return updated
+
+
+@_jit_source_ordered
+def _optimized_image_variance_accumulation(images, memberships, centers, infinite_variance):
+    channels = images.shape[3]
+    classes = memberships.shape[3]
+    variances = np.empty(channels, dtype=np.float32)
+    for channel in range(channels):
+        numerator = np.float32(0.0)
+        denominator = np.float32(0.0)
+        for class_index in range(classes):
+            for x in range(images.shape[0]):
+                for y in range(images.shape[1]):
+                    for z in range(images.shape[2]):
+                        membership = memberships[x, y, z, class_index]
+                        weight = np.float32(
+                            np.float32(membership * membership) + np.float32(1e-30)
+                        )
+                        residual = np.float32(
+                            images[x, y, z, channel] - centers[channel, class_index]
+                        )
+                        difference = np.float32(residual * residual)
+                        weighted_difference = np.float32(weight * difference)
+                        numerator = np.float32(
+                            numerator + np.float32(weighted_difference * difference)
+                        )
+                        denominator = np.float32(denominator + weight)
+        if numerator > np.float32(0.0):
+            variances[channel] = np.float32(denominator / numerator)
+        else:
+            variances[channel] = infinite_variance
+    return variances
+
+
+@_jit_source_ordered
+def _optimized_class_std_accumulation(images, memberships, centers, labels):
+    channels = images.shape[3]
+    classes = memberships.shape[3]
+    deviations = np.zeros((channels, classes), dtype=np.float32)
+    for channel in range(channels):
+        for class_index in range(classes):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(images.shape[0]):
+                for y in range(images.shape[1]):
+                    for z in range(images.shape[2]):
+                        if labels[x, y, z] != class_index:
+                            continue
+                        membership = memberships[x, y, z, class_index]
+                        weight = np.float32(
+                            np.float32(membership * membership) + np.float32(1e-30)
+                        )
+                        residual = np.float32(
+                            images[x, y, z, channel] - centers[channel, class_index]
+                        )
+                        contribution = np.float32(np.float32(weight * residual) * residual)
+                        numerator = np.float32(numerator + contribution)
+                        denominator = np.float32(denominator + weight)
+            if denominator > np.float32(0.0):
+                deviations[channel, class_index] = np.sqrt(
+                    np.float32(numerator / denominator)
+                )
+    return deviations
+
 def toads_powertable_lookup(
     values: ArrayLike,
     exponent: float,
@@ -1190,42 +1294,24 @@ def toads_optimized_centroid_update(
             raise ValueError("intensity_field must be finite and match image_values")
         corrected = np.asarray(field_values * images, dtype=np.float32)
 
-    updated = old_centroids.copy()
-    nx, ny, nz, modalities = images.shape
-    classes = mems.shape[-1]
-    one_minus_smooth = np.float32(np.float32(1.0) - smooth)
-    for channel in range(modalities):
-        for class_index in range(classes):
-            numerator = np.float32(0.0)
-            denominator = np.float32(0.0)
+    factors = np.ones(images.shape[:3] + (images.shape[3], mems.shape[3]), dtype=np.float32)
+    for channel in range(images.shape[3]):
+        for class_index in range(mems.shape[3]):
             exponent = float(powers[channel, class_index])
-            for x in range(1, nx - 1):
-                for y in range(1, ny - 1):
-                    for z in range(1, nz - 1):
-                        image_value = corrected[x, y, z, channel]
-                        residual = np.float32(image_value - old_centroids[channel, class_index])
-                        distance = np.float32(residual * residual)
-                        factor = np.float32(1.0)
-                        if distance > zero:
-                            powered = toads_powertable_lookup(
-                                distance,
-                                exponent,
-                                cached_exponent=exponent,
-                            )
-                            factor = np.float32(np.float64(powered) / np.float64(distance))
-                        membership = mems[x, y, z, class_index]
-                        weight = np.float32(np.float32(factor * membership) * membership)
-                        numerator = np.float32(
-                            numerator + np.float32(weight * image_value)
-                        )
-                        denominator = np.float32(denominator + weight)
-            if denominator > np.float32(0.0):
-                weighted_mean = np.float32(
-                    np.float32(one_minus_smooth * numerator) / denominator
+            residual = np.asarray(
+                corrected[..., channel] - old_centroids[channel, class_index],
+                dtype=np.float32,
+            )
+            distance = np.asarray(residual * residual, dtype=np.float32)
+            active = distance > zero
+            if np.any(active):
+                powered = toads_powertable_lookup(
+                    distance[active], exponent, cached_exponent=exponent
                 )
-                damped_old = np.float32(smooth * old_centroids[channel, class_index])
-                updated[channel, class_index] = np.float32(weighted_mean + damped_old)
-    return updated
+                factors[..., channel, class_index][active] = np.asarray(
+                    powered / distance[active].astype(np.float64), dtype=np.float32
+                )
+    return _optimized_centroid_accumulation(corrected, mems, old_centroids, factors, smooth)
 
 
 def toads_optimized_image_variance(
@@ -1274,34 +1360,9 @@ def toads_optimized_image_variance(
             raise ValueError("intensity_field must be finite and match image_values")
         corrected = np.asarray(field * images, dtype=np.float32)
 
-    modalities = images.shape[-1]
-    classes = mems.shape[-1]
-    variances = np.empty(modalities, dtype=np.float32)
-    for channel in range(modalities):
-        numerator = np.float32(0.0)
-        denominator = np.float32(0.0)
-        for class_index in range(classes):
-            for x in range(images.shape[0]):
-                for y in range(images.shape[1]):
-                    for z in range(images.shape[2]):
-                        membership = mems[x, y, z, class_index]
-                        weight = np.float32(
-                            np.float32(membership * membership) + np.float32(1e-30)
-                        )
-                        residual = np.float32(
-                            corrected[x, y, z, channel] - centers[channel, class_index]
-                        )
-                        difference = np.float32(residual * residual)
-                        weighted_difference = np.float32(weight * difference)
-                        contribution = np.float32(weighted_difference * difference)
-                        numerator = np.float32(
-                            numerator + contribution
-                        )
-                        denominator = np.float32(denominator + weight)
-        if numerator > np.float32(0.0):
-            variances[channel] = np.float32(denominator / numerator)
-        else:
-            variances[channel] = infvar
+    variances = _optimized_image_variance_accumulation(
+        corrected, mems, centers, infvar
+    )
 
     total = np.float32(0.0)
     for value in variances:
@@ -1353,33 +1414,7 @@ def toads_optimized_class_standard_deviation(
             raise ValueError("intensity_field must be finite and match image_values")
         corrected = np.asarray(field * images, dtype=np.float32)
 
-    deviations = np.zeros(expected, dtype=np.float32)
-    for channel in range(images.shape[-1]):
-        for class_index in range(mems.shape[-1]):
-            numerator = np.float32(0.0)
-            denominator = np.float32(0.0)
-            for x in range(images.shape[0]):
-                for y in range(images.shape[1]):
-                    for z in range(images.shape[2]):
-                        if labels[x, y, z] != class_index:
-                            continue
-                        membership = mems[x, y, z, class_index]
-                        membership_squared = np.float32(membership * membership)
-                        weight = np.float32(membership_squared + np.float32(1e-30))
-                        residual = np.float32(
-                            corrected[x, y, z, channel] - centers[channel, class_index]
-                        )
-                        weighted_residual = np.float32(weight * residual)
-                        contribution = np.float32(weighted_residual * residual)
-                        numerator = np.float32(
-                            numerator + contribution
-                        )
-                        denominator = np.float32(denominator + weight)
-            if denominator > np.float32(0.0):
-                deviations[channel, class_index] = np.sqrt(
-                    np.float32(numerator / denominator)
-                )
-    return deviations
+    return _optimized_class_std_accumulation(corrected, mems, centers, labels)
 
 
 def toads_optimized_centroid_similarity(

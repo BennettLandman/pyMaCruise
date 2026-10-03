@@ -18,6 +18,76 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 
+try:
+    from numba import njit
+except ImportError:  # Keep small source-comparison fixtures runnable.
+    njit = None
+
+
+def _jit_source_ordered(function):
+    return function if njit is None else njit(cache=True, fastmath=False)(function)
+
+
+@_jit_source_ordered
+def _object_centroid_accumulation(image, mem, old, field, has_field, labels, ridge, blend):
+    classes = mem.shape[3]
+    channels = image.shape[3]
+    result = old.copy()
+    for channel in range(channels):
+        numerator = np.zeros(classes, dtype=np.float32)
+        denominator = np.zeros(classes, dtype=np.float32)
+        for class_index in range(classes):
+            for x in range(1, image.shape[0] - 1):
+                for y in range(1, image.shape[1] - 1):
+                    for z in range(1, image.shape[2] - 1):
+                        membership = mem[x, y, z, class_index]
+                        sample = (
+                            np.float32(field[x, y, z, channel] * image[x, y, z, channel])
+                            if has_field else image[x, y, z, channel]
+                        )
+                        if ridge > np.float32(0.0):
+                            center = labels[x, y, z]
+                            boundary = False
+                            for i in range(-1, 2):
+                                for j in range(-1, 2):
+                                    for k in range(-1, 2):
+                                        if labels[x + i, y + j, z + k] != center:
+                                            boundary = True
+                            if boundary:
+                                sample = np.float32(
+                                    sample + np.float32(
+                                        np.float32(ridge * np.float32(np.float32(28.0) / np.float32(27.0)))
+                                        * image[x, y, z, channel]
+                                    )
+                                )
+                                for i in range(-1, 2):
+                                    for j in range(-1, 2):
+                                        for k in range(-1, 2):
+                                            contribution = np.float32(
+                                                np.float32(ridge * np.float32(np.float32(1.0) / np.float32(27.0)))
+                                                * image[x + i, y + j, z + k, channel]
+                                            )
+                                            sample = np.float32(sample - contribution)
+                        weighted = np.float32(np.float32(membership * membership) * sample)
+                        numerator[class_index] = np.float32(
+                            numerator[class_index] + weighted
+                        )
+                        square = np.float32(membership * membership)
+                        denominator[class_index] = np.float32(
+                            denominator[class_index] + square
+                        )
+        one_minus_blend = np.float32(np.float32(1.0) - blend)
+        for class_index in range(classes):
+            if denominator[class_index] > np.float32(0.0):
+                undamped = np.float32(
+                    np.float32(one_minus_blend * numerator[class_index])
+                    / denominator[class_index]
+                )
+                retained = np.float32(blend * result[channel, class_index])
+                result[channel, class_index] = np.float32(undamped + retained)
+    return result
+
+
 def toads_object_centroid_update(
     images: ArrayLike,
     memberships: ArrayLike,
@@ -66,54 +136,12 @@ def toads_object_centroid_update(
     if not np.isfinite(blend) or blend < np.float32(0.0) or blend > np.float32(1.0):
         raise ValueError("smoothness must be finite and in [0, 1]")
 
-    classes = mem.shape[3]
-    channels = image.shape[3]
-    result = old.copy()
-    for channel in range(channels):
-        numerator = np.zeros(classes, dtype=np.float32)
-        denominator = np.zeros(classes, dtype=np.float32)
-        for class_index in range(classes):
-            for x in range(1, image.shape[0] - 1):
-                for y in range(1, image.shape[1] - 1):
-                    for z in range(1, image.shape[2] - 1):
-                        membership = mem[x, y, z, class_index]
-                        sample = (
-                            np.float32(field[x, y, z, channel] * image[x, y, z, channel])
-                            if field is not None
-                            else image[x, y, z, channel]
-                        )
-                        if ridge > np.float32(0.0) and _is_boundary(labels, x, y, z):
-                            sample = np.float32(
-                                sample
-                                + np.float32(
-                                    np.float32(ridge * np.float32(np.float32(28.0) / np.float32(27.0)))
-                                    * image[x, y, z, channel]
-                                )
-                            )
-                            for i in range(-1, 2):
-                                for j in range(-1, 2):
-                                    for k in range(-1, 2):
-                                        contribution = np.float32(
-                                            np.float32(ridge * np.float32(np.float32(1.0) / np.float32(27.0)))
-                                            * image[x + i, y + j, z + k, channel]
-                                        )
-                                        sample = np.float32(sample - contribution)
-                        weighted = np.float32(np.float32(membership * membership) * sample)
-                        numerator[class_index] = np.float32(numerator[class_index] + weighted)
-                        squared_membership = np.float32(membership * membership)
-                        denominator[class_index] = np.float32(
-                            denominator[class_index] + squared_membership
-                        )
-        one_minus_blend = np.float32(np.float32(1.0) - blend)
-        for class_index in range(classes):
-            if denominator[class_index] > np.float32(0.0):
-                undamped = np.float32(
-                    np.float32(one_minus_blend * numerator[class_index])
-                    / denominator[class_index]
-                )
-                retained = np.float32(blend * result[channel, class_index])
-                result[channel, class_index] = np.float32(undamped + retained)
-    return result
+    has_field = field is not None
+    field_values = image if field is None else field
+    label_values = np.zeros(image.shape[:3], dtype=np.uint8) if labels is None else labels
+    return _object_centroid_accumulation(
+        image, mem, old, field_values, has_field, label_values, ridge, blend
+    )
 
 
 def _is_boundary(labels: NDArray, x: int, y: int, z: int) -> bool:
