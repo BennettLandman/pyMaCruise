@@ -202,4 +202,6 @@ The restartable workflow now records each continuing registered iteration's ener
 
 Result: **2 passed in 39.20 s**. The test checks that the per-iteration telemetry appears alongside the final run manifest's stop metadata. This focused integration result does not replace a full-suite run.
 
+The full repository pytest suite subsequently passed **1,138 tests, 0 failed, 0 skipped, 11 expected RAS warnings in 793.64 s** on `ad34321`, with peak sampled RSS **13.960 GB** under the 16 GB watcher. The pytest process exited successfully; the watcher reported an error in its final poll/cleanup race, fixed and covered by **2 passed in 0.21 s** on `8190a5d`. The full-suite record is [here](full-pytest-2026-10-03-brain-resolution.md). The selected TOADS Java source-line estimate was re-evaluated after that run and remains 3,464–4,864 of 13,651 lines (25–36%), with zero new source methods counted.
+
 Next: compare state transitions/objectives against the selected Java implementation at a source-aligned fixture grid before scheduling another expensive brain-resolution run. Do not treat the endpoint-only trend as proof of source equivalence.
