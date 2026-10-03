@@ -165,4 +165,25 @@ This code change postdates the complete base workflow evidence above, which rema
 
 It exited 0 after **633.0 s**, stayed under the watchdog with **5.941 GB** peak sampled RSS, and reached the configured iteration limit without reaching the energy threshold. The resulting uint8 classification has shape `(172,216,164)`, axis codes RAS, and SHA-256 `29755467c8835c36f7926a5925332fb39cc9cb421197341021f73c9da50de0c3`; it is **bitwise identical** to the classification from the earlier two-iteration whole-brain run. Crop plus initial-membership setup completed at **111.8 s**, versus **125.9–130.8 s** in prior logs. This is one run per implementation and includes other machine/setup variation; attribute no more than the focused benchmark result to the kernel itself. A requested one-iteration probe was rejected by the CLI, which requires at least two; it wrote no outputs.
 
-The next bounded step is a longer TOADS synthetic run using the accepted minimum-iteration setting and progressively raising the cap, recording objective ratios and checking stability under the same RSS watchdog. The direct probe validates the changed crop code in the whole-brain input geometry, not complete base workflow restartability under the new commit.
+The direct probe validates the changed crop code in the whole-brain input geometry, not complete base workflow restartability under the new commit.
+
+### Six-iteration brain-resolution TOADS trace
+
+To measure early convergence behavior at brain resolution without repeating Dura and CRUISE stages, `toads-loop` was run directly with the same N4 T1, mask, packaged Vandy atlas descriptor, and one-level/one-iteration registration settings. Only the TOADS iteration cap changed, from two to six:
+
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.05 --report-interval-seconds 30 -- \
+  ./.venv/bin/pymacruise toads-loop \
+  --t1-n4 build/vandy-brain-resolution-memory/profile-run-20261003/stages/n4/attempt-01/t1-n4.nii.gz \
+  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
+  --output build/vandy-brain-resolution-memory/toads-six-iterations-20261003/classification.nii.gz \
+  --dura-output-dir build/vandy-brain-resolution-memory/toads-six-iterations-20261003/dura-inputs \
+  --atlas-descriptor build/vandy-brain-resolution-memory/profile-run-20261003/resources/dura-atlas/atlas.txt \
+  --registration-levels 1 --registration-iterations 1 \
+  --registration-max-iterations 1 --maximum-iterations 6
+```
+
+The run exited 0 after **1,138.8 s**, with peak sampled RSS **7.199 GB** and no watchdog termination. It completed six iterations but remained nonconverged at the configured cap. The same-input two-iteration run had terminal energy ratio `1.10341454`; the six-iteration run ended at `0.123219952`. Across the six-iteration trace, **1,272,698** classification voxels differed from initialization. The final compressed NIfTI is uint8, `(172,216,164)`, RAS, labels `[1,5,6,14,15,16,17,18,22,24,25]`, SHA-256 `00511035744d02bf1055958422ca1a1d3b2d1fbf125795b4b03830a5a12e04fe`. This provides early synthetic convergence/runtime evidence only; no source whole-loop comparison or clinical interpretation is claimed. The end-of-run ratio is lower than in the two-iteration run but remains well above `1e-4`.
+
+The next integration work is to compare the per-iteration states and objective calculation with the selected Java source at a source-aligned grid, then continue a longer brain-resolution run if the source comparison supports the same trajectory. Memory stayed below the user-reported 16 GB target for this observed process; no real MRI was used.
