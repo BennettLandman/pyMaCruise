@@ -34,9 +34,12 @@ ended with ratio **0.177568302** (threshold `1e-4` not reached). Its output was
 25-cycle corrected-factor run was faster (**211.256 seconds**) but ended at a
 lower ratio `0.056615934`; thus the ratio is nonmonotonic and 40 cycles do not
 show improvement. The former Python 50-cycle measurements used the wrong factor
-and are superseded. Python and Java match the registration-membership
-initialization but not the later membership/statistics trajectory. No
-threshold was relaxed.
+and are superseded. On the corrected `prior_factor=0.5` probe, Python and Java still match the
+registration-membership initialization. Their startup centroids and class
+standard deviations also agree after accounting for Java's `Iscale` display
+multiplier, and both produce normalized image-variance weight 1 for this
+single-channel input. The first mismatch is now narrowed to the exact
+membership pass's prior inputs or arithmetic. No threshold was relaxed.
 
 ## Runnable Python diagnostics
 
@@ -91,7 +94,9 @@ The selected wrapper settings are `prior_scale=0.2` (`atlasRange` →
 
 - Focused synthetic state trace, registered-loop, and restartable-base checks:
   **5 passed in 96.18s** after applying the source wrapper's `prior_factor=0.5`
-  on the implementation working tree now committed as `e4e0ce2`.
+  on implementation commit `e4e0ce2`.
+- After adding explicit startup-statistics summaries to the state trace, its
+  focused schema test passed **1 test in 4.06s** on diagnostic commit `95e70d7`.
 - The 25- and 40-cycle source-sized diagnostics both completed with capped,
   nonconverged results as above.
 - Latest full suite before the atlas-range default correction:
@@ -101,9 +106,10 @@ The selected wrapper settings are `prior_scale=0.2` (`atlasRange` →
 
 ## Next integration milestone
 
-Compare the first exact membership/statistics pass after the matching
-registration state and identify why the objective/ratio oscillates. The current
-source-sized Python loop costs about 8.5 seconds per cycle after startup. Do not
-infer source convergence from the reduced atlas harness. Once the base run
+Compare the exact-membership prior arrays and per-voxel arithmetic after the
+matching registration and startup statistics, then determine why the
+objective/ratio oscillates. The current source-sized Python loop costs about
+8.5 seconds per cycle after startup. Do not infer source convergence from the
+reduced atlas harness. Once the base run
 converges with verified required outputs and stage checks, advance the plus
 workflow using synthetic FLAIR-to-T1 registration and the LesionTOADS handoff.
