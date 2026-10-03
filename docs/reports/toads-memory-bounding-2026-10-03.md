@@ -1,5 +1,7 @@
 # TOADS memory investigation — 2026-10-03
 
+The in-place queue and bounded-history implementation is committed locally as `da691f5`; the whole-brain synthetic fixture generator and environment limitations are recorded in `0708e76`. Neither commit has been pushed.
+
 ## Trigger and target
 
 The user reported host memory usage of approximately 340 GB against a 40 GB machine limit, and noted that the original Java MaCRUISE run completes at brain resolution below 16 GB. The Python implementation must be brought into that range before resuming long or brain-resolution runs. The 340 GB figure is a user-observed warning; it was not independently measured by this process.
