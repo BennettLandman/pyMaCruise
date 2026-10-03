@@ -77,6 +77,10 @@ def _terminate_child_group(child: subprocess.Popen, *, grace_seconds: float = 2.
         os.killpg(child.pid, signal.SIGTERM)
     except ProcessLookupError:
         pass
+    except PermissionError:
+        # A just-exited child may disappear between poll() and killpg().
+        if child.poll() is None:
+            raise
     try:
         child.wait(timeout=grace_seconds)
     except subprocess.TimeoutExpired:
@@ -123,8 +127,19 @@ def main() -> int:
     interrupted = None
     monitor_error = None
     try:
-        while child.poll() is None:
-            current_rss = read_rss(child.pid)
+        while True:
+            if child.poll() is not None:
+                break
+            try:
+                current_rss = read_rss(child.pid)
+            except OSError:
+                # proc_pidinfo can report ESRCH if the child exits after the
+                # loop poll above. In that race the child's exit status is the
+                # useful result; only a live child turns this into a monitor
+                # failure.
+                if child.poll() is not None:
+                    break
+                raise
             peak_rss = max(peak_rss, current_rss)
             now = time.monotonic()
             if now >= next_report:
@@ -145,7 +160,8 @@ def main() -> int:
         _terminate_child_group(child)
     except BaseException as error:
         monitor_error = error
-        _terminate_child_group(child)
+        if child.poll() is None:
+            _terminate_child_group(child)
     finally:
         for signum, handler in previous_handlers.items():
             signal.signal(signum, handler)
