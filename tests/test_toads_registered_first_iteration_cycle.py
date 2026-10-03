@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_atlas import load_toads_intensity_variance_factors
 from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
 from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
@@ -70,7 +71,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         run,
         startup,
         category_exponents=np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32),
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         **settings,
     )
 
@@ -78,7 +79,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         run,
         exact,
         maximum_iterations=2,
-        convergence_threshold=0.04,
+        convergence_threshold=0.0,
         relation_limit=1,
         do_growing=False,
         subsample=2,
@@ -179,7 +180,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         category_exponents=categories,
         exponent_by_channel_class=second_exponents,
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         smoothing_priors=settings["smoothing_priors"],
         atlas_shape_priors=settings["atlas_shape_priors"],
         smoothing=settings["smoothing"],
@@ -234,7 +235,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         centroids=second_centroids,
         exponent_by_channel_class=second_exponents,
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         image_variances=second_variance,
         transformed_shapes=result.next_transformed_shape_priors,
         closest_labels=result.registered_iteration.branch.relations.closest_labels,
@@ -261,7 +262,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         category_exponents=categories,
         exponent_by_channel_class=second_exponents,
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         smoothing_priors=settings["smoothing_priors"],
         atlas_shape_priors=settings["atlas_shape_priors"],
         smoothing=settings["smoothing"],
@@ -292,7 +293,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         previous_energy=exact.membership_pass.objective,
         iteration=2,
         maximum_iterations=3,
-        convergence_threshold=0.04,
+        convergence_threshold=0.0,
         segmentation=result.next_thinning.thinning.segmentation,
         skeleton=result.next_thinning.thinning.skeleton,
         ordering=prior_growing.ordering,
@@ -346,7 +347,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         category_exponents=categories,
         exponent_by_channel_class=second_exponents,
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         smoothing_priors=settings["smoothing_priors"],
         atlas_shape_priors=settings["atlas_shape_priors"],
         smoothing=settings["smoothing"],
@@ -400,7 +401,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         centroids=third_centroids,
         exponent_by_channel_class=second_exponents,
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
         image_variances=third_variance,
         transformed_shapes=second_cycle.next_transformed_shape_priors,
         closest_labels=second_cycle.registered_iteration.branch.relations.closest_labels,
@@ -485,7 +486,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             category_exponents=categories,
             exponent_by_channel_class=second_exponents,
             modality_weights=settings["modality_weights"],
-            class_variance_weights=run.initial_variances.standard_deviations,
+            class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
             smoothing_priors=settings["smoothing_priors"],
             atlas_shape_priors=settings["atlas_shape_priors"],
             smoothing=settings["smoothing"],
@@ -545,7 +546,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             centroids=fourth_centroids,
             exponent_by_channel_class=second_exponents,
             modality_weights=settings["modality_weights"],
-            class_variance_weights=run.initial_variances.standard_deviations,
+            class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
             image_variances=fourth_variance,
             transformed_shapes=third_cycle.next_transformed_shape_priors,
             closest_labels=third_cycle.registered_iteration.branch.relations.closest_labels,
@@ -612,7 +613,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             run,
             ToadsRegisteredLoopConfig(
                 category_exponents=categories,
-                class_variance_weights=run.initial_variances.standard_deviations,
+                class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
                 maximum_iterations=4,
                 maximum_distance=100.0,
                 convergence_threshold=0.04,

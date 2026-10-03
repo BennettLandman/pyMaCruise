@@ -4,6 +4,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_atlas import load_toads_intensity_variance_factors
 from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
 from pymacruise.toads_registered_initial_membership import (
     compute_registered_toads_initial_membership,
@@ -142,7 +143,9 @@ def test_registered_startup_adapter_uses_actual_default_atlas_run(tmp_path) -> N
         image_values=image_values,
         initial_memberships=run.segmentation_initialization.memberships,
         centroids=run.segmentation_initialization.centroids,
-        class_variance_weights=run.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(
+            descriptor, [run.modality]
+        ),
         image_variances=run.initial_image_variance.image_variance_weights,
         transformed_shapes=run.transformed_shape_priors,
         closest_labels=run.relation_state.closest_labels,

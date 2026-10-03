@@ -21,7 +21,7 @@ import numpy as np
 
 from pymacruise.image_io import nifti_ras_on_reference, normalize_image_to_ras
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
-from pymacruise.toads_atlas import load_toads_atlas
+from pymacruise.toads_atlas import load_toads_atlas, load_toads_intensity_variance_factors
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
 import pymacruise.toads_registered_loop as registered_loop
 
@@ -178,7 +178,9 @@ def main() -> int:
         category_exponents=category_exponents,
         exponent_by_channel_class=exponent_by_class,
         modality_weights=np.ones(1, dtype=np.float32),
-        class_variance_weights=alignment.initial_variances.standard_deviations,
+        class_variance_weights=load_toads_intensity_variance_factors(
+            atlas.descriptor, [alignment.modality]
+        ),
         smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
         atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
         smoothing=0.2 / 6.0 / len(atlas.structures),

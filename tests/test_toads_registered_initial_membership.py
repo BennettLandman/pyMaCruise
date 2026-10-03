@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -15,17 +16,25 @@ from pymacruise.toads_initial_statistics_membership import (
 from pymacruise.toads_registered_initial_membership import (
     compute_registered_toads_initial_membership,
 )
+from pymacruise.toads_atlas import load_toads_intensity_variance_factors
 from test_toads_default_atlas_dispatch import _fixture
 
 
 def _alignment_run():
     data, parameters, _cases, _reference = _fixture()
+    data = dict(data)
+    parameters = dict(parameters)
+    data["images"] = data["images"][..., :1].copy()
+    parameters["centroids"] = parameters["centroids"][:1].copy()
+    parameters["exponent_by_channel_class"] = parameters["exponent_by_channel_class"][:1].copy()
+    parameters["modality_weights"] = parameters["modality_weights"][:1].copy()
     shape = data["images"].shape[:3]
     x, y, z = np.indices(shape)
     segmentation = ((x + 2 * y + 3 * z) % 11).astype(np.int8)
     channel_first_images = np.moveaxis(data["images"], -1, 0)
     result = SimpleNamespace(
         atlas=SimpleNamespace(
+            descriptor=Path(__file__).parent.parent / "data/atlases/cruise-atlas-10obj-toads2008.txt",
             structures=tuple(
                 SimpleNamespace(topology=kind.lower())
                 for kind in DEFAULT_ATLAS_CLASS_TYPES
@@ -39,6 +48,7 @@ def _alignment_run():
         segmentation_constructor=SimpleNamespace(segmentation=segmentation),
         relation_state=SimpleNamespace(closest_labels=data["closest_labels"]),
         transformed_shape_priors=data["transformed_shapes"],
+        modality="T1_MPRAGE",
     )
     return result, data, parameters, segmentation
 
@@ -63,6 +73,9 @@ def test_registered_startup_arrays_feed_initial_statistics_and_membership() -> N
         centroids=parameters["centroids"],
         segmentation=segmentation,
         class_types=DEFAULT_ATLAS_CLASS_TYPES,
+        class_variance_weights=load_toads_intensity_variance_factors(
+            run.atlas.descriptor, [run.modality]
+        ),
         exponent_by_channel_class=parameters["exponent_by_channel_class"],
         modality_weights=parameters["modality_weights"],
         transformed_shapes=data["transformed_shapes"],

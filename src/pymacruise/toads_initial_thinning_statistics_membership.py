@@ -49,6 +49,7 @@ def continue_initial_thinning_through_memberships(
     atlas_shape_priors: Any,
     exponent_by_channel_class: Any,
     modality_weights: Any,
+    class_variance_weights: Any,
     prior_factor: float,
     prior_coefficient: float,
     smoothing: float,
@@ -59,10 +60,11 @@ def continue_initial_thinning_through_memberships(
     """Refresh stats on the P18cyn thinned labels, then run exact memberships.
 
     The first membership map is taken from the startup composition. Refreshed
-    deviations feed the next membership stage as class variance weights and
-    also drive source centroid-similarity coefficients. The image variance,
-    modality weights, priors, exponents, transformed shapes, and relation
-    labels are explicit fixed inputs, as in the selected Java call boundary.
+    deviations drive source centroid-similarity coefficients, while the
+    fixed atlas Intensity Variance Factors remain separate membership inputs.
+    Image variance, modality weights, priors, exponents, transformed shapes,
+    and relation labels are explicit fixed inputs, as in the selected Java
+    call boundary.
     """
     if not isinstance(startup_and_thinning, ToadsInitialThinningComposition):
         raise TypeError("startup_and_thinning must be a selected startup composition")
@@ -100,7 +102,7 @@ def continue_initial_thinning_through_memberships(
         centroids=centers,
         exponent_by_channel_class=exponent_by_channel_class,
         modality_weights=modality_weights,
-        class_variance_weights=deviations,
+        class_variance_weights=class_variance_weights,
         image_variances=image_variance_weights,
         transformed_shapes=transformed_shapes,
         closest_labels=startup_and_thinning.startup.relation_state.closest_labels,

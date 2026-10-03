@@ -23,6 +23,7 @@ def test_exact_initial_membership_flows_into_relations_and_first_thinning() -> N
         "centroids": parameters["centroids"],
         "segmentation": segmentation,
         "class_types": parameters["class_types"],
+        "class_variance_weights": parameters["class_variance_weights"],
         "exponent_by_channel_class": parameters["exponent_by_channel_class"],
         "modality_weights": parameters["modality_weights"],
         "transformed_shapes": data["transformed_shapes"],

@@ -15,6 +15,9 @@ import java.util.Arrays;
  */
 public final class ToadsInitialStatisticsMembershipContinuationReferenceHarness {
     private static final int C=11;
+    // Selected atlas Intensity Variance Factor values remain the membership
+    // varweight even after computeExactVariances updates stddev.
+    private static final float[][] VARIANCE_FACTOR={{.81f,.93f,1.17f,.76f,.88f,1.02f,1.14f,.69f,.96f,1.21f,.73f},{1.19f,.72f,.87f,1.08f,.79f,1.25f,.91f,1.13f,.68f,.98f,1.16f}};
     private static Object get(Object target,String name)throws Exception{
         Field f=target.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(target);
     }
@@ -87,6 +90,10 @@ public final class ToadsInitialStatisticsMembershipContinuationReferenceHarness 
         Constructor<?> ctor=ToadsInitialThinningStartupReferenceHarness.class.getDeclaredConstructor(String.class);ctor.setAccessible(true);
         Object h=ctor.newInstance(args[0]);
         refreshStatistics(h);
+        float[][] deviations=(float[][])getStatic("VARIANCE");
+        float[][] savedDeviations=new float[2][C];
+        for(int c=0;c<2;c++)System.arraycopy(deviations[c],0,savedDeviations[c],0,C);
+        for(int c=0;c<2;c++)System.arraycopy(VARIANCE_FACTOR[c],0,deviations[c],0,C);
         float[][][][] current=(float[][][][])get(h,"memberships");
         String beforeMembership=hash(current);
         set(h,"initial",current);
@@ -94,14 +101,14 @@ public final class ToadsInitialStatisticsMembershipContinuationReferenceHarness 
         Method next=ToadsInitialThinningStartupReferenceHarness.class.getDeclaredMethod("computeMemberships");next.setAccessible(true);next.invoke(h);
         float[][][][] energy=(float[][][][])get(h,"energy"), memberships=(float[][][][])get(h,"memberships");
         float[][][] denominator=(float[][][])get(h,"denominator");
-        float[][] centers=(float[][])getStatic("CENTROID"),deviations=(float[][])getStatic("VARIANCE"),similarity=(float[][])getStatic("SIM");
+        float[][] centers=(float[][])getStatic("CENTROID"),similarity=(float[][])getStatic("SIM");
         byte[][][] segmentation=(byte[][][])get(h,"segmentation");
         float objective=(float)get(h,"objective");
         System.out.print("{\"source\":\"P18cyn startup/first-thinning -> computeExactCentroids -> computeExactVariances -> centroid similarity -> next computeExactMemberships\"");
         System.out.print(",\"source_sha256\":\"63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884\"");
         System.out.print(",\"source_order\":[\"P18cyn:startup membership and first thinning\",\"computeExactCentroids\",\"computeExactVariances\",\"computeCentroidSimilarity\",\"computeExactMemberships\"]");
         System.out.print(",\"startup_membership_sha256\":\""+beforeMembership+"\",\"post_thinning_segmentation_sha256\":\""+hash(segmentation)+"\"");
-        System.out.print(",\"updated_centroids_bits\":"+bits(centers)+",\"standard_deviation_bits\":"+bits(deviations));
+        System.out.print(",\"updated_centroids_bits\":"+bits(centers)+",\"standard_deviation_bits\":"+bits(savedDeviations));
         System.out.print(",\"centroid_similarity_sha256\":\""+hash(similarity)+"\",\"class_energy_sha256\":\""+hash(energy)+"\"");
         System.out.print(",\"denominator_sha256\":\""+hash(denominator)+"\",\"updated_membership_sha256\":\""+hash(memberships)+"\",\"objective_bits\":"+Float.floatToIntBits(objective)+"}");
     }

@@ -34,7 +34,7 @@ from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
 from pymacruise.toads_cruise_preparation import prepare_toads_cruise_inputs
 from pymacruise.toads_cruise_core import run_toads_cruise_core
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
-from pymacruise.toads_atlas import load_toads_atlas
+from pymacruise.toads_atlas import load_toads_atlas, load_toads_intensity_variance_factors
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
 from pymacruise.volume_ops import calculate_volume
 from pymacruise.workflow import load_workflow_config_file, preflight_workflow
@@ -440,7 +440,9 @@ def main(argv: list[str] | None = None) -> int:
             category_exponents=category_exponents,
             exponent_by_channel_class=exponent_by_class,
             modality_weights=np.ones(1, dtype=np.float32),
-            class_variance_weights=alignment.initial_variances.standard_deviations,
+            class_variance_weights=load_toads_intensity_variance_factors(
+                atlas.descriptor, [args.modality]
+            ),
             smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
             atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
             smoothing=0.2 / 6.0 / len(atlas.structures),

@@ -16,6 +16,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from .toads_default_atlas_membership import DEFAULT_ATLAS_CLASS_TYPES
+from .toads_atlas import load_toads_intensity_variance_factors
 from .toads_initial_statistics_membership import (
     ToadsInitialStatisticsMembership,
     compute_toads_initial_statistics_membership,
@@ -113,6 +114,9 @@ def compute_registered_toads_initial_membership(
         prior_factor=prior_factor,
         prior_coefficient=prior_coefficient,
         prior_scale=prior_scale,
+        class_variance_weights=load_toads_intensity_variance_factors(
+            atlas.descriptor, [alignment_run.modality]
+        ),
         intensity_field=intensity_field,
         psf_bias=psf_bias,
     )

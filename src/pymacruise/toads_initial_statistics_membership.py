@@ -53,6 +53,7 @@ def compute_toads_initial_statistics_membership(
     centroids: Any,
     segmentation: Any,
     class_types: Sequence[str],
+    class_variance_weights: Any,
     exponent_by_channel_class: Any,
     modality_weights: Any,
     transformed_shapes: Any,
@@ -69,9 +70,11 @@ def compute_toads_initial_statistics_membership(
     """Refresh selected base-TOADS statistics, then run one exact pass.
 
     The input arrays represent the source state immediately before
-    ``computeVariances``. Shape samples, closest labels, priors, and PowerTable
-    exponents are fixed upstream inputs, so this adapter composes only the
-    selected variance/similarity/membership sequence. Arrays are in RAS
+    ``computeVariances``. Refreshed standard deviations feed centroid
+    similarity; fixed atlas Intensity Variance Factors feed memberships.
+    Shape samples, closest labels, priors, and PowerTable exponents are fixed
+    upstream inputs, so this adapter composes only the selected
+    variance/similarity/membership sequence. Arrays are in RAS
     ``(x,y,z[,channel])`` order and descriptor class order.
     """
     types = tuple(str(value).upper() for value in class_types)
@@ -118,7 +121,7 @@ def compute_toads_initial_statistics_membership(
         centroids=centers,
         exponent_by_channel_class=exponent_by_channel_class,
         modality_weights=modality_weights,
-        class_variance_weights=class_variances.standard_deviations,
+        class_variance_weights=class_variance_weights,
         image_variances=image_variance.image_variance_weights,
         transformed_shapes=transformed_shapes,
         closest_labels=closest_labels,

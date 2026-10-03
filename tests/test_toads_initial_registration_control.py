@@ -60,6 +60,7 @@ def _p18cyo():
         startup, image_values=image, initial_centroids=centers,
         category_exponents=category_exponents, transformed_shapes=transformed,
         image_variance_weights=p["image_variances"], smoothing_priors=p["smoothing_priors"],
+        class_variance_weights=p["class_variance_weights"],
         atlas_shape_priors=p["atlas_shape_priors"], exponent_by_channel_class=exponents,
         modality_weights=p["modality_weights"], prior_factor=spec["prior_factor"],
         prior_coefficient=spec["prior_coefficient"], smoothing=spec["membership_smoothing"],

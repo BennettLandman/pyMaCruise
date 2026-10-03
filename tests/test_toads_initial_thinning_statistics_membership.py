@@ -17,7 +17,7 @@ from pymacruise.toads_initial_thinning_statistics_membership import (
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "toads_initial_thinning_startup"
 JAVA_HARNESS = Path(__file__).parent / "java_reference" / "ToadsInitialStatisticsMembershipContinuationReferenceHarness.java"
-JAVA_HARNESS_SHA256 = "c5ba87e67e029cac0061d6528431ddd4af1a8c98f1fa13fbe6c30178342ac3c7"
+JAVA_HARNESS_SHA256 = "89346fedd60534c8314d59ece0747a483649ef4b181efb408c7be52bbbf1360c"
 
 
 def _load(name: str) -> np.ndarray:
@@ -87,6 +87,7 @@ def test_startup_first_thinning_statistics_and_next_membership_compose() -> None
         category_exponents=category_exponents,
         transformed_shapes=shapes,
         image_variance_weights=params["image_variances"],
+        class_variance_weights=params["class_variance_weights"],
         smoothing_priors=params["smoothing_priors"],
         atlas_shape_priors=params["atlas_shape_priors"],
         exponent_by_channel_class=exponents,
@@ -154,6 +155,7 @@ def test_continuation_requires_the_selected_startup_result() -> None:
             category_exponents=np.ones((2, 3), dtype=np.float32),
             transformed_shapes=np.zeros((3, 3, 3, 11), dtype=np.float32),
             image_variance_weights=np.ones(2, dtype=np.float32),
+            class_variance_weights=np.ones((2, 11), dtype=np.float32),
             smoothing_priors=np.ones(11, dtype=np.float32),
             atlas_shape_priors=np.ones(11, dtype=np.float32),
             exponent_by_channel_class=np.ones((2, 11), dtype=np.float32),

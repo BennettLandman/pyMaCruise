@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
+from pymacruise.toads_atlas import load_toads_intensity_variance_factors
 from pymacruise.toads_default_atlas_membership import toads_default_atlas_membership_pass
 from pymacruise.toads_default_exact_centroids import toads_default_exact_centroid_update
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
@@ -197,7 +198,7 @@ def test_registered_unity_startup_continues_through_first_degree_zero_exact_loop
         run,
         startup,
         category_exponents=np.asarray([[1.0, 1.0, 1.0]], dtype=np.float32),
-        class_variance_weights=run.initial_variances.standard_deviations,
+            class_variance_weights=load_toads_intensity_variance_factors(FIXTURE / "atlas-11.txt", [run.modality]),
         **settings,
     )
 
@@ -249,7 +250,7 @@ def test_registered_unity_startup_continues_through_first_degree_zero_exact_loop
         centroids=centers,
         exponent_by_channel_class=settings["exponent_by_channel_class"],
         modality_weights=settings["modality_weights"],
-        class_variance_weights=run.initial_variances.standard_deviations,
+            class_variance_weights=load_toads_intensity_variance_factors(FIXTURE / "atlas-11.txt", [run.modality]),
         image_variances=image_variance,
         transformed_shapes=run.transformed_shape_priors,
         closest_labels=run.relation_state.closest_labels,
