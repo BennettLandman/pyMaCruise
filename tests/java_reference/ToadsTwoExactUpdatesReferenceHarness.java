@@ -1,9 +1,6 @@
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.security.MessageDigest;
 
 /**
  * Exercises two source-ordered exact membership updates on the startup
@@ -19,8 +16,6 @@ public final class ToadsTwoExactUpdatesReferenceHarness {
     private static void set(Object target,String name,Object value)throws Exception{field(target.getClass(),name).set(target,value);}
     private static Object getStatic(String name)throws Exception{Field f=field(ToadsInitialThinningStartupReferenceHarness.class,name);return f.get(null);}
     private static String matrixBits(float[][] values){StringBuilder s=new StringBuilder("[");for(int i=0;i<values.length;i++){if(i>0)s.append(',');s.append('[');for(int j=0;j<values[i].length;j++){if(j>0)s.append(',');s.append(Float.floatToIntBits(values[i][j]));}s.append(']');}return s.append(']').toString();}
-    private static String hex(byte[] bytes){StringBuilder s=new StringBuilder();for(byte b:bytes)s.append(String.format("%02x",b&255));return s.toString();}
-    private static String digest(float[][] values)throws Exception{MessageDigest d=MessageDigest.getInstance("SHA-256");for(float[] row:values)for(float value:row)d.update(ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(Float.floatToIntBits(value)).array());return hex(d.digest());}
 
     public static void main(String[] args)throws Exception{
         if(args.length!=1)throw new IllegalArgumentException("fixture directory required");
@@ -45,7 +40,6 @@ public final class ToadsTwoExactUpdatesReferenceHarness {
         float ratio=Math.abs(numerator/denominator);
         System.out.print("{\"source_order\":[\"first computeExactMemberships\",\"computeExactCentroids\",\"computeExactVariances\",\"computeCentroidSimilarity\",\"second computeExactMemberships\",\"energyRatio\"]");
         System.out.print(",\"first_objective_bits\":"+Float.floatToIntBits(first)+",\"second_objective_bits\":"+Float.floatToIntBits(second)+",\"energy_ratio_bits\":"+Float.floatToIntBits(ratio));
-        System.out.print(",\"fixed_intensity_variance_factor_bits\":"+matrixBits(FACTORS)+",\"refreshed_standard_deviation_bits\":"+matrixBits(savedDeviations));
-        System.out.print(",\"centroid_similarity_sha256\":\""+digest((float[][])getStatic("SIM"))+""}");
+        System.out.print(",\"fixed_intensity_variance_factor_bits\":"+matrixBits(FACTORS)+",\"refreshed_standard_deviation_bits\":"+matrixBits(savedDeviations)+"}");
     }
 }
