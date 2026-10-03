@@ -148,4 +148,21 @@ Focused Java crop-geometry validation after this change:
 
 Result: **4 passed in 1.13 s**. The test asserts the compiled dispatcher is exercised when Numba is available, and the pinned Java harness crop bounds remain exact. A supplementary 72³ folded synthetic atlas mask benchmark produced identical bounds from compiled and Python kernels: **0.0013 s compiled versus 0.5324 s Python (419×)** after compilation. This is a microbenchmark, not a brain-resolution rerun; no whole-run speedup is claimed. The benchmark array was generated in memory and was not saved as a test fixture.
 
-This code change postdates the completed workflow evidence above, which remains tied to `17fc960`. The next bounded integration check should repeat TOADS startup on the `(172,216,164)` synthetic inputs and verify stage outputs/hashes while measuring the effect of the crop scan change before raising the TOADS iteration cap.
+This code change postdates the complete base workflow evidence above, which remains tied to `17fc960`. A direct two-iteration TOADS stage was then run with the `e64383c` implementation against the same whole-brain inputs, N4 output, atlas descriptor, and selected registration settings:
+
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.05 --report-interval-seconds 30 -- \
+  ./.venv/bin/pymacruise toads-loop \
+  --t1-n4 build/vandy-brain-resolution-memory/profile-run-20261003/stages/n4/attempt-01/t1-n4.nii.gz \
+  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
+  --output build/vandy-brain-resolution-memory/cropjit-probe/classification.nii.gz \
+  --dura-output-dir build/vandy-brain-resolution-memory/cropjit-probe/dura-inputs \
+  --atlas-descriptor build/vandy-brain-resolution-memory/profile-run-20261003/resources/dura-atlas/atlas.txt \
+  --registration-levels 1 --registration-iterations 1 \
+  --registration-max-iterations 1 --maximum-iterations 2
+```
+
+It exited 0 after **633.0 s**, stayed under the watchdog with **5.941 GB** peak sampled RSS, and reached the configured iteration limit without reaching the energy threshold. The resulting uint8 classification has shape `(172,216,164)`, axis codes RAS, and SHA-256 `29755467c8835c36f7926a5925332fb39cc9cb421197341021f73c9da50de0c3`; it is **bitwise identical** to the classification from the earlier two-iteration whole-brain run. Crop plus initial-membership setup completed at **111.8 s**, versus **125.9–130.8 s** in prior logs. This is one run per implementation and includes other machine/setup variation; attribute no more than the focused benchmark result to the kernel itself. A requested one-iteration probe was rejected by the CLI, which requires at least two; it wrote no outputs.
+
+The next bounded step is a longer TOADS synthetic run using the accepted minimum-iteration setting and progressively raising the cap, recording objective ratios and checking stability under the same RSS watchdog. The direct probe validates the changed crop code in the whole-brain input geometry, not complete base workflow restartability under the new commit.
