@@ -18,6 +18,7 @@ These paths explain a credible unbounded multiplier; this is a source inspection
 - `toads_propagate_growing(record_events=False)` returns no event snapshots and reuses one state. It preserves a trace-recording mode for small source-comparison fixtures.
 - Registered loop configuration defaults to no growth-event trace and no prior-iteration history. `iteration_count` reports loop progress when history is disabled. Diagnostic trace scripts explicitly retain history and events.
 - The regular CLI reports `iteration_count`, so it does not require keeping all iteration objects alive.
+- The synthetic Vandy atlas fixture generator now accepts `--target-shape` and `--output-dir`. A whole-brain-sized `(172, 216, 164)` phantom was generated under ignored `build/vandy-brain-resolution-memory/`; the T1, brain mask, MaSeg, and topology files load as RAS. The compressed generated directory is 52 MB. This avoids committing a second copy of bundled atlas-derived test volumes.
 
 ## Validation so far
 
@@ -48,5 +49,6 @@ Result: **6 passed in 23.59s**. On the folded synthetic registered-loop fixture,
 
 - Add a direct Java-reference terminal-state comparison for the in-place thinning driver.
 - Verify that history-disabled registered-loop results have the same terminal output and iteration count as history-retaining mode on a small synthetic case.
-- Profile a controlled brain-resolution synthetic case with an OS-level memory cap and record observed peak RSS. Do not restart the previously interrupted long experiment until this is safe.
+- Profile a controlled brain-resolution synthetic case and record observed peak RSS. The current macOS environment refuses to lower `RLIMIT_AS` (`resource.setrlimit` raises `ValueError: current limit exceeds maximum limit`); `/usr/bin/time -l` also fails to read `kern.clockrate` with `Operation not permitted`. Do not restart the previously interrupted long experiment until an effective memory observer/guard is available.
 - The `<16 GB` target remains unverified for Python until that measured run completes. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
+- The whole-brain-sized synthetic base run was not started: this macOS execution environment rejected attempts to lower `RLIMIT_AS` (`ValueError: current limit exceeds maximum limit`), and `/usr/bin/time -l` cannot read `kern.clockrate` (`Operation not permitted`). These observations come from the host tools; no high-memory profiling run was launched.

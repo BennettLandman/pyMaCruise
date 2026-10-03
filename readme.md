@@ -27,7 +27,7 @@ Ten and twelve TOADS iterations on the same 36×45×34 synthetic atlas case redu
 
 **Focused validation on the current working tree:** queue/branch checks → **9 passed in 17.46s**, then the additional bounded-history equivalence check plus growing/thinning references → **6 passed in 23.59s**, and restartable base-run regression → **2 passed in 74.52s**. These include same-terminal-result checks with and without retained history. The last full-suite run remains **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings** on `f3b874b`; it predates the current memory changes. No brain-resolution Python run has yet verified the `<16 GB` target, and no real MRI validation was done for this change.
 
-**Next integration milestone:** add a focused equivalence check for memory-bounded thinning and loop-history behavior, then run a controlled brain-resolution synthetic profiling job with a hard memory cap. Only after confirming a safe peak should the longer atlas-derived convergence trace resume. Keep synthetic integration, component source matches, whole-workflow source evidence, and real-data validation distinct.
+**Next integration milestone:** measure peak memory for a controlled brain-resolution synthetic run before resuming the longer atlas-derived convergence trace. macOS in this environment does not permit lowering `RLIMIT_AS`, and `/usr/bin/time` cannot read its clock-rate sysctl here, so a safe per-process memory cap/peak monitor is not yet available. Keep synthetic integration, component source matches, whole-workflow source evidence, and real-data validation distinct.
 
 Test totals and checklist progress are evidence bookkeeping, not measures of workflow completion. See [plan.md](plan.md) for the row-level validation status.
 ## Scope and target
