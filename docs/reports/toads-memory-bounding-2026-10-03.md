@@ -51,8 +51,27 @@ Result: **6 passed in 23.59s**. On the folded synthetic registered-loop fixture,
 
 After adding compact thinning queue results, the combined focused command passed **7 tests in 91.50s** across `test_toads_thinning_queue_run.py`, `test_toads_default_first_thinning.py`, `test_toads_registered_first_iteration_cycle.py`, and `test_base_workflow_restartable.py`. For each Java queue-run case, the history-free driver preserved terminal segmentation, skeleton, availability, volumes, processed count, and exact remaining queue while returning no popped-item tuple. After strengthening the assertion to compare remaining heap entries, `pytest -q tests/test_toads_thinning_queue_run.py` passed (**1 passed in 0.50s**).
 
-## Remaining validation before a long run
+## Whole-brain synthetic profiling run (in progress)
 
-- Profile a controlled brain-resolution synthetic case and record observed peak RSS. The current macOS environment refuses to lower `RLIMIT_AS` (`resource.setrlimit` raises `ValueError: current limit exceeds maximum limit`); `/usr/bin/time -l` also fails to read `kern.clockrate` with `Operation not permitted`. Do not restart the previously interrupted long experiment until an effective memory observer/guard is available.
-- The `<16 GB` target remains unverified for Python until that measured run completes. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
-- The whole-brain-sized synthetic base run was not started: this macOS execution environment rejected attempts to lower `RLIMIT_AS` (`ValueError: current limit exceeds maximum limit`), and `/usr/bin/time -l` cannot read `kern.clockrate` (`Operation not permitted`). These observations come from the host tools; no high-memory profiling run was launched.
+macOS rejected an `RLIMIT_AS` reduction (`ValueError: current limit exceeds maximum limit`) and `/usr/bin/time -l` could not read `kern.clockrate` (`Operation not permitted`). I then implemented a direct macOS `libproc` RSS watchdog. A controlled over-limit test allocated a 200 MB bytearray under a 0.10 GB threshold; the watchdog terminated the child at a sampled 0.209 GB RSS. This confirms that the monitor detects sustained growth and also demonstrates polling overshoot. It is a sampled per-process watchdog, not a hard allocation limit.
+
+The whole-brain-sized synthetic base run is in progress with the watchdog set to 16 GB and a 0.05 second sample interval:
+
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.05 -- \
+  ./.venv/bin/pymacruise base-run \
+  --t1 build/vandy-brain-resolution-memory/t1.nii.gz \
+  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
+  --maseg build/vandy-brain-resolution-memory/maseg.nii.gz \
+  --atlas-descriptor build/vandy-brain-resolution-memory/atlas.txt \
+  --output-dir build/vandy-brain-resolution-memory/profile-run-20261003 \
+  --registration-levels 1 --registration-iterations 1 \
+  --registration-max-iterations 1 --toads-iterations 2 \
+  --dura-iterations 1 --crop-edge-width 2 \
+  --ace-diffusion-iterations 1 --tgdm-iterations 1
+```
+
+At the latest status sample, N4 had completed, `toads-first` was active, and the Python child RSS was 4.19 GB. This is a live sample rather than the run peak. The whole-brain synthetic command has not completed yet; do not claim under-16-GB peak until the watchdog emits its final sampled RSS. `RLIMIT_AS` and `/usr/bin/time` findings explain why the watchdog was added; they are no longer blockers to observation.
+
+The `<16 GB` target remains unverified for Python until the run completes. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
