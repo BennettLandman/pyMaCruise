@@ -317,6 +317,7 @@ def toads_process_next_growing_item(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    copy_state: bool = True,
 ) -> ToadsGrowingQueueStep:
     """Process one source-ordered topology-gated growing item."""
     labels = np.asarray(segmentation)
@@ -360,11 +361,15 @@ def toads_process_next_growing_item(
     ):
         raise ValueError("growing queue item must have an interior coordinate and valid class")
     popped = queue.pop_first()
-    updated_labels = labels.astype(np.int16, copy=True)
-    updated_skeleton = skel.astype(np.int16, copy=True)
-    updated_available = avail.copy()
-    updated_ordering = orderings.copy()
-    updated_volumes = volumes.copy()
+    # Queue drivers already own mutable working arrays.  Re-copying these
+    # brain-sized arrays for every heap item made memory scale with event
+    # count instead of image size.  Standalone transition calls retain their
+    # historical defensive-copy behavior by default.
+    updated_labels = labels.astype(np.int16, copy=copy_state)
+    updated_skeleton = skel.astype(np.int16, copy=copy_state)
+    updated_available = avail.copy() if copy_state else avail
+    updated_ordering = orderings.copy() if copy_state else orderings
+    updated_volumes = volumes.copy() if copy_state else volumes
     topology_accepted: bool | None = None
     inserted: list[ToadsHeapItem] = []
 
@@ -423,12 +428,15 @@ def toads_propagate_growing(
     initial_available: ArrayLike | None = None,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    record_events: bool = True,
 ) -> ToadsGrowingPass:
     """Initialize and exhaust the selected ``propagateGrowing`` min-heap.
 
     This composes ``initGrowingLabels`` and one-event growing transitions until
     the source ``while (isNotEmpty())`` loop terminates. It returns the full
-    event trace for deterministic source comparison; it is not full TOADS
+    event trace for deterministic source comparison unless ``record_events``
+    is false; the production loop disables this full-volume trace to bound
+    memory. It is not full TOADS
     segmentation or atlas registration.
     """
     labels = np.asarray(segmentation)
@@ -471,8 +479,10 @@ def toads_propagate_growing(
             initialized.queue,
             empty_label=empty_label,
             zero_threshold=zero_threshold,
+            copy_state=record_events,
         )
-        events.append(event)
+        if record_events:
+            events.append(event)
         current_segmentation = event.segmentation
         current_skeleton = event.skeleton
         current_available = event.available
@@ -626,6 +636,7 @@ def toads_schedule_thinning_neighbors(
     limit: float,
     *,
     zero_threshold: float = 1e-10,
+    copy_state: bool = True,
 ) -> tuple[NDArray[np.bool_], tuple[ToadsHeapItem, ...]]:
     """Enqueue source-eligible face neighbors after a thinning removal.
 
@@ -664,7 +675,7 @@ def toads_schedule_thinning_neighbors(
     if not all(np.isfinite(v) for v in (zero, value, volume, minimum, limit32)) or zero < 0.0 or limit32 < 0.0:
         raise ValueError("priority, volume, limit, and ZERO must be finite; ZERO/limit nonnegative")
 
-    updated_available = state.copy()
+    updated_available = state.copy() if copy_state else state
     inserted = []
     # Same nested i/j/l order as BinaryHeap4D's selected caller.
     for i in (-1, 0, 1):
@@ -851,6 +862,7 @@ def toads_run_thinning_queue(
             limit32,
             empty_label=empty_label,
             zero_threshold=zero_threshold,
+            copy_state=False,
         )
         labels = step.segmentation
         skel = step.skeleton
@@ -877,6 +889,7 @@ def toads_process_next_thinning_item(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    copy_state: bool = True,
 ) -> ToadsThinningQueueStep:
     """Process one selected `propagateThinning` heap item and its neighbors.
 
@@ -917,10 +930,10 @@ def toads_process_next_thinning_item(
     if not queue:
         raise ValueError("cannot process an empty TOADS thinning queue")
 
-    updated_labels = labels.astype(np.int16, copy=True)
-    updated_skeleton = skel.astype(np.int16, copy=True)
-    updated_available = avail.copy()
-    updated_volumes = volumes.copy()
+    updated_labels = labels.astype(np.int16, copy=copy_state)
+    updated_skeleton = skel.astype(np.int16, copy=copy_state)
+    updated_available = avail.copy() if copy_state else avail
+    updated_volumes = volumes.copy() if copy_state else volumes
     popped = queue.pop_first()
     x, y, z, label = popped.x, popped.y, popped.z, popped.label
     transition: ToadsThinningTransition | None = None
@@ -962,6 +975,7 @@ def toads_process_next_thinning_item(
                 minimums[label],
                 limit,
                 zero_threshold=zero_threshold,
+                copy_state=False,
             )
     return ToadsThinningQueueStep(
         updated_labels, updated_skeleton, updated_available, updated_volumes,

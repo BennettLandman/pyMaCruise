@@ -58,6 +58,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
     max_registration_iterations: int = 5,
     registration_energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    record_growing_events: bool = True,
 ) -> ToadsRegisteredFirstIterationCycle:
     """Run the first exact pass through the selected wrapper's next thinning.
 
@@ -139,6 +140,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         relation_limit=relation_limit,
         do_growing=do_growing,
         initial_available=startup.thinning.available,
+        record_growing_events=record_growing_events,
     )
     branch = registered_iteration.branch
     if branch.control.stop:

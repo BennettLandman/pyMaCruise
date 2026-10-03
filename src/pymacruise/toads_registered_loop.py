@@ -80,6 +80,11 @@ class ToadsRegisteredLoopConfig:
     max_registration_iterations: int = 5
     registration_energy_tolerance: float = 1e-6
     minimum_lambda: float = 1e-3
+    # Full-volume queue snapshots and prior-cycle states are diagnostic data,
+    # not required for the final result. Disable both by default so memory is
+    # bounded by the current working iteration.
+    record_growing_events: bool = False
+    retain_iteration_history: bool = False
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,7 @@ class ToadsRegisteredLoopResult:
     iteration_limit_reached: bool
     dura_removal_products: ToadsDuraRemovalProducts | None
     wrapper_output_buffers: ToadsWrapperOutputBuffers | None
+    iteration_count: int
 
 
 def run_registered_toads_loop(
@@ -160,9 +166,10 @@ def run_registered_toads_loop(
         max_registration_iterations=config.max_registration_iterations,
         registration_energy_tolerance=config.registration_energy_tolerance,
         minimum_lambda=config.minimum_lambda,
+        record_growing_events=config.record_growing_events,
     )
-    exact_iterations: list[Any] = [first_exact]
-    registered_cycles: list[Any] = [first_cycle]
+    exact_iterations: list[Any] = [first_exact] if config.retain_iteration_history else []
+    registered_cycles: list[Any] = [first_cycle] if config.retain_iteration_history else []
 
     current_exact: Any = first_exact
     field_state = first_exact.fields
@@ -215,9 +222,11 @@ def run_registered_toads_loop(
             max_registration_iterations=config.max_registration_iterations,
             registration_energy_tolerance=config.registration_energy_tolerance,
             minimum_lambda=config.minimum_lambda,
+            record_growing_events=config.record_growing_events,
         )
-        exact_iterations.append(next_exact)
-        registered_cycles.append(next_cycle)
+        if config.retain_iteration_history:
+            exact_iterations.append(next_exact)
+            registered_cycles.append(next_cycle)
         current_exact = next_exact
         current_cycle = next_cycle
         current_iteration = next_iteration
@@ -227,7 +236,8 @@ def run_registered_toads_loop(
     energy_threshold_reached = bool(
         terminal_control.energy_ratio < np.float32(config.convergence_threshold)
     )
-    iteration_limit_reached = len(exact_iterations) >= config.maximum_iterations
+    iteration_count = current_iteration
+    iteration_limit_reached = iteration_count >= config.maximum_iterations
     native_classification = None
     dura_products = None
     wrapper_outputs = None
@@ -287,4 +297,5 @@ def run_registered_toads_loop(
         iteration_limit_reached=iteration_limit_reached,
         dura_removal_products=dura_products,
         wrapper_output_buffers=wrapper_outputs,
+        iteration_count=iteration_count,
     )

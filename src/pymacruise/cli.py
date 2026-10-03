@@ -497,7 +497,7 @@ def main(argv: list[str] | None = None) -> int:
             for name, path in dura_outputs.items():
                 print(f"Wrote Dura-removal input {name}: {path}")
         print(
-            f"Wrote {args.output}; iterations={len(result.exact_iterations)}, "
+            f"Wrote {args.output}; iterations={result.iteration_count}, "
             f"changed_classification_voxels={result.changed_classification_voxels}, "
             f"terminal_energy_ratio={float(result.terminal_energy_ratio):.9g}, "
             f"energy_threshold_reached={str(result.energy_threshold_reached).lower()}, "

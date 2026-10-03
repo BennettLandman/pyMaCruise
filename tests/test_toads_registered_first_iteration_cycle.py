@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import nibabel as nib
@@ -60,6 +61,8 @@ def test_registered_loop_defaults_to_selected_vandy_final_growth() -> None:
     )
 
     assert config.do_growing is True
+    assert config.record_growing_events is False
+    assert config.retain_iteration_history is False
 
 
 def test_registered_loop_default_atlas_range_matches_selected_wrapper() -> None:
@@ -642,20 +645,20 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         np.testing.assert_array_equal(actual_classification, expected_classification)
         assert terminal_branch.changed_classification_voxels == expected_class_diff
 
-        assembled = run_registered_toads_loop(
-            run,
-            ToadsRegisteredLoopConfig(
-                category_exponents=categories,
-                class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
-                maximum_iterations=4,
-                maximum_distance=100.0,
-                convergence_threshold=0.04,
-                relation_limit=1,
-                max_registration_iterations=1,
-                registration_energy_tolerance=0.0,
-                **settings,
-            ),
+        loop_config = ToadsRegisteredLoopConfig(
+            category_exponents=categories,
+            class_variance_weights=load_toads_intensity_variance_factors(ATLAS_DESCRIPTOR, [run.modality]),
+            maximum_iterations=4,
+            maximum_distance=100.0,
+            convergence_threshold=0.04,
+            relation_limit=1,
+            max_registration_iterations=1,
+            retain_iteration_history=True,
+            record_growing_events=True,
+            **settings,
         )
+        assembled = run_registered_toads_loop(run, loop_config)
+        assert assembled.iteration_count == 4
         assert len(assembled.exact_iterations) == 4
         assert len(assembled.registered_cycles) == 4
         assert [item.degree for item in assembled.exact_iterations] == [0, 1, 2, 3]
@@ -681,3 +684,17 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             assembled.native_classification,
             expected_native_buffer.reshape(native_shape, order="F"),
         )
+        bounded = run_registered_toads_loop(
+            run,
+            replace(
+                loop_config,
+                retain_iteration_history=False,
+                record_growing_events=False,
+            ),
+        )
+        assert bounded.iteration_count == assembled.iteration_count
+        assert bounded.exact_iterations == ()
+        assert bounded.registered_cycles == ()
+        assert bounded.terminal_energy_ratio == assembled.terminal_energy_ratio
+        np.testing.assert_array_equal(bounded.classification, assembled.classification)
+        np.testing.assert_array_equal(bounded.native_classification, assembled.native_classification)

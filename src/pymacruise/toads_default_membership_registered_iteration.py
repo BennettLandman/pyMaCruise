@@ -48,6 +48,7 @@ def continue_default_membership_registered_iteration(
     relation_limit: int,
     do_growing: bool,
     initial_available: ArrayLike | None = None,
+    record_growing_events: bool = True,
 ) -> ToadsDefaultMembershipRegisteredIteration:
     """Compose the existing branch adapter after a completed P18cyt slice.
 
@@ -86,6 +87,7 @@ def continue_default_membership_registered_iteration(
         relation_limit=relation_limit,
         do_growing=do_growing,
         initial_available=initial_available,
+        record_growing_events=record_growing_events,
     )
     if branch.control != registration_control.control:
         raise RuntimeError("post-registration branch changed the selected P18cyt control decision")

@@ -210,6 +210,8 @@ def build_trace(
         maximum_distance=1e-4,
         max_registration_iterations=1,
         registration_energy_tolerance=0.0,
+        retain_iteration_history=True,
+        record_growing_events=True,
     )
     field_snapshots: dict[int, np.ndarray] = {}
     first_exact_original = registered_loop.continue_registered_unity_startup_through_first_exact_iteration
@@ -327,7 +329,7 @@ def build_trace(
         },
         "iterations": exact_cycles,
         "terminal": {
-            "iteration_count": len(result.exact_iterations),
+            "iteration_count": result.iteration_count,
             "energy_ratio": float(result.terminal_energy_ratio),
             "energy_ratio_float32_bits": _float32_bits(result.terminal_energy_ratio),
             "threshold_reached": result.energy_threshold_reached,

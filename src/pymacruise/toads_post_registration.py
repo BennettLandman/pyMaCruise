@@ -54,6 +54,7 @@ def toads_post_registration_branch(
     relation_limit: int,
     do_growing: bool,
     initial_available: ArrayLike | None = None,
+    record_growing_events: bool = True,
 ) -> ToadsPostRegistrationBranch:
     """Run only the selected wrapper branch immediately after registration.
 
@@ -93,6 +94,7 @@ def toads_post_registration_branch(
             ordering,
             class_volumes,
             initial_available=initial_available,
+            record_events=record_growing_events,
         )
         segment_after_growth = growing.segmentation
     else:

@@ -213,6 +213,8 @@ def main() -> int:
         maximum_polynomial_degree=3,
         maximum_distance=args.maximum_distance,
         max_registration_iterations=args.loop_registration_iterations,
+        retain_iteration_history=True,
+        record_growing_events=True,
     )
     stage_timings: dict[str, list[float]] = {}
     loop_start = time.perf_counter()
@@ -273,7 +275,7 @@ def main() -> int:
             f"registration_steps:{registration_iterations},stop:{str(branch.control.stop).lower()}"
         )
     print(
-        f"terminal=iterations:{len(result.exact_iterations)},"
+        f"terminal=iterations:{result.iteration_count},"
         f"energy_ratio:{float(result.terminal_energy_ratio):.9g},"
         f"threshold_reached:{str(result.energy_threshold_reached).lower()},"
         f"iteration_limit_reached:{str(result.iteration_limit_reached).lower()}"

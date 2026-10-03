@@ -89,3 +89,20 @@ def test_initialized_growing_pass_matches_java_lut_and_heap_reference() -> None:
     assert any(code == -1 for code in topology_codes)
     assert {code: topology_codes.count(code) for code in (-1, 0, 1)} == {-1: 51, 0: 60, 1: 337}
     assert len(reference["events"]) == 448
+
+
+def test_growing_without_event_history_matches_source_reference_terminal_state() -> None:
+    reference = json.loads(REFERENCE.read_text())
+    segmentation, skeleton, memberships, ordering, volumes = _inputs()
+    result = toads_propagate_growing(
+        segmentation, skeleton, memberships, ordering, volumes, record_events=False
+    )
+
+    # Production mode mutates one owned working state and does not retain one
+    # full-volume snapshot per heap event.
+    assert result.events == ()
+    assert _labels(result.segmentation) == reference["segmentation"]
+    assert _labels(result.skeleton, skeleton=True) == reference["skeleton"]
+    assert "".join("1" if value else "0" for value in result.available.ravel()) == reference["available"]
+    assert _bits(result.ordering) == reference["ordering_bits"]
+    assert _bits(result.class_volumes) == reference["volumes_bits"]

@@ -64,6 +64,7 @@ def continue_registered_membership_through_branch(
     max_registration_iterations: int = 5,
     registration_energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    record_growing_events: bool = True,
 ) -> ToadsRegisteredMembershipBranchCycle:
     """Apply membership → registration → stop/grow-or-refresh → next thinning.
 
@@ -123,6 +124,7 @@ def continue_registered_membership_through_branch(
         relation_limit=relation_limit,
         do_growing=do_growing,
         initial_available=initial_available,
+        record_growing_events=record_growing_events,
     )
     branch = registered.branch
     next_shapes = None
