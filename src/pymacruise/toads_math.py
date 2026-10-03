@@ -1479,24 +1479,28 @@ def toads_inverse_shape_prior_energy(
 
     nx, ny, nz, _ = shapes.shape
     half_coefficient = np.float32(np.float32(0.5) * coefficient)
-    for x in range(1, nx - 1):
-        for y in range(1, ny - 1):
-            for z in range(1, nz - 1):
-                for candidate in range(classes):
-                    inverse_prior = np.float32(0.0)
-                    for other in range(classes):
-                        if other == candidate:
-                            continue
-                        term = np.float32(priors[other] * similarity[candidate, other])
-                        term = np.float32(term * shapes[x, y, z, other])
-                        term = np.float32(term * shapes[x, y, z, other])
-                        inverse_prior = np.float32(inverse_prior + term)
-                    inverse_energy[x, y, z, candidate] = np.float32(
-                        coefficient * inverse_prior
-                    )
-                    objective_energy[x, y, z, candidate] = np.float32(
-                        half_coefficient * inverse_prior
-                    )
+    # Keep the Java candidate/other-class accumulation order and float32
+    # rounding, while moving the independent voxel dimension into NumPy
+    # elementwise kernels. This avoids millions of Python scalar operations
+    # for practical images without reassociating the source's class sum.
+    interior_shapes = shapes[1:-1, 1:-1, 1:-1, :]
+    interior_inverse = inverse_energy[1:-1, 1:-1, 1:-1, :]
+    interior_objective = objective_energy[1:-1, 1:-1, 1:-1, :]
+    for candidate in range(classes):
+        inverse_prior = np.zeros((nx - 2, ny - 2, nz - 2), dtype=np.float32)
+        for other in range(classes):
+            if other == candidate:
+                continue
+            term = np.float32(priors[other] * similarity[candidate, other])
+            term = np.multiply(term, interior_shapes[..., other], dtype=np.float32)
+            term = np.multiply(term, interior_shapes[..., other], dtype=np.float32)
+            np.add(inverse_prior, term, out=inverse_prior)
+        interior_inverse[..., candidate] = np.multiply(
+            coefficient, inverse_prior, dtype=np.float32
+        )
+        interior_objective[..., candidate] = np.multiply(
+            half_coefficient, inverse_prior, dtype=np.float32
+        )
     return inverse_energy, objective_energy
 
 
