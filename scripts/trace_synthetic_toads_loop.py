@@ -215,6 +215,7 @@ def main() -> int:
         max_registration_iterations=args.loop_registration_iterations,
         retain_iteration_history=True,
         record_growing_events=True,
+        record_thinning_items=True,
     )
     stage_timings: dict[str, list[float]] = {}
     loop_start = time.perf_counter()

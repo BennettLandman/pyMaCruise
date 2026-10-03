@@ -212,6 +212,7 @@ def build_trace(
         registration_energy_tolerance=0.0,
         retain_iteration_history=True,
         record_growing_events=True,
+        record_thinning_items=True,
     )
     field_snapshots: dict[int, np.ndarray] = {}
     first_exact_original = registered_loop.continue_registered_unity_startup_through_first_exact_iteration

@@ -84,15 +84,36 @@ def test_repeated_queue_run_matches_java_source_loop() -> None:
 
         popped = [[_bits(item.value), item.x, item.y, item.z, item.label] for item in result.processed_items]
         assert popped == case["processed"], case["name"]
+        assert result.processed_count == len(case["processed"]), case["name"]
         assert _labels_text(result.segmentation) == case["segmentation"], case["name"]
         assert _skeleton_text(result.skeleton) == case["skeleton"], case["name"]
         assert "".join("1" if value else "0" for value in result.available.ravel()) == case["available"], case["name"]
         np.testing.assert_array_equal(result.class_volumes, np.asarray(case["volumes"], dtype=np.float32))
+        compact_queue = ToadsPriorityHeap4D(2, "max")
+        for value_bits, x, y, z, label in direct["queue"]:
+            compact_queue.add(_from_bits(value_bits), x, y, z, label)
+        compact_result = toads_run_thinning_queue(
+            segmentation, skeleton, memberships, available, relations, shapes,
+            volumes, minimums, compact_queue, case["limit"],
+            record_processed_items=False,
+        )
+        assert compact_result.processed_items == (), case["name"]
+        assert compact_result.processed_count == result.processed_count, case["name"]
+        assert _labels_text(compact_result.segmentation) == case["segmentation"], case["name"]
+        assert _skeleton_text(compact_result.skeleton) == case["skeleton"], case["name"]
+        np.testing.assert_array_equal(compact_result.available, result.available)
+        np.testing.assert_array_equal(compact_result.class_volumes, result.class_volumes)
+        assert len(compact_result.queue) == len(result.queue), case["name"]
         remaining = []
         while queue:
             item = queue.pop_first()
             remaining.append([_bits(item.value), item.x, item.y, item.z, item.label])
         assert remaining == case["queue_after"], case["name"]
+        compact_remaining = []
+        while compact_result.queue:
+            item = compact_result.queue.pop_first()
+            compact_remaining.append([_bits(item.value), item.x, item.y, item.z, item.label])
+        assert compact_remaining == remaining, case["name"]
 
     by_name = {case["name"]: case for case in reference["cases"]}
     assert len(by_name["drain_with_rescheduling"]["processed"]) == 8

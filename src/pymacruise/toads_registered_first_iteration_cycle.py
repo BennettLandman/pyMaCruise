@@ -59,6 +59,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
     registration_energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
     record_growing_events: bool = True,
+    record_thinning_items: bool = True,
 ) -> ToadsRegisteredFirstIterationCycle:
     """Run the first exact pass through the selected wrapper's next thinning.
 
@@ -159,7 +160,9 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         transform=tuple(float(value) for value in registration_control.handoff.transform),
         class_bounds=registration_control.handoff.shape_bounds,
     )
-    next_thinning = toads_post_registration_next_thinning(branch, next_shapes)
+    next_thinning = toads_post_registration_next_thinning(
+        branch, next_shapes, record_thinning_items=record_thinning_items
+    )
     stages = (
         *exact_iteration.stage_order,
         *registration_control.stage_order[1:],

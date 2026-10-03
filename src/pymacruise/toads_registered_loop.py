@@ -80,11 +80,12 @@ class ToadsRegisteredLoopConfig:
     max_registration_iterations: int = 5
     registration_energy_tolerance: float = 1e-6
     minimum_lambda: float = 1e-3
-    # Full-volume queue snapshots and prior-cycle states are diagnostic data,
-    # not required for the final result. Disable both by default so memory is
-    # bounded by the current working iteration.
+    # Per-event snapshots, popped-item tuples, and prior-cycle states are
+    # diagnostic data, not required for the final result. Disable these by
+    # default so memory is bounded by the current working iteration.
     record_growing_events: bool = False
     retain_iteration_history: bool = False
+    record_thinning_items: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,7 @@ def run_registered_toads_loop(
         **membership_options,
         volume_ratio=config.volume_ratio,
         thinning_limit=config.thinning_limit,
+        record_thinning_items=config.record_thinning_items,
     )
     first_exact = continue_registered_unity_startup_through_first_exact_iteration(
         alignment_run,
@@ -167,6 +169,7 @@ def run_registered_toads_loop(
         registration_energy_tolerance=config.registration_energy_tolerance,
         minimum_lambda=config.minimum_lambda,
         record_growing_events=config.record_growing_events,
+        record_thinning_items=config.record_thinning_items,
     )
     exact_iterations: list[Any] = [first_exact] if config.retain_iteration_history else []
     registered_cycles: list[Any] = [first_cycle] if config.retain_iteration_history else []
@@ -223,6 +226,7 @@ def run_registered_toads_loop(
             registration_energy_tolerance=config.registration_energy_tolerance,
             minimum_lambda=config.minimum_lambda,
             record_growing_events=config.record_growing_events,
+            record_thinning_items=config.record_thinning_items,
         )
         if config.retain_iteration_history:
             exact_iterations.append(next_exact)

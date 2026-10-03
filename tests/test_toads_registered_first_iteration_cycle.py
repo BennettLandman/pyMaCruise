@@ -63,6 +63,7 @@ def test_registered_loop_defaults_to_selected_vandy_final_growth() -> None:
     assert config.do_growing is True
     assert config.record_growing_events is False
     assert config.retain_iteration_history is False
+    assert config.record_thinning_items is False
 
 
 def test_registered_loop_default_atlas_range_matches_selected_wrapper() -> None:
@@ -655,6 +656,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
             max_registration_iterations=1,
             retain_iteration_history=True,
             record_growing_events=True,
+            record_thinning_items=True,
             **settings,
         )
         assembled = run_registered_toads_loop(run, loop_config)

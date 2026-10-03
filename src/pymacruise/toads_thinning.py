@@ -734,7 +734,11 @@ class ToadsThinningQueueStep:
 
 @dataclass(frozen=True)
 class ToadsThinningQueueRun:
-    """Final state after the source outer loop drains or crosses its limit."""
+    """Final state after the source outer loop drains or crosses its limit.
+
+    ``processed_count`` remains available when ``processed_items`` history is
+    disabled for a production run.
+    """
 
     segmentation: NDArray[np.int16]
     skeleton: NDArray[np.int16]
@@ -742,11 +746,16 @@ class ToadsThinningQueueRun:
     class_volumes: NDArray[np.float32]
     processed_items: tuple[ToadsHeapItem, ...]
     queue: ToadsPriorityHeap4D
+    processed_count: int
 
 
 @dataclass(frozen=True)
 class ToadsThinningPass:
-    """Initialized source thinning state after one complete queue pass."""
+    """Initialized source thinning state after one complete queue pass.
+
+    ``processed_count`` is the scalar queue-pop count; callers can avoid
+    retaining all selected heap items in ``processed_items``.
+    """
 
     segmentation: NDArray[np.int16]
     skeleton: NDArray[np.int16]
@@ -756,6 +765,7 @@ class ToadsThinningPass:
     minimum_class_volumes: NDArray[np.float32]
     processed_items: tuple[ToadsHeapItem, ...]
     queue: ToadsPriorityHeap4D
+    processed_count: int
 
 
 def toads_propagate_thinning(
@@ -768,6 +778,7 @@ def toads_propagate_thinning(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    record_processed_items: bool = True,
 ) -> ToadsThinningPass:
     """Run source ``initThinningLabels`` and one complete thinning pass.
 
@@ -801,6 +812,7 @@ def toads_propagate_thinning(
         limit,
         empty_label=empty_label,
         zero_threshold=zero_threshold,
+        record_processed_items=record_processed_items,
     )
     return ToadsThinningPass(
         run.segmentation,
@@ -811,6 +823,7 @@ def toads_propagate_thinning(
         minimums,
         run.processed_items,
         run.queue,
+        run.processed_count,
     )
 
 
@@ -828,6 +841,7 @@ def toads_run_thinning_queue(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    record_processed_items: bool = True,
 ) -> ToadsThinningQueueRun:
     """Run the selected ``propagateThinning`` outer heap loop.
 
@@ -848,6 +862,7 @@ def toads_run_thinning_queue(
     volumes = np.asarray(class_volumes, dtype=np.float32).copy()
     previous_priority = np.float32(0.0)
     processed: list[ToadsHeapItem] = []
+    processed_count = 0
     while queue and previous_priority > np.float32(-limit32):
         step = toads_process_next_thinning_item(
             labels,
@@ -869,9 +884,11 @@ def toads_run_thinning_queue(
         available_state = step.available
         volumes = step.class_volumes
         previous_priority = step.popped_item.value
-        processed.append(step.popped_item)
+        if record_processed_items:
+            processed.append(step.popped_item)
+        processed_count += 1
     return ToadsThinningQueueRun(
-        labels, skel, available_state, volumes, tuple(processed), queue
+        labels, skel, available_state, volumes, tuple(processed), queue, processed_count
     )
 
 
@@ -899,6 +916,8 @@ def toads_process_next_thinning_item(
     A stale item whose label no longer matches the current skeleton is
     discarded without changing image state. As in the source, the queue label
     selects the class volume and membership even if segmentation differs.
+    ``copy_state=False`` is reserved for a driver that owns these arrays and
+    does not retain its per-item result.
     """
     labels = np.asarray(segmentation)
     skel = np.asarray(skeleton)

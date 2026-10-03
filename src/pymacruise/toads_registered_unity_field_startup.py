@@ -39,6 +39,7 @@ def compute_registered_toads_unity_field_startup(
     volume_ratio: float = 0.5,
     thinning_limit: float = 3.0,
     psf_bias: Any | None = None,
+    record_thinning_items: bool = True,
 ) -> ToadsRegisteredUnityFieldStartup:
     """Run the selected initial pass without prematurely fitting a field.
 
@@ -92,6 +93,7 @@ def compute_registered_toads_unity_field_startup(
         shapes,
         volume_ratio=volume_ratio,
         limit=thinning_limit,
+        record_processed_items=record_thinning_items,
     )
     return ToadsRegisteredUnityFieldStartup(
         fields=fields,

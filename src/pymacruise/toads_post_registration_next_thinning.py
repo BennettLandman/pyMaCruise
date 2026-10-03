@@ -31,6 +31,8 @@ class ToadsPostRegistrationNextThinning:
 def toads_post_registration_next_thinning(
     branch: ToadsPostRegistrationBranch,
     transformed_shape_values: ArrayLike,
+    *,
+    record_thinning_items: bool = True,
 ) -> ToadsPostRegistrationNextThinning:
     """Run one next-loop ``propagateThinning`` after a continuing branch.
 
@@ -63,6 +65,7 @@ def toads_post_registration_next_thinning(
         shapes,
         volume_ratio=0.5,
         limit=3.0,
+        record_processed_items=record_thinning_items,
     )
     return ToadsPostRegistrationNextThinning(
         branch=branch,
