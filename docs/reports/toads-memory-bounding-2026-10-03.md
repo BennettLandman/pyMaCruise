@@ -51,11 +51,11 @@ Result: **6 passed in 23.59s**. On the folded synthetic registered-loop fixture,
 
 After adding compact thinning queue results, the combined focused command passed **7 tests in 91.50s** across `test_toads_thinning_queue_run.py`, `test_toads_default_first_thinning.py`, `test_toads_registered_first_iteration_cycle.py`, and `test_base_workflow_restartable.py`. For each Java queue-run case, the history-free driver preserved terminal segmentation, skeleton, availability, volumes, processed count, and exact remaining queue while returning no popped-item tuple. After strengthening the assertion to compare remaining heap entries, `pytest -q tests/test_toads_thinning_queue_run.py` passed (**1 passed in 0.50s**).
 
-## Whole-brain synthetic profiling run (in progress)
+## Whole-brain synthetic profiling run (interrupted; restartable)
 
 macOS rejected an `RLIMIT_AS` reduction (`ValueError: current limit exceeds maximum limit`) and `/usr/bin/time -l` could not read `kern.clockrate` (`Operation not permitted`). I then implemented a direct macOS `libproc` RSS watchdog. A controlled over-limit test allocated a 200 MB bytearray under a 0.10 GB threshold; the watchdog terminated the child at a sampled 0.209 GB RSS. This confirms that the monitor detects sustained growth and also demonstrates polling overshoot. It is a sampled per-process watchdog, not a hard allocation limit.
 
-The whole-brain-sized synthetic base run is in progress with the watchdog set to 16 GB and a 0.05 second sample interval:
+The first whole-brain-sized synthetic base run was started with the watchdog set to 16 GB and a 0.05 second sample interval:
 
 ```bash
 ./.venv/bin/python scripts/run_with_rss_watchdog.py \
@@ -72,6 +72,10 @@ The whole-brain-sized synthetic base run is in progress with the watchdog set to
   --ace-diffusion-iterations 1 --tgdm-iterations 1
 ```
 
-At the latest status sample, N4 had completed, `toads-first` was active, and the Python child RSS was 2.82 GB. Earlier samples reached 4.19 GB and then fell as temporary arrays were released. These are live samples, not the run peak. The whole-brain synthetic command has not completed yet; do not claim under-16-GB peak until the watchdog emits its final sampled RSS. `RLIMIT_AS` and `/usr/bin/time` findings explain why the watchdog was added; they are no longer blockers to observation.
+N4 completed and `toads-first` was active. The latest manually captured process sample was 2.82 GB RSS; earlier samples reached 4.19 GB and fell as temporary arrays were released. The run did not produce a final watchdog summary or TOADS stage artifacts. After the shell session stopped exposing the watchdog's child RSS, I interrupted the run and terminated its process group to avoid an unmonitored brain-scale job. The run manifest remains resumable: a subsequent invocation with `--resume` will verify and skip N4, then create a fresh TOADS attempt while preserving the partial attempt. The watchdog now reports RSS periodically and terminates its child group when interrupted or when RSS sampling fails. The process-cleanup test passed after these changes (**1 passed in 0.17s**).
 
-The `<16 GB` target remains unverified for Python until the run completes. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
+This attempt establishes that the monitored process had remained well below 16 GB in the observed samples; it does not establish the true peak, full-run peak, or completion. The previous watchdog only reported at exit, which made a long TOADS stage hard to observe. `RLIMIT_AS` and `/usr/bin/time` findings explain why the watchdog was added; they are no longer blockers to observation.
+
+The `<16 GB` target remains unverified for Python until a resumed whole-brain run completes and its watchdog summary is recorded. Synthetic tests establish numerical state equivalence only on their fixtures; they do not establish full MaCRUISE source equivalence or real-data validity.
+
+The resumed attempt 02 was launched with `--resume` and a 20-second report interval. Its most recent watchdog sample was **2.106 GB**, which is also the current sampled peak; it remains in `toads-first`. The N4 stage was verified and skipped on resume. No TOADS output or overall workflow completion has been observed yet.

@@ -16,6 +16,11 @@ import sys
 import time
 
 
+class _WatchdogInterrupted(Exception):
+    def __init__(self, signum: int):
+        self.signum = signum
+
+
 class _ProcTaskInfo(ctypes.Structure):
     """Subset-compatible 96-byte Darwin ``proc_taskinfo`` layout."""
 
@@ -64,15 +69,39 @@ def _process_rss_reader():
     return read_rss
 
 
+def _terminate_child_group(child: subprocess.Popen, *, grace_seconds: float = 2.0) -> None:
+    """Stop the watched process and any descendants it launched."""
+    if child.poll() is not None:
+        return
+    try:
+        os.killpg(child.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        child.wait(timeout=grace_seconds)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        child.wait()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit-gb", type=float, required=True)
     parser.add_argument("--interval-seconds", type=float, default=0.2)
+    parser.add_argument("--report-interval-seconds", type=float, default=30.0)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     arguments = parser.parse_args()
     command = arguments.command[1:] if arguments.command[:1] == ["--"] else arguments.command
-    if arguments.limit_gb <= 0 or arguments.interval_seconds <= 0 or not command:
-        parser.error("provide positive limits and a command after --")
+    if (
+        arguments.limit_gb <= 0
+        or arguments.interval_seconds <= 0
+        or arguments.report_interval_seconds <= 0
+        or not command
+    ):
+        parser.error("provide positive limits, intervals, and a command after --")
     if sys.platform != "darwin":
         parser.error("RSS monitoring currently requires macOS libproc")
     read_rss = _process_rss_reader()
@@ -80,20 +109,50 @@ def main() -> int:
     child = subprocess.Popen(command, start_new_session=True)
     peak_rss = 0
     exceeded = False
-    while child.poll() is None:
-        current_rss = read_rss(child.pid)
-        peak_rss = max(peak_rss, current_rss)
-        if current_rss >= limit_bytes:
-            exceeded = True
-            try:
-                os.killpg(child.pid, signal.SIGTERM)
-                child.wait(timeout=2.0)
-            except subprocess.TimeoutExpired:
-                os.killpg(child.pid, signal.SIGKILL)
-                child.wait()
-            break
-        time.sleep(arguments.interval_seconds)
+    next_report = time.monotonic() + arguments.report_interval_seconds
+    previous_handlers = {
+        signum: signal.getsignal(signum)
+        for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+
+    def interrupt(signum: int, _frame) -> None:
+        raise _WatchdogInterrupted(signum)
+
+    for signum in previous_handlers:
+        signal.signal(signum, interrupt)
+    interrupted = None
+    monitor_error = None
+    try:
+        while child.poll() is None:
+            current_rss = read_rss(child.pid)
+            peak_rss = max(peak_rss, current_rss)
+            now = time.monotonic()
+            if now >= next_report:
+                print(
+                    f"rss_sample_gb={current_rss / 1024**3:.3f} "
+                    f"peak_sampled_rss_gb={peak_rss / 1024**3:.3f} "
+                    f"rss_limit_gb={arguments.limit_gb:g}",
+                    flush=True,
+                )
+                next_report = now + arguments.report_interval_seconds
+            if current_rss >= limit_bytes:
+                exceeded = True
+                _terminate_child_group(child)
+                break
+            time.sleep(arguments.interval_seconds)
+    except _WatchdogInterrupted as error:
+        interrupted = error.signum
+        _terminate_child_group(child)
+    except BaseException as error:
+        monitor_error = error
+        _terminate_child_group(child)
+    finally:
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
     exit_code = child.wait()
+    if monitor_error is not None:
+        print(f"rss_monitor_error={monitor_error!r} child_exit={exit_code}", flush=True)
+        return 125
     if exceeded:
         exit_code = 124
     print(
@@ -102,6 +161,9 @@ def main() -> int:
         f"terminated_for_rss_limit={str(exceeded).lower()}",
         flush=True,
     )
+    if interrupted is not None:
+        print(f"watchdog_interrupted_by_signal={interrupted}", flush=True)
+        return 128 + interrupted
     return exit_code
 
 
