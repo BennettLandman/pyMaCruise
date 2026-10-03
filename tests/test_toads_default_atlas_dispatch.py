@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
+import pymacruise.toads_default_atlas_membership as membership_module
 from pymacruise.toads_default_atlas_membership import (
     DEFAULT_ATLAS_CLASS_TYPES,
     toads_default_atlas_membership_pass,
@@ -170,6 +171,42 @@ def test_default_wrapper_ordered_11_class_dispatch_matches_java() -> None:
         prior_only[:, :, [0, -1]] = False
         assert np.all(no_prior.class_data_energy[..., k][prior_only] == 0)
         assert np.all(no_prior.memberships[..., k][prior_only] == 0)
+
+
+def test_optimized_data_terms_are_batched_in_source_class_order(monkeypatch) -> None:
+    data, parameters, _, _ = _fixture()
+    calls = []
+    mask_calls = []
+    original = membership_module.toads_optimized_tissue_data_term
+    original_mask = membership_module.toads_mask_intensity_energy
+
+    def capture(images, centers, exponents, modality, variances, image_variances, **kwargs):
+        calls.append((centers.copy(), exponents.copy(), variances.copy()))
+        return original(images, centers, exponents, modality, variances, image_variances, **kwargs)
+
+    def capture_mask(images, modality, variances, image_variances):
+        mask_calls.append(True)
+        return original_mask(images, modality, variances, image_variances)
+
+    monkeypatch.setattr(membership_module, "toads_optimized_tissue_data_term", capture)
+    monkeypatch.setattr(membership_module, "toads_mask_intensity_energy", capture_mask)
+    result = _run(data, parameters, {"field": True, "psf": True, "smoothing": True, "prior": True})
+
+    assert len(calls) == 1
+    assert len(mask_calls) == 1
+    optimized_indices = np.arange(1, 11)
+    np.testing.assert_array_equal(calls[0][0], parameters["centroids"][:, optimized_indices])
+    np.testing.assert_array_equal(
+        calls[0][1], parameters["exponent_by_channel_class"][:, optimized_indices]
+    )
+    np.testing.assert_array_equal(
+        calls[0][2], parameters["class_variance_weights"][:, optimized_indices]
+    )
+    case = next(
+        case for case in json.loads((ROOT / "java_reference.json").read_text())["cases"]
+        if case["field"] and case["psf"] and case["smoothing"] and case["prior"]
+    )
+    assert _bits(result.class_data_energy) == case["class_energy_bits"]
 
 
 @pytest.mark.parametrize(

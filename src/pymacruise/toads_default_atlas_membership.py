@@ -137,22 +137,24 @@ def toads_default_atlas_membership_pass(
     class_energy = np.zeros(spatial + (classes,), dtype=np.float32)
     mask_energy = toads_mask_intensity_energy(images, modality, variances, image_var)
     class_energy[1:-1, 1:-1, 1:-1, 0] = mask_energy[1:-1, 1:-1, 1:-1, 0]
-    for class_index, kind in enumerate(types):
-        if kind not in _OPTIMIZED_TYPES:
-            continue
-        category_energy = toads_optimized_tissue_data_term(
-            images,
-            centers[:, class_index : class_index + 1],
-            exponents[:, class_index : class_index + 1],
-            modality,
-            variances[:, class_index : class_index + 1],
-            image_var,
-            intensity_field=field,
-            psf_bias=bias,
-        )
-        class_energy[1:-1, 1:-1, 1:-1, class_index] = category_energy[
-            1:-1, 1:-1, 1:-1, 0
-        ]
+    optimized_indices = [
+        class_index
+        for class_index, kind in enumerate(types)
+        if kind in _OPTIMIZED_TYPES
+    ]
+    category_energy = toads_optimized_tissue_data_term(
+        images,
+        centers[:, optimized_indices],
+        exponents[:, optimized_indices],
+        modality,
+        variances[:, optimized_indices],
+        image_var,
+        intensity_field=field,
+        psf_bias=bias,
+    )
+    class_energy[1:-1, 1:-1, 1:-1, optimized_indices] = category_energy[
+        1:-1, 1:-1, 1:-1, :
+    ]
 
     coefficient = np.float32(prior_coefficient)
     if not np.isfinite(coefficient):

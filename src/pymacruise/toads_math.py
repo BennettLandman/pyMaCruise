@@ -602,32 +602,26 @@ def toads_shape_relation_factors(
     if np.any((labels < -1) | (labels >= classes)):
         raise ValueError("closest_labels values must be -1 or valid class indices")
 
-    factors = np.empty(shapes.shape, dtype=np.float32)
-    suppressed = np.zeros(shapes.shape, dtype=np.bool_)
-    for x in range(shapes.shape[0]):
-        for y in range(shapes.shape[1]):
-            for z in range(shapes.shape[2]):
-                for class_index in range(classes):
-                    shape = shapes[x, y, z, class_index]
-                    direct = bool(np.any(labels[x, y, z, :2] == class_index))
-                    neighbor = bool(np.any(labels[x, y, z, 2:] == class_index))
-                    if direct:
-                        factors[x, y, z, class_index] = np.float32(1.0)
-                    elif neighbor:
-                        scaled = np.float32(np.float32(2.0) * factor)
-                        scaled = np.float32(scaled * shape)
-                        factors[x, y, z, class_index] = np.float32(
-                            max(np.float32(0.25), min(scaled, np.float32(1.0)))
-                        )
-                    elif shape == np.float32(0.0):
-                        factors[x, y, z, class_index] = np.float32(0.0)
-                        suppressed[x, y, z, class_index] = True
-                    else:
-                        scaled = np.float32(np.float32(2.0) * factor)
-                        scaled = np.float32(scaled * shape)
-                        factors[x, y, z, class_index] = np.float32(
-                            min(np.float32(1.0), scaled)
-                        )
+    # Keep the two float32 operations separate: Java evaluates (2 * factor)
+    # before multiplying by each shape value. Vectorizing only the voxel/class
+    # masks avoids Python's four nested loops without changing that rounding.
+    scaled_factor = np.float32(np.float32(2.0) * factor)
+    scaled = np.multiply(shapes, scaled_factor, dtype=np.float32)
+    direct = np.zeros(shapes.shape, dtype=np.bool_)
+    neighbor = np.zeros(shapes.shape, dtype=np.bool_)
+    for slot in range(2):
+        direct |= labels[..., slot, None] == np.arange(classes)
+        neighbor |= labels[..., slot + 2, None] == np.arange(classes)
+
+    factors = np.minimum(scaled, np.float32(1.0)).astype(np.float32, copy=False)
+    # Direct relation wins even when the same class is in a neighbor slot.
+    neighbor_only = neighbor & ~direct
+    factors[neighbor_only] = np.maximum(
+        np.float32(0.25), factors[neighbor_only]
+    )
+    factors[direct] = np.float32(1.0)
+    suppressed = (~direct & ~neighbor) & (shapes == np.float32(0.0))
+    factors[suppressed] = np.float32(0.0)
     return factors, suppressed
 
 
