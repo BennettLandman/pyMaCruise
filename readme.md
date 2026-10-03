@@ -4,32 +4,30 @@ Python-native implementation of the MaCRUISE cortical segmentation workflow. The
 
 [plan.md](plan.md) is the detailed, step-by-step port and validation plan. This README keeps only the current project status and stable project guidance; historical validation reports remain under [docs/reports](docs/reports/).
 
-## Current status — 2026-10-02
+## Current status — 2026-10-03
 
-**The restartable synthetic base run completes every stage, but TOADS convergence remains open.** `pymacruise base-run` composes ANTsPy N4 → registered TOADS → Dura → second TOADS → MaSeg cleanup → ACE/GVF/TGDM → MaSeg refinement. The command below wrote `inner.nii.gz`, `central.nii.gz`, `outer.nii.gz`, `SEG_refine.nii.gz`, the rule summary, stage logs, and `run.json`; all six stages passed their checks. A `--resume` rerun verified all six and skipped recomputation. The manifest keeps both two-iteration TOADS stages marked capped and `converged=false`.
+**The synthetic base MaCRUISE route now completes and resumes on a folded phantom derived from the bundled VandyCRUISE atlas.** All six stage checks pass, all generated NIfTI outputs are RAS, and a second invocation verifies/skips all stages. The manifest correctly says the route is not converged because both TOADS passes were capped at two iterations. This is synthetic integration evidence, not whole-workflow Java equivalence or real-data validation.
 
-**Runnable synthetic command** (from repository root; expected inputs are committed fixtures):
+**Runnable synthetic command** (from repository root):
 
 ```bash
 ./.venv/bin/pymacruise base-run \
-  --t1 tests/data/synthetic/toads_registered_first_iteration_cycle/t1.nii.gz \
-  --brain-mask tests/data/synthetic/toads_registered_first_iteration_cycle/brain-mask.nii.gz \
-  --maseg tests/data/synthetic/base_workflow/maseg.nii.gz \
-  --atlas-descriptor tests/data/synthetic/toads_registered_field_refit/atlas-11.txt \
-  --output-dir build/synthetic-base-run \
+  --t1 tests/data/synthetic/toads_downsampled_vandy_atlas/t1.nii.gz \
+  --brain-mask tests/data/synthetic/toads_downsampled_vandy_atlas/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/toads_downsampled_vandy_atlas/maseg.nii.gz \
+  --atlas-descriptor tests/data/synthetic/toads_downsampled_vandy_atlas/atlas.txt \
+  --output-dir build/downsampled-vandy-base-run \
   --registration-levels 1 --registration-iterations 1 \
   --registration-max-iterations 1 --toads-iterations 2 \
   --dura-iterations 1 --crop-edge-width 2 \
   --ace-diffusion-iterations 1 --tgdm-iterations 1
 ```
 
-The runner's output is a synthetic integration artifact, not an accepted segmentation or whole-workflow equivalence claim. See the [restartable base-run report](docs/reports/restartable-base-workflow-synthetic-2026-10-02.md).
+Ten TOADS iterations on the same 36×45×34 synthetic atlas case reduce the objective from 100.35 to 58.32, but the terminal energy ratio is 0.0181 (threshold `1e-4`), so convergence remains open. The full source-atlas-cap experiment is running. A restart test also found and fixed recovery from orphaned attempt directories. See the [folded-atlas integration report](docs/reports/toads-folded-vandy-atlas-base-integration-2026-10-03.md) and [earlier compact source-runtime comparison](docs/reports/toads-vandycruise-synthetic-runtime-2026-10-02.md).
 
-**TOADS convergence blocker:** the selected wrapper parameters now come from the source contract: `relation_limit=3`, optimized CSF/GM/WM factors from the atlas (ones if omitted), `prior_scale=0.2`, `prior_factor=0.5`, and `doGrowing=true`. Java and Python agree on the synthetic fixture's registration shapes, closest labels, segmentation, centroids, class deviations, and first exact-pass energies; first-pass memberships differ by at most `3.4e-6`. The source-aligned Python run then becomes unstable: 50 cycles took 449.4s, the objective exceeded `10^12`, and the capped terminal ratio was `0.87327`. The Java compact-atlas harness reaches NaN by iteration 48. This is a real instability signal for the reduced synthetic atlas, but it does not establish whether the full production atlas workflow converges. The base CLI can execute and resume with its manifest/stage checks, but its short capped run does not establish acceptance. See the [source-runtime probe](docs/reports/toads-vandycruise-synthetic-runtime-2026-10-02.md).
+**Focused validation on `7fb4886`:** `./.venv/bin/pytest -q tests/test_base_workflow_restartable.py tests/test_toads_downsampled_vandy_atlas_fixture.py` → **3 passed in 74.06s**. The last full-suite run remains **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings** on `f3b874b`; it has not been rerun for the current TOADS/base-workflow changes. No real MRI validation was done for this change.
 
-**Latest full suite:** `./.venv/bin/pytest -q` → **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,213.79s** on tested commit `f3b874b`; see [the full-suite report](docs/reports/full-pytest-2026-10-02-toads-kernel-optimization.md). It includes the restartable synthetic base workflow, exact scalar-oracle parity for relation factors, Java-referenced tissue-energy outputs, and the Python-only state trace. It is not whole-workflow Java equivalence or real-data validation.
-
-**Next integration milestone:** diagnose the post-iteration divergence on a more realistic synthetic atlas with cortex-like folded structure and the source atlas’s priors; then optimize the measured 6–7s exact membership pass per cycle without loosening stopping criteria. Only after the synthetic base run is restartable and converged will plus resume. Synthetic integration, source matches on component states, later-loop source divergence, and real-data validation remain separate evidence categories. Latest full suite: `1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings` on `f3b874b`; current focused checks cover the TOADS parameter/trace changes and restartable base workflow.
+**Next integration milestone:** finish the 50-iteration atlas-derived synthetic trace; reduce membership/registration runtime without changing convergence rules; then run the base route with TOADS convergence reached before advancing plus. Keep synthetic integration, component source matches, whole-workflow source evidence, and real-data validation distinct.
 
 Test totals and checklist progress are evidence bookkeeping, not measures of workflow completion. See [plan.md](plan.md) for the row-level validation status.
 ## Scope and target
