@@ -58,8 +58,8 @@ native library.
 
 ## Validation record
 
-- Focused registered-loop and restartable-base tests: **4 passed in 80.77s**;
-  tested implementation commit is recorded in the next project commit.
+- Focused registered-loop and restartable-base tests: **4 passed in 80.77s**
+  on implementation commit `9285095`.
 - Latest full suite before the `prior_scale` config-default correction:
   **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,213.79s**
   on `f3b874b`. A full suite has not been rerun for this small source-parameter
