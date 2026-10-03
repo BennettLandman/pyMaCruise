@@ -79,6 +79,7 @@ def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) 
     assert "registered TOADS segmentation loop complete" in toads_log_text
     assert "registered TOADS iteration 2 complete; energy_ratio=" in toads_log_text
     assert "stop=" in toads_log_text
+    assert "elapsed_seconds=" in toads_log_text
     for stage_name in ("toads-first", "toads-second"):
         stop = manifest["stages"][stage_name]["toads_stop"]
         assert stop["iterations"] == 2

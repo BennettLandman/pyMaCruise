@@ -9,6 +9,7 @@ Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Any, Callable
 
 import numpy as np
@@ -142,6 +143,7 @@ def run_registered_toads_loop(
         "prior_coefficient": config.prior_coefficient,
         "prior_scale": config.prior_scale,
     }
+    phase_started = time.perf_counter()
     startup = compute_registered_toads_unity_field_startup(
         alignment_run,
         **membership_options,
@@ -150,7 +152,12 @@ def run_registered_toads_loop(
         record_thinning_items=config.record_thinning_items,
     )
     if progress_callback is not None:
-        progress_callback("registered-loop unity-field thinning startup complete")
+        elapsed = time.perf_counter() - phase_started
+        progress_callback(
+            "registered-loop unity-field thinning startup complete; "
+            f"elapsed_seconds={elapsed:.3f}"
+        )
+    phase_started = time.perf_counter()
     first_exact = continue_registered_unity_startup_through_first_exact_iteration(
         alignment_run,
         startup,
@@ -160,7 +167,12 @@ def run_registered_toads_loop(
         **membership_options,
     )
     if progress_callback is not None:
-        progress_callback("first exact-membership iteration complete")
+        elapsed = time.perf_counter() - phase_started
+        progress_callback(
+            "first exact-membership iteration complete; "
+            f"elapsed_seconds={elapsed:.3f}"
+        )
+    phase_started = time.perf_counter()
     first_cycle = continue_registered_first_exact_iteration_through_next_thinning(
         alignment_run,
         first_exact,
@@ -179,7 +191,11 @@ def run_registered_toads_loop(
         progress_callback=progress_callback,
     )
     if progress_callback is not None:
-        progress_callback("first registered cycle thinning complete")
+        elapsed = time.perf_counter() - phase_started
+        progress_callback(
+            "first registered cycle thinning complete; "
+            f"elapsed_seconds={elapsed:.3f}"
+        )
     exact_iterations: list[Any] = [first_exact] if config.retain_iteration_history else []
     registered_cycles: list[Any] = [first_cycle] if config.retain_iteration_history else []
 
@@ -239,11 +255,14 @@ def run_registered_toads_loop(
         )
         if progress_callback is not None:
             iteration_control = next_cycle.registered_iteration.branch.control
+            elapsed = time.perf_counter() - phase_started
             progress_callback(
                 f"registered TOADS iteration {next_iteration} complete; "
                 f"energy_ratio={float(iteration_control.energy_ratio):.9g}, "
-                f"stop={str(bool(iteration_control.stop)).lower()}"
+                f"stop={str(bool(iteration_control.stop)).lower()}, "
+                f"elapsed_seconds={elapsed:.3f}"
             )
+        phase_started = time.perf_counter()
         if config.retain_iteration_history:
             exact_iterations.append(next_exact)
             registered_cycles.append(next_cycle)
