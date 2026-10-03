@@ -21,6 +21,95 @@ from .toads_math import (
 )
 
 
+def _membership_update_kernel(
+    class_energy: NDArray[np.float32],
+    initial: NDArray[np.float32],
+    inverse_prior: NDArray[np.float32],
+    objective_prior: NDArray[np.float32],
+    factors: NDArray[np.float32],
+    suppressed: NDArray[np.bool_],
+    smooth_prior: NDArray[np.float32],
+    smooth: np.float32,
+) -> tuple[NDArray[np.float32], NDArray[np.float32], np.float32]:
+    """Source-ordered float32 Gauss-Seidel sweep, suitable for Numba JIT."""
+    updated = initial.copy()
+    spatial = class_energy.shape[:3]
+    classes = class_energy.shape[3]
+    denominator_map = np.zeros(spatial, dtype=np.float32)
+    objective = np.float32(0.0)
+    threshold, reciprocal_cap = np.float32(1.0e-10), np.float32(1.0e10)
+    nx, ny, nz = spatial
+    for x in range(1, nx - 1):
+        for y in range(1, ny - 1):
+            for z in range(1, nz - 1):
+                denominator = np.float32(0.0)
+                objective_at = np.zeros(classes, dtype=np.float32)
+                for class_index in range(classes):
+                    if suppressed[x, y, z, class_index]:
+                        updated[x, y, z, class_index] = np.float32(0.0)
+                        continue
+                    num = class_energy[x, y, z, class_index]
+                    objective_value = num
+                    if smooth > np.float32(0.0):
+                        neighbor_sum = np.float32(0.0)
+                        for dx, dy, dz in (
+                            (1, 0, 0), (-1, 0, 0), (0, 1, 0),
+                            (0, -1, 0), (0, 0, 1), (0, 0, -1),
+                        ):
+                            for other in range(classes):
+                                if other == class_index:
+                                    continue
+                                value = updated[x + dx, y + dy, z + dz, other]
+                                neighbor_sum = np.float32(
+                                    neighbor_sum + np.float32(value * value)
+                                )
+                        increment = np.float32(
+                            np.float32(smooth_prior[class_index] * smooth) * neighbor_sum
+                        )
+                        num = np.float32(num + increment)
+                        objective_increment = np.float32(
+                            np.float32(np.float32(0.5) * smooth_prior[class_index]) * smooth
+                        )
+                        objective_increment = np.float32(objective_increment * neighbor_sum)
+                        objective_value = np.float32(objective_value + objective_increment)
+                    num = np.float32(num + inverse_prior[x, y, z, class_index])
+                    objective_value = np.float32(
+                        objective_value + objective_prior[x, y, z, class_index]
+                    )
+                    reciprocal = (
+                        np.float32(np.float32(1.0) / num)
+                        if num > threshold else reciprocal_cap
+                    )
+                    value = np.float32(factors[x, y, z, class_index] * reciprocal)
+                    updated[x, y, z, class_index] = value
+                    denominator = np.float32(denominator + value)
+                    objective_at[class_index] = objective_value
+                denominator_map[x, y, z] = denominator
+                if denominator > np.float32(0.0):
+                    for class_index in range(classes):
+                        updated[x, y, z, class_index] = np.float32(
+                            updated[x, y, z, class_index] / denominator
+                        )
+                        contribution = np.float32(
+                            objective_at[class_index] * updated[x, y, z, class_index]
+                        )
+                        contribution = np.float32(
+                            contribution * updated[x, y, z, class_index]
+                        )
+                        objective = np.float32(objective + contribution)
+    return updated, denominator_map, objective
+
+
+try:
+    from numba import njit
+except ImportError:  # Small source-comparison fixtures can run without acceleration.
+    _compiled_membership_update = None
+else:
+    _compiled_membership_update = njit(cache=True, fastmath=False)(
+        _membership_update_kernel
+    )
+
+
 DEFAULT_ATLAS_CLASS_TYPES = (
     "MASK",
     "OPTIMIZED_CSF", "OPTIMIZED_CSF",
@@ -181,68 +270,15 @@ def toads_default_atlas_membership_pass(
     if not np.isfinite(prior_scale):
         raise ValueError("prior_factor must be finite")
 
-    updated = initial.copy()
-    denominator_map = np.zeros(spatial, dtype=np.float32)
-    objective = np.float32(0.0)
-    threshold, reciprocal_cap = np.float32(1.0e-10), np.float32(1.0e10)
-    offsets = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
-    nx, ny, nz = spatial
-    for x in range(1, nx - 1):
-        for y in range(1, ny - 1):
-            for z in range(1, nz - 1):
-                denominator = np.float32(0.0)
-                objective_at = np.zeros(classes, dtype=np.float32)
-                for class_index in range(classes):
-                    # computeExactMemberships() skips data and updates for
-                    # prior-only classes with zero shape.
-                    if suppressed[x, y, z, class_index]:
-                        updated[x, y, z, class_index] = np.float32(0.0)
-                        continue
-                    num = class_energy[x, y, z, class_index]
-                    objective_value = num
-                    if smooth > np.float32(0.0):
-                        neighbor_sum = np.float32(0.0)
-                        for dx, dy, dz in offsets:
-                            for other in range(classes):
-                                if other == class_index:
-                                    continue
-                                value = updated[x + dx, y + dy, z + dz, other]
-                                neighbor_sum = np.float32(
-                                    neighbor_sum + np.float32(value * value)
-                                )
-                        increment = np.float32(
-                            np.float32(smooth_prior[class_index] * smooth) * neighbor_sum
-                        )
-                        num = np.float32(num + increment)
-                        objective_increment = np.float32(
-                            np.float32(np.float32(0.5) * smooth_prior[class_index]) * smooth
-                        )
-                        objective_increment = np.float32(objective_increment * neighbor_sum)
-                        objective_value = np.float32(objective_value + objective_increment)
-                    num = np.float32(num + inverse_prior[x, y, z, class_index])
-                    objective_value = np.float32(
-                        objective_value + objective_prior[x, y, z, class_index]
-                    )
-                    reciprocal = (
-                        np.float32(np.float32(1.0) / num)
-                        if num > threshold else reciprocal_cap
-                    )
-                    value = np.float32(factors[x, y, z, class_index] * reciprocal)
-                    updated[x, y, z, class_index] = value
-                    denominator = np.float32(denominator + value)
-                    objective_at[class_index] = objective_value
-                denominator_map[x, y, z] = denominator
-                if denominator > np.float32(0.0):
-                    for class_index in range(classes):
-                        updated[x, y, z, class_index] = np.float32(
-                            updated[x, y, z, class_index] / denominator
-                        )
-                        contribution = np.float32(
-                            objective_at[class_index] * updated[x, y, z, class_index]
-                        )
-                        contribution = np.float32(
-                            contribution * updated[x, y, z, class_index]
-                        )
-                        objective = np.float32(objective + contribution)
-
+    update_kernel = _compiled_membership_update or _membership_update_kernel
+    updated, denominator_map, objective = update_kernel(
+        class_energy,
+        initial,
+        inverse_prior,
+        objective_prior,
+        factors,
+        suppressed,
+        smooth_prior,
+        smooth,
+    )
     return ToadsDefaultAtlasMembershipPass(class_energy, updated, denominator_map, objective)
