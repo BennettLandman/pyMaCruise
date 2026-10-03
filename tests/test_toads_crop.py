@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from pymacruise.toads_crop import (
+    _compiled_topology_support_bounds,
     crop_toads_images,
     find_toads_crop_bounds,
     toads_rotation_matrix,
@@ -62,6 +63,8 @@ def test_toads_crop_and_topology_match_source_formula_reference() -> None:
         background_label=1,
     )
     assert list(bounds) == case["bounds_inclusive"]
+    if _compiled_topology_support_bounds is not None:
+        assert _compiled_topology_support_bounds.signatures
 
     cropped = crop_toads_images(
         images,

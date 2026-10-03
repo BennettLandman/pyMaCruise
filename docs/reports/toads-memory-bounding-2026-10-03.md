@@ -135,3 +135,17 @@ Peak sampled RSS over the complete run was **6.615 GB**, below the 16 GB watchdo
 Observed TOADS phase telemetry: TOADS-first stage completed in **681.7 s** and TOADS-second in **649.0 s**. In each registered update, after the first exact-membership pass, the first atlas registration took **3.2 s**; the growth queues processed **2,052,818 events in 54.4 s** (first pass) and **1,937,385 events in about 35 s** (second pass). This contrasts with earlier whole-brain attempts stalled during repeated per-item whole-volume validation. Whole-run wall time was not recorded by the runner and is left unspecified.
 
 The latest focused checks on the implementation were: JIT exercised in selected Java-reference membership tests (**13 passed**); ordered centroid/statistics references (**26 passed in 6.71 s**); multichannel registration-handoff regressions (**20 passed in 17.86 s**); progress-telemetry plus registered-cycle/base restart regressions (**11 passed in 48.63 s**); and growth queue references after one-time preflight (**3 passed in 0.97 s**). Implementation commits are `139e238`, `8aea116`, `75f5e8b`, and `17fc960`. No full suite has been run after these changes; the older full-suite result does not validate this exact implementation. The next integration work is to match TOADS source initialization grids with Java, establish convergence without smoke caps, then carry that resolved base route into plus workflow. Real-MRI validation remains deferred.
+
+### Follow-up: compile the atlas-support bounds scan
+
+The brain-size run showed that each TOADS start spent 125–131 seconds preparing cropped intensities and initial memberships after atlas arrays loaded. Code inspection found `find_toads_crop_bounds` used `numpy.argwhere` to allocate all foreground coordinates and then mapped them one at a time in Python. That scalar coordinate transform is now an `njit(cache=True, fastmath=False)` kernel with explicit float32 rounding at the same coordinate and matrix-accumulation steps; the Python implementation remains available when Numba is absent.
+
+Focused Java crop-geometry validation after this change:
+
+```bash
+./.venv/bin/pytest -q tests/test_toads_crop.py
+```
+
+Result: **4 passed in 1.13 s**. The test asserts the compiled dispatcher is exercised when Numba is available, and the pinned Java harness crop bounds remain exact. A supplementary 72³ folded synthetic atlas mask benchmark produced identical bounds from compiled and Python kernels: **0.0013 s compiled versus 0.5324 s Python (419×)** after compilation. This is a microbenchmark, not a brain-resolution rerun; no whole-run speedup is claimed. The benchmark array was generated in memory and was not saved as a test fixture.
+
+This code change postdates the completed workflow evidence above, which remains tied to `17fc960`. The next bounded integration check should repeat TOADS startup on the `(172,216,164)` synthetic inputs and verify stage outputs/hashes while measuring the effect of the crop scan change before raising the TOADS iteration cap.

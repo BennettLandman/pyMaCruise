@@ -19,6 +19,66 @@ from dataclasses import dataclass
 import numpy as np
 
 
+def _topology_support_bounds_kernel(
+    bounds: np.ndarray,
+    atlas: np.ndarray,
+    transform: np.ndarray,
+    rotation: np.ndarray,
+    template_resolution: np.ndarray,
+    image_centers: np.ndarray,
+    image_resolution: np.ndarray,
+    orientation_signs: np.ndarray,
+    background_label: int,
+) -> np.ndarray:
+    """Expand image bounds to include source-mapped atlas support.
+
+    Keep each coordinate intermediate float32, matching the selected Java
+    mapping arithmetic while allowing the atlas scan to run under Numba.
+    """
+    nx, ny, nz = atlas.shape
+    x_center = np.float32(nx / 2.0)
+    y_center = np.float32(ny / 2.0)
+    z_center = np.float32(nz / 2.0)
+    for x in range(nx):
+        for y in range(ny):
+            for z in range(nz):
+                if atlas[x, y, z] <= background_label:
+                    continue
+                atlas_delta = (
+                    np.float32(np.float32(x - x_center) * template_resolution[0] - transform[3]),
+                    np.float32(np.float32(y - y_center) * template_resolution[1] - transform[4]),
+                    np.float32(np.float32(z - z_center) * template_resolution[2] - transform[5]),
+                )
+                mapped = np.empty(3, dtype=np.float32)
+                for axis in range(3):
+                    total = np.float32(0.0)
+                    for row in range(3):
+                        product = np.float32(rotation[row, axis] * atlas_delta[row])
+                        total = np.float32(total + product)
+                    coordinate = np.float32(total * orientation_signs[axis])
+                    coordinate = np.float32(coordinate / image_resolution[axis])
+                    mapped[axis] = np.float32(coordinate + image_centers[axis])
+                for axis in range(3):
+                    low = int(np.floor(mapped[axis]))
+                    high = int(np.ceil(mapped[axis]))
+                    low_index, high_index = 2 * axis, 2 * axis + 1
+                    if low < bounds[low_index]:
+                        bounds[low_index] = low
+                    if high > bounds[high_index]:
+                        bounds[high_index] = high
+    return bounds
+
+
+try:
+    from numba import njit
+except ImportError:  # Keep small source-comparison fixtures usable without Numba.
+    _compiled_topology_support_bounds = None
+else:
+    _compiled_topology_support_bounds = njit(cache=True, fastmath=False)(
+        _topology_support_bounds_kernel
+    )
+
+
 @dataclass(frozen=True)
 class ToadsCropResult:
     """Padded image, inclusive source bounds, and post-crop rigid transform."""
@@ -108,29 +168,20 @@ def find_toads_crop_bounds(
                 bounds[2 * axis + 1] = max(bounds[2 * axis + 1], int(points[:, axis].max()))
 
     rot = toads_rotation_matrix(trans[:3])
-    x_center, y_center, z_center = (np.float32(size / 2.0) for size in atlas.shape)
-    image_centers = (np.float32(nx / 2.0), np.float32(ny / 2.0), np.float32(nz / 2.0))
-    for x, y, z in np.argwhere(atlas > background_label):
-        atlas_delta = np.asarray(
-            [
-                np.float32((x - x_center) * template_res[0] - trans[3]),
-                np.float32((y - y_center) * template_res[1] - trans[4]),
-                np.float32((z - z_center) * template_res[2] - trans[5]),
-            ], dtype=np.float32,
-        )
-        # Java's computeImageCoordinates multiplies by rotation columns here.
-        mapped = np.empty(3, dtype=np.float32)
-        for axis in range(3):
-            total = np.float32(0.0)
-            for row in range(3):
-                total = np.float32(total + np.float32(rot[row, axis] * atlas_delta[row]))
-            mapped[axis] = np.float32(total * signs[axis] / image_res[axis] + image_centers[axis])
-        for axis, coord in enumerate(mapped):
-            low_index, high_index = 2 * axis, 2 * axis + 1
-            low = int(np.floor(coord))
-            high = int(np.ceil(coord))
-            bounds[low_index] = min(bounds[low_index], low)
-            bounds[high_index] = max(bounds[high_index], high)
+    image_centers = np.asarray((nx / 2.0, ny / 2.0, nz / 2.0), dtype=np.float32)
+    bound_array = np.asarray(bounds, dtype=np.int64)
+    kernel = _compiled_topology_support_bounds or _topology_support_bounds_kernel
+    bounds = kernel(
+        bound_array,
+        atlas,
+        trans,
+        rot,
+        template_res,
+        image_centers,
+        image_res,
+        signs,
+        int(background_label),
+    ).tolist()
 
     if any(bounds[2 * axis] > bounds[2 * axis + 1] for axis in range(3)):
         raise ValueError("TOADS crop has no image or topology support")
