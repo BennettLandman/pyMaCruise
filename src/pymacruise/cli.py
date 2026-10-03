@@ -34,7 +34,11 @@ from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
 from pymacruise.toads_cruise_preparation import prepare_toads_cruise_inputs
 from pymacruise.toads_cruise_core import run_toads_cruise_core
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
-from pymacruise.toads_atlas import load_toads_atlas, load_toads_intensity_variance_factors
+from pymacruise.toads_atlas import (
+    load_toads_atlas,
+    load_toads_intensity_variance_factors,
+    load_toads_optimized_factors,
+)
 from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
 from pymacruise.volume_ops import calculate_volume
 from pymacruise.workflow import load_workflow_config_file, preflight_workflow
@@ -244,7 +248,13 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument("--convergence-threshold", type=float, default=1e-4)
     toads.add_argument("--relation-limit", type=int, default=3)
     toads.add_argument("--maximum-distance", type=float, default=1e-4)
-    toads.add_argument("--category-exponents", type=float, nargs=3, default=[2.0, 2.0, 2.0])
+    toads.add_argument(
+        "--category-exponents",
+        type=float,
+        nargs=3,
+        default=None,
+        help="override atlas CSF/GM/WM optimized factors (default: use atlas values)",
+    )
     _add_provenance_option(toads)
 
     surface = commands.add_parser("surface-extract", help="extract a RAS-mm level-set surface as VTK")
@@ -426,7 +436,12 @@ def main(argv: list[str] | None = None) -> int:
             minimum_lambda=1e-3,
         )
         class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
-        category_exponents = np.asarray([args.category_exponents], dtype=np.float32)
+        if args.category_exponents is None:
+            category_exponents = load_toads_optimized_factors(
+                atlas.descriptor, [args.modality]
+            )
+        else:
+            category_exponents = np.asarray([args.category_exponents], dtype=np.float32)
         exponent_by_class = np.empty((1, len(atlas.structures)), dtype=np.float32)
         for index, structure in enumerate(atlas.structures):
             topology = structure.topology.lower()
@@ -499,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                 "registration_iterations": args.registration_iterations,
                 "maximum_iterations": args.maximum_iterations,
                 "maximum_distance": args.maximum_distance,
-                "category_exponents": args.category_exponents,
+                "category_exponents": category_exponents[0].tolist(),
             },
             outputs=outputs,
         )

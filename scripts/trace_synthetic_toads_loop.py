@@ -21,7 +21,11 @@ import numpy as np
 
 from pymacruise.image_io import nifti_ras_on_reference, normalize_image_to_ras
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
-from pymacruise.toads_atlas import load_toads_atlas, load_toads_intensity_variance_factors
+from pymacruise.toads_atlas import (
+    load_toads_atlas,
+    load_toads_intensity_variance_factors,
+    load_toads_optimized_factors,
+)
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
 import pymacruise.toads_registered_loop as registered_loop
 
@@ -80,7 +84,7 @@ def main() -> int:
     parser.add_argument("--registration-iterations", type=int, default=1)
     parser.add_argument("--loop-registration-iterations", type=_positive_int, default=1)
     parser.add_argument("--padding", type=int, default=2)
-    parser.add_argument("--relation-limit", type=_positive_int, default=1)
+    parser.add_argument("--relation-limit", type=_positive_int, default=3)
     parser.add_argument("--maximum-distance", type=float, default=1e-4)
     parser.add_argument(
         "--intensity-variant",
@@ -169,9 +173,15 @@ def main() -> int:
         )
     alignment_seconds = time.perf_counter() - start
 
-    category_exponents = np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32)
+    category_exponents = load_toads_optimized_factors(ATLAS, [alignment.modality])
+    class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
     exponent_by_class = np.asarray(
-        [[1.0 if item.topology.lower() == "mask" else 2.0 for item in atlas.structures]],
+        [[
+            1.0
+            if item.topology.lower() == "mask"
+            else category_exponents[0, class_indices[item.topology.lower()]]
+            for item in atlas.structures
+        ]],
         dtype=np.float32,
     )
     config = registered_loop.ToadsRegisteredLoopConfig(
@@ -216,6 +226,12 @@ def main() -> int:
         f"loop_registration_iterations:{args.loop_registration_iterations},relation_limit:{args.relation_limit}"
     )
     print(f"probe.intensity_variant={args.intensity_variant} shape_variant={args.shape_variant}")
+    print(
+        "source_parameters="
+        f"category_exponents:{category_exponents.tolist()},prior_factor:{config.prior_factor:g},"
+        f"prior_scale:{config.prior_scale:g},prior_coefficient:{config.prior_coefficient:g},"
+        f"smoothing:{config.smoothing:.9g},relation_limit:{config.relation_limit}"
+    )
     print(f"elapsed.alignment_seconds={alignment_seconds:.3f}")
     print(f"elapsed.loop_startup_seconds={sum(stage_timings.get('compute_registered_toads_unity_field_startup', [])):.3f}")
     print(f"elapsed.loop_total_seconds={loop_seconds:.3f}")

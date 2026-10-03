@@ -397,6 +397,64 @@ def load_toads_intensity_variance_factors(
     return result
 
 
+def load_toads_optimized_factors(
+    descriptor_path: str | Path,
+    modalities: tuple[str, ...] | list[str],
+) -> np.ndarray:
+    """Return source optimized CSF/GM/WM exponents for each modality.
+
+    ``MultipleToadDeformableAtlas`` initializes all three exponents to 1.0,
+    then reads the optional ``Optimized factors`` descriptor section. The
+    selected ``AlgorithmMultipleToads`` wrapper passes those values to its
+    CSF/GM/WM ``PowerTable`` instances. Missing rows preserve the Java ones.
+    """
+    descriptor = Path(descriptor_path).resolve()
+    if not descriptor.is_file():
+        raise ToadsAtlasError(f"Missing TOADS atlas descriptor: {descriptor}")
+    try:
+        lines = descriptor.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ToadsAtlasError(f"Cannot read TOADS atlas descriptor {descriptor}: {exc}") from exc
+
+    modality_ids = tuple(dict.fromkeys(_MODALITY_ALIASES.values()))
+    profiles = {modality: np.ones(3, dtype=np.float32) for modality in modality_ids}
+    section = next(
+        (index for index, line in enumerate(lines) if line.startswith("Optimized factors")),
+        None,
+    )
+    if section is not None:
+        for line in lines[section + 1 :]:
+            fields = line.split()
+            if not fields:
+                continue
+            modality = _MODALITY_ALIASES.get(fields[0])
+            if modality is None:
+                break
+            if len(fields) != 4:
+                raise ToadsAtlasError(
+                    f"TOADS optimized factor row {fields[0]} has {len(fields) - 1} values; expected 3"
+                )
+            try:
+                values = np.asarray(fields[1:], dtype=np.float32)
+            except ValueError as exc:
+                raise ToadsAtlasError(
+                    f"Invalid TOADS optimized factors in profile {fields[0]}"
+                ) from exc
+            if not np.isfinite(values).all() or np.any(values <= 0):
+                raise ToadsAtlasError(
+                    f"TOADS optimized factors in profile {fields[0]} must be finite and positive"
+                )
+            profiles[modality] = values
+
+    rows: list[np.ndarray] = []
+    for requested in modalities:
+        modality = _MODALITY_ALIASES.get(requested)
+        if modality is None:
+            raise ToadsAtlasError(f"Unsupported TOADS image modality: {requested}")
+        rows.append(profiles[modality])
+    return np.stack(rows, axis=0)
+
+
 def load_toads_lesion_priors(
     descriptor_path: str | Path,
     modalities: tuple[str, ...] | list[str],

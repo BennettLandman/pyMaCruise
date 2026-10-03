@@ -27,12 +27,16 @@ def test_python_only_toads_state_trace_schema_and_deterministic_summaries() -> N
     assert trace["do_growing"] is True
     assert len(trace["iterations"]) == 2
     assert trace["padding"] == 2
+    assert trace["relation_limit"] == 3
     assert trace["prior_factor"] == 0.5
     assert trace["prior_scale"] == 0.2
+    assert trace["category_exponents"] == [[1.0, 1.0, 1.0]]
     assert trace["registration_memberships"]["pre_registration"]["sha256"]
     assert trace["registration_memberships"]["post_registration"]["sha256"]
     assert trace["initial_state"]["centroids"]["shape"] == [1, 11]
     assert trace["initial_state"]["class_standard_deviations"]["shape"] == [1, 11]
+    assert trace["membership_inputs"]["transformed_shape_priors"]["shape"] == [19, 17, 15, 11]
+    assert trace["membership_inputs"]["closest_labels"]["shape"] == [19, 17, 15, 4]
     first = trace["iterations"][0]
     assert first["membership"]["objective_float32_bits"].startswith("0x")
     assert first["membership"]["memberships"]["sha256"]

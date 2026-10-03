@@ -19,7 +19,11 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.toads_alignment_startup import register_toads_from_atlas_assets
-from pymacruise.toads_atlas import load_toads_atlas, load_toads_intensity_variance_factors
+from pymacruise.toads_atlas import (
+    load_toads_atlas,
+    load_toads_intensity_variance_factors,
+    load_toads_optimized_factors,
+)
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
     run_registered_toads_loop,
@@ -150,12 +154,17 @@ def _registered_cycle_summary(
     }
 
 
-def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]:
+def build_trace(
+    maximum_iterations: int = 4,
+    padding: int = 2,
+    arrays_output: Path | None = None,
+    relation_limit: int = 3,
+) -> dict[str, Any]:
     """Run a deterministic low-cost synthetic trace through the iteration cap."""
     if maximum_iterations < 2:
         raise ValueError("maximum_iterations must be at least 2")
-    if padding < 0:
-        raise ValueError("padding must be non-negative")
+    if padding < 0 or relation_limit < 1:
+        raise ValueError("padding must be nonnegative and relation_limit must be positive")
     t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     brain_mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
     atlas = load_toads_atlas(ATLAS)
@@ -166,13 +175,19 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         levels=1,
         max_iterations=1,
         padding=padding,
-        relation_limit=1,
+        relation_limit=relation_limit,
         energy_tolerance=1e-6,
         minimum_lambda=1e-3,
     )
-    category_exponents = np.asarray([[2.0, 2.0, 2.0]], dtype=np.float32)
+    category_exponents = load_toads_optimized_factors(ATLAS, [alignment.modality])
+    class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
     exponent_by_class = np.asarray(
-        [[1.0 if item.topology.lower() == "mask" else 2.0 for item in atlas.structures]],
+        [[
+            1.0
+            if item.topology.lower() == "mask"
+            else category_exponents[0, class_indices[item.topology.lower()]]
+            for item in atlas.structures
+        ]],
         dtype=np.float32,
     )
     config = ToadsRegisteredLoopConfig(
@@ -189,7 +204,7 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         prior_coefficient=2.0 / len(atlas.structures),
         maximum_iterations=maximum_iterations,
         convergence_threshold=0.0,
-        relation_limit=1,
+        relation_limit=relation_limit,
         do_growing=True,
         maximum_polynomial_degree=3,
         maximum_distance=1e-4,
@@ -218,6 +233,23 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         registered_loop.continue_registered_unity_startup_through_first_exact_iteration = first_exact_original
         registered_loop.continue_registered_cycle_through_following_exact_iteration = following_exact_original
     startup = result.startup
+    if arrays_output is not None:
+        arrays_output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            arrays_output,
+            transformed_shape_priors=np.asarray(alignment.transformed_shape_priors),
+            closest_labels=np.asarray(alignment.relation_state.closest_labels),
+            segmentation=np.asarray(alignment.segmentation_constructor.segmentation),
+            recropped_images_channel_first=np.asarray(
+                alignment.template_refresh.recropped_images
+            ),
+            startup_memberships=np.asarray(
+                startup.statistics_membership.membership_pass.memberships
+            ),
+            first_exact_memberships=np.asarray(
+                result.exact_iterations[0].membership_pass.memberships
+            ),
+        )
     initial_thinning = startup.thinning
     exact_cycles = [
             _registered_cycle_summary(exact, cycle, index, field_snapshots.get(index))
@@ -232,6 +264,7 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         "fixture": str(FIXTURE.relative_to(ROOT)),
         "shape": list(t1.shape),
         "padding": padding,
+        "relation_limit": relation_limit,
         "registration_memberships": {
             "pre_registration": _array_summary(
                 alignment.alignment.startup.initial_memberships
@@ -240,9 +273,26 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
                 alignment.segmentation_initialization.memberships
             ),
         },
+        "membership_inputs": {
+            "transformed_shape_priors": _array_summary(
+                alignment.transformed_shape_priors
+            ),
+            "closest_labels": _array_summary(
+                alignment.relation_state.closest_labels
+            ),
+            "segmentation": _array_summary(
+                alignment.segmentation_constructor.segmentation
+            ),
+            "recropped_images_channel_first": _array_summary(
+                alignment.template_refresh.recropped_images
+            ),
+        },
         "iteration_limit": maximum_iterations,
         "convergence_threshold": 0.0,
         "do_growing": config.do_growing,
+        "category_exponents": np.asarray(config.category_exponents).tolist(),
+        "smoothing": config.smoothing,
+        "prior_coefficient": config.prior_coefficient,
         "prior_factor": config.prior_factor,
         "prior_scale": config.prior_scale,
         "stage_order": list(startup.stage_order),
@@ -295,14 +345,30 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--maximum-iterations", type=int, default=4)
     parser.add_argument("--padding", type=int, default=2)
+    parser.add_argument("--relation-limit", type=int, default=3)
+    parser.add_argument(
+        "--arrays-output",
+        type=Path,
+        default=None,
+        help="optionally save membership input arrays as a compressed NPZ diagnostic",
+    )
     parser.add_argument("--output", type=Path, default=None, help="write JSON here; stdout if omitted")
     args = parser.parse_args()
     if args.maximum_iterations < 2:
         parser.error("--maximum-iterations must be at least 2")
     if args.padding < 0:
         parser.error("--padding must be non-negative")
+    if args.relation_limit < 1:
+        parser.error("--relation-limit must be positive")
     payload = json.dumps(
-        build_trace(args.maximum_iterations, padding=args.padding), indent=2, sort_keys=True
+        build_trace(
+            args.maximum_iterations,
+            padding=args.padding,
+            arrays_output=args.arrays_output,
+            relation_limit=args.relation_limit,
+        ),
+        indent=2,
+        sort_keys=True,
     ) + "\n"
     if args.output is None:
         print(payload, end="")
