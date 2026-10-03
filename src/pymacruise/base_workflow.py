@@ -24,6 +24,24 @@ from pymacruise.cli import main as cli_main
 from pymacruise.image_io import normalize_image_to_ras
 
 
+class _TeeTextIO:
+    """Capture stage output in memory while persisting it as the stage runs."""
+
+    def __init__(self, capture: io.StringIO, log: Any) -> None:
+        self.capture = capture
+        self.log = log
+
+    def write(self, text: str) -> int:
+        self.capture.write(text)
+        written = self.log.write(text)
+        self.log.flush()
+        return written
+
+    def flush(self) -> None:
+        self.capture.flush()
+        self.log.flush()
+
+
 @dataclass(frozen=True)
 class BaseRunOptions:
     registration_levels: int = 1
@@ -305,14 +323,13 @@ def run_base_workflow(
         stdout_buffer, stderr_buffer = io.StringIO(), io.StringIO()
         log_path = stage_dir / "stage.log"
         try:
-            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                cli_main(command_for_dir(command, stage_dir))
-            log_path.write_text(
-                stdout_buffer.getvalue()
-                + ("\n[stderr]\n" if stderr_buffer.getvalue() else "")
-                + stderr_buffer.getvalue(),
-                encoding="utf-8",
-            )
+            with log_path.open("w", encoding="utf-8") as log_stream:
+                with redirect_stdout(_TeeTextIO(stdout_buffer, log_stream)), redirect_stderr(stderr_buffer):
+                    cli_main(command_for_dir(command, stage_dir))
+                if stderr_buffer.getvalue():
+                    log_stream.write("\n[stderr]\n")
+                    log_stream.write(stderr_buffer.getvalue())
+                    log_stream.flush()
             print(stdout_buffer.getvalue(), end="")
             records = _output_records(
                 [*attempt_outputs, log_path], reference,
@@ -352,13 +369,11 @@ def run_base_workflow(
             _write_manifest(manifest_path, manifest)
             print(f"Stage check passed: {name} ({len(records)} outputs)")
         except Exception as exc:
-            log_path.write_text(
-                stdout_buffer.getvalue()
-                + ("\n[stderr]\n" if stderr_buffer.getvalue() else "")
-                + stderr_buffer.getvalue()
-                + f"\n[exception] {type(exc).__name__}: {exc}\n",
-                encoding="utf-8",
-            )
+            with log_path.open("a", encoding="utf-8") as log_stream:
+                if stderr_buffer.getvalue():
+                    log_stream.write("\n[stderr]\n")
+                    log_stream.write(stderr_buffer.getvalue())
+                log_stream.write(f"\n[exception] {type(exc).__name__}: {exc}\n")
             print(stdout_buffer.getvalue(), end="")
             manifest["stages"][name] = {"status": "failed", "attempt": attempts, "error": f"{type(exc).__name__}: {exc}"}
             manifest["history"].append({"stage": name, "attempt": attempts, "status": "failed"})

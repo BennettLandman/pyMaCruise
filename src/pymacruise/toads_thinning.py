@@ -557,68 +557,73 @@ def toads_initialize_thinning_queue(
     boundaries = np.zeros(classes, dtype=np.int32)
     queue = ToadsPriorityHeap4D(nx * ny + ny * nz + nz * nx, "max")
 
-    for x in range(1, nx - 1):
-        for y in range(1, ny - 1):
-            for z in range(1, nz - 1):
-                current = int(labels[x, y, z])
-                skeleton[x, y, z] = np.int16(current)
-                volumes[current] = np.float32(volumes[current] + mems[x, y, z, current])
-                for candidate in range(classes):
-                    available[x, y, z, candidate] = candidate == current
+    # The Java loops visit the complete interior in x/y/z order. Use matching
+    # C-order NumPy traversal for the float32 accumulation; np.add.at does not
+    # regroup repeated class indices, preserving the source's rounding order.
+    interior_labels = labels[1:-1, 1:-1, 1:-1]
+    interior_memberships = mems[1:-1, 1:-1, 1:-1, :]
+    skeleton[1:-1, 1:-1, 1:-1] = interior_labels.astype(np.int16, copy=False)
+    available_interior = available[1:-1, 1:-1, 1:-1, :]
+    available_interior.fill(False)
+    np.put_along_axis(available_interior, interior_labels[..., None], True, axis=-1)
+    current_memberships = np.take_along_axis(
+        interior_memberships, interior_labels[..., None], axis=-1
+    )[..., 0]
+    np.add.at(volumes, interior_labels.ravel(), current_memberships.ravel())
 
-    for x in range(1, nx - 1):
-        for y in range(1, ny - 1):
-            for z in range(1, nz - 1):
-                current = int(labels[x, y, z])
-                for candidate in range(classes):
-                    if current != candidate:
-                        continue
-                    boundary = False
-                    neighbor_count = 0
-                    ni = nj = nl = 0
-                    for i in (-1, 0, 1):
-                        for j in (-1, 0, 1):
-                            for k in (-1, 0, 1):
-                                distance2 = i * i + j * j + k * k
-                                neighbor_label = int(labels[x + i, y + j, z + k])
-                                if distance2 == 1 and neighbor_label != candidate:
-                                    boundary = True
-                                elif distance2 > 0:
-                                    neighbor_count += 1
-                                    ni, nj, nl = x + i, y + j, z + k
-                    if not boundary:
-                        continue
-                    available[x, y, z, candidate] = False
+    # Boundary detection in the source depends only on the six face-neighbors.
+    # Its later 26-neighbor count is at least 20 (the 20 non-face neighbors are
+    # always counted), so the endpoint branch guarded by count == 1 is
+    # unreachable. Extract boundary coordinates in C order to preserve the
+    # Java x/y/z insertion sequence and therefore equal-priority heap behavior.
+    boundary = (
+        (interior_labels != labels[:-2, 1:-1, 1:-1])
+        | (interior_labels != labels[2:, 1:-1, 1:-1])
+        | (interior_labels != labels[1:-1, :-2, 1:-1])
+        | (interior_labels != labels[1:-1, 2:, 1:-1])
+        | (interior_labels != labels[1:-1, 1:-1, :-2])
+        | (interior_labels != labels[1:-1, 1:-1, 2:])
+    )
+    coordinates = np.argwhere(boundary)
+    labels_at_boundary = interior_labels[boundary]
+    available[
+        coordinates[:, 0] + 1,
+        coordinates[:, 1] + 1,
+        coordinates[:, 2] + 1,
+        labels_at_boundary,
+    ] = False
+    boundaries[:] = np.bincount(labels_at_boundary, minlength=classes).astype(np.int32)
 
-                    endpoint = False
-                    if neighbor_count == 1:
-                        neighbor_count = 0
-                        for i in (-1, 0, 1):
-                            for j in (-1, 0, 1):
-                                for k in (-1, 0, 1):
-                                    if i * i + j * j + k * k > 0 and labels[ni + i, nj + j, nl + k] == candidate:
-                                        neighbor_count += 1
-                        endpoint = neighbor_count <= 2
+    boundary_memberships = interior_memberships[boundary]
+    # Java initializes the maximum to zero and updates only on strict greater
+    # comparisons. Clipping only for argmax reproduces its class-zero fallback
+    # when every membership is nonpositive and its first-index tie behavior.
+    nonnegative = np.maximum(boundary_memberships, np.float32(0.0))
+    best_labels = np.argmax(nonnegative, axis=1)
+    # The source uses membership[best] in the ratio even if every class value
+    # is nonpositive and its running maximum therefore remained initialized 0.
+    best_memberships = np.take_along_axis(
+        boundary_memberships, best_labels[:, None], axis=1
+    )[:, 0]
+    rows = np.arange(len(labels_at_boundary))
+    same_as_best = labels_at_boundary == best_labels
+    ratios = np.ones(len(labels_at_boundary), dtype=np.float32)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratios[~same_as_best] = np.asarray(
+            np.asarray(best_memberships[~same_as_best] + zero, dtype=np.float32)
+            / np.asarray(
+                boundary_memberships[rows[~same_as_best], labels_at_boundary[~same_as_best]]
+                + zero,
+                dtype=np.float32,
+            ),
+            dtype=np.float32,
+        )
+        priorities = np.asarray(np.float32(-1.0) / ratios, dtype=np.float32)
+    # For the winning class source sets ratio=1 before computing -1 / ratio.
+    priorities[same_as_best] = np.float32(-1.0)
 
-                    if endpoint:
-                        order = np.float32(-0.0)
-                    else:
-                        best = 0
-                        maximum = np.float32(0.0)
-                        for other in range(classes):
-                            if mems[x, y, z, other] > maximum:
-                                best = other
-                                maximum = mems[x, y, z, other]
-                        if candidate == best:
-                            ratio = np.float32(1.0)
-                        else:
-                            ratio = np.float32(
-                                np.float32(mems[x, y, z, best] + zero)
-                                / np.float32(mems[x, y, z, candidate] + zero)
-                            )
-                        order = np.float32(np.float32(-1.0) / ratio)
-                    queue.add(order, x, y, z, candidate)
-                    boundaries[candidate] += 1
+    for (x, y, z), candidate, order in zip(coordinates, labels_at_boundary, priorities):
+        queue.add(order, int(x) + 1, int(y) + 1, int(z) + 1, int(candidate))
 
     return ToadsThinningQueueInitialization(skeleton, available, volumes, boundaries, queue)
 

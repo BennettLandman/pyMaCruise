@@ -9,7 +9,7 @@ Paper context: Bazin and Pham (2007, 2008), ``docs/papers/toads.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -110,6 +110,8 @@ class ToadsRegisteredLoopResult:
 def run_registered_toads_loop(
     alignment_run: ToadsAtlasAlignmentRun,
     config: ToadsRegisteredLoopConfig,
+    *,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsRegisteredLoopResult:
     """Execute registered TOADS startup and loop through the selected stop.
 
@@ -147,6 +149,8 @@ def run_registered_toads_loop(
         thinning_limit=config.thinning_limit,
         record_thinning_items=config.record_thinning_items,
     )
+    if progress_callback is not None:
+        progress_callback("registered-loop unity-field thinning startup complete")
     first_exact = continue_registered_unity_startup_through_first_exact_iteration(
         alignment_run,
         startup,
@@ -155,6 +159,8 @@ def run_registered_toads_loop(
         centroid_smoothness=config.centroid_smoothness,
         **membership_options,
     )
+    if progress_callback is not None:
+        progress_callback("first exact-membership iteration complete")
     first_cycle = continue_registered_first_exact_iteration_through_next_thinning(
         alignment_run,
         first_exact,
@@ -171,6 +177,8 @@ def run_registered_toads_loop(
         record_growing_events=config.record_growing_events,
         record_thinning_items=config.record_thinning_items,
     )
+    if progress_callback is not None:
+        progress_callback("first registered cycle thinning complete")
     exact_iterations: list[Any] = [first_exact] if config.retain_iteration_history else []
     registered_cycles: list[Any] = [first_cycle] if config.retain_iteration_history else []
 
@@ -228,6 +236,8 @@ def run_registered_toads_loop(
             record_growing_events=config.record_growing_events,
             record_thinning_items=config.record_thinning_items,
         )
+        if progress_callback is not None:
+            progress_callback(f"registered TOADS iteration {next_iteration} complete")
         if config.retain_iteration_history:
             exact_iterations.append(next_exact)
             registered_cycles.append(next_cycle)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import nibabel as nib
 import numpy as np
@@ -337,6 +338,7 @@ def register_toads_from_atlas_assets(
     relation_limit: int = 3,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsAtlasAlignmentRun:
     """Wire descriptor assets through startup and initial rigid registration.
 
@@ -352,6 +354,8 @@ def register_toads_from_atlas_assets(
     atlas_data = load_toads_atlas_ras_data(loaded_atlas)
     priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
     lesion_priors = load_toads_lesion_priors(loaded_atlas.descriptor, [modality])
+    if progress_callback is not None:
+        progress_callback("atlas arrays and priors loaded")
     mask_structure_indices = [
         index
         for index, structure in enumerate(loaded_atlas.structures)
@@ -371,6 +375,8 @@ def register_toads_from_atlas_assets(
         background_ratio=background_ratio,
         background_label=background_label,
     )
+    if progress_callback is not None:
+        progress_callback("cropped intensity and initial memberships prepared")
     shape_priors = toads_atlas_shapes_in_structure_order(loaded_atlas, atlas_data)
     alignment = register_toads_alignment_startup(
         startup,
@@ -380,6 +386,8 @@ def register_toads_from_atlas_assets(
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
+    if progress_callback is not None:
+        progress_callback("initial rigid atlas registration complete")
     template_refresh = toads_post_registration_template_refresh(
         cropped_images=startup.cropped_images,
         native_shape_xyz=tuple(int(value) for value in startup.intensity.image.shape),
@@ -399,6 +407,8 @@ def register_toads_from_atlas_assets(
         background_ratio=background_ratio,
         background_label=background_label,
     )
+    if progress_callback is not None:
+        progress_callback("registered template refresh complete")
     post_refresh_registration = register_toads_after_template_refresh(
         recropped_images=template_refresh.recropped_images,
         centroids=startup.centroids,
@@ -412,6 +422,8 @@ def register_toads_from_atlas_assets(
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )
+    if progress_callback is not None:
+        progress_callback("post-refresh rigid registration complete")
     segmentation_constructor = initialize_toads_segmentation_constructor_state(
         template_refresh.transformed_topology,
         [structure.label for structure in loaded_atlas.structures],
@@ -449,6 +461,8 @@ def register_toads_from_atlas_assets(
         image_variance_weights=initial_image_variance.image_variance_weights,
         class_types=[structure.topology for structure in loaded_atlas.structures],
     )
+    if progress_callback is not None:
+        progress_callback("segmentation statistics and relation state initialized")
     transformed_shape_priors = transform_toads_shape_priors(
         shape_priors,
         image_dimensions_xyz=tuple(

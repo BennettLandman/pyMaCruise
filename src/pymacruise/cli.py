@@ -7,6 +7,7 @@ from dataclasses import asdict
 from importlib.metadata import PackageNotFoundError, version
 import json
 from pathlib import Path
+import time
 
 import nibabel as nib
 import numpy as np
@@ -417,12 +418,20 @@ def main(argv: list[str] | None = None) -> int:
         _require_nifti_gz_output(args.output)
         if args.output.exists():
             raise FileExistsError(f"Refusing to overwrite TOADS output: {args.output}")
+        progress_started = time.perf_counter()
+
+        def report_toads_progress(message: str) -> None:
+            elapsed = time.perf_counter() - progress_started
+            print(f"TOADS progress +{elapsed:.1f}s: {message}", flush=True)
+
+        report_toads_progress("loading descriptor and atlas registration inputs")
         descriptor = args.atlas_descriptor or get_bundled_atlas_descriptor(
             "cruise-atlas-10obj-toads2008.txt"
         )
         atlas = load_toads_atlas(descriptor)
         t1_n4 = _load_nifti_gz(args.t1_n4)
         brain_mask = _load_nifti_gz(args.brain_mask)
+        report_toads_progress("starting atlas alignment")
         alignment = register_toads_from_atlas_assets(
             t1_n4,
             brain_mask,
@@ -434,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
             relation_limit=args.relation_limit,
             energy_tolerance=1e-6,
             minimum_lambda=1e-3,
+            progress_callback=report_toads_progress,
         )
         class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
         if args.category_exponents is None:
@@ -473,7 +483,11 @@ def main(argv: list[str] | None = None) -> int:
             maximum_distance=args.maximum_distance,
             max_registration_iterations=args.registration_max_iterations,
         )
-        result = run_registered_toads_loop(alignment, config)
+        report_toads_progress("starting registered TOADS segmentation loop")
+        result = run_registered_toads_loop(
+            alignment, config, progress_callback=report_toads_progress
+        )
+        report_toads_progress("registered TOADS segmentation loop complete")
         if result.native_classification is None:
             raise RuntimeError("selected TOADS loop returned without terminal classification")
         ras_t1 = normalize_image_to_ras(t1_n4, source_name="N4-corrected T1 output reference")

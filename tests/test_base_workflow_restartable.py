@@ -71,6 +71,12 @@ def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) 
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
     assert manifest["stages"]["toads-first"]["attempt"] == 2
     assert all(stage["outputs"] and stage["dependency_signature"] for stage in manifest["stages"].values())
+    toads_log = output / "stages" / "toads-first" / "attempt-02" / "stage.log"
+    assert toads_log.is_file()
+    toads_log_text = toads_log.read_text()
+    assert "TOADS progress +" in toads_log_text
+    assert "initial rigid atlas registration complete" in toads_log_text
+    assert "registered TOADS segmentation loop complete" in toads_log_text
     for stage_name in ("toads-first", "toads-second"):
         stop = manifest["stages"][stage_name]["toads_stop"]
         assert stop["iterations"] == 2
