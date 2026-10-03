@@ -150,10 +150,12 @@ def _registered_cycle_summary(
     }
 
 
-def build_trace(maximum_iterations: int = 4) -> dict[str, Any]:
+def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]:
     """Run a deterministic low-cost synthetic trace through the iteration cap."""
     if maximum_iterations < 2:
         raise ValueError("maximum_iterations must be at least 2")
+    if padding < 0:
+        raise ValueError("padding must be non-negative")
     t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     brain_mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
     atlas = load_toads_atlas(ATLAS)
@@ -163,7 +165,7 @@ def build_trace(maximum_iterations: int = 4) -> dict[str, Any]:
         atlas,
         levels=1,
         max_iterations=1,
-        padding=2,
+        padding=padding,
         relation_limit=1,
         energy_tolerance=1e-6,
         minimum_lambda=1e-3,
@@ -229,6 +231,15 @@ def build_trace(maximum_iterations: int = 4) -> dict[str, Any]:
         "real_data_validation": False,
         "fixture": str(FIXTURE.relative_to(ROOT)),
         "shape": list(t1.shape),
+        "padding": padding,
+        "registration_memberships": {
+            "pre_registration": _array_summary(
+                alignment.alignment.startup.initial_memberships
+            ),
+            "post_registration": _array_summary(
+                alignment.segmentation_initialization.memberships
+            ),
+        },
         "iteration_limit": maximum_iterations,
         "convergence_threshold": 0.0,
         "do_growing": config.do_growing,
@@ -266,11 +277,16 @@ def build_trace(maximum_iterations: int = 4) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--maximum-iterations", type=int, default=4)
+    parser.add_argument("--padding", type=int, default=2)
     parser.add_argument("--output", type=Path, default=None, help="write JSON here; stdout if omitted")
     args = parser.parse_args()
     if args.maximum_iterations < 2:
         parser.error("--maximum-iterations must be at least 2")
-    payload = json.dumps(build_trace(args.maximum_iterations), indent=2, sort_keys=True) + "\n"
+    if args.padding < 0:
+        parser.error("--padding must be non-negative")
+    payload = json.dumps(
+        build_trace(args.maximum_iterations, padding=args.padding), indent=2, sort_keys=True
+    ) + "\n"
     if args.output is None:
         print(payload, end="")
     else:
