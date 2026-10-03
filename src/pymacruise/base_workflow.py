@@ -135,11 +135,22 @@ def _materialize_dura_atlas(source_descriptor: Path, destination: Path) -> Path:
         "Gm4": "Thalamus", "Gm5": "Putamen",
         "Wm1": "Brainstem", "Wm2": "CerebellarWM", "Wm3": "CerebralWM",
     }
-    missing = [name for name in mapping if name not in text]
-    if missing:
-        raise ValueError("Base synthetic atlas lacks tissue names required by Dura outputs: " + ", ".join(missing))
-    for old, new in mapping.items():
-        text = text.replace(old, new)
+    source_names = set(mapping)
+    output_names = set(mapping.values())
+    present = {
+        line.partition(":")[2].strip()
+        for line in text.splitlines()
+        if line.startswith("Structure:")
+    }
+    if source_names <= present:
+        for old, new in mapping.items():
+            text = text.replace(old, new)
+    elif not output_names <= present:
+        missing = sorted(output_names - present)
+        raise ValueError(
+            "Base atlas must provide the selected ten Dura tissue structures; "
+            "missing " + ", ".join(missing)
+        )
     for line in source_descriptor.read_text(encoding="utf-8").splitlines():
         if not line.startswith("File:"):
             continue
@@ -275,8 +286,22 @@ def run_base_workflow(
             print(f"Resume: verified {name}; skipping")
             return
         attempts = 1 + sum(item.get("stage") == name for item in manifest["history"])
-        stage_dir = output_dir / "stages" / name / f"attempt-{attempts:02d}"
+        stage_root = output_dir / "stages" / name
+        planned_stage_dir = stage_root / f"attempt-{attempts:02d}"
+        stage_dir = planned_stage_dir
+        while stage_dir.exists():
+            # A process may have stopped after creating its attempt directory
+            # but before recording a completed stage in run.json. Preserve that
+            # partial attempt and choose a fresh directory on restart.
+            attempts += 1
+            stage_dir = output_dir / "stages" / name / f"attempt-{attempts:02d}"
         stage_dir.mkdir(parents=True, exist_ok=False)
+        attempt_outputs = [
+            stage_dir / path.relative_to(planned_stage_dir)
+            if path.is_relative_to(planned_stage_dir)
+            else path
+            for path in outputs
+        ]
         stdout_buffer, stderr_buffer = io.StringIO(), io.StringIO()
         log_path = stage_dir / "stage.log"
         try:
@@ -290,7 +315,7 @@ def run_base_workflow(
             )
             print(stdout_buffer.getvalue(), end="")
             records = _output_records(
-                [*outputs, log_path], reference,
+                [*attempt_outputs, log_path], reference,
                 require_reference_grid=name != "cruise-core",
             )
             if name == "cruise-core":

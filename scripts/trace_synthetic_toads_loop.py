@@ -78,6 +78,14 @@ def _positive_int(value: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "build/synthetic-toads-trace.nii.gz")
+    parser.add_argument(
+        "--fixture", type=Path, default=FIXTURE,
+        help="directory containing synthetic t1.nii.gz and brain-mask.nii.gz",
+    )
+    parser.add_argument(
+        "--atlas", type=Path, default=ATLAS,
+        help="source-format atlas descriptor to use for the registered loop",
+    )
     parser.add_argument("--maximum-iterations", type=_positive_int, default=10)
     parser.add_argument("--convergence-threshold", type=float, default=1e-4)
     parser.add_argument("--registration-levels", type=_positive_int, default=1)
@@ -111,9 +119,11 @@ def main() -> int:
     if output.exists():
         parser.error(f"refusing to overwrite existing output: {output}")
 
-    t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
-    brain_mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
-    atlas = load_toads_atlas(ATLAS)
+    fixture = args.fixture.expanduser().resolve()
+    atlas_path = args.atlas.expanduser().resolve()
+    t1 = nib.load(str(fixture / "t1.nii.gz"))
+    brain_mask = nib.load(str(fixture / "brain-mask.nii.gz"))
+    atlas = load_toads_atlas(atlas_path)
     original_values = np.asarray(t1.dataobj, dtype=np.float32)
     mask_values = np.asanyarray(brain_mask.dataobj) > 0
     coordinates = np.indices(t1.shape, dtype=np.float32)
@@ -173,7 +183,7 @@ def main() -> int:
         )
     alignment_seconds = time.perf_counter() - start
 
-    category_exponents = load_toads_optimized_factors(ATLAS, [alignment.modality])
+    category_exponents = load_toads_optimized_factors(atlas_path, [alignment.modality])
     class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
     exponent_by_class = np.asarray(
         [[
@@ -218,7 +228,7 @@ def main() -> int:
     nib.save(output_image, str(output))
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
 
-    print(f"fixture={FIXTURE.relative_to(ROOT)} shape={t1.shape} atlas={ATLAS.relative_to(ROOT)}")
+    print(f"fixture={fixture} shape={t1.shape} atlas={atlas_path}")
     print(
         "settings="
         f"maximum_iterations:{args.maximum_iterations},threshold:{args.convergence_threshold:g},"

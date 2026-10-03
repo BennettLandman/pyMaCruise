@@ -7,16 +7,31 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.cli import main
+from pymacruise.base_workflow import _materialize_dura_atlas
 
 
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 MASEG = ROOT / "data" / "synthetic" / "base_workflow" / "maseg.nii.gz"
+VANDY_ATLAS = ROOT / "data" / "synthetic" / "toads_downsampled_vandy_atlas" / "atlas.txt"
+
+
+def test_base_atlas_materializer_accepts_selected_vandy_structure_names(tmp_path) -> None:
+    derived = _materialize_dura_atlas(VANDY_ATLAS, tmp_path / "dura-atlas")
+    text = derived.read_text()
+    assert "Structure: SulcalCSF" in text
+    assert "Structure: CerebralGM" in text
+    assert "Structure: CerebralWM" in text
+    assert (derived.parent / "topology.nii.gz").is_file()
+    assert (derived.parent / "shape-10.nii.gz").is_file()
 
 
 def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) -> None:
     output = tmp_path / "base-run"
+    # Simulate a previous process that created an attempt directory but died
+    # before it could add that attempt to the run manifest.
+    (output / "stages" / "toads-first" / "attempt-01").mkdir(parents=True)
     arguments = [
         "base-run",
         "--t1", str(FIXTURE / "t1.nii.gz"),
@@ -54,6 +69,7 @@ def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) 
         "maseg-refinement",
     }
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
+    assert manifest["stages"]["toads-first"]["attempt"] == 2
     assert all(stage["outputs"] and stage["dependency_signature"] for stage in manifest["stages"].values())
     for stage_name in ("toads-first", "toads-second"):
         stop = manifest["stages"][stage_name]["toads_stop"]

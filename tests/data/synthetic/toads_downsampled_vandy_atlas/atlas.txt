@@ -1,0 +1,100 @@
+Structure Atlas File (edit at your own risks)
+
+Structures:	11
+Background	1	mask
+SulcalCSF	5	optimized_csf
+Ventricles	6	optimized_csf
+CerebellarGM	14	optimized_gm
+CerebralGM	15	optimized_gm
+Caudate	16	optimized_gm
+Thalamus	17	optimized_gm
+Putamen	18	optimized_gm
+Brainstem	22	optimized_wm
+CerebellarWM	24	optimized_wm
+CerebralWM	25	optimized_wm
+
+Topology Atlas:
+File:	topology.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+
+Shape Atlas:	8
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Orientations:	1	1	6	3
+Structure: Background
+File:	shape-0.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: SulcalCSF
+File:	shape-1.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: Ventricles
+File:	shape-2.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: CerebellarGM
+File:	shape-3.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: CerebralGM
+File:	shape-4.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: Caudate
+File:	shape-5.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: Thalamus
+File:	shape-6.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: Putamen
+File:	shape-7.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: Brainstem
+File:	shape-8.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: CerebellarWM
+File:	shape-9.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+Structure: CerebralWM
+File:	shape-10.nii.gz
+Dimensions:	36	45	34
+Resolutions:	4.47916667	4.5	4.52205882
+Center:	0	0	0
+
+Intensity Atlas:	0
+T1_SPGR		0.0	0.2	0.2	0.5	0.5	0.5	0.7	0.7	0.9	0.9	0.9
+T1_MPRAGE	0.0	0.1	0.1	0.6	0.5	0.5	0.7	0.8	0.9	1.0	1.0
+T2			0.0	0.9	0.9	0.6	0.6	0.6	0.6	0.6	0.5	0.5	0.5
+FLAIR		0.0	0.5	0.5	0.8	0.8	0.8	0.8	0.8	0.8	0.8	0.8
+PD			0.0	0.9	0.9	0.8	0.8	0.8	0.8	0.8	0.6	0.6	0.6
+
+Intensity Variance Factor:	0
+T1_SPGR		1.0	1.0	1.0	1.0	1.0	1.0	0.25	1.0	1.0	1.0	1.0
+T1_MPRAGE	1.0	1.0	1.0	1.0	1.0	1.0	0.25	1.0	1.0	1.0	1.0
+T2			1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+FLAIR		1.0	0.0	0.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+PD			1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0	1.0
+
+Optimized factors:
+T1_SPGR		1.00	1.00	1.00
+T1_MPRAGE	0.80	1.00	1.00
+T2			1.00	1.00	1.00
+FLAIR		1.00	1.00	1.00
+PD			1.00	1.00	1.00
