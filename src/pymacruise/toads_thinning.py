@@ -319,6 +319,7 @@ def toads_process_next_growing_item(
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
     copy_state: bool = True,
+    validate_full_arrays: bool = True,
 ) -> ToadsGrowingQueueStep:
     """Process one source-ordered topology-gated growing item."""
     labels = np.asarray(segmentation)
@@ -338,12 +339,13 @@ def toads_process_next_growing_item(
         raise ValueError("available must be a boolean grid matching segmentation and classes")
     if orderings.shape != labels.shape or volumes.shape != (classes,):
         raise ValueError("ordering and class volumes must match the image and class count")
-    if not np.isfinite(mems).all() or not np.isfinite(orderings).all() or not np.isfinite(volumes).all():
-        raise ValueError("memberships, ordering, and class volumes must be finite")
-    if np.any(labels < 0) or np.any(labels >= classes):
-        raise ValueError("segmentation labels must be valid class indices")
-    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
-        raise ValueError("skeleton labels must be valid class indices or empty_label")
+    if validate_full_arrays:
+        if not np.isfinite(mems).all() or not np.isfinite(orderings).all() or not np.isfinite(volumes).all():
+            raise ValueError("memberships, ordering, and class volumes must be finite")
+        if np.any(labels < 0) or np.any(labels >= classes):
+            raise ValueError("segmentation labels must be valid class indices")
+        if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+            raise ValueError("skeleton labels must be valid class indices or empty_label")
     zero = np.float32(zero_threshold)
     if not np.isfinite(zero) or zero < np.float32(0.0):
         raise ValueError("zero_threshold must be finite and nonnegative")
@@ -488,6 +490,7 @@ def toads_propagate_growing(
             empty_label=empty_label,
             zero_threshold=zero_threshold,
             copy_state=record_events,
+            validate_full_arrays=False,
         )
         if record_events:
             events.append(event)
