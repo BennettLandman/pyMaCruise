@@ -642,6 +642,7 @@ def toads_schedule_thinning_neighbors(
     *,
     zero_threshold: float = 1e-10,
     copy_state: bool = True,
+    validate_full_arrays: bool = True,
 ) -> tuple[NDArray[np.bool_], tuple[ToadsHeapItem, ...]]:
     """Enqueue source-eligible face neighbors after a thinning removal.
 
@@ -663,7 +664,7 @@ def toads_schedule_thinning_neighbors(
     classes = mems.shape[-1]
     if state.shape != labels.shape + (classes,) or state.dtype != np.bool_:
         raise ValueError("available must be a boolean grid matching segmentation and classes")
-    if not np.isfinite(mems).all():
+    if validate_full_arrays and not np.isfinite(mems).all():
         raise ValueError("memberships must be finite")
     if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
         raise ValueError("queue must be a TOADS max heap")
@@ -865,6 +866,37 @@ def toads_run_thinning_queue(
     skel = np.asarray(skeleton, dtype=np.int16).copy()
     available_state = np.asarray(available, dtype=np.bool_).copy()
     volumes = np.asarray(class_volumes, dtype=np.float32).copy()
+    mems = np.asarray(memberships, dtype=np.float32)
+    relations = np.asarray(relation_matrix)
+    shapes = np.asarray(transformed_shape_values, dtype=np.float32)
+    minimums = np.asarray(minimum_class_volumes, dtype=np.float32)
+    classes = mems.shape[-1] if mems.ndim == 4 else -1
+    if labels.ndim != 3 or skel.shape != labels.shape:
+        raise ValueError("segmentation and skeleton must be matching 3-D arrays")
+    if mems.ndim != 4 or mems.shape[:3] != labels.shape or classes < 2:
+        raise ValueError("memberships must be 4-D, match segmentation, and contain at least two classes")
+    if available_state.shape != labels.shape + (classes,):
+        raise ValueError("available must match segmentation and membership classes")
+    if relations.shape != (classes, classes) or relations.dtype != np.bool_:
+        raise ValueError("relation_matrix must be a boolean square matrix matching classes")
+    if shapes.shape != mems.shape:
+        raise ValueError("transformed_shape_values must match memberships")
+    if volumes.shape != (classes,) or minimums.shape != (classes,):
+        raise ValueError("class volume arrays must match membership classes")
+    # These full-volume checks belong at the queue boundary, not inside the
+    # per-item loop. Repeating them for every popped voxel made thinning
+    # O(number_of_events × volume_size).
+    if (
+        not np.isfinite(mems).all()
+        or not np.isfinite(shapes).all()
+        or not np.isfinite(volumes).all()
+        or not np.isfinite(minimums).all()
+    ):
+        raise ValueError("memberships, shape values, and class volumes must be finite")
+    if np.any(labels < 0) or np.any(labels >= classes):
+        raise ValueError("segmentation labels must be valid membership class indices")
+    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+        raise ValueError("skeleton labels must be valid class indices or empty_label")
     previous_priority = np.float32(0.0)
     processed: list[ToadsHeapItem] = []
     processed_count = 0
@@ -883,6 +915,7 @@ def toads_run_thinning_queue(
             empty_label=empty_label,
             zero_threshold=zero_threshold,
             copy_state=False,
+            validate_full_arrays=False,
         )
         labels = step.segmentation
         skel = step.skeleton
@@ -912,6 +945,7 @@ def toads_process_next_thinning_item(
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
     copy_state: bool = True,
+    validate_full_arrays: bool = True,
 ) -> ToadsThinningQueueStep:
     """Process one selected `propagateThinning` heap item and its neighbors.
 
@@ -943,11 +977,13 @@ def toads_process_next_thinning_item(
         raise ValueError("available must be a boolean grid matching segmentation and classes")
     if relations.shape != (classes, classes) or relations.dtype != np.bool_:
         raise ValueError("relation_matrix must be a boolean square matrix matching classes")
-    if shapes.shape != mems.shape or not np.isfinite(shapes).all():
+    if shapes.shape != mems.shape or (validate_full_arrays and not np.isfinite(shapes).all()):
         raise ValueError("transformed_shape_values must be finite and match memberships")
     if volumes.shape != (classes,) or minimums.shape != (classes,):
         raise ValueError("class volume arrays must match class count")
-    if not np.isfinite(volumes).all() or not np.isfinite(minimums).all() or not np.isfinite(mems).all():
+    if not np.isfinite(volumes).all() or not np.isfinite(minimums).all() or (
+        validate_full_arrays and not np.isfinite(mems).all()
+    ):
         raise ValueError("memberships and class volumes must be finite")
     if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
         raise ValueError("queue must be a TOADS max heap")
@@ -1000,6 +1036,7 @@ def toads_process_next_thinning_item(
                 limit,
                 zero_threshold=zero_threshold,
                 copy_state=False,
+                validate_full_arrays=validate_full_arrays,
             )
     return ToadsThinningQueueStep(
         updated_labels, updated_skeleton, updated_available, updated_volumes,
