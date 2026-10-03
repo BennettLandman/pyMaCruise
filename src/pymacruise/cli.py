@@ -446,7 +446,9 @@ def main(argv: list[str] | None = None) -> int:
             smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
             atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
             smoothing=0.2 / 6.0 / len(atlas.structures),
-            prior_factor=0.2,
+            # AlgorithmMultipleToads hard-codes atlasCoupling=0.5; this is
+            # forwarded as priorFactor to MultipleToadSegmentation.
+            prior_factor=0.5,
             prior_coefficient=2.0 / len(atlas.structures),
             maximum_iterations=args.maximum_iterations,
             convergence_threshold=args.convergence_threshold,

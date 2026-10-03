@@ -22,17 +22,34 @@ atlas are superseded.
 The corrected compact-atlas harness does **not** converge: Java membership
 energy becomes NaN by iteration 48 of a 50-iteration request. This is evidence
 about this synthetic harness and reduced atlas, not evidence that the source
-workflow itself fails on a production atlas. Python's matching-grid 50-cycle
-diagnostic took 428.890 seconds, reached its iteration cap, and ended with
-ratio `0.375456274` (threshold `1e-4` not reached). Its output was 13³ uint8
-RAS labels 1–11, SHA-256
-`d73de44b67de5beb4c40d0299365fdba3fbe40d8e229eb7ae4ed0a18c7a32596`.
-Python and Java therefore match the registration-membership initialization but
-not the later membership/statistics trajectory. No threshold was relaxed.
+workflow itself fails on a production atlas.
+
+The Python CLI's prior factor had also been set to `0.2`; the selected Java
+wrapper hard-codes `atlasCoupling=0.5`, forwarded as `priorFactor`. The CLI and
+diagnostics now use `0.5`. On the matching 35×33×31 grid, the corrected Python
+40-cycle diagnostic took **340.489 seconds**, reached its iteration cap, and
+ended with ratio **0.177568302** (threshold `1e-4` not reached). Its output was
+13³ uint8 RAS labels 1–11, SHA-256
+`2b80d97b8f05953c39675473814ac075a0f820343efdce05d17a7a90c4410acd`. The
+25-cycle corrected-factor run was faster (**211.256 seconds**) but ended at a
+lower ratio `0.056615934`; thus the ratio is nonmonotonic and 40 cycles do not
+show improvement. The former Python 50-cycle measurements used the wrong factor
+and are superseded. Python and Java match the registration-membership
+initialization but not the later membership/statistics trajectory. No
+threshold was relaxed.
 
 ## Runnable Python diagnostics
 
-The Python state trace is:
+The source-sized Python loop probe is:
+
+```bash
+./.venv/bin/python scripts/trace_synthetic_toads_loop.py \
+  --padding 10 --output build/python-vandy-padding-10-coupling-05-40.nii.gz \
+  --maximum-iterations 40 --convergence-threshold 1e-4
+```
+
+It writes per-cycle energies and timings plus a RAS NIfTI output. The Python
+state trace is:
 
 ```bash
 ./.venv/bin/python scripts/trace_synthetic_toads_state.py \
@@ -68,16 +85,15 @@ source equivalence or real-MRI validation.
 
 ## Selected wrapper setting and validation record
 
-The registered loop config default `prior_scale` is `0.2`: the selected
-`MedicAlgorithmToads08` profile exposes `atlasRange=0.2`, forwarded through
-`atlasScale` to `MultipleToadSegmentation.priorScale`.
+The selected wrapper settings are `prior_scale=0.2` (`atlasRange` →
+`atlasScale` → `MultipleToadSegmentation.priorScale`) and `prior_factor=0.5`
+(`AlgorithmMultipleToads.atlasCoupling` → `priorFactor`).
 
-- Focused trace and registered-first-cycle checks: **4 passed in 19.95s** on
-  the current working tree before this report/README edit. The code commit
-  `9285095` contains the atlas-range default; the trace change remains
-  uncommitted at the time of this report.
-- Focused registered-loop and restartable-base checks: **4 passed in 80.77s**
-  on `9285095`.
+- Focused synthetic state trace, registered-loop, and restartable-base checks:
+  **5 passed in 96.18s** after applying the source wrapper's `prior_factor=0.5`
+  on the implementation working tree now committed as `0a973ad`.
+- The 25- and 40-cycle source-sized diagnostics both completed with capped,
+  nonconverged results as above.
 - Latest full suite before the atlas-range default correction:
   **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,213.79s**
   on `f3b874b`. No full suite has been run after that correction.
@@ -86,8 +102,8 @@ The registered loop config default `prior_scale` is `0.2`: the selected
 ## Next integration milestone
 
 Compare the first exact membership/statistics pass after the matching
-registration state, then fix or explicitly bound the cause of the Python
-trajectory divergence and 7-minute synthetic runtime. Do not infer source
-convergence from the reduced atlas harness. Once the base run converges with
-verified required outputs and stage checks, advance the plus workflow using
-synthetic FLAIR-to-T1 registration and the LesionTOADS handoff.
+registration state and identify why the objective/ratio oscillates. The current
+source-sized Python loop costs about 8.5 seconds per cycle after startup. Do not
+infer source convergence from the reduced atlas harness. Once the base run
+converges with verified required outputs and stage checks, advance the plus
+workflow using synthetic FLAIR-to-T1 registration and the LesionTOADS handoff.

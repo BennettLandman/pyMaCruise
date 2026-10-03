@@ -54,6 +54,8 @@ class ToadsRegisteredLoopConfig:
     smoothing_priors: Any
     atlas_shape_priors: Any
     smoothing: float
+    # AlgorithmMultipleToads' selected wrapper sets atlasCoupling=0.5, which
+    # MultipleToadSegmentation receives as priorFactor.
     prior_factor: float
     prior_coefficient: float
     # ``atlasRange`` on the selected MedicAlgorithmToads08 profile is 0.2;

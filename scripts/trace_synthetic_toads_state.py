@@ -185,7 +185,7 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
         atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
         smoothing=0.2 / 6.0 / len(atlas.structures),
-        prior_factor=0.2,
+        prior_factor=0.5,
         prior_coefficient=2.0 / len(atlas.structures),
         maximum_iterations=maximum_iterations,
         convergence_threshold=0.0,
@@ -243,6 +243,8 @@ def build_trace(maximum_iterations: int = 4, padding: int = 2) -> dict[str, Any]
         "iteration_limit": maximum_iterations,
         "convergence_threshold": 0.0,
         "do_growing": config.do_growing,
+        "prior_factor": config.prior_factor,
+        "prior_scale": config.prior_scale,
         "stage_order": list(startup.stage_order),
         "initial_state": {
             "fields": _array_summary(startup.fields),
