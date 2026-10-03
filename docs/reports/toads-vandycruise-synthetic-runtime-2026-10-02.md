@@ -5,111 +5,96 @@
 The selected VandyCRUISE `AlgorithmMultipleToads` core was compiled and run
 headlessly against the committed 13³ synthetic T1, its committed brain mask,
 and the synthetic 11-class atlas. Java input T1 was zeroed outside that same
-brain mask. With selected padding 10, Java and Python both produce a 35×33×31
-working grid, crop bounds `(0,14,1,13,1,11)`, and crop transform
-`(0,0,0,-1,-1,0)`.
+brain mask. With padding 10, Java and Python use a 35×33×31 working grid, crop
+bounds `(0,14,1,13,1,11)`, and crop transform `(0,0,0,-1,-1,0)`.
 
-The first comparison was invalid: the temporary raw atlas descriptor had its
-blank separator removed. The legacy Java descriptor parser then skipped the
-`Intensity Atlas` section without reporting an error. Restoring the separator
-and a following section sentinel made the Java profile visible and produced
-source initial registration-membership SHA-256
-`03fafc9db300fbf3f287f4a1e154296cbba7bb3e3db9bdad4093360a269c4d53`, matching
-Python's pre-registration membership array exactly. Earlier Java energies,
-iteration hashes, output hashes, and convergence claims from the malformed
-atlas are superseded.
+The first comparison harness had a malformed descriptor: removing the blank
+separator after the final shape section made the legacy Java parser silently
+skip `Intensity Atlas`. That invalidated earlier Java energies, hashes, and
+convergence claims; they are superseded. A second comparison accidentally used
+`relation_limit=1` and optimized exponents 2, while the selected wrapper uses
+`relation_limit=3` and descriptor `Optimized factors` (the fixture omits that
+section, so Java defaults each factor to 1.0). Those earlier 25/40-cycle
+measurements also do not describe the selected source settings.
 
-The corrected compact-atlas harness does **not** converge: Java membership
-energy becomes NaN by iteration 48 of a 50-iteration request. This is evidence
-about this synthetic harness and reduced atlas, not evidence that the source
-workflow itself fails on a production atlas.
+## Source-aligned inputs and first-pass comparison
 
-The Python CLI's prior factor had also been set to `0.2`; the selected Java
-wrapper hard-codes `atlasCoupling=0.5`, forwarded as `priorFactor`. The CLI and
-diagnostics now use `0.5`. On the matching 35×33×31 grid, the corrected Python
-40-cycle diagnostic took **340.489 seconds**, reached its iteration cap, and
-ended with ratio **0.177568302** (threshold `1e-4` not reached). Its output was
-13³ uint8 RAS labels 1–11, SHA-256
-`2b80d97b8f05953c39675473814ac075a0f820343efdce05d17a7a90c4410acd`. The
-25-cycle corrected-factor run was faster (**211.256 seconds**) but ended at a
-lower ratio `0.056615934`; thus the ratio is nonmonotonic and 40 cycles do not
-show improvement. The former Python 50-cycle measurements used the wrong factor
-and are superseded. On the corrected `prior_factor=0.5` probe, Python and Java still match the
-registration-membership initialization. Their startup centroids and class
-standard deviations also agree after accounting for Java's `Iscale` display
-multiplier, and both produce normalized image-variance weight 1 for this
-single-channel input. The first mismatch is now narrowed to the exact
-membership pass's prior inputs or arithmetic. No threshold was relaxed.
+With the descriptor delimiter and selected wrapper parameters corrected, Java
+and Python match the following full-grid input arrays exactly:
 
-## Runnable Python diagnostics
+- registration memberships: SHA-256
+  `03fafc9db300fbf3f287f4a1e154296cbba7bb3e3db9bdad4093360a269c4d53`;
+- initial segmentation: `1691bd780ef73c88c800bc1045c225aef7f657522d80e1017e643a993303becd`;
+- transformed shape priors: `a2cdad5a49081d4640b385a86485dfa054f99493b43ad19ad49bf390cc267531`;
+- closest-label map: `dedbaca1b44da63eb18e4cb49ba4ffdd47603391e321e66e60d672d1b5352630`.
 
-The source-sized Python loop probe is:
+Startup centroids and class deviations also match after accounting for Java's
+`Iscale` display multiplier. The exact membership objective matched at startup
+(`88.75139`) and the first loop update (`105.55209`). Membership arrays differed
+only slightly: startup max absolute difference `1.1921e-7` (mean
+`7.37e-11`); after the first exact update max difference `3.3975e-6` (mean
+`6.14e-10`). This is direct source-runtime comparison for the first passes,
+not full-loop equivalence.
+
+## Convergence and runtime
+
+The source-aligned Python command was:
 
 ```bash
 ./.venv/bin/python scripts/trace_synthetic_toads_loop.py \
-  --padding 10 --output build/python-vandy-padding-10-coupling-05-40.nii.gz \
-  --maximum-iterations 40 --convergence-threshold 1e-4
-```
-
-It writes per-cycle energies and timings plus a RAS NIfTI output. The Python
-state trace is:
-
-```bash
-./.venv/bin/python scripts/trace_synthetic_toads_state.py \
-  --padding 10 --maximum-iterations 6 \
-  --output build/python-vandy-padding-10-state-6.json
-```
-
-The slower full loop diagnostic is:
-
-```bash
-./.venv/bin/python scripts/trace_synthetic_toads_loop.py \
-  --padding 10 --output build/python-vandy-padding-10-50.nii.gz \
+  --padding 10 --relation-limit 3 \
+  --output build/python-vandy-padding-10-source-settings-50.nii.gz \
   --maximum-iterations 50 --convergence-threshold 1e-4
 ```
 
-Both are build artifacts. The JSON labels its evidence as Python-only
-synthetic diagnostics, with source equivalence and real-data validation false.
-The Java harness and runtime build artifacts are local ignored files under
-`build/java-reference/`; they are not a reproducible project command yet.
+It completed 50 iterations in **449.390 seconds**. The objective increased
+from about 100 at the first update to over `10^12`; the terminal ratio was
+`0.873269856`, so it did not reach `1e-4`. The output is 13³ uint8, RAS,
+labels 1–11, SHA-256
+`2d13318506469adace848ad41fc7848274ef5ead981155a39a18f74860a66196`.
 
-## Source behavior newly established
+The direct Java source harness was run with the same masked input, atlas
+profile, padding, relation limit, and selected constructor values. It also
+fails on this compact synthetic atlas: the membership energy becomes NaN by
+iteration 48 of a 50-iteration request. This is a stability failure signal for
+this reduced fixture. Because the Java harness also fails, it is not evidence
+that the production source workflow converges or fails on its complete atlas.
+The synthetic base CLI test separately confirms restartable orchestration,
+manifest checks, required output names, and stage checks; its deliberately
+short capped TOADS settings do not establish convergence.
 
-- The legacy descriptor parser needs a blank delimiter after the final shape
-  block for the next section header to be processed. A malformed descriptor can
-  silently omit the intensity profile.
-- With that parsing corrected, Java's initialized atlas-registration
-  memberships match Python's on the shared padded synthetic grid.
-- The first subsequent Java/Python membership/statistics states still differ;
-  locating that first difference is the active convergence blocker.
+## Source behavior newly covered
 
-These are direct source-runtime and synthetic observations. They are not full
-source equivalence or real-MRI validation.
+- The Java descriptor parser needs a blank delimiter after the final shape
+  block before the next section is reliably processed.
+- `relation_limit=3` controls the selected closest-label diffusion; using 1
+  changes the map on more than half of this padded grid.
+- The wrapper's optimized CSF/GM/WM factors come from the atlas descriptor and
+  default to 1.0 when omitted; `atlasRange=0.2` maps to `prior_scale`, while
+  wrapper `atlasCoupling=0.5` maps to `prior_factor`.
+- The full initial registration/shape/relation state matches across Java and
+  Python; later exact membership values have small float differences that
+  amplify into unstable trajectories on this reduced fixture.
 
-## Selected wrapper setting and validation record
+These are synthetic and source-runtime findings. They are not a whole-loop
+source-equivalence claim or real-MRI validation.
 
-The selected wrapper settings are `prior_scale=0.2` (`atlasRange` →
-`atlasScale` → `MultipleToadSegmentation.priorScale`) and `prior_factor=0.5`
-(`AlgorithmMultipleToads.atlasCoupling` → `priorFactor`).
+## Validation record
 
-- Focused synthetic state trace, registered-loop, and restartable-base checks:
-  **5 passed in 96.18s** after applying the source wrapper's `prior_factor=0.5`
-  on implementation commit `e4e0ce2`.
-- After adding explicit startup-statistics summaries to the state trace, its
-  focused schema test passed **1 test in 4.06s** on diagnostic commit `95e70d7`.
-- The 25- and 40-cycle source-sized diagnostics both completed with capped,
-  nonconverged results as above.
-- Latest full suite before the atlas-range default correction:
+- Focused optimized-factor parser, synthetic state trace, and restartable base
+  workflow checks: **4 passed in 81.55s** on implementation commit `d90a735`.
+- Full-suite baseline before the recent TOADS wrapper and trace corrections:
   **1,130 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,213.79s**
-  on `f3b874b`. No full suite has been run after that correction.
+  on `f3b874b`. No full suite has been run since; tests remain focused because
+  the recent changes are limited to TOADS settings, parser behavior, and
+  diagnostics.
 - No real MRI validation was performed.
 
 ## Next integration milestone
 
-Compare the exact-membership prior arrays and per-voxel arithmetic after the
-matching registration and startup statistics, then determine why the
-objective/ratio oscillates. The current source-sized Python loop costs about
-8.5 seconds per cycle after startup. Do not infer source convergence from the
-reduced atlas harness. Once the base run
-converges with verified required outputs and stage checks, advance the plus
-workflow using synthetic FLAIR-to-T1 registration and the LesionTOADS handoff.
+Build a larger synthetic TOADS atlas with cortex-like folded anatomy and
+source-shaped priors, run both Java and Python against it, and locate the first
+post-startup membership difference that grows into instability. Profile and
+optimize the 6–7 second exact membership pass per cycle without changing the
+source threshold. Once the synthetic base workflow is restartable and
+convergent with required outputs and stage checks, advance the plus workflow.
