@@ -451,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
             maximum_iterations=args.maximum_iterations,
             convergence_threshold=args.convergence_threshold,
             relation_limit=args.relation_limit,
+            do_growing=True,
             maximum_polynomial_degree=3,
             maximum_distance=args.maximum_distance,
             max_registration_iterations=args.registration_max_iterations,

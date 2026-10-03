@@ -60,7 +60,10 @@ class ToadsRegisteredLoopConfig:
     maximum_iterations: int = 50
     convergence_threshold: float = 1e-4
     relation_limit: int = 1
-    do_growing: bool = False
+    # The selected VandyCRUISE AlgorithmMultipleToads constructor enables
+    # final-iteration growing unconditionally. Component adapters still accept
+    # False for source branch tests and alternate callers.
+    do_growing: bool = True
     maximum_polynomial_degree: int = 3
     maximum_distance: float = 1e-4
     correct_inhomogeneity: bool = True

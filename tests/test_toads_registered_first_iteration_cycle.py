@@ -46,6 +46,22 @@ FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS_DESCRIPTOR = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 
 
+def test_registered_loop_defaults_to_selected_vandy_final_growth() -> None:
+    config = ToadsRegisteredLoopConfig(
+        category_exponents=np.ones((1, 3), dtype=np.float32),
+        exponent_by_channel_class=np.ones((1, 11), dtype=np.float32),
+        modality_weights=np.ones(1, dtype=np.float32),
+        class_variance_weights=np.ones((1, 11), dtype=np.float32),
+        smoothing_priors=np.ones(11, dtype=np.float32),
+        atlas_shape_priors=np.ones(11, dtype=np.float32),
+        smoothing=0.0,
+        prior_factor=0.0,
+        prior_coefficient=0.0,
+    )
+
+    assert config.do_growing is True
+
+
 def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None:
     run = register_toads_from_atlas_assets(
         nib.load(str(FIXTURE / "t1.nii.gz")),
