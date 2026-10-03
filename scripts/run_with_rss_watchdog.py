@@ -78,8 +78,11 @@ def _terminate_child_group(child: subprocess.Popen, *, grace_seconds: float = 2.
     except ProcessLookupError:
         pass
     except PermissionError:
-        # A just-exited child may disappear between poll() and killpg().
-        if child.poll() is None:
+        # A just-exited process group can disappear between poll() and
+        # killpg(), while waitpid has not yet surfaced the child's exit code.
+        try:
+            child.wait(timeout=grace_seconds)
+        except subprocess.TimeoutExpired:
             raise
     try:
         child.wait(timeout=grace_seconds)
@@ -132,14 +135,17 @@ def main() -> int:
                 break
             try:
                 current_rss = read_rss(child.pid)
-            except OSError:
+            except OSError as rss_error:
                 # proc_pidinfo can report ESRCH if the child exits after the
-                # loop poll above. In that race the child's exit status is the
-                # useful result; only a live child turns this into a monitor
-                # failure.
-                if child.poll() is not None:
+                # loop poll above. Briefly wait so waitpid can surface the
+                # exit code before treating a transient lookup failure as a
+                # monitor error.
+                try:
+                    child.wait(timeout=max(arguments.interval_seconds * 2, 0.05))
+                except subprocess.TimeoutExpired:
+                    raise rss_error
+                else:
                     break
-                raise
             peak_rss = max(peak_rss, current_rss)
             now = time.monotonic()
             if now >= next_report:
