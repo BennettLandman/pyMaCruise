@@ -194,4 +194,12 @@ The same direct `toads-loop` command and inputs were run with `--maximum-iterati
 
 The final classification is uint8 with shape `(172,216,164)`, RAS axes, labels `[1,5,6,14,15,16,17,18,22,24,25]`, and SHA-256 `1b4f18ad0094c145523f0900ae0777db011be7548cb1e09f5e1380e97e64b615`. This is synthetic execution evidence; it does not establish Java whole-loop equivalence or real-data validity. The observed runtime is about 26 minutes for the TOADS stage under the reduced one-level/one-iteration registration profile. Longer source-default runs may take materially longer. The ratios decrease across the measured endpoints but remain above threshold, so this does not yet validate convergence.
 
-Next: add iteration-level energy ratio telemetry to the restartable workflow log, then compare state transitions/objectives against the selected Java implementation at a source-aligned fixture grid before scheduling a more expensive brain-resolution run. Do not treat the endpoint-only trend as proof of source equivalence.
+The restartable workflow now records each continuing registered iteration's energy ratio and stop flag in the TOADS stage log. Validation:
+
+```bash
+./.venv/bin/pytest -q tests/test_base_workflow_restartable.py
+```
+
+Result: **2 passed in 39.20 s**. The test checks that the per-iteration telemetry appears alongside the final run manifest's stop metadata. This focused integration result does not replace a full-suite run.
+
+Next: compare state transitions/objectives against the selected Java implementation at a source-aligned fixture grid before scheduling another expensive brain-resolution run. Do not treat the endpoint-only trend as proof of source equivalence.

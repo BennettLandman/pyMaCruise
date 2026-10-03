@@ -238,7 +238,12 @@ def run_registered_toads_loop(
             record_thinning_items=config.record_thinning_items,
         )
         if progress_callback is not None:
-            progress_callback(f"registered TOADS iteration {next_iteration} complete")
+            iteration_control = next_cycle.registered_iteration.branch.control
+            progress_callback(
+                f"registered TOADS iteration {next_iteration} complete; "
+                f"energy_ratio={float(iteration_control.energy_ratio):.9g}, "
+                f"stop={str(bool(iteration_control.stop)).lower()}"
+            )
         if config.retain_iteration_history:
             exact_iterations.append(next_exact)
             registered_cycles.append(next_cycle)
