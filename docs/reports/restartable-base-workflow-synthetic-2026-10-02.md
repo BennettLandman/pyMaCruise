@@ -57,8 +57,8 @@ hashes matched the clean run. The N4 → two TOADS → Dura → CRUISE compositi
 and its source stop summaries are synthetic integration evidence, not Java
 end-to-end equivalence. A later full repository suite includes this runner's
 tests: **1,119 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
-1,365.66s** on commit `5b3d1ca69d684514a34b31bbf6f57eafda9b876`; see the
-[full-suite checkpoint](full-pytest-2026-10-02-base-workflow-checkpoint.md).
+1,273.87s** on commit `963794e`; see the [TOADS optimization full-suite
+checkpoint](full-pytest-2026-10-02-toads-runtime-optimization.md).
 
 ## Convergence status and boundary
 

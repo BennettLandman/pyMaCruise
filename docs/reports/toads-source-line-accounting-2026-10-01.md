@@ -3,7 +3,7 @@
 ## Current planning estimate
 
 As re-reviewed on 2026-10-02 at full-suite commit
-`5b3d1ca69d684514a34b31bbf6f57eafda9b876`, the estimate is
+`963794e`, the estimate is
 **about 3,434–4,834 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–35%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -62,8 +62,11 @@ coarse estimate pending a curated method-to-source-line map, not measured
 runtime code coverage.
 
 The full suite passed **1,119 tests**, with 11 expected RAS warnings in
-1,365.66 seconds on commit `5b3d1ca69d684514a34b31bbf6f57eafda9b876`; see
-the [base-workflow full-suite report](full-pytest-2026-10-02-base-workflow-checkpoint.md).
-That run includes a restartable synthetic base workflow but records both
-TOADS stages as capped and nonconverged. It is not workflow equivalence or
-real-data validation.
+1,273.87 seconds on commit `963794e`; see the [TOADS optimization
+full-suite report](full-pytest-2026-10-02-toads-runtime-optimization.md).
+That run includes a restartable synthetic base workflow and the
+source-order-preserving inverse-prior vectorization, but the base workflow
+still records both TOADS stages as capped and nonconverged. It is not workflow
+equivalence or real-data validation. The current approximate TOADS line
+estimate remains 3,434–4,834 of 13,651 lines; the optimization adds no new
+Java source operations to that estimate.
