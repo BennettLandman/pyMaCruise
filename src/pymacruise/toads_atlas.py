@@ -321,6 +321,82 @@ def load_toads_intensity_priors(
     return np.stack(rows, axis=0)
 
 
+def load_toads_intensity_variance_factors(
+    descriptor_path: str | Path,
+    modalities: tuple[str, ...] | list[str],
+) -> np.ndarray:
+    """Return source TOADS intensity-variance factors as ``(channels, classes)``.
+
+    This reads the distinct ``Intensity Variance Factor`` descriptor section
+    used by ``MultipleToadDeformableAtlas.getIntensityVariancePriors``. Every
+    Java variance row is initialized to float32 ones before parsing; recognized
+    modality profiles replace those defaults, and unknown requested modality
+    names retain the all-ones fallback. Aliases and requested row order follow
+    :meth:`MultipleToadDeformableAtlas.modalityId`.
+    """
+    descriptor = Path(descriptor_path).resolve()
+    if not descriptor.is_file():
+        raise ToadsAtlasError(f"Missing TOADS atlas descriptor: {descriptor}")
+    try:
+        lines = descriptor.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ToadsAtlasError(f"Cannot read TOADS atlas descriptor {descriptor}: {exc}") from exc
+
+    structures_index = next(
+        (index for index, line in enumerate(lines) if line.startswith("Structures:")), None
+    )
+    if structures_index is None:
+        raise ToadsAtlasError("TOADS descriptor lacks Structures section")
+    raw_class_count = _tag_values(lines[structures_index], "Structures", 1)[0]
+    class_count = int(raw_class_count)
+    if class_count < 1 or raw_class_count != class_count:
+        raise ToadsAtlasError(f"Invalid TOADS structure count: {class_count}")
+
+    # Java allocates [INTENSITY][classes] and explicitly fills it with 1.0f
+    # while loading Structures (MultipleToadDeformableAtlas.java:939-942).
+    modality_ids = tuple(dict.fromkeys(_MODALITY_ALIASES.values()))
+    defaults = np.ones((len(modality_ids), class_count), dtype=np.float32)
+    profiles = {
+        modality: defaults[index].copy() for index, modality in enumerate(modality_ids)
+    }
+    variance_index = next(
+        (index for index, line in enumerate(lines) if line.startswith("Intensity Variance Factor:")),
+        None,
+    )
+    if variance_index is not None:
+        for line in lines[variance_index + 1 :]:
+            fields = line.split()
+            if not fields:
+                continue
+            modality = _MODALITY_ALIASES.get(fields[0])
+            # The Java parser stops at the first non-modality section/row.
+            if modality is None:
+                break
+            if len(fields) != class_count + 1:
+                raise ToadsAtlasError(
+                    f"TOADS intensity variance profile {fields[0]} has {len(fields) - 1} values; "
+                    f"expected {class_count}"
+                )
+            try:
+                values = np.asarray(fields[1:], dtype=np.float32)
+            except ValueError as exc:
+                raise ToadsAtlasError(
+                    f"Invalid TOADS intensity variance factor in profile {fields[0]}"
+                ) from exc
+            if not np.isfinite(values).all():
+                raise ToadsAtlasError(
+                    f"Non-finite TOADS intensity variance factor in profile {fields[0]}"
+                )
+            profiles[modality] = values
+
+    result = np.ones((len(modalities), class_count), dtype=np.float32)
+    for channel, requested in enumerate(modalities):
+        modality = _MODALITY_ALIASES.get(requested)
+        if modality is not None:
+            result[channel] = profiles[modality]
+    return result
+
+
 def load_toads_lesion_priors(
     descriptor_path: str | Path,
     modalities: tuple[str, ...] | list[str],

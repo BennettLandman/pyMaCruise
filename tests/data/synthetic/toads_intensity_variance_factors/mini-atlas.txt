@@ -1,0 +1,10 @@
+Structures: 3
+CSF 1 closed
+GM 2 closed
+WM 3 closed
+Intensity Atlas: 1
+T1_MPRAGE 11 12 13
+Intensity Variance Factor: 1
+T1_MPRAGE 0.25 1.5 2.75
+FLAIR 0.5 0.125 4.0
+Lesions
