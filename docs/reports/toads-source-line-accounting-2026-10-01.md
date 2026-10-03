@@ -3,7 +3,7 @@
 ## Current planning estimate
 
 As re-reviewed on 2026-10-02 at full-suite commit
-`029255a`, the estimate is
+`f3b874b`, the estimate is
 **about 3,464–4,864 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–36%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -66,12 +66,14 @@ additional Intensity Variance Factor parser/accessor above advances that
 interval by about 30, to 3,464–4,864. This remains a coarse estimate pending a
 curated method-to-source-line map, not measured runtime code coverage.
 
-The full suite passed **1,125 tests**, with 11 expected RAS warnings in
-1,265.88 seconds on commit `029255a`; see the [TOADS variance-factor
-full-suite report](full-pytest-2026-10-02-toads-variance-factor-correction.md).
-That run includes a restartable synthetic base workflow, source-factor parsing
-and propagation, and a two-update Java reference comparison. The base workflow
-still records both TOADS stages as capped and nonconverged, and the 40-cycle
-small synthetic loop misses its 1e-4 convergence threshold. This is not
-whole-workflow equivalence or real-data validation. The current approximate
-TOADS line estimate is 3,464–4,864 of 13,651 lines.
+The full suite passed **1,130 tests**, with 11 expected RAS warnings in
+1,213.79 seconds on commit `f3b874b`; see the [kernel-optimization full-suite
+report](full-pytest-2026-10-02-toads-kernel-optimization.md). This cycle adds
+zero newly counted selected Java source lines: it batches already represented
+data terms, vectorizes already represented relation factors, and adds a
+Python-only state diagnostic. The suite also includes the restartable synthetic
+base workflow, source-factor propagation, and a two-update Java reference
+comparison. The base workflow still records both TOADS stages as capped and
+nonconverged, and the 50-cycle synthetic loop misses its 1e-4 convergence
+threshold. This is not whole-workflow equivalence or real-data validation. The
+current approximate TOADS line estimate remains **3,464–4,864 of 13,651**.

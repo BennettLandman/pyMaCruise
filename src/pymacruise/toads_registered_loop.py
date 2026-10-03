@@ -56,7 +56,9 @@ class ToadsRegisteredLoopConfig:
     smoothing: float
     prior_factor: float
     prior_coefficient: float
-    prior_scale: float = 0.05
+    # ``atlasRange`` on the selected MedicAlgorithmToads08 profile is 0.2;
+    # AlgorithmMultipleToads forwards it as ``atlasScale`` to segmentation.
+    prior_scale: float = 0.2
     maximum_iterations: int = 50
     convergence_threshold: float = 1e-4
     relation_limit: int = 1
