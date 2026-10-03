@@ -128,3 +128,23 @@ class-aligned synthetic atlas/input design remains a possible future test,
 but these experiments provide no evidence that it will converge or that the
 current output is source-equivalent. Do not relax the threshold to force the
 status flag.
+
+## Source-preserving runtime optimization
+
+At commit `6eb502bac11cc0f40044835e76cd8ea3f258c868`, the independent voxel
+dimension of inverse-shape-prior accumulation was vectorized. The Python
+implementation retains Java's candidate/other-class summation order and
+stepwise float32 operations. Focused source-reference and restartable
+base-workflow checks passed: **7 passed in 70.92s** across
+`tests/test_toads_inverse_shape_prior.py` and
+`tests/test_base_workflow_restartable.py`.
+
+On a seeded 32×32×32×11 benchmark array, one isolated kernel timing decreased
+from 2.530s to 0.0041s (about 619× on this machine; single timings, not a
+general performance guarantee). The 10-iteration synthetic trace decreased
+from 18.342s to 14.646s (about 20%). It retained the same terminal energy
+ratio `0.545753181` and output SHA-256
+`779c64ba73059d716fd65fcbbec3193a2e0bd5701cd687e223c530650979d764`; its
+orientation, shape, dtype, and labels were unchanged. This improves runtime
+for the trace but does not solve convergence. A full suite on this commit is
+still needed for repository-wide regression evidence.

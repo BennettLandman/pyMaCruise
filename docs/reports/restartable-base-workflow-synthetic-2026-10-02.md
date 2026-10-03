@@ -55,8 +55,10 @@ core level set, and resumed again. Verified upstream stages were skipped;
 CRUISE core and dependent refinement reran in attempt 2. Scientific output
 hashes matched the clean run. The N4 → two TOADS → Dura → CRUISE composition
 and its source stop summaries are synthetic integration evidence, not Java
-end-to-end equivalence. A full repository suite has not yet been run on this
-commit.
+end-to-end equivalence. A later full repository suite includes this runner's
+tests: **1,119 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
+1,365.66s** on commit `5b3d1ca69d684514a34b31bbf6f57eafda9b876`; see the
+[full-suite checkpoint](full-pytest-2026-10-02-base-workflow-checkpoint.md).
 
 ## Convergence status and boundary
 

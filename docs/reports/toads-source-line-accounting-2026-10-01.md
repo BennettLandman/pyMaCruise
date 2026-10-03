@@ -2,9 +2,9 @@
 
 ## Current planning estimate
 
-As re-reviewed on 2026-10-02 at implementation commit
-`dcb707fec0425c3e28fe7b20bf2b2c5822a061be` with the full synthetic suite, the estimate remains
-**3,400–4,800 source lines represented by Python
+As re-reviewed on 2026-10-02 at full-suite commit
+`5b3d1ca69d684514a34b31bbf6f57eafda9b876`, the estimate is
+**about 3,434–4,834 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–35%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
 result. The detailed acceptance rows and synthetic evidence define what is
@@ -51,15 +51,19 @@ line mapping is maintained. For each periodic plan update, refresh the range
 from newly validated source operation groups and recompute the denominator
 when the selected file set or source revisions change.
 
-The TOADS startup composition through initial membership and first thinning
-was extended through a synthetic selected 11-class atlas registration result
-at implementation commit `dcb707fec0425c3e28fe7b20bf2b2c5822a061be`. This
-latest adapter adds an actual registration-to-membership data handoff to the
-validated compositions, but no additional Java algorithm method family; its
-increment to the source-line numerator is therefore **0 lines**. It builds
-on already-counted relation, deviation, image-variance, similarity,
-shape-sampling, and membership operations. The source-line interval remains
-3,400–4,800 of 13,651 lines (about 25–35%) pending a curated
-method-to-source-line map. The full suite passed **1,060 tests**, with 11
-expected RAS warnings in 1,862.37 seconds; see the [current full-suite
-report](full-pytest-2026-10-02-registered-startup-membership.md).
+The latest validated additions represent approximately **34 additional
+selected Java branch lines** in `MultipleToadSegmentation`: the `useApprox`
+initial thinning-state arm (source lines 516–537) and selected approximate
+queue-event volume-update arms (source lines 1924–1928 and 1980–1985). These
+are partial branches within methods already represented by the port; they do
+not complete the approximate loop or establish its convergence. The line
+interval is therefore advanced by about 34, to 3,434–4,834. This remains a
+coarse estimate pending a curated method-to-source-line map, not measured
+runtime code coverage.
+
+The full suite passed **1,119 tests**, with 11 expected RAS warnings in
+1,365.66 seconds on commit `5b3d1ca69d684514a34b31bbf6f57eafda9b876`; see
+the [base-workflow full-suite report](full-pytest-2026-10-02-base-workflow-checkpoint.md).
+That run includes a restartable synthetic base workflow but records both
+TOADS stages as capped and nonconverged. It is not workflow equivalence or
+real-data validation.
