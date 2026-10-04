@@ -64,9 +64,14 @@ def run_registered_lesion_initial_thinning(
     consumed by atlas alignment. ``initial_membership`` is a separate result
     from the constructor's later ``computeMemberships`` call: Java discards the
     former after registration and does not reuse it as segmentation weights.
-    This adapter consumes (but does not calculate) that post-constructor
-    result. The topology is reloaded as RAS NIfTI; class shape maps stay in the
-    descriptor order.
+    The wrapper sets GM mode, computes relations/variances/channel weights,
+    then calculates initial memberships with ``GMflag=true``. This adapter
+    consumes (but does not calculate) that post-constructor result. The
+    wrapper also sets centroids/intensity state, updates atlas shape
+    registration, and may add an inhomogeneity field before those statistics.
+    Those values and the later membership result are seam inputs here. The
+    topology is reloaded as RAS NIfTI; class shape maps stay in descriptor
+    order.
     """
     if not isinstance(alignment, LesionLoadedAtlasInitialAlignment):
         raise TypeError("alignment must be a descriptor-loaded LesionTOADS alignment")
@@ -138,8 +143,13 @@ def run_registered_lesion_initial_thinning(
         "atlas.computeTransformedTemplate.afterInitialRegistration",
         "atlas.getFastTransformedShape",
         "MultipleToadSegmentation.constructor:initializeClassState",
-        "LesionToadSegmentation.computeMemberships:GMflag=false (supplied result)",
-        "setGMflag",
+        "wrapper.setCentroids/setLesionCentroid/setBlackHoleCentroid/setLesionWeight/setIntensityScales (state supplied)",
+        "wrapper.setGMflag.beforeAtlasShapeRegistration",
+        "atlas.updateShapeRegistration (upstream to supplied result)",
+        "optional InhomogeneityCorrection2 and addInhomogeneityCorrection (upstream to supplied result)",
+        "computeRelations/computeVariances/computeChannelWeights (upstream to supplied result)",
+        "LesionToadSegmentation.computeMemberships:GMflag=true (supplied result)",
+        "setGMflag.afterInitialComputeMemberships",
         "initThinningLabels",
         "propagateThinning",
     )

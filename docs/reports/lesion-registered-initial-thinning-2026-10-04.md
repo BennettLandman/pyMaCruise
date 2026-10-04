@@ -14,6 +14,14 @@ fixed synthetic seam input here; this adapter does not construct the full
 initial centroids, statistics, distances, relations, and `computeMemberships`
 call itself.
 
+A second source-order check found the wrapper's GM flag is enabled both before
+the atlas shape-registration update and again immediately after the initial
+membership computation. The adapter consumes a result computed with
+`GMflag=true`. Its trace now records the supplied centroid/intensity state,
+atlas update, optional inhomogeneity correction, and relation/statistics
+stages that precede that result. It still does not calculate those upstream
+values itself.
+
 After that correction, the focused command below passed **21 tests in 6.62s**.
 The full-suite result below is retained as historical evidence for implementation
 commit `abe5bc8`, but that implementation reused the wrong membership product.
