@@ -95,6 +95,16 @@ def main() -> int:
     parser.add_argument("--relation-limit", type=_positive_int, default=3)
     parser.add_argument("--maximum-distance", type=float, default=1e-4)
     parser.add_argument(
+        "--retain-iteration-history",
+        action="store_true",
+        help="retain per-iteration state for detailed inspection (uses more memory)",
+    )
+    parser.add_argument(
+        "--capture-events",
+        action="store_true",
+        help="record every thinning/growing event (can use substantial memory)",
+    )
+    parser.add_argument(
         "--intensity-variant",
         choices=("original", "constant-volume", "constant-mask", "linear-x", "linear-xyz", "original-scaled"),
         default="original",
@@ -213,14 +223,16 @@ def main() -> int:
         maximum_polynomial_degree=3,
         maximum_distance=args.maximum_distance,
         max_registration_iterations=args.loop_registration_iterations,
-        retain_iteration_history=True,
-        record_growing_events=True,
-        record_thinning_items=True,
+        retain_iteration_history=args.retain_iteration_history,
+        record_growing_events=args.capture_events,
+        record_thinning_items=args.capture_events,
     )
     stage_timings: dict[str, list[float]] = {}
     loop_start = time.perf_counter()
     with _measure_loop_stages(stage_timings):
-        result = registered_loop.run_registered_toads_loop(alignment, config)
+        result = registered_loop.run_registered_toads_loop(
+            alignment, config, progress_callback=lambda message: print(f"progress.{message}")
+        )
     loop_seconds = time.perf_counter() - loop_start
 
     if result.native_classification is None:
