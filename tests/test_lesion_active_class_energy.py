@@ -9,6 +9,7 @@ import pytest
 
 from pymacruise.lesion_active_class_energy import compute_lesion_toads_active_class_energies
 from pymacruise.lesion_atlas_priors import load_lesion_atlas_priors
+from pymacruise.lesion_data_terms import compute_lesion_toads_unfielded_data_energies
 
 
 ATLAS = Path(__file__).parents[1] / "data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt"
@@ -126,3 +127,58 @@ def test_active_object_branch_multiplies_by_the_supplied_intensity_field() -> No
     )
     # field * image = 1 in both channels, so the two source residual terms sum to 2.
     assert result.class_energy[1, 1, 1, 0] == np.float32(2.0)
+
+
+def test_active_lesion_branch_uses_the_selected_flair_power_table_term() -> None:
+    image = np.asarray((0.3, 1.8), dtype=np.float32)
+    class_centroid = np.asarray((0.5, 0.9), dtype=np.float32)
+    lesion_centroid = np.asarray((0.2, 0.4), dtype=np.float32)
+    black_hole_centroid = np.zeros(2, dtype=np.float32)
+    weights = np.asarray((0.5, 1.5), dtype=np.float32)
+    exponent = np.asarray((1.0, 0.5), dtype=np.float32)
+    expected = compute_lesion_toads_unfielded_data_energies(
+        image,
+        class_centroid,
+        lesion_centroid,
+        black_hole_centroid,
+        weights,
+        object_type="lesion",
+        use_lesion_weight=True,
+        flair_channel=1,
+        lesion_power_exponent=float(exponent[1]),
+        cached_lesion_power_exponent=float(exponent[1]),
+    )
+    images = np.zeros((3, 3, 3, 2), dtype=np.float32)
+    images[1, 1, 1] = image
+    result = compute_lesion_toads_active_class_energies(
+        images,
+        class_centroid[None, :],
+        lesion_centroid,
+        black_hole_centroid,
+        weights,
+        ("lesion",),
+        outlier_distance=2.0,
+        use_lesion_weight=True,
+        flair_channel=1,
+        lesion_power_exponents=exponent,
+    )
+    assert result.class_energy[1, 1, 1, 0] == expected.class_energy
+    assert result.lesion_energy[1, 1, 1] == expected.lesion_energy
+
+
+def test_active_lesion_weighting_requires_a_valid_flair_exponent() -> None:
+    images = np.ones((3, 3, 3, 2), dtype=np.float32)
+    centroids = np.zeros((1, 2), dtype=np.float32)
+    auxiliary = np.zeros(2, dtype=np.float32)
+    weights = np.ones(2, dtype=np.float32)
+    with pytest.raises(ValueError, match="exponents are required"):
+        compute_lesion_toads_active_class_energies(
+            images, centroids, auxiliary, auxiliary, weights, ("lesion",),
+            outlier_distance=1.0, use_lesion_weight=True, flair_channel=1,
+        )
+    with pytest.raises(ValueError, match="valid channel index"):
+        compute_lesion_toads_active_class_energies(
+            images, centroids, auxiliary, auxiliary, weights, ("lesion",),
+            outlier_distance=1.0, use_lesion_weight=True, flair_channel=2,
+            lesion_power_exponents=np.ones(2, dtype=np.float32),
+        )

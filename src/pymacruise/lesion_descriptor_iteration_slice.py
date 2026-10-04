@@ -55,6 +55,9 @@ def run_lesion_toads_descriptor_iteration_slice(
     initial_outlier_membership: ArrayLike,
     use_field: bool = False,
     intensity_fields: ArrayLike | None = None,
+    use_lesion_weight: bool = False,
+    flair_channel: int = -1,
+    lesion_power_exponents: ArrayLike | None = None,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
 ) -> LesionToadsDescriptorIterationSlice:
@@ -80,6 +83,9 @@ def run_lesion_toads_descriptor_iteration_slice(
         outlier_distance=outlier_distance,
         use_field=use_field,
         intensity_fields=intensity_fields,
+        use_lesion_weight=use_lesion_weight,
+        flair_channel=flair_channel,
+        lesion_power_exponents=lesion_power_exponents,
     )
     zero_map = np.zeros(values.shape[:3], dtype=np.float32)
     updated = run_lesion_toads_descriptor_membership_pass(

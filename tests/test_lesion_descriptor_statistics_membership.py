@@ -36,14 +36,14 @@ def _inputs():
     centroid_options = {
         "mode": "none", "modalities": ("T1_MPRAGE", "FLAIR"),
         "tissue_power_exponents": np.zeros((2, classes), dtype=np.float32),
-        "lesion_power_exponents": np.zeros(2, dtype=np.float32),
+        "lesion_power_exponents": np.asarray((1.0, 0.5), dtype=np.float32),
     }
     return (images, memberships, labels, centroids, lesion, black_hole, outlier,
             np.asarray((0.5, 0.6), dtype=np.float32), np.zeros(2, dtype=np.float32),
             types, names, shape_values, vector, centroid_options, {"outlier_distance": 3.25})
 
 
-def _run():
+def _run(*, use_lesion_weight=False):
     (images, memberships, labels, centroids, lesion, black_hole, outlier,
      lesion_centroid, black_centroid, types, names, shapes, vector,
      centroid_options, weight_options) = _inputs()
@@ -55,7 +55,8 @@ def _run():
         prior_scale=0.65, initial_black_hole_similarity=np.ones(len(types), dtype=np.float32),
         smoothing=0.0, smoothing_priors=vector, shape_priors=np.zeros(len(types), dtype=np.float32),
         shape_values=shapes, relation_types=("direct",) * len(types),
-        prior_coefficient=0.0, outlier_distance=3.25, previous_energy=10.0, t1_channel=0,
+        prior_coefficient=0.0, outlier_distance=3.25, previous_energy=10.0,
+        t1_channel=0, use_lesion_weight=use_lesion_weight,
     )
 
 
@@ -66,6 +67,7 @@ def test_descriptor_statistics_membership_orchestrates_existing_steps_without_mu
     normalized_types = tuple("object" if value == "obj" else value for value in types)
     originals = tuple(item.copy() for item in (images, memberships, labels, lesion, black_hole, outlier))
     result = _run()
+    weighted = _run(use_lesion_weight=True)
     stats = refresh_lesion_toads_statistics(
         images, memberships, labels, centroids, lesion, black_hole, outlier,
         lesion_centroid, black_centroid, normalized_types, centroid_options=centroid_options,
@@ -98,5 +100,10 @@ def test_descriptor_statistics_membership_orchestrates_existing_steps_without_mu
     np.testing.assert_array_equal(result.transition.membership.class_memberships, transition.membership.class_memberships)
     np.testing.assert_array_equal(result.transition.membership.denominator, transition.membership.denominator)
     assert np.isfinite(result.energy_ratio)
+    assert np.isfinite(weighted.energy_ratio)
+    assert not np.array_equal(
+        result.transition.data_energies.lesion_energy,
+        weighted.transition.data_energies.lesion_energy,
+    )
     for value, before in zip((images, memberships, labels, lesion, black_hole, outlier), originals):
         np.testing.assert_array_equal(value, before)

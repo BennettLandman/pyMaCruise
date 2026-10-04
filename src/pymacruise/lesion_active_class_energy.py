@@ -44,6 +44,9 @@ def compute_lesion_toads_active_class_energies(
     outlier_distance: float,
     use_field: bool = False,
     intensity_fields: ArrayLike | None = None,
+    use_lesion_weight: bool = False,
+    flair_channel: int = -1,
+    lesion_power_exponents: ArrayLike | None = None,
 ) -> LesionToadsActiveClassEnergies:
     """Build raw data terms for the selected source's active class dispatch.
 
@@ -69,6 +72,27 @@ def compute_lesion_toads_active_class_energies(
         raise ValueError("class_types contain a type not handled by active VandyCRUISE dispatch")
     if not isinstance(use_field, (bool, np.bool_)):
         raise ValueError("use_field must be boolean")
+    if not isinstance(use_lesion_weight, (bool, np.bool_)):
+        raise ValueError("use_lesion_weight must be boolean")
+    if (
+        isinstance(flair_channel, (bool, np.bool_))
+        or not isinstance(flair_channel, (int, np.integer))
+        or not -1 <= int(flair_channel) < values.shape[3]
+    ):
+        raise ValueError("flair_channel must be -1 or a valid channel index")
+    lesion_exponents = None if lesion_power_exponents is None else np.asarray(lesion_power_exponents, dtype=np.float32)
+    if lesion_exponents is not None and (
+        lesion_exponents.shape != (values.shape[3],)
+        or not np.isfinite(lesion_exponents).all()
+    ):
+        raise ValueError("lesion_power_exponents must be a finite value per channel")
+    if (
+        use_lesion_weight
+        and int(flair_channel) >= 0
+        and "lesion" in normalized
+        and lesion_exponents is None
+    ):
+        raise ValueError("lesion_power_exponents are required for FLAIR lesion weighting")
     if not np.isfinite(values).all() or not np.isfinite(centroids).all() or not np.isfinite(lesion).all() or not np.isfinite(black_hole).all() or not np.isfinite(weights).all():
         raise ValueError("image, centroid, and weight inputs must be finite")
     if not np.isfinite(outlier_distance):
@@ -100,6 +124,18 @@ def compute_lesion_toads_active_class_energies(
                             object_type=kind,
                             use_field=use_field,
                             intensity_field=None if fields is None else fields[x, y, z],
+                            use_lesion_weight=use_lesion_weight,
+                            flair_channel=int(flair_channel),
+                            lesion_power_exponent=(
+                                float(lesion_exponents[int(flair_channel)])
+                                if lesion_exponents is not None and int(flair_channel) >= 0
+                                else None
+                            ),
+                            cached_lesion_power_exponent=(
+                                float(lesion_exponents[int(flair_channel)])
+                                if lesion_exponents is not None and int(flair_channel) >= 0
+                                else None
+                            ),
                         )
                         energy = result.class_energy
                         if kind == "lesion":

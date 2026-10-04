@@ -73,8 +73,6 @@ def run_lesion_toads_descriptor_statistics_membership(
     """
     if not isinstance(use_lesion_weight, (bool, np.bool_)):
         raise ValueError("use_lesion_weight must be boolean")
-    if use_lesion_weight:
-        raise ValueError("the active descriptor energy adapter does not yet expose FLAIR lesion weighting")
     types = tuple(
         "object" if str(value).lower() == "obj" else str(value).lower()
         for value in descriptor_types
@@ -82,6 +80,12 @@ def run_lesion_toads_descriptor_statistics_membership(
     membership_types = map_lesion_descriptor_membership_types(types)
     if len(structure_names) != len(types) or any(not isinstance(value, str) for value in structure_names):
         raise ValueError("structure_names must provide one name per descriptor class")
+    modalities = tuple(centroid_options.get("modalities") or ())
+    resolved_flair = (
+        int(flair_channel)
+        if flair_channel is not None
+        else max((index for index, modality in enumerate(modalities) if modality == "FLAIR"), default=-1)
+    )
     stats = refresh_lesion_toads_statistics(
         images,
         initial_class_memberships,
@@ -96,8 +100,8 @@ def run_lesion_toads_descriptor_statistics_membership(
         fields=fields,
         centroid_options=centroid_options,
         channel_weight_options=channel_weight_options,
-        use_lesion_weight=False,
-        flair_channel=flair_channel,
+        use_lesion_weight=bool(use_lesion_weight),
+        flair_channel=resolved_flair,
     )
     class_std = stats.variances.class_standard_deviation
     lesion_std = stats.variances.lesion_standard_deviation
@@ -140,6 +144,9 @@ def run_lesion_toads_descriptor_statistics_membership(
         initial_outlier_membership=initial_outlier_membership,
         use_field=fields is not None,
         intensity_fields=fields,
+        use_lesion_weight=bool(use_lesion_weight),
+        flair_channel=resolved_flair,
+        lesion_power_exponents=centroid_options.get("lesion_power_exponents"),
         zero=zero,
         infinity=infinity,
     )

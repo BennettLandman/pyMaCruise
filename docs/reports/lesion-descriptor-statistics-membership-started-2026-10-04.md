@@ -10,20 +10,24 @@ active energy/membership dispatch.
 All model state is still synthetic or caller-supplied: hard segmentation,
 initial memberships, prior centroids, and shape/relation maps. This does not
 run thinning, rebuild relations, update correction fields, apply lesion
-distance modulation, or continue the outer iteration. `use_lesion_weight=True`
-is explicitly rejected because the descriptor raw-energy adapter has not yet
-implemented the selected FLAIR lesion PowerTable branch.
+distance modulation, or continue the outer iteration. The optional
+`use_lesion_weight=True` branch routes the descriptor's FLAIR channel and
+per-channel lesion PowerTable exponent through statistics refresh and raw
+LESION energy calculation.
 
 Focused command:
 
 ```text
-./.venv/bin/pytest -q tests/test_lesion_descriptor_statistics_membership.py tests/test_lesion_statistics_membership_bridge.py tests/test_lesion_statistics_refresh.py tests/test_lesion_descriptor_iteration_slice.py
+./.venv/bin/pytest -q tests/test_lesion_active_class_energy.py tests/test_lesion_descriptor_statistics_membership.py tests/test_lesion_data_energy_maps_special.py
 ```
 
-Result: **6 passed, 0 failed, 0 skipped in 0.68 seconds**. The new 5×5×5
+Result: **8 passed, 0 failed, 0 skipped in 0.69 seconds**. The new 5×5×5
 synthetic test compares this adapter against the same already-validated
 statistics, similarity, and descriptor transition components composed
-independently, and confirms inputs are not mutated. It is integration
-plumbing evidence only, not a new Java harness match. Next, compare refreshed
-intermediates to Java on a 13-class fixture and implement the active FLAIR
-lesion-weight option before expanding the supported wrapper profile.
+independently, checks weighted and unweighted FLAIR lesion-energy modes, and
+confirms inputs are not mutated. The raw lesion term reuses the previously
+source-matched scalar PowerTable helper; this orchestration test itself is
+integration plumbing evidence, not a new Java harness match. Missing exponents
+and out-of-range FLAIR channels fail explicitly. Next, compare refreshed
+intermediates to Java on a 13-class fixture and validate the complete wrapper
+profile. The row remains Started pending a full-suite evaluation.
