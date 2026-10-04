@@ -21,4 +21,4 @@ The committed 25³ folded-cortex fixture supplies the aligned segmentation, atla
 This is file-based synthetic integration from P39 Dura products and prealigned maps. It does not run FLAIR registration, atlas registration, TOADS, or LesionTOADS. It does not establish NiftyReg equivalence, whole MaCRUISEplus equivalence, or real-data performance. Marching cubes retains its tracked JIST `IsoSurfaceOnGrid` comparison risk.
 
 
-A full repository pytest run under the 24 GB RSS watchdog is in progress on tested implementation commit `4ae3b55` to evaluate this workflow integration across the repository.
+A full repository pytest run under the 24 GB RSS watchdog passed on tested implementation commit `4ae3b55`: **1,158 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 844.58s**; peak sampled RSS **14.536 GB**. See [full-suite report](full-pytest-2026-10-04-plus-file-workflow.md).
