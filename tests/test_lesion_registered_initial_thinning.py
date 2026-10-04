@@ -14,7 +14,9 @@ from pymacruise.lesion_initial_alignment_bounds import compute_lesion_initial_al
 from pymacruise.lesion_initial_atlas_alignment import (
     initialize_lesion_atlas_alignment_from_descriptor,
 )
-from pymacruise.lesion_initial_segmentation_state import run_loaded_template_first_thinning
+from pymacruise.lesion_growth import propagate_lesion_toads_thinning
+from pymacruise.lesion_initial_segmentation_state import initialize_lesion_segmentation_state
+from pymacruise.lesion_standard13_volume import Standard13VolumeResult
 from pymacruise.lesion_registered_initial_thinning import run_registered_lesion_initial_thinning
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_transformed_template import transform_lesion_toads_template
@@ -50,9 +52,33 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
         init_align_iterations=0,
         pyramid_levels=2,
     )
+    # This is a fixed, synthetic result from the later per-segmentation
+    # computeMemberships seam. It is intentionally distinct from the
+    # preprocess.initialMemberships array used only for atlas alignment.
+    post_constructor_memberships = np.full((11, 11, 11, 13), 1.0 / 13, dtype=np.float32)
+    zero_map = np.zeros((11, 11, 11), dtype=np.float32)
+    initial_membership = Standard13VolumeResult(
+        class_memberships=post_constructor_memberships,
+        lesion_membership=zero_map.copy(),
+        black_hole_membership=zero_map.copy(),
+        outlier_membership=np.full((11, 11, 11), 0.5, dtype=np.float32),
+        lesion_relation=np.ones((11, 11, 11), dtype=np.float32),
+        denominator=zero_map.copy(),
+        class_energies=np.zeros((11, 11, 11, 13), dtype=np.float32),
+        lesion_energy=zero_map.copy(),
+        black_hole_energy=zero_map.copy(),
+        objective=np.float32(0.0),
+        running_objective=zero_map.copy(),
+    )
+    assert not np.array_equal(
+        initial_membership.class_memberships,
+        alignment.alignment.memberships.memberships,
+    )
+    source_membership_before = initial_membership.class_memberships.copy()
     result = run_registered_lesion_initial_thinning(
         alignment,
         ATLAS,
+        initial_membership=initial_membership,
         image_resolutions_mm=(0.9375,) * 3,
         template_resolutions_mm=(0.9375,) * 3,
         volume_ratio=0.0,
@@ -67,9 +93,9 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
     assert result.transformed_shapes.dtype == np.float32
     assert result.constructor_state.segmentation.dtype == np.int8
     assert result.constructor_state.lesion_membership.dtype == np.float32
-    # The queue adapter uses widened int16 mutable work arrays; constructor
-    # state above remains the source's int8 class map.
-    assert result.first_thinning.thinning.run.segmentation.dtype == np.int16
+    assert result.initial_membership is initial_membership
+    # The queue adapter widens the constructor's int8 label map for work.
+    assert result.first_thinning.run.segmentation.dtype == np.int16
     assert result.stage_order == (
         "preprocess.initialMemberships",
         'atlas.initShapeRegistration(memberships,"rigid",initAlignIter,levels,1.0f)',
@@ -80,6 +106,7 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
         "atlas.computeTransformedTemplate.afterInitialRegistration",
         "atlas.getFastTransformedShape",
         "MultipleToadSegmentation.constructor:initializeClassState",
+        "LesionToadSegmentation.computeMemberships:GMflag=false (supplied result)",
         "setGMflag",
         "initThinningLabels",
         "propagateThinning",
@@ -116,12 +143,19 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
     lesion_class = next(
         index for index, item in enumerate(priors.structures) if item.topology == "lesion"
     )
-    direct = run_loaded_template_first_thinning(
-        alignment,
-        direct_template,
-        direct_shapes,
-        np.zeros((11, 11, 11), dtype=np.float32),
+    direct_state = initialize_lesion_segmentation_state(
+        direct_template, tuple(item.label for item in priors.structures)
+    )
+    direct = propagate_lesion_toads_thinning(
+        direct_state.segmentation,
+        initial_membership.class_memberships,
         object_types=tuple(item.topology for item in priors.structures),
+        lesion_membership=initial_membership.lesion_membership,
+        black_hole_membership=initial_membership.black_hole_membership,
+        transformed_shape=direct_shapes,
+        initial_skeleton=direct_state.skeleton,
+        initial_available=direct_state.available,
+        initial_ordering=direct_state.ordering,
         lesion_class=lesion_class,
         volume_ratio=0.0,
         limit=10.0,
@@ -131,23 +165,21 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
     np.testing.assert_array_equal(result.transformed_template, direct_template)
     np.testing.assert_array_equal(result.transformed_shapes, direct_shapes)
     np.testing.assert_array_equal(
-        result.constructor_state.segmentation, direct.state.segmentation
+        result.constructor_state.segmentation, direct_state.segmentation
     )
     np.testing.assert_array_equal(
         result.constructor_state.lesion_membership,
         np.zeros((11, 11, 11), dtype=np.float32),
     )
+    np.testing.assert_array_equal(result.first_thinning.run.segmentation, direct.run.segmentation)
     np.testing.assert_array_equal(
-        result.first_thinning.thinning.run.segmentation,
-        direct.first_thinning.thinning.run.segmentation,
+        result.first_thinning.run.skeleton,
+        direct.run.skeleton,
     )
     np.testing.assert_array_equal(
-        result.first_thinning.thinning.run.skeleton,
-        direct.first_thinning.thinning.run.skeleton,
-    )
-    np.testing.assert_array_equal(
-        result.first_thinning.thinning.run.class_volume,
-        direct.first_thinning.thinning.run.class_volume,
+        result.first_thinning.run.class_volume,
+        direct.run.class_volume,
     )
     np.testing.assert_array_equal(padded_images, source_memberships)
     np.testing.assert_array_equal(atlas_patch, source_shape)
+    np.testing.assert_array_equal(initial_membership.class_memberships, source_membership_before)

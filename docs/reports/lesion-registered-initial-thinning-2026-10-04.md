@@ -1,5 +1,25 @@
 # LesionTOADS registered initial thinning — 2026-10-04
 
+## Source-order correction — 2026-10-04
+
+A subsequent audit of `AlgorithmLesionToads` found that the registration
+membership array is discarded before the segmentation loop. The constructor's
+later `LesionToadSegmentation.computeMemberships()` result is what feeds
+`initThinningLabels` and `propagateThinning`. The first version of this
+composition incorrectly reused the registration membership map for thinning.
+The API and test now keep these products separate: an explicit
+`Standard13VolumeResult` is required for the later membership result, and the
+test proves it differs from the registration map. That membership result is a
+fixed synthetic seam input here; this adapter does not construct the full
+initial centroids, statistics, distances, relations, and `computeMemberships`
+call itself.
+
+After that correction, the focused command below passed **21 tests in 6.62s**.
+The full-suite result below is retained as historical evidence for implementation
+commit `abe5bc8`, but that implementation reused the wrong membership product.
+It is not acceptance evidence for the corrected code; rerun the full suite on
+the corrected implementation before marking P39zzzzzzbj Done.
+
 ## Scope
 
 This synthetic slice composes the bundled 13-class descriptor alignment with

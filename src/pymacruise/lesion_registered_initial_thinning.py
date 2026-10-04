@@ -16,6 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .lesion_atlas_priors import LesionAtlasTopology, load_lesion_atlas_topology
+from .lesion_growth import LesionToadsThinningPass, propagate_lesion_toads_thinning
 from .lesion_initial_alignment_bounds import (
     LesionInitialAlignmentBounds,
     compute_lesion_initial_alignment_bounds,
@@ -23,11 +24,11 @@ from .lesion_initial_alignment_bounds import (
 from .lesion_initial_atlas_alignment import LesionLoadedAtlasInitialAlignment
 from .lesion_initial_segmentation_state import (
     LesionInitialSegmentationState,
-    run_loaded_template_first_thinning,
+    initialize_lesion_segmentation_state,
 )
 from .lesion_registered_shapes import transform_registered_lesion_shape_priors
 from .lesion_transformed_template import transform_lesion_toads_template
-from .lesion_loaded_atlas_first_thinning import LesionLoadedAtlasFirstThinning
+from .lesion_standard13_volume import Standard13VolumeResult
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,8 @@ class LesionRegisteredInitialThinning:
     transformed_template: NDArray[np.int8]
     transformed_shapes: NDArray[np.float32]
     constructor_state: LesionInitialSegmentationState
-    first_thinning: LesionLoadedAtlasFirstThinning
+    initial_membership: Standard13VolumeResult
+    first_thinning: LesionToadsThinningPass
     stage_order: tuple[str, ...]
     excluded_wrapper_stages: tuple[str, ...]
 
@@ -49,6 +51,7 @@ def run_registered_lesion_initial_thinning(
     alignment: LesionLoadedAtlasInitialAlignment,
     descriptor_path: str | Path,
     *,
+    initial_membership: Standard13VolumeResult,
     image_resolutions_mm: tuple[float, float, float],
     template_resolutions_mm: tuple[float, float, float],
     volume_ratio: float,
@@ -57,14 +60,18 @@ def run_registered_lesion_initial_thinning(
 ) -> LesionRegisteredInitialThinning:
     """Resample the registered 13-class atlas and execute first thinning.
 
-    ``alignment`` must come from the selected descriptor-based initial
-    membership and rigid-registration API. The topology is reloaded as RAS
-    NIfTI; class shape maps stay in the same descriptor order. Constructor
-    lesion and black-hole memberships start at the selected Java source's
-    zero values.
+    ``alignment`` contains the pre-registration ``preprocess.initialMemberships``
+    consumed by atlas alignment. ``initial_membership`` is a separate result
+    from the constructor's later ``computeMemberships`` call: Java discards the
+    former after registration and does not reuse it as segmentation weights.
+    This adapter consumes (but does not calculate) that post-constructor
+    result. The topology is reloaded as RAS NIfTI; class shape maps stay in the
+    descriptor order.
     """
     if not isinstance(alignment, LesionLoadedAtlasInitialAlignment):
         raise TypeError("alignment must be a descriptor-loaded LesionTOADS alignment")
+    if not isinstance(initial_membership, Standard13VolumeResult):
+        raise TypeError("initial_membership must be a selected 13-class computeMemberships result")
     structures = alignment.priors.structures
     if len(structures) != 13 or alignment.shape_priors.structures != structures:
         raise ValueError("selected LesionTOADS initial alignment requires its ordered 13-class atlas")
@@ -72,6 +79,8 @@ def run_registered_lesion_initial_thinning(
     if memberships.ndim != 4 or memberships.shape[-1] != len(structures):
         raise ValueError("initial memberships must match the loaded atlas class order")
     dimensions = tuple(int(value) for value in memberships.shape[:3])
+    if initial_membership.class_memberships.shape != (*dimensions, 13):
+        raise ValueError("post-constructor memberships must match the transformed subject grid")
     atlas_shapes = tuple(
         alignment.shape_priors.shape_maps[item.name] for item in structures
     )
@@ -102,13 +111,22 @@ def run_registered_lesion_initial_thinning(
     lesion_classes = [index for index, item in enumerate(structures) if item.topology.lower() == "lesion"]
     if len(lesion_classes) != 1:
         raise ValueError("selected LesionTOADS descriptor must declare exactly one lesion class")
-    black_hole_membership = np.zeros(dimensions, dtype=np.float32)
-    initial = run_loaded_template_first_thinning(
-        alignment,
+    state = initialize_lesion_segmentation_state(
         transformed_template,
+        tuple(item.label for item in structures),
+    )
+    if state.segmentation.shape != initial_membership.class_memberships.shape[:3]:
+        raise ValueError("transformed template and post-constructor memberships must share a grid")
+    thinning = propagate_lesion_toads_thinning(
+        state.segmentation,
+        initial_membership.class_memberships,
+        object_types,
+        initial_membership.lesion_membership,
+        initial_membership.black_hole_membership,
         transformed_shapes,
-        black_hole_membership,
-        object_types=object_types,
+        state.skeleton,
+        state.available,
+        state.ordering,
         lesion_class=lesion_classes[0],
         volume_ratio=volume_ratio,
         limit=limit,
@@ -120,6 +138,7 @@ def run_registered_lesion_initial_thinning(
         "atlas.computeTransformedTemplate.afterInitialRegistration",
         "atlas.getFastTransformedShape",
         "MultipleToadSegmentation.constructor:initializeClassState",
+        "LesionToadSegmentation.computeMemberships:GMflag=false (supplied result)",
         "setGMflag",
         "initThinningLabels",
         "propagateThinning",
@@ -130,8 +149,9 @@ def run_registered_lesion_initial_thinning(
         registration_bounds=bounds,
         transformed_template=transformed_template,
         transformed_shapes=transformed_shapes,
-        constructor_state=initial.state,
-        first_thinning=initial.first_thinning,
+        constructor_state=state,
+        initial_membership=initial_membership,
+        first_thinning=thinning,
         stage_order=stages,
         excluded_wrapper_stages=(
             "preprocess.uncropImages",
