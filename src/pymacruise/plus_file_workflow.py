@@ -227,6 +227,12 @@ def run_plus_file_workflow(
         }
         _write_json(manifest_path, manifest)
 
+    # A process may have died during any stage of a previously complete run.
+    # Persist the active state before validating/recomputing checkpoints so a
+    # failed resume cannot leave a misleading top-level `complete` status.
+    manifest["status"] = "running"
+    _write_json(manifest_path, manifest)
+
     resumed: list[str] = []
     stages: dict[str, dict[str, Any]] = manifest["stages"]
 
@@ -239,6 +245,13 @@ def run_plus_file_workflow(
         crop_parameters = _crop_from_manifest(crop_record)
     else:
         root_attempt = _new_attempt(root / "stages" / "transfer_crop")
+        stages["transfer_crop"] = {
+            "status": "running",
+            "attempt": root_attempt.name,
+            "dependency_signature": crop_dependency,
+        }
+        manifest["history"].append({"stage": "transfer_crop", "status": "running", "attempt": root_attempt.name})
+        _write_json(manifest_path, manifest)
         channels = np.stack(
             [np.asarray(images[name].dataobj, dtype=np.float32) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")]
         )
@@ -317,6 +330,13 @@ def run_plus_file_workflow(
         tgdm_images = {name: _load(path, name) for name, path in tgdm_outputs.items()}
     else:
         root_attempt = _new_attempt(root / "stages" / "topology_ace_gvf_tgdm")
+        stages["topology_ace_gvf_tgdm"] = {
+            "status": "running",
+            "attempt": root_attempt.name,
+            "dependency_signature": tgdm_dependency,
+        }
+        manifest["history"].append({"stage": "topology_ace_gvf_tgdm", "status": "running", "attempt": root_attempt.name})
+        _write_json(manifest_path, manifest)
         cropped = {name: _load(Path(crop_record["outputs"][name]["path"]), name) for name in (
             "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm", "multi_atlas_mask", "toads_gm", "toads_wm_fill", "toads_wm_mask"
         )}
@@ -358,6 +378,13 @@ def run_plus_file_workflow(
         tail_outputs = {name: Path(item["path"]) for name, item in tail_record["outputs"].items()}
     else:
         root_attempt = _new_attempt(root / "stages" / "surfaces_thickness")
+        stages["surfaces_thickness"] = {
+            "status": "running",
+            "attempt": root_attempt.name,
+            "dependency_signature": tail_dependency,
+        }
+        manifest["history"].append({"stage": "surfaces_thickness", "status": "running", "attempt": root_attempt.name})
+        _write_json(manifest_path, manifest)
         images_for_tail = {name: _load(Path(tgdm_record["outputs"][name]["path"]), name) for name in (
             "initial_level_set", "tissue_sign", "initial_inner", "inner", "central", "outer"
         )}

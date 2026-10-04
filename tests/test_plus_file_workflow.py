@@ -9,6 +9,7 @@ import pytest
 
 from pymacruise.image_io import save_nifti_ras
 from pymacruise.plus_file_workflow import run_plus_file_workflow
+from pymacruise.surfaces import read_legacy_vtk
 
 
 FIXTURE = Path(__file__).parent / "data/synthetic/plus_pre_tgdm_composition"
@@ -69,6 +70,11 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
             assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
             assert image.shape == segmentation.shape
             assert np.isfinite(np.asarray(image.dataobj)).all()
+        elif path.suffix == ".vtk":
+            mesh = read_legacy_vtk(path)
+            assert mesh.coordinate_frame == "RAS"
+            assert mesh.units == "mm"
+            assert np.isfinite(mesh.vertices).all()
     metrics = json.loads(first.outputs["thickness_metrics"].read_text())
     assert metrics["spatial_convention"] == "RAS"
     assert metrics["surface_units"] == "mm"
@@ -80,6 +86,14 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
     repaired = run_plus_file_workflow(**inputs, crop_edge_width=5, resume=True)
     assert repaired.resumed_stages == ("transfer_crop", "topology_ace_gvf_tgdm")
     assert np.isfinite(np.asarray(nib.load(str(repaired.outputs["thickness_volume"])).dataobj)).all()
+
+    manifest = json.loads(repaired.manifest_path.read_text())
+    manifest["status"] = "complete"
+    manifest["stages"]["surfaces_thickness"]["status"] = "running"
+    repaired.manifest_path.write_text(json.dumps(manifest))
+    interrupted = run_plus_file_workflow(**inputs, crop_edge_width=5, resume=True)
+    assert interrupted.resumed_stages == ("transfer_crop", "topology_ace_gvf_tgdm")
+    assert json.loads(interrupted.manifest_path.read_text())["status"] == "complete"
 
     with pytest.raises(ValueError, match="inputs or settings differ"):
         run_plus_file_workflow(**inputs, crop_edge_width=4, resume=True)

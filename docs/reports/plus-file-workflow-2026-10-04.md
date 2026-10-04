@@ -22,3 +22,8 @@ This is file-based synthetic integration from P39 Dura products and prealigned m
 
 
 A full repository pytest run under the 24 GB RSS watchdog passed on tested implementation commit `4ae3b55`: **1,158 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 844.58s**; peak sampled RSS **14.536 GB**. See [full-suite report](full-pytest-2026-10-04-plus-file-workflow.md).
+
+
+## Manifest interruption hardening
+
+After the full-suite run, the runner was tightened to persist workflow/stage `running` status before validation or computation. This prevents a failed resume from retaining a misleading top-level `complete` value. The synthetic test now sets a previously complete tail stage to `running` to simulate interruption, verifies that valid predecessors still resume, confirms the tail reruns, and parses generated VTK meshes to check RAS+ millimetre coordinates. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 17.95s** in the current working tree; post-commit rerun pending. The repository-wide 1,158-test run above predates this narrow status/validation hardening and remains tied to `4ae3b55`.
