@@ -39,6 +39,13 @@ public final class ToadsExactPolynomialFieldReferenceHarness {
     public static void main(String[] args) throws Exception {
         int nx = Integer.parseInt(args[1]), ny = Integer.parseInt(args[2]), nz = Integer.parseInt(args[3]);
         int classes = Integer.parseInt(args[4]), degree = Integer.parseInt(args[5]), volume = nx * ny * nz;
+        String[] classTypes = args.length > 6 ? args[6].split(",") : null;
+        if (classTypes == null) {
+            classTypes = new String[classes];
+            classTypes[0] = "mask";
+            for (int k = 1; k < classes; k++) classTypes[k] = k <= 2 ? "optimized_csf" : (k <= 7 ? "optimized_gm" : "optimized_wm");
+        }
+        if (classTypes.length != classes) throw new IllegalArgumentException("class type count mismatch");
         int np = degree == 1 ? 4 : (degree == 2 ? 10 : 20);
         byte[] labels = new byte[volume]; float[] image = new float[volume], mem = new float[volume * classes];
         float[] field = new float[volume], centers = new float[classes];
@@ -61,8 +68,10 @@ public final class ToadsExactPolynomialFieldReferenceHarness {
                 float corrected = field[voxel] * image[voxel], residual = corrected - centers[k];
                 float distance = residual * residual, weight = 1.0f;
                 if (distance > 1.0e-30f) {
-                    PowerTable table = k <= 2 ? csf : (k <= 7 ? gm : wm);
-                    weight = (float)(table.lookup((double)distance, 1.0f) / (double)distance);
+                    PowerTable table = classTypes[k].equals("optimized_csf") ? csf
+                            : (classTypes[k].equals("optimized_gm") ? gm
+                            : (classTypes[k].equals("optimized_wm") ? wm : null));
+                    if (table != null) weight = (float)(table.lookup((double)distance, 1.0f) / (double)distance);
                 }
                 float membership = mem[voxel * classes + k];
                 float membershipSquared = membership * membership;

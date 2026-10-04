@@ -71,6 +71,7 @@ def test_exact_polynomial_field_matches_selected_java_reference(degree: int, tmp
     expected = np.asarray(java["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
     np.testing.assert_allclose(result.field, expected, rtol=0, atol=2e-6)
     np.testing.assert_array_equal(result.field[~result.correction_mask], 1.0)
+
     assert abs(float(np.mean(result.field[result.correction_mask], dtype=np.float64)) - 1.0) < 2e-6
 
 
@@ -113,3 +114,90 @@ def test_multichannel_exact_polynomial_field_matches_java_in_source_order(degree
         np.testing.assert_array_equal(output.fits[channel].right_hand_side, np.asarray(reference["rhs"]))
         np.testing.assert_allclose(output.fields[..., channel], expected, rtol=0, atol=2e-6)
     np.testing.assert_array_equal(fields, np.stack((field, field), axis=-1))
+
+
+def test_exact_polynomial_field_matches_java_for_13_class_lesion_profile(tmp_path: Path) -> None:
+    image, memberships, segmentation, centers, initial_field = _phantom()
+    lesion_memberships = np.zeros(image.shape + (13,), dtype=np.float32)
+    lesion_memberships[..., :11] = memberships
+    lesion_segmentation = segmentation.copy()
+    candidates = np.flatnonzero(lesion_segmentation.ravel() != 0)
+    first = candidates[::19]
+    second = candidates[7::23]
+    lesion_segmentation.ravel()[first] = 11
+    lesion_segmentation.ravel()[second] = 12
+    lesion_memberships[..., 11].ravel()[first] = np.float32(0.35)
+    lesion_memberships[..., 12].ravel()[second] = np.float32(0.65)
+    lesion_centers = np.concatenate((centers, np.asarray([91.0, 117.0], dtype=np.float32)))
+    descriptor_types = (
+        "mask", "optimized_csf", "optimized_csf", *("obj",) * 7,
+        "lesion", "obj", "obj",
+    )
+    field = initial_field.copy()
+    with pytest.raises(ValueError, match="class_types is required"):
+        fit_toads_exact_chebyshev_field(
+            image, lesion_memberships, lesion_segmentation, lesion_centers,
+            initial_field.copy(), degree=2,
+        )
+    with pytest.raises(ValueError, match="one nonempty type name"):
+        fit_toads_exact_chebyshev_field(
+            image, lesion_memberships, lesion_segmentation, lesion_centers,
+            initial_field.copy(), degree=2, class_types=("mask", "obj"),
+        )
+    result = fit_toads_exact_chebyshev_field(
+        image, lesion_memberships, lesion_segmentation, lesion_centers, field,
+        degree=2, class_types=descriptor_types,
+    )
+
+    input_path = tmp_path / "lesion_13class_degree2.bin"
+    _write_input(input_path, lesion_segmentation, image, lesion_memberships, initial_field, lesion_centers)
+    build = tmp_path / "classes"
+    build.mkdir()
+    java_sources = sorted((UPSTREAM / "Jama").glob("*.java")) + sorted((UPSTREAM / "Jama" / "util").glob("*.java"))
+    java_sources += [UPSTREAM / "gov/nih/mipav/model/structures/jama/JamaMatrix.java", UPSTREAM / "edu/jhmi/rad/medic/utilities/PowerTable.java", HARNESS]
+    subprocess.run(["javac", "-d", str(build), *map(str, java_sources)], check=True, capture_output=True, text=True)
+    class_type_argument = ",".join(descriptor_types)
+    reference = json.loads(subprocess.run(
+        ["java", "-cp", str(build), "ToadsExactPolynomialFieldReferenceHarness",
+         str(input_path), *(str(n) for n in image.shape), "13", "2", class_type_argument],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    assert reference["degree"] == 2
+    assert int(result.correction_mask.sum()) == int(np.count_nonzero(lesion_segmentation))
+    np.testing.assert_array_equal(result.normal_matrix.ravel(), np.asarray(reference["normal"]))
+    np.testing.assert_array_equal(result.right_hand_side, np.asarray(reference["rhs"]))
+    np.testing.assert_allclose(result.coefficients, np.asarray(reference["coefficients"]), rtol=0, atol=3e-11)
+    expected = np.asarray(reference["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
+    np.testing.assert_allclose(result.field, expected, rtol=0, atol=2e-6)
+    np.testing.assert_array_equal(result.field[~result.correction_mask], 1.0)
+
+    images = np.stack((image, np.asarray(image * np.float32(0.83) + np.float32(0.06), dtype=np.float32)), axis=-1)
+    channel_centers = np.stack(
+        (lesion_centers, np.asarray(lesion_centers * np.float32(0.83) + np.float32(0.06), dtype=np.float32))
+    )
+    channel_fields = np.stack((initial_field, initial_field), axis=-1)
+    multichannel = toads_multichannel_exact_field_refit(
+        images, lesion_memberships, lesion_segmentation, channel_centers, channel_fields,
+        degree=2, class_types=descriptor_types,
+    )
+    assert multichannel.channel_order == (0, 1)
+    for channel in range(2):
+        if channel == 0:
+            java_channel = reference
+        else:
+            channel_path = tmp_path / "lesion_13class_degree2_channel1.bin"
+            _write_input(
+                channel_path, lesion_segmentation, images[..., channel],
+                lesion_memberships, initial_field, channel_centers[channel],
+            )
+            java_channel = json.loads(subprocess.run(
+                ["java", "-cp", str(build), "ToadsExactPolynomialFieldReferenceHarness",
+                 str(channel_path), *(str(n) for n in image.shape), "13", "2", class_type_argument],
+                check=True, capture_output=True, text=True,
+            ).stdout)
+        fit = multichannel.fits[channel]
+        np.testing.assert_array_equal(fit.normal_matrix.ravel(), np.asarray(java_channel["normal"]))
+        np.testing.assert_array_equal(fit.right_hand_side, np.asarray(java_channel["rhs"]))
+        expected_channel = np.asarray(java_channel["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
+        np.testing.assert_allclose(multichannel.fields[..., channel], expected_channel, rtol=0, atol=2e-6)
+    np.testing.assert_array_equal(channel_fields, np.stack((initial_field, initial_field), axis=-1))

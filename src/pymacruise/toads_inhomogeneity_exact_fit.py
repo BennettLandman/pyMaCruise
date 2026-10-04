@@ -10,6 +10,7 @@ the selected wrapper's coefficient counts and explicit basis order.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -39,14 +40,18 @@ def fit_toads_exact_chebyshev_field(
     *,
     background_class_index: int = 0,
     degree: int = 1,
+    class_types: Sequence[str] | None = None,
 ) -> ToadsExactChebyshevFieldFit:
     """Refit an attached global field from the complete class-membership map.
 
     The selected short constructor sets ``useApprox=false``. Unlike the
     alternate approximate constructor, this path has no candidate-slot
     ``best`` array and iterates every non-background class. The default
-    descriptor's optimized CSF/GM/WM power exponents are all one. Source
-    matrix/vector accumulation, the 1e-30 residual cutoff, stride-three
+    descriptor's optimized CSF/GM/WM power exponents are all one. The default
+    class map is the selected 11-class MaCRUISE atlas. Other descriptor class
+    layouts, including the 13-class LesionTOADS atlas, must pass ``class_types``
+    in exact descriptor order. Source matrix/vector accumulation, the
+    1e-30 residual cutoff, stride-three
     sampling, full-grid scaling, float32 field evaluation, and mask-mean
     centering are retained.
 
@@ -94,15 +99,24 @@ def fit_toads_exact_chebyshev_field(
     n_parameters = (4, 10, 20)[degree - 1]
     rhs = np.zeros(n_parameters, dtype=np.float64)
     normal = np.zeros((n_parameters, n_parameters), dtype=np.float64)
-    power_table = {"optimized_csf": (0.0, 2.0, 1.0), "optimized_gm": (0.0, 2.0, 1.0), "optimized_wm": (0.0, 2.0, 1.0)}
-    # The selected descriptor consists of MASK, optimized CSF, optimized GM,
-    # and optimized WM classes; all three wrapper power defaults are 1.0.
-    groups = np.asarray(
-        ["mask"] + ["optimized_csf"] * 2 + ["optimized_gm"] * 5 + ["optimized_wm"] * 3,
-        dtype=object,
-    )
-    if groups.size != mem.shape[-1]:
-        raise ValueError("exact field refit expects the selected 11-class descriptor order")
+    power_table = {
+        "optimized_csf": (0.0, 2.0, 1.0),
+        "optimized_gm": (0.0, 2.0, 1.0),
+        "optimized_wm": (0.0, 2.0, 1.0),
+    }
+    if class_types is None:
+        if mem.shape[-1] != 11:
+            raise ValueError("class_types is required unless using the selected 11-class atlas")
+        # Base descriptor order: MASK, optimized CSF, optimized GM, optimized WM.
+        groups = ("mask", "optimized_csf", "optimized_csf", *("optimized_gm",) * 5, *("optimized_wm",) * 3)
+    else:
+        if isinstance(class_types, (str, bytes)):
+            raise ValueError("class_types must be a sequence of descriptor type names")
+        groups = tuple(class_types)
+        if len(groups) != mem.shape[-1] or any(not isinstance(group, str) or not group for group in groups):
+            raise ValueError("class_types must contain one nonempty type name per membership class")
+    if background != 0 and groups[background] != "mask":
+        raise ValueError("background class type must be 'mask'")
 
     nx, ny, nz = dimensions
     for x in range(0, nx, 3):
@@ -118,8 +132,8 @@ def fit_toads_exact_chebyshev_field(
                     residual = np.float32(corrected - centers[klass])
                     distance = np.float32(residual * residual)
                     optimized_weight = np.float32(1.0)
-                    if distance > np.float32(1e-30):
-                        low, high, exponent = power_table[str(groups[klass])]
+                    if distance > np.float32(1e-30) and groups[klass] in power_table:
+                        low, high, exponent = power_table[groups[klass]]
                         powered = toads_powertable_lookup(
                             np.asarray(distance, dtype=np.float32),
                             exponent,
