@@ -30,9 +30,10 @@ order corrected that harness error.
 - After the first exact membership update, 312,794 of 1,557,600 values differ
   by more than `1e-6`; maximum absolute difference is `0.9992604`, and mean
   absolute difference is `0.0120966`.
-- Source initial membership energy is `6038.2886`. Python's stage-level report
-  does not yet expose the same initial energy scalar, so this value has no
-  direct scalar comparison here.
+- Source initial membership energy is `6038.2886`; Python's corresponding
+  objective is `5897.3169`, a 2.33% difference relative to the Java value.
+  The arrays are on the same grid, but the uncertain atlas conversion means
+  this is a diagnostic discrepancy, not an accepted source-equivalence score.
 
 ## Interpretation and next step
 
