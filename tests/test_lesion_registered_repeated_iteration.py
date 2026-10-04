@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import nibabel as nib
@@ -243,11 +244,7 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
         "convergence_check"
     )
 
-    loop = run_lesion_toads_descriptor_loop(
-        prior_branch,
-        first_branch.registration.registration,
-        starting_iteration=1,
-        options=LesionToadsDescriptorLoopOptions(
+    loop_options = LesionToadsDescriptorLoopOptions(
             images=images,
             atlas_shape_priors=atlas_shape_priors,
             shape_priors=shape_priors,
@@ -277,7 +274,12 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
             source_zero_variance_nan=False,
             align_shapes=True,
             init_align_iter=1,
-        ),
+        )
+    loop = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=loop_options,
     )
     assert tuple(item.iteration for item in loop.passes) == (2, 3)
     assert loop.stop_reason == "iteration_limit"
@@ -293,3 +295,14 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
         loop.final_branch.final_classification.classification,
         third_branch.control.branch.final_classification.classification,
     )
+
+    converged = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=replace(loop_options, max_distance=1.0e6),
+    )
+    assert len(converged.passes) == 1
+    assert converged.stop_reason == "convergence"
+    assert converged.final_branch.convergence_stop is True
+    assert converged.final_branch.iteration_limit_stop is False
