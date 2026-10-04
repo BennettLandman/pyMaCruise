@@ -13,6 +13,33 @@ manifest says `status=complete` but `converged=false` and
 integration evidence, not a converged full workflow, Java equivalence, or
 clinical validation.
 
+## Standalone versus integrated first-pass input
+
+The standalone brain-resolution convergence report used the generated raw T1
+fixture as the `--t1-n4` input. The base workflow's first pass uses the N4
+corrected output instead. The atlas descriptor used in the integrated run is
+byte-identical to the bundled source descriptor (SHA-256
+`cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939`), and the
+registration iteration controls and 50-iteration cap match the standalone
+command. The raw and N4 images are on the same grid, but have different
+intensity distributions within the supplied brain mask:
+
+| Input | Mean | Standard deviation | Minimum | Maximum |
+|---|---:|---:|---:|---:|
+| Generated raw T1 | 444.8967 | 230.8274 | 152.48 | 788.00 |
+| N4-corrected T1 | 366.6892 | 189.6747 | 113.4732 | 689.9545 |
+
+The standalone and integrated energy trajectories are therefore not a
+controlled equivalence comparison. In the integrated first pass, iteration 1
+was `0.161843687`, iteration 2 was `1.10402799`, and iteration 50 ended at
+`0.0301428866`; the standalone raw-T1 run had iteration-1 ratio `1.66407061`
+and converged at iteration 20. This identifies the input stage as a condition
+to isolate, but does not establish that N4 alone caused the different
+trajectory or that either trajectory matches Java/MATLAB. The integrated
+first-pass output is direct evidence for the N4-input route; it should be
+compared with a source-matched workflow reference before changing N4 or TOADS
+behavior.
+
 The final inner, central, outer, and refined MaSeg NIfTI outputs are finite and
 on the native `(172,216,164)` grid with RAS axis codes. The run's peak sampled
 RSS was **8.308 GB** under a **16 GB** process watchdog; it exited with code 0
