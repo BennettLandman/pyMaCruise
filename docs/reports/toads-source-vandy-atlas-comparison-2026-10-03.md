@@ -273,3 +273,82 @@ system. The CG implementation cannot be considered a safe source substitute
 for brain-resolution GVF; the next implementation step is to port the
 selected VandyCRUISE multigrid V-cycle, then compare it against the Java
 harness at both compact and full crop resolution.
+
+## Source multigrid port and full-grid verification
+
+`generalized_gvf` now uses a Numba-compiled port of the selected Java
+`Poisson3d` V-cycle instead of SciPy CG. It preserves the Java coefficient
+and residual 2x2x2 downsampling, nearest-neighbor transfer, coarse-grid
+correction, clamped-boundary residual, spacing factors, and eight-octant
+red/black Gauss-Seidel update order. The default stopping criterion is the
+source's absolute max residual `1e-6`, with the selected 200-cycle maximum.
+The `solver_tolerance` API/CLI parameter now names this absolute residual
+threshold; the source default is unchanged.
+
+The stride-4 brain-derived comparison reproduces with the same probe script
+using the updated Python implementation. Its maximum component errors are
+`5.07e-7`, `4.92e-7`, and `6.41e-7` for x/y/z.
+
+The full-grid direct comparison was repeated on the actual `(163,207,156)`
+RAS ACE-enhanced GM crop, at lambda 1.0 and 200 iterations/cycles:
+
+| Component | MAE | Maximum absolute error | RMSE |
+|---|---:|---:|---:|
+| x | `9.6787e-8` | `6.7651e-6` | `2.2850e-7` |
+| y | `4.4645e-8` | `4.3958e-7` | `7.2528e-8` |
+| z | `4.3787e-8` | `5.8115e-7` | `7.2254e-8` |
+
+All three components pass the existing max-error gate `5e-5`, and both
+outputs are finite. The 16 GB watchdog sampled a combined peak of **0.737
+GB** and the comparison exited 0. Reproduce after the generated base fixture
+exists with:
+
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.1 --report-interval-seconds 30 -- \
+  env PYTHONPATH=src ./.venv/bin/python scripts/compare_gvf_java_probe.py \
+  --input build/vandy-brain-resolution-memory/source-order-base-run/stages/cruise-core/attempt-01/ace_enhanced_gm.nii.gz \
+  --factor 1 --iterations 200 --lambda-value 1.0 \
+  --output-dir build/java-reference/vandy-gvf-multigrid-reproduction
+```
+
+The runnable report JSON from this validation is under ignored
+`build/java-reference/vandy-gvf-multigrid-full/comparison.json`. This is a
+full-grid, selected-component Java comparison; it still does not establish
+full MaCRUISE source equivalence.
+
+### Source-multigrid CRUISE-core and base-run resume
+
+The new solver was then run through `toads-cruise-core` on the same full
+resolution second-pass TOADS products. It produced all eleven scientific
+outputs plus provenance in RAS; its 16 GB watchdog sampled a **2.304 GB**
+peak. The final inner, central, and outer level sets remained very close to
+those from the prior CG-based stage: sign-mask Dice was 1.0, 0.999999, and
+0.999986, respectively; symmetric mean nearest-surface distances were
+`3.29e-6`, `9.44e-6`, and `2.95e-4` mm; Hausdorff distances were 0.077, 0.416,
+and 0.485 mm. These compare two Python stages, not either result to Java
+MaCRUISE surfaces.
+
+MaSeg refinement from the new inner/outer level sets changed 17 voxels from
+the previous CG-based refined result. Across labels `[0,1,4,100]`, minimum
+Dice was **0.9999436**; the output is uint8, `(172,216,164)`, and RAS.
+
+Finally, the base workflow's `run.json` was preserved as
+`run.before-source-multigrid.json`, the old core stage was marked stale, and
+the restartable base command was resumed with unchanged inputs/settings. It
+verified/skipped N4, first TOADS, Dura, and second TOADS; recomputed core as
+attempt 2 and refinement as attempt 2; and passed the stage checks for all 13
+core outputs and all 3 refinement outputs. The manifest is again
+`status=complete`, `converged=false`. TOADS still hit its two-iteration caps
+at ratios `1.10402799` and `0.571384311`; this integration validates the
+source-multigrid core and restart path, not TOADS convergence or whole-workflow
+Java equivalence. The resume run peaked at **2.474 GB** under the 16 GB cap
+and exited 0. Final source-multigrid RAS outputs are in the manifest's
+`cruise-core/attempt-02` and `maseg-refinement/attempt-02` records.
+
+Focused regression command after replacing CG:
+`PYTHONPATH=src ./.venv/bin/pytest -q tests/test_gvf.py tests/test_plus_gvf.py`
+— **8 passed in 1.49s**. Full-suite evaluation is pending. The earlier CG
+mismatch above is preserved as the diagnostic that motivated the change; the
+source-multigrid results supersede its statement that the solver substitution
+remains a blocker.

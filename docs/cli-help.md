@@ -195,8 +195,8 @@ pymacruise gvf --input IMAGE.nii.gz --output GVF.nii.gz \
 ```
 
 Reads a finite 3D scalar image and writes a RAS-oriented, component-last
-three-vector NIfTI image. Defaults are lambda 1.0, 200 iterations, and solver
-tolerance 1e-6.
+three-vector NIfTI image. Defaults are lambda 1.0, 200 source multigrid
+V-cycles, and absolute maximum-residual threshold 1e-6.
 
 ### `pymacruise tgdm`
 

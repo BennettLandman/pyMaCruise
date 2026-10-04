@@ -21,12 +21,15 @@ red/black Gauss-Seidel smoothing. The earlier Python implementation squared
 the magnitude in the exponential; Java reference comparison caught and fixed
 that discrepancy.
 
-`src/pymacruise/gvf.py` solves the same discrete mirrored-boundary system with
-matrix-free SciPy conjugate gradients. `generalized_gvf_image` reorients input
-images to RAS with a warning when needed and returns a component-last float32
-vector NIfTI with RAS affine/header. Components 0, 1, and 2 follow array axes
-x, y, and z. This matches VandyCRUISE `Gradient3d` and the downstream TGDM
-advection code, which pairs those components with x/y/z finite differences.
+`src/pymacruise/gvf.py` ports the selected VandyCRUISE multigrid V-cycle:
+clamped 2x2x2 coefficient/residual downsampling, nearest-neighbor
+interpolation, the coarse-grid solve, and red/black Gauss-Seidel octant order.
+Numba compiles the loops while retaining single-precision arithmetic.
+`generalized_gvf_image` reorients input images to RAS with a warning when
+needed and returns a component-last float32 vector NIfTI with RAS
+affine/header. Components 0, 1, and 2 follow array axes x, y, and z. This
+matches VandyCRUISE `Gradient3d` and the downstream TGDM advection code, which
+pairs those components with x/y/z finite differences.
 The selected legacy equations are voxel-grid based and do not apply physical
 voxel-spacing factors; this preserves source behavior. Synthetic fixtures use
 1 mm isotropic grids.
@@ -47,7 +50,12 @@ instructions and fixture provenance are in
 
 The committed 16×12×10 RAS `.nii.gz` fields include a mixed-axis ramp, an
 asymmetric step, and overlapping asymmetric Gaussian blobs. The Java
-references use lambda 1.0, up to 200 iterations, and no vector normalization.
+references use lambda 1.0, up to 200 multigrid cycles, and no vector
+normalization. The full `(163,207,156)` ACE-enhanced GM crop from the
+brain-resolution synthetic base run was also compared at lambda 1 and 200
+cycles: all three components passed the existing maximum-error gate of
+`5e-5` (worst component maximum error `6.77e-6`). The command and per-component
+metrics are recorded in the source-order brain-resolution report.
 The generated `spec.json` reports:
 
 | Synthetic input | Mean absolute component error | Maximum absolute component error | RMSE |

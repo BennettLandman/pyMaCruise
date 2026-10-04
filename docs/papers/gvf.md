@@ -33,7 +33,7 @@ tradeoff between smoothing and gradient conformity.
 | --- | --- |
 | The input edge map is differentiated to provide the data vector field (GGVF §3, Eq. 5); §4 reports normalizing the edge maps in its experiments. | `generalized_gvf` min/max-normalizes every input because the selected VandyCRUISE method does so, then `_source_gradient` applies central differences internally and one-sided differences at the volume boundary. This follows VandyCRUISE `GradVecFlowGeneralized.solve` and `Gradient3d`; it is a voxel-grid stencil with no physical-spacing factors. Paper §4's experimental preprocessing is context, not evidence that this selected source's unconditional normalization is part of the model. |
 | GGVF applies spatially varying smoothing and data weights to three separately diffused vector components (Eq. 5); the paper's example weight pair is Eqs. 8–9. | The magnitude-derived `edge_weight`, `g`, and `h` arrays are shared by the three component solves. Each component's right-hand side is `h * gradient_component`. The source's exponent convention and `/6` scale are source-specific and differ from the paper example as detailed below. |
-| The equilibrium PDE balances smoothing against attraction to the input gradient (GGVF §3, Eq. 5). | The matrix-free operator and right-hand side encode `h*u - g*Delta_6(u) = h*gradient_component`, rearranged from Eq. 5 using the selected source weights. `_source_laplacian` is the six-neighbor stencil and clamps boundary indices to the nearest in-volume voxel, matching `Poisson3d.residue`; these 3-D discretization details come from VandyCRUISE, not the paper. |
+| The equilibrium PDE balances smoothing against attraction to the input gradient (GGVF §3, Eq. 5). | The source multigrid solve uses `h*u - g*Delta_6(u) = h*gradient_component`, with the six-neighbor stencil, clamped boundaries, and source's coarse-grid spacing. Numba compiles the selected Java transfer and octant-smoothing loops. These 3-D discretization details come from VandyCRUISE, not the paper. |
 | The paper describes a model, not this package's array or file convention. | `generalized_gvf` returns the three components on array axes 0, 1, 2. `generalized_gvf_image` first reorients scalar NIfTI input to RAS (warning when required) and writes a component-last vector NIfTI with that RAS affine. |
 
 ### VandyCRUISE-specific parameterization and numerical method
@@ -59,20 +59,20 @@ requests unnormalized vectors; alternative pipeline profiles may set another
 lambda (for example 0.2).
 
 VandyCRUISE's Poisson3d solves the component equations with a multigrid
-V-cycle and red/black Gauss-Seidel smoothing. Python applies the same selected
-discrete system matrix-free but solves each component with SciPy conjugate
-gradients (scipy.sparse.linalg.cg). This is a solver substitution: the
-operator, input weighting, and boundary stencil are carried over, but solver
-trajectories and finite-precision results are not identical. Python applies
-the operator in float64 and stores the returned field as float32; its
-iteration cap and relative tolerance are explicit function arguments.
-Agreement claims therefore refer to the recorded synthetic Java harness
-comparison, not to identity of algorithms or exact arithmetic.
+V-cycle and red/black Gauss-Seidel smoothing. Python now ports that cycle:
+coefficient and residual downsampling, nearest-neighbor interpolation,
+coarse-grid correction, spacing-scaled residuals, and ordered octant updates.
+Numba compiles these loops; the arithmetic and fields remain float32. The
+absolute residual threshold defaults to the source's `1e-6`, and the
+wrapper's 200-cycle limit is preserved. A direct Java comparison on the full
+`(163,207,156)` synthetic brain-resolution crop at lambda 1 and 200 cycles
+gave maximum component error below `6.8e-6`. This validates full-grid GVF
+behavior for that input, not whole-MaCRUISE equivalence.
 
 ## Code pointers
 
 - [gvf.py](../../src/pymacruise/gvf.py): input normalization, source weights,
-  per-component system, SciPy CG substitution, RAS vector-image wrapper, and
+  multigrid V-cycle, Numba-compiled stencils, RAS vector-image wrapper, and
   finite-difference stencils.
 - VandyCRUISE reference implementation: GradVecFlowGeneralized.java,
   Gradient3d.java, Poisson3d.java, and the JIST adapter

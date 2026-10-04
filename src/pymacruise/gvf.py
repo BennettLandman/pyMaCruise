@@ -9,11 +9,10 @@ they should not be confused with the paper's continuum equations.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import warnings
 
 import nibabel as nib
 import numpy as np
-from scipy.sparse.linalg import LinearOperator, cg
+from numba import njit
 
 from pymacruise.image_io import normalize_image_to_ras
 
@@ -32,17 +31,18 @@ def generalized_gvf(
     max_iterations: int = 200,
     solver_tolerance: float = 1e-6,
 ) -> np.ndarray:
-    """Compute generalized GVF using the source discretization and SciPy CG.
+    """Compute generalized GVF with the selected VandyCRUISE multigrid solver.
 
     At the model level this is the steady state of the GGVF diffusion equation
     in Xu and Prince (1998), applied independently to each vector component.
     The VandyCRUISE implementation supplies the actual weighting functions,
     gradient stencil, and boundary behavior used below (see
     ``docs/papers/gvf.md``). Its three component equations are solved with a
-    multigrid V-cycle. This implementation uses matrix-free SciPy conjugate
-    gradients on the same discrete system instead; convergence thresholds,
-    precision, and iteration trajectories can therefore differ. Returned
-    components follow array axes 0, 1, 2.
+    multigrid V-cycle. This port preserves its averaged coefficient and
+    residual downsampling, nearest-neighbor interpolation, and red/black
+    Gauss-Seidel octant order. Numba compiles the voxel loops while retaining
+    the source's single-precision operations. Returned components follow array
+    axes 0, 1, 2.
     """
     values = np.asarray(scalar_volume, dtype=np.float32)
     if values.ndim != 3 or any(length < 2 for length in values.shape):
@@ -86,58 +86,228 @@ def generalized_gvf(
     g = (edge_weight / 6.0).astype(np.float32)
     h = (1.0 - edge_weight).astype(np.float32)
     shape = values.shape
-    size = values.size
     output = np.empty((*shape, 3), dtype=np.float32)
 
-    # GGVF's vector PDE is separable by component once the shared weights are
-    # fixed. The source solves these three scalar systems sequentially.
+    # The Java wrapper supplies -h*gradient as Poisson3d's RHS; the source
+    # smoother moves that term to the positive side of its update equation.
     for component in range(3):
-        source = gradient[..., component].astype(np.float64)
-        h64 = h.astype(np.float64)
-        g64 = g.astype(np.float64)
-        right_hand_side = h64 * source
-
-        def apply(operator_values: np.ndarray) -> np.ndarray:
-            field = np.asarray(operator_values, dtype=np.float64).reshape(shape)
-            laplacian = _source_laplacian(field)
-            # Rearranged source equilibrium: h*u - g*Delta_6(u) = h*grad(f).
-            return (h64 * field - g64 * laplacian).ravel()
-
-        operator = LinearOperator((size, size), matvec=apply, dtype=np.float64)
-        initial = source.ravel().copy()
-        if max_iterations == 0:
-            solution = initial
-        else:
-            try:
-                # Solver substitution: VandyCRUISE uses its multigrid V-cycle
-                # (with red/black Gauss-Seidel smoothing); SciPy CG solves the
-                # same matrix-free linear system here, not the same algorithm.
-                solution, info = cg(
-                    operator,
-                    right_hand_side.ravel(),
-                    x0=initial,
-                    rtol=solver_tolerance,
-                    atol=0.0,
-                    maxiter=max_iterations,
-                )
-            except TypeError:  # SciPy 1.10/1.11 use `tol` instead of `rtol`.
-                solution, info = cg(
-                    operator,
-                    right_hand_side.ravel(),
-                    x0=initial,
-                    tol=solver_tolerance,
-                    maxiter=max_iterations,
-                )
-            if info < 0:
-                raise RuntimeError(f"GVF conjugate-gradient solver failed with status {info}")
-            if info > 0:
-                warnings.warn(
-                    f"GVF component {component} did not converge in {max_iterations} iterations",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-        output[..., component] = solution.reshape(shape).astype(np.float32)
+        source = gradient[..., component]
+        java_rhs = (-h * source).astype(np.float32)
+        output[..., component] = _source_multigrid_solve(
+            source, java_rhs, g, h, max_iterations, solver_tolerance
+        )
     return output
+
+
+@njit
+def _mg_downsample(values: np.ndarray) -> np.ndarray:
+    """Match DownSample3dByHalf's clamped 2x2x2 arithmetic mean."""
+    x_size, y_size, z_size = values.shape
+    result = np.empty(((x_size + 1) // 2, (y_size + 1) // 2, (z_size + 1) // 2), dtype=np.float32)
+    for x in range(result.shape[0]):
+        x0 = min(x * 2, x_size - 2)
+        for y in range(result.shape[1]):
+            y0 = min(y * 2, y_size - 2)
+            for z in range(result.shape[2]):
+                z0 = min(z * 2, z_size - 2)
+                total = values[x0, y0, z0]
+                total = np.float32(total + values[x0, y0, z0 + 1])
+                total = np.float32(total + values[x0, y0 + 1, z0])
+                total = np.float32(total + values[x0, y0 + 1, z0 + 1])
+                total = np.float32(total + values[x0 + 1, y0, z0])
+                total = np.float32(total + values[x0 + 1, y0, z0 + 1])
+                total = np.float32(total + values[x0 + 1, y0 + 1, z0])
+                total = np.float32(total + values[x0 + 1, y0 + 1, z0 + 1])
+                result[x, y, z] = np.float32(0.125) * total
+    return result
+
+
+@njit
+def _mg_upsample_nearest(values: np.ndarray, shape: tuple[int, int, int]) -> np.ndarray:
+    """Match Interpolate3dNearest's floor(index/2) transfer."""
+    result = np.empty(shape, dtype=np.float32)
+    for x in range(shape[0]):
+        for y in range(shape[1]):
+            for z in range(shape[2]):
+                result[x, y, z] = values[x // 2, y // 2, z // 2]
+    return result
+
+
+@njit
+def _mg_residue(
+    field: np.ndarray,
+    right_hand_side: np.ndarray,
+    weight: np.ndarray,
+    data_weight: np.ndarray,
+    spacing_squared: np.float32,
+) -> np.ndarray:
+    """Match Poisson3d.residue, including its mirrored edge indexing."""
+    x_size, y_size, z_size = field.shape
+    result = np.empty_like(field)
+    scale = np.float32(1.0) / spacing_squared
+    for x in range(x_size):
+        xm = max(x - 1, 0)
+        xp = min(x + 1, x_size - 1)
+        for y in range(y_size):
+            ym = max(y - 1, 0)
+            yp = min(y + 1, y_size - 1)
+            for z in range(z_size):
+                zm = max(z - 1, 0)
+                zp = min(z + 1, z_size - 1)
+                neighbors = field[xm, y, z] + field[xp, y, z]
+                neighbors = np.float32(neighbors + field[x, ym, z])
+                neighbors = np.float32(neighbors + field[x, yp, z])
+                neighbors = np.float32(neighbors + field[x, y, zm])
+                neighbors = np.float32(neighbors + field[x, y, zp])
+                laplacian = np.float32(neighbors - field[x, y, z] * np.float32(6.0))
+                residual = data_weight[x, y, z] * field[x, y, z]
+                residual = np.float32(residual + right_hand_side[x, y, z])
+                residual = np.float32(residual - scale * weight[x, y, z] * laplacian)
+                result[x, y, z] = residual
+    return result
+
+
+@njit
+def _mg_octant(
+    field: np.ndarray,
+    right_hand_side: np.ndarray,
+    weight: np.ndarray,
+    data_weight: np.ndarray,
+    spacing_squared: np.float32,
+    x_parity: int,
+    y_parity: int,
+    z_parity: int,
+) -> None:
+    """In-place red/black sub-lattice update from GVFSolveGaussSeidel."""
+    x_size, y_size, z_size = field.shape
+    for x in range(x_parity, x_size, 2):
+        xm = max(x - 1, 0)
+        xp = min(x + 1, x_size - 1)
+        for y in range(y_parity, y_size, 2):
+            ym = max(y - 1, 0)
+            yp = min(y + 1, y_size - 1)
+            for z in range(z_parity, z_size, 2):
+                zm = max(z - 1, 0)
+                zp = min(z + 1, z_size - 1)
+                neighbors = field[xm, y, z] + field[xp, y, z]
+                neighbors = np.float32(neighbors + field[x, ym, z])
+                neighbors = np.float32(neighbors + field[x, yp, z])
+                neighbors = np.float32(neighbors + field[x, y, zm])
+                neighbors = np.float32(neighbors + field[x, y, zp])
+                weighted = np.float32(neighbors * weight[x, y, z])
+                weighted_rhs = np.float32(right_hand_side[x, y, z] * spacing_squared)
+                numerator = np.float32(weighted - weighted_rhs)
+                denominator = np.float32(
+                    np.float32(6.0) * weight[x, y, z]
+                    + data_weight[x, y, z] * spacing_squared
+                )
+                field[x, y, z] = numerator / denominator
+
+
+@njit
+def _mg_smooth(
+    field: np.ndarray,
+    right_hand_side: np.ndarray,
+    weight: np.ndarray,
+    data_weight: np.ndarray,
+    spacing: int,
+    iterations: int,
+) -> None:
+    spacing_squared = np.float32(spacing * spacing)
+    # Preserve the exact eight-octant update order selected by the Java code.
+    parities = (
+        (0, 0, 0), (0, 1, 1), (1, 0, 1), (1, 1, 0),
+        (1, 0, 0), (0, 0, 1), (0, 1, 0), (1, 1, 1),
+    )
+    for _ in range(iterations):
+        for parity in parities:
+            _mg_octant(
+                field, right_hand_side, weight, data_weight, spacing_squared,
+                parity[0], parity[1], parity[2],
+            )
+
+
+def _source_multigrid_solve(
+    initial: np.ndarray,
+    right_hand_side: np.ndarray,
+    fine_weight: np.ndarray,
+    fine_data_weight: np.ndarray,
+    max_iterations: int,
+    residual_threshold: float,
+) -> np.ndarray:
+    """Port Poisson3d.solve's fixed-order V-cycle for one GVF component."""
+    fine_shape = initial.shape
+    max_level = min((length.bit_length() - 1) for length in fine_shape)
+    # Python levels are ordered coarse-to-fine as in Java's j=1..maxLevel.
+    fine_to_coarse_shapes = [fine_shape]
+    for _ in range(1, max_level):
+        prior = fine_to_coarse_shapes[-1]
+        fine_to_coarse_shapes.append(tuple((length + 1) // 2 for length in prior))
+    shapes = list(reversed(fine_to_coarse_shapes))
+    weights = [np.empty(shape, dtype=np.float32) for shape in shapes]
+    data_weights = [np.empty(shape, dtype=np.float32) for shape in shapes]
+    weights[-1] = np.ascontiguousarray(fine_weight)
+    data_weights[-1] = np.ascontiguousarray(fine_data_weight)
+    for level in range(max_level - 2, -1, -1):
+        weights[level] = _mg_downsample(weights[level + 1])
+        data_weights[level] = _mg_downsample(data_weights[level + 1])
+
+    field = np.ascontiguousarray(initial).copy()
+    rhs = np.ascontiguousarray(right_hand_side)
+    threshold = np.float32(residual_threshold)
+    for _ in range(max_iterations):
+        residual_fine = _mg_residue(field, rhs, weights[-1], data_weights[-1], np.float32(1.0))
+        maximum_error = np.max(np.abs(residual_fine))
+        if maximum_error < threshold:
+            break
+
+        right_sides = [np.empty(shape, dtype=np.float32) for shape in shapes]
+        right_sides[-1] = residual_fine
+        for level in range(max_level - 2, -1, -1):
+            right_sides[level] = _mg_downsample(right_sides[level + 1])
+
+        corrections = [np.empty(shape, dtype=np.float32) for shape in shapes]
+        corrections[0] = np.zeros(shapes[0], dtype=np.float32)
+        coarse_spacing = 1 << (max_level - 1)
+        _mg_smooth(
+            corrections[0], right_sides[0], weights[0], data_weights[0],
+            coarse_spacing, 2,
+        )
+
+        level_rhs = [np.empty(shape, dtype=np.float32) for shape in shapes]
+        for level in range(1, max_level):
+            corrections[level] = _mg_upsample_nearest(corrections[level - 1], shapes[level])
+            level_rhs[level] = right_sides[level].copy()
+            for current in range(level, 0, -1):
+                java_level = current + 1
+                spacing = 1 << (max_level - java_level)
+                _mg_smooth(
+                    corrections[current], level_rhs[current], weights[current],
+                    data_weights[current], spacing, 2,
+                )
+                residual = _mg_residue(
+                    corrections[current], level_rhs[current], weights[current],
+                    data_weights[current], np.float32(spacing * spacing),
+                )
+                corrections[current - 1] = np.zeros(shapes[current - 1], dtype=np.float32)
+                level_rhs[current - 1] = _mg_downsample(residual)
+
+            _mg_smooth(
+                corrections[0], level_rhs[0], weights[0], data_weights[0],
+                coarse_spacing, 2,
+            )
+            for current in range(1, level + 1):
+                interpolated = _mg_upsample_nearest(corrections[current - 1], shapes[current])
+                np.add(corrections[current], interpolated, out=corrections[current])
+                java_level = current + 1
+                spacing = 1 << (max_level - java_level)
+                _mg_smooth(
+                    corrections[current], level_rhs[current], weights[current],
+                    data_weights[current], spacing, 2,
+                )
+
+        np.add(field, corrections[-1], out=field)
+    return field
 
 
 def generalized_gvf_image(
