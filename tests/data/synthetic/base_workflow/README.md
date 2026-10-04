@@ -24,6 +24,7 @@ From the repository root, run:
   --maseg tests/data/synthetic/base_workflow/maseg.nii.gz \
   --output-dir /tmp/pymacruise-base-synthetic \
   --registration-levels 1 --registration-iterations 1 \
+  --post-refresh-registration-iterations 1 \
   --registration-max-iterations 1 --toads-iterations 2 \
   --dura-iterations 1 --crop-edge-width 2 \
   --ace-diffusion-iterations 1 --tgdm-iterations 1

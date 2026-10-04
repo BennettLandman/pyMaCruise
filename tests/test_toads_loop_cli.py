@@ -36,6 +36,8 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path, c
             "1",
             "--registration-iterations",
             "1",
+            "--post-refresh-registration-iterations",
+            "1",
             "--registration-max-iterations",
             "1",
             "--padding",

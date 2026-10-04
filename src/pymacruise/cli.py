@@ -243,6 +243,12 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument("--modality", default="T1_MPRAGE")
     toads.add_argument("--registration-levels", type=int, default=4)
     toads.add_argument("--registration-iterations", type=int, default=50)
+    toads.add_argument(
+        "--post-refresh-registration-iterations",
+        type=int,
+        default=1,
+        help="rigid atlas updates after template refresh (selected Java default: 1)",
+    )
     toads.add_argument("--registration-max-iterations", type=int, default=5)
     toads.add_argument("--padding", type=int, default=10)
     toads.add_argument("--maximum-iterations", type=int, default=50)
@@ -305,6 +311,7 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--resume", action="store_true", help="resume from verified stage outputs in run.json")
     base_run.add_argument("--registration-levels", type=int, default=1)
     base_run.add_argument("--registration-iterations", type=int, default=1)
+    base_run.add_argument("--post-refresh-registration-iterations", type=int, default=1)
     base_run.add_argument("--registration-max-iterations", type=int, default=1)
     base_run.add_argument("--toads-iterations", type=int, default=2)
     base_run.add_argument("--dura-iterations", type=int, default=1)
@@ -404,6 +411,7 @@ def main(argv: list[str] | None = None) -> int:
             options=BaseRunOptions(
                 registration_levels=args.registration_levels,
                 registration_iterations=args.registration_iterations,
+                post_refresh_registration_iterations=args.post_refresh_registration_iterations,
                 registration_max_iterations=args.registration_max_iterations,
                 toads_iterations=args.toads_iterations,
                 dura_iterations=args.dura_iterations,
@@ -438,6 +446,7 @@ def main(argv: list[str] | None = None) -> int:
             atlas,
             levels=args.registration_levels,
             max_iterations=args.registration_iterations,
+            refinement_iterations=args.post_refresh_registration_iterations,
             modality=args.modality,
             padding=args.padding,
             relation_limit=args.relation_limit,

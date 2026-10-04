@@ -273,7 +273,8 @@ deviation documented in the port plan.
 pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
   --output Classification.nii.gz [--atlas-descriptor ATLAS.txt] \
   [--modality T1_MPRAGE] [--registration-levels 4] \
-  [--registration-iterations 50] [--registration-max-iterations 5] \
+  [--registration-iterations 50] [--post-refresh-registration-iterations 1] \
+  [--registration-max-iterations 5] \
   [--padding 10] [--maximum-iterations 50] \
   [--convergence-threshold 1e-4] [--relation-limit 3] \
   [--maximum-distance 1e-4] [--category-exponents CSF GM WM] \
@@ -289,7 +290,7 @@ pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
 | `--atlas-descriptor PATH` | No | Defaults to the bundled base TOADS descriptor. Referenced atlas images must remain beside the descriptor using its declared relative paths and `.nii.gz` format. |
 | `--output PATH` | Yes | Native-grid terminal classification, compressed `.nii.gz`; existing output is not overwritten. |
 | `--dura-output-dir PATH` | No | Optional directory for the classification and four source-scaled float32 Dura-removal inputs (CSF, GM, WM fill, WM mask), all restored to native RAS. Existing output collisions are rejected. |
-| Registration and loop options | No | Selected source controls with defaults shown above. CSF, GM, and WM exponents default to the atlas `Optimized factors` row (or Java's all-ones defaults when omitted); `--category-exponents` overrides those three values for the single T1 channel. |
+| Registration and loop options | No | Selected source controls with defaults shown above. Post-refresh alignment defaults to the Java `alignIter=1`; it is separate from startup-pyramid registration iterations and per-loop registration iterations. CSF, GM, and WM exponents default to the atlas `Optimized factors` row (or Java's all-ones defaults when omitted); `--category-exponents` overrides those three values for the single T1 channel. |
 
 ### Output
 

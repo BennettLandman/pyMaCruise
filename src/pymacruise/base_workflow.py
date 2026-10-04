@@ -46,6 +46,7 @@ class _TeeTextIO:
 class BaseRunOptions:
     registration_levels: int = 1
     registration_iterations: int = 1
+    post_refresh_registration_iterations: int = 1
     registration_max_iterations: int = 1
     toads_iterations: int = 2
     dura_iterations: int = 1
@@ -410,6 +411,7 @@ def run_base_workflow(
         "--atlas-descriptor", str(run_atlas),
         "--registration-levels", str(options.registration_levels),
         "--registration-iterations", str(options.registration_iterations),
+        "--post-refresh-registration-iterations", str(options.post_refresh_registration_iterations),
         "--registration-max-iterations", str(options.registration_max_iterations),
         "--maximum-iterations", str(options.toads_iterations),
     ]

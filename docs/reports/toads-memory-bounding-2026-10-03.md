@@ -256,55 +256,63 @@ not a hard allocation limit.
 
 ### Compact Java/Python registered-loop comparison
 
-The first reconstructed Java descriptor used spaces after `Structure:`. The
-selected Vandy parser tokenizes on tabs, so every class shape was silently
-left unloaded. Changing those generated descriptor delimiters to tabs made
-all 11 shape arrays load; a reflection-only check confirmed every slot was
-non-null. The raw topology and shape payloads were converted from the bundled
-NIfTI atlas in source x-fastest order, and source labels were mapped to the
-descriptor's 1–11 class ordinal range.
+The first comparison mistakenly let Python perform five post-refresh rigid
+updates while the Java synthetic harness used `alignIter=1`. That transform
+comparison was not valid. The Python composition default now matches the
+selected Java default of one update, and `toads-loop` and `base-run` expose
+`--post-refresh-registration-iterations` so a run can state this control
+explicitly.
 
-The Java reference then completed two iterations on a `(36,45,34)` synthetic
-T1 grid, under a 16 GB watchdog. It completed in 8.0 seconds with 1.639 GB
-sampled peak RSS. Its iteration ratios were `0.64046144` and `0.13470852`; the
-Java output is ordinal labels 1–11, SHA-256
-`5db4e1c30459b00e7c88144063bd0e64bf51cb9c69391a9d3b44ae9e7bd705d3` in
-x-fastest order.
+With matched settings, Java and Python use the same native `(36,45,34)` grid,
+internal `(52,60,51)` grid, crop bounds `(2,33),(3,42),(0,30)`, masked N4
+input, full-resolution bundled atlas, and one post-refresh registration
+update. The initial transform is the same. The post-refresh transform is
+`[0.00089594,0.00089594,0.00089594,0.00089594,-2.249104,-6.782193]` in Java
+and `[0.00089622,0.00089622,0.00089622,0.00089622,-2.249104,-6.782192]` in
+Python (maximum parameter difference below `5e-7`). The transformed
+shape-prior arrays differ by at most `7.4e-6` (mean absolute difference
+`3.8e-8`). Constructor segmentation, closest-label map, and the initial
+membership input to this registration match byte-for-byte; initial-membership
+SHA-256 is
+`82ec8b65e4c332653ac1011ccd46a436b30b5819f46e439dc52192faaadfc9a0`.
 
-Python was run with the same N4 input, matching brain mask, atlas profile,
-padding 10, relation limit 3, one registration level, one registration
-iteration, one registration maximum iteration, and two TOADS iterations. It
-reported energy ratios `0.701972783` at iteration 1 and `0.247157827` at
-iteration 2. After mapping Python's output labels
-`[1,5,6,14,15,16,17,18,22,24,25]` to ordinal labels 1–11, **49,500/55,080
-voxels agreed (89.869%)**. The class-wise Dice scores were:
+The first captured divergence occurs after the first main-loop thinning,
+statistics, and membership update. The Java `computeMemberships()` membership
+array and Python's first exact-iteration membership array differ at 23,240 of
+55,080 voxels when a voxel is counted if any class membership differs by more
+than `1e-6`; maximum absolute channel difference is `0.41345`, and mean
+absolute difference over all class values is `0.0006444`. The energy ratios
+are `0.60919476` in Java and `0.656713724` in Python. This indicates the
+next seam to isolate is first-loop thinning versus the following
+centroid/variance/membership recomputation, rather than post-refresh
+registration.
+
+After two loop iterations, mapped ordinal-label voxel agreement is
+54,011/55,080 (**98.059%**). Per-class Dice values are:
 
 | Class ordinal | Dice |
 |---:|---:|
-| 1 | 0.969823 |
-| 2 | 0.619781 |
-| 3 | 0.632075 |
-| 4 | 0.593361 |
-| 5 | 0.790535 |
-| 6 | 0.524138 |
-| 7 | 0.768293 |
-| 8 | 0.604478 |
-| 9 | 0.783172 |
-| 10 | 0.689655 |
-| 11 | 0.827181 |
+| 1 | 0.995775 |
+| 2 | 0.923919 |
+| 3 | 0.944072 |
+| 4 | 0.825593 |
+| 5 | 0.961166 |
+| 6 | 0.985915 |
+| 7 | 0.836066 |
+| 8 | 0.962343 |
+| 9 | 0.928571 |
+| 10 | 0.930876 |
+| 11 | 0.969930 |
 
-The class-1 Dice is just below the requested 0.97 gate, and every other class
-is substantially below it. The energy ratio and label differences appear by
-the first registered iteration, so the next task is to compare startup
-memberships, first exact membership/objective, transform, and topology queue
-state to find the first divergence. This direct selected-source runtime
-comparison is valid for the reconstructed descriptor and compact synthetic
-case only; it is **not** whole-workflow equivalence, brain-resolution
-equivalence, convergence evidence, or real-data validation.
+Only classes 1 and 6 meet the user's 0.97 minimum Dice. This selected
+compact synthetic case is not whole-workflow equivalence, convergence evidence
+at brain resolution, or real-data validation. The full brain-resolution
+15-iteration trace remains nonconverged at `0.0139147937` after 2,103 seconds
+and peaked at 7.995 GB sampled RSS under the 16 GB watchdog.
 
 All exploratory harness files, converted raw arrays, logs, and images are
 inside ignored `build/java-reference/` or `build/downsampled-vandy-base-run/`;
 no source repository files outside `pymacruise` were changed. No plus-workflow
 or real-MRI validation was attempted in this cycle.
 
-Next: compare state transitions/objectives against the selected Java implementation at a source-aligned fixture grid before scheduling another expensive brain-resolution run. Do not treat the endpoint-only trend as proof of source equivalence.
+Next: compare the second rigid-registration coefficients, transformed-prior input, and line-search trajectory against the selected Java implementation. Once that seam is aligned, rerun the compact and brain-resolution convergence traces.

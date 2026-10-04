@@ -334,7 +334,7 @@ def register_toads_from_atlas_assets(
     modality: str = "T1_MPRAGE",
     padding: int = 10,
     background_ratio: float = 0.0,
-    refinement_iterations: int = 5,
+    refinement_iterations: int = 1,
     relation_limit: int = 3,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
