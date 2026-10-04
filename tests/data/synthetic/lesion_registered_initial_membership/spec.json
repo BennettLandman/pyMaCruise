@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "dimensions_xyz": [
+    9,
+    9,
+    9
+  ],
+  "channels_last": [
+    "T1_MPRAGE",
+    "FLAIR"
+  ],
+  "class_count": 13,
+  "affine_ras_mm": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "image_sha256_float32le": "bc55c4d359e90f637df753dc5a27419a53ec4f2ac20b479fa939e63c0abb56ac",
+  "labels_sha256_int16le": "feea44b1d87998367a76c0085ffa0d2fef8b2268e26f660863965c45b2f9add6",
+  "shapes_sha256_float32le": "d020695143c324e5e5250a0447a4c7616df3d56d81fcce56653d6732109b45f0",
+  "provenance": "Deterministic synthetic voxel ramps, interleaved 13-class constructor labels, and positive transformed shape probabilities.",
+  "java_boundary": "Tests validate each selected Java component and exact composition; this generated volume is not a composite Java segmentation reference."
+}
