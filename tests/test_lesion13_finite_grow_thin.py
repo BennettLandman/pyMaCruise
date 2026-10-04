@@ -17,6 +17,9 @@ from pymacruise.lesion_growth import (
 from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
 from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after_next_iteration_thinning
 from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm_membership_update
+from pymacruise.lesion_descriptor_continuing_iteration import (
+    run_lesion_toads_descriptor_continuing_iteration,
+)
 from pymacruise.lesion_next_iteration_registration import register_after_next_gm_membership_update
 from pymacruise.lesion_next_iteration_branch import continue_after_next_iteration_registration
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
@@ -766,6 +769,73 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
         source_zero_variance_nan=next_zero_variance_nan,
     )
     assert next_membership.stage_order[-2:] == ("computeMemberships:GMflag=true", "energyRatio")
+    # The new descriptor continuation joins these independently source-checked
+    # stages in one callable. Compare the complete composed transition to the
+    # manual Java-referenced seam above, including all auxiliary map outputs.
+    composed = run_lesion_toads_descriptor_continuing_iteration(
+        continued,
+        images,
+        transformed_shapes,
+        object_types=TYPES,
+        lesion_class=LESION,
+        volume_ratio=0.4,
+        thinning_limit=1000.0,
+        initial_class_centroids=refreshed.statistics.centroids.class_centroids,
+        initial_lesion_centroids=refreshed.statistics.centroids.lesion_centroids,
+        initial_black_hole_centroids=refreshed.statistics.centroids.black_hole_centroids,
+        shape_priors=SPEC["shape_priors"],
+        smoothing_priors=SPEC["smoothing_priors"],
+        direct_relations=direct,
+        ventricle_distances=ventricle,
+        gray_matter_distances=gray_matter,
+        brainstem_distances=brainstem,
+        centroid_options=centroid_options,
+        channel_weight_options={"outlier_distance": 1.0},
+        outlier_energy=SPEC["outlier_energy"],
+        lesion_power_exponent=SPEC["lesion_power_exponent"],
+        flair_channel=1,
+    )
+    np.testing.assert_array_equal(
+        composed.thinning.run.segmentation, next_thinned.run.segmentation
+    )
+    np.testing.assert_array_equal(
+        composed.statistics.statistics.centroids.class_centroids,
+        next_statistics.statistics.centroids.class_centroids,
+    )
+    np.testing.assert_array_equal(
+        composed.statistics.statistics.variances.class_standard_deviation,
+        next_statistics.statistics.variances.class_standard_deviation,
+    )
+    np.testing.assert_array_equal(
+        composed.statistics.statistics.channel_weights,
+        next_statistics.statistics.channel_weights,
+    )
+    for field in (
+        "class_memberships",
+        "lesion_membership",
+        "black_hole_membership",
+        "outlier_membership",
+        "lesion_relation",
+        "denominator",
+    ):
+        np.testing.assert_array_equal(
+            getattr(composed.membership.membership, field),
+            getattr(next_membership.membership, field),
+        )
+    assert composed.membership.membership.objective.view(np.uint32) == (
+        next_membership.membership.objective.view(np.uint32)
+    )
+    assert composed.membership.energy_ratio.energy_ratio.view(np.uint32) == (
+        next_membership.energy_ratio.energy_ratio.view(np.uint32)
+    )
+    assert composed.stage_order == (
+        "propagateThinning",
+        "computeCentroids",
+        "computeVariances",
+        "computeChannelWeights",
+        "computeMemberships:GMflag=true",
+        "energyRatio",
+    )
     next_membership_input = tmp_path / "next-membership-in.bin"
     next_membership_input.write_bytes(_membership_input_bytes(
         images,
