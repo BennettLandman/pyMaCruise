@@ -1,12 +1,18 @@
 # LesionTOADS constructor initial class state
 
+> **Correction (2026-10-04):** This report's original harness incorrectly
+> seeded `lesionMembership` with `0.25f`. The selected source initializes that
+> array to `0.0f` at `LesionToadSegmentation.java:470`. The original report's
+> membership claim and test reference are superseded by
+> [the constructor-state correction report](lesion-constructor-state-correction-2026-10-04.md).
+
 ## Scope
 
 This slice ports the initialization loop in the selected VandyCRUISE
 `MultipleToadSegmentation` constructor. Given the already transformed atlas
 template, it maps external template byte labels to zero-based class indices and
 initializes segmentation, skeleton, relation map, availability, ordering,
-lesion membership, outlier membership, and class volumes.
+zero lesion membership, 0.5 outlier membership, and class volumes.
 
 The new `initialize_lesion_segmentation_state` function is intentionally
 upstream-agnostic: it does not estimate a transform, resample the topology
@@ -27,10 +33,11 @@ SHA-256: `63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884`
 The port follows the constructor's ordered class-label scan. The source
 initializes `segmentation`, `skeleton`, and `relationMap` to `EMPTY`, assigns
 class index `k` when the input template value equals `templateLabel[k]`, sets
-`ordering` and `available` to zero/false, fills `lesionMembership` with the
-constructor's scalar lesion value, fills `outlierMembership` with `0.5f`, and
-increments each class volume. The test harness copies those expressions and
-produces a committed Java reference for a 4×4×4 synthetic template.
+`ordering` and `available` to zero/false, fills `lesionMembership` with
+`0.0f`, fills `outlierMembership` with `0.5f`, and increments each class
+volume. The original test harness mistakenly encoded a nonzero lesion value;
+the corrected Java expression reference is documented in the correction
+report linked above.
 
 ## Validation
 
