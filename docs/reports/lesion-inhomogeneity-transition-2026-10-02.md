@@ -13,10 +13,12 @@ returns.
 `src/pymacruise/lesion_inhomogeneity_transition.py` preserves the float32
 threshold conversion, strict comparison, cap, ordered per-channel calls, and
 the identity of each mutable attached field. The polynomial fit is injected
-as a channel callback, because the current exact Python correction fitter is
-limited to the 11-class base-TOADS descriptor while LesionTOADS uses a
-13-class profile. This report therefore records a **branch-level source
-match**, not an end-to-end field-fit or LesionTOADS workflow equivalence.
+as a channel callback. The separate exact field fitter has since been
+generalized to take descriptor-ordered class types and has a synthetic
+13-class, two-channel selected-formula comparison; see
+[the field-refit report](lesion-13-class-field-refit-2026-10-04.md). This
+report still records only degree-gate and channel-dispatch behavior, not a
+complete LesionTOADS workflow equivalence.
 
 ## Evidence
 
@@ -35,6 +37,7 @@ match**, not an end-to-end field-fit or LesionTOADS workflow equivalence.
 
 Cases cover float32 values immediately below, at, and above the threshold, a
 degree increment, the configured degree cap, degree-zero dispatch, and a NaN
-energy ratio (which does not satisfy Java's `<` comparison). The test refit
-callback only verifies channel order and field mutation; numerical polynomial
-refit results remain unvalidated for the 13-class LesionTOADS profile.
+energy ratio (which does not satisfy Java's strict less-than comparison). The
+test refit callback verifies channel order and field mutation. Exact 13-class
+fitting is validated separately, but the full loop still does not wire this
+kernel into a production LesionTOADS iteration.
