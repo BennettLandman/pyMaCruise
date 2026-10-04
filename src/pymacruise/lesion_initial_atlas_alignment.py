@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Sequence
 
 import numpy as np
@@ -23,7 +23,6 @@ from .lesion_toads_preprocessing import initialize_lesion_toads_class_centroids
 
 
 _CALL_ORDER = (
-    "preprocess.initialCentroids (normalized pre-registration crop)",
     "preprocess.initialMemberships",
     'atlas.initShapeRegistration(memberships,"rigid",initAlignIter,levels,1.0f)',
     "atlas.setTransform(preprocess.getTransform())",
@@ -77,9 +76,9 @@ def initialize_lesion_atlas_alignment(
 ) -> LesionInitialAtlasAlignment:
     """Compose the active wrapper's initial rigid alignment sequence.
 
-    ``centroids`` are the class centroids calculated from the normalized,
-    pre-registration crop by ``preprocess.initialCentroids``. This joins the
-    selected ``initialCentroids`` result and ``initialMemberships()`` to ``initShapeRegistration``,
+    ``centroids`` are supplied from the selected wrapper's prior
+    ``preprocess.initialCentroids`` call. This adapter joins
+    ``initialMemberships()`` to ``initShapeRegistration``,
     the preprocessing-seeded transform, same-mode `updateShapeRegistration`,
     and `registerShapesPyramid`. The two registration setup calls both select
     rigid mode, `subsample=2`, and coupling factor 1.0; the already validated
@@ -150,9 +149,11 @@ def initialize_lesion_atlas_alignment_from_descriptor(
 
     ``padded_images`` is the already normalized, source-ordered T1_MPRAGE and
     FLAIR pair with shape ``(2, x, y, z)``. The atlas descriptor provides the
-    class centroids, and all thirteen shape maps are loaded in that same class
-    order before invoking the source-matched initial-membership and rigid
-    registration adapters. Image normalization, crop construction, transform
+    class-order intensity priors used to calculate robust-bound class
+    centroids from the normalized initial crop. All thirteen shape maps are
+    loaded in that same class order before invoking the source-matched
+    initial-membership and rigid-registration adapters. Image normalization,
+    crop construction, transform
     estimation, topology initialization, and thinning are intentionally not
     synthesized here; those are separate upstream/next stages.
     """
@@ -179,5 +180,12 @@ def initialize_lesion_atlas_alignment_from_descriptor(
         template_resolutions_mm=template_resolutions_mm,
         init_align_iterations=init_align_iterations,
         pyramid_levels=pyramid_levels,
+    )
+    alignment = replace(
+        alignment,
+        call_order=(
+            "preprocess.initialCentroids (normalized pre-registration crop)",
+            *alignment.call_order,
+        ),
     )
     return LesionLoadedAtlasInitialAlignment(priors, shapes, alignment)
