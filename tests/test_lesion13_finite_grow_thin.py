@@ -20,6 +20,9 @@ from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm
 from pymacruise.lesion_descriptor_continuing_iteration import (
     run_lesion_toads_descriptor_continuing_iteration,
 )
+from pymacruise.lesion_descriptor_registered_iteration import (
+    register_and_branch_lesion_toads_descriptor_iteration,
+)
 from pymacruise.lesion_next_iteration_registration import register_after_next_gm_membership_update
 from pymacruise.lesion_next_iteration_branch import continue_after_next_iteration_registration
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
@@ -1139,6 +1142,44 @@ def test_finite_13class_state_growth_then_next_thinning_matches_java(tmp_path: P
     assert second_control.branch.stop
     assert second_control.branch.iteration_limit_stop
     assert not second_control.branch.run_growing
+    # Extend the composed transition through the selected registration call
+    # and wrapper stop/classification branch. Its arrays must match the
+    # separately Java-checked continuation below.
+    registered_composition = register_and_branch_lesion_toads_descriptor_iteration(
+        composed,
+        tuple(atlas_shapes[..., klass] for klass in range(CLASSES)),
+        registration.registration.transform,
+        image_resolutions_mm=tuple(REGISTRATION_SPEC["image_resolutions_mm"]),
+        template_resolutions_mm=tuple(REGISTRATION_SPEC["template_resolutions_mm"]),
+        object_types=TYPES,
+        classification=np.zeros(seg.shape, dtype=np.int16),
+        template_labels=template_labels,
+        lesion_class=LESION,
+        iteration=2,
+        n_iter_max=-2,
+        max_distance=0.1,
+        algorithm_mode="linear_fast_marching",
+        relation_limit=2,
+        align_shapes=True,
+        init_align_iter=REGISTRATION_SPEC["init_align_iter"],
+    )
+    np.testing.assert_array_equal(
+        registered_composition.registration.registration.transform,
+        second_registration.registration.transform,
+    )
+    assert registered_composition.control.stage_order == second_control.stage_order
+    np.testing.assert_array_equal(
+        registered_composition.control.branch.segmentation,
+        second_control.branch.segmentation,
+    )
+    np.testing.assert_array_equal(
+        registered_composition.control.branch.final_classification.classification,
+        second_control.branch.final_classification.classification,
+    )
+    np.testing.assert_array_equal(
+        registered_composition.control.branch.final_classification.lesion_classification,
+        second_control.branch.final_classification.lesion_classification,
+    )
     second_control_input = tmp_path / "second-pass-control.bin"
     second_control_input.write_bytes(struct.pack(
         ">3f2i?",
