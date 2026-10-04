@@ -17,6 +17,7 @@ from pymacruise.lesion_registered_first_iteration_branch import (
 from pymacruise.lesion_registered_initial_membership import (
     run_lesion_toads_registered_initial_membership,
 )
+from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_standard13_voxel import STANDARD13_TYPES
 
 
@@ -92,15 +93,23 @@ def test_registered_continuation_runs_second_synthetic_iteration() -> None:
     assert prior_branch.growing is not None
     assert prior_branch.relations is not None
 
-    # This compact fixture reuses supplied synthetic shape/distance maps for
-    # iteration two; dynamic atlas resampling is a separate registration task.
+    atlas_shape_priors = tuple(shapes[..., class_index] for class_index in range(13))
+    transformed_shapes = transform_registered_lesion_shape_priors(
+        first_branch.registration.registration,
+        atlas_shape_priors,
+        image_dimensions_xyz=tuple(images.shape[:3]),
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+    )
+    # The constructor distance maps remain the source's carried maps; the
+    # registered shape priors above are refreshed at the new transform.
     relation_table = prior_branch.relations.relation_membership[
         prior_branch.relations.relation_map
     ]
     second = run_lesion_toads_descriptor_continuing_iteration(
         prior_branch,
         images,
-        shapes,
+        transformed_shapes,
         object_types=STANDARD13_TYPES,
         lesion_class=10,
         volume_ratio=0.5,
@@ -130,6 +139,7 @@ def test_registered_continuation_runs_second_synthetic_iteration() -> None:
         "energyRatio",
     )
     assert second.thinning.run.segmentation.shape == images.shape[:3]
+    assert transformed_shapes.shape == (*images.shape[:3], 13)
     assert second.membership.membership.class_memberships.shape == (*images.shape[:3], 13)
     assert np.isfinite(second.membership.membership.class_memberships).all()
     assert np.isfinite(second.membership.energy_ratio.energy_ratio)
