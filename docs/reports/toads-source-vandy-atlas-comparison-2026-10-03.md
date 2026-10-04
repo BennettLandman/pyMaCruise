@@ -73,8 +73,36 @@ input's `(36,45,34)` RAS grid. No real MRI was used.
 - The deterministic inputs are committed under
   `tests/data/synthetic/toads_downsampled_vandy_atlas/`; the atlas NIfTIs are
   bundled under `data/atlases/`.
+- The low-memory 12-iteration Python diagnostic completed in 37.7 seconds
+  with history and per-event capture disabled. A trace retaining all thinning
+  and growing events exited with code 137; the no-history run yielded the
+  same algorithm settings and final classification.
 - No full pytest suite was run for this change.
 
-Next, continue the Java/Python comparison through later TOADS updates and
-convergence, then rerun the restartable base workflow using source-ordered
-atlas inputs. Keep those results separate from this first-cycle match.
+## Twelve-iteration compact comparison
+
+Both Java and Python completed 12 iterations on this compact synthetic case,
+but neither reached the `1e-4` energy-ratio threshold. Java ended at
+`0.02333523`; Python ended at `0.0003040527`. Their ratios track closely
+through iteration 2, then diverge; by iteration 12 the objective values and
+ratios no longer match. This keeps convergence/source-equivalence work open.
+
+Despite that internal difference, their final native-grid segmentations
+agree on 54,981 of 55,080 voxels (99.82%). Every one of the 11 labels has Dice
+at least `0.9827` (the minimum is label 22); all meet the requested 0.97
+threshold for this compact TOADS-only synthetic result. This is not the full
+MaCRUISE output acceptance result because Dura, CRUISE, and final MaSeg
+refinement are not part of this pairwise comparison.
+
+The final Python NIfTI is `(36,45,34)` uint8 with RAS axes. Its terminal
+classification hash is recorded in the ignored diagnostic log
+`build/java-reference/python-source-vandy-12iter-low-memory.log`; Java's
+12-iteration completion is in
+`build/java-reference/source-vandy-atlas-12iter.log`. These arrays/logs are
+build artifacts and are not committed. No full pytest suite was run for this
+change.
+
+Next, localize the post-iteration-2 divergence and rerun the restartable base
+workflow using source-ordered atlas inputs. Keep these compact synthetic
+results separate from brain-resolution convergence and whole-workflow
+acceptance.
