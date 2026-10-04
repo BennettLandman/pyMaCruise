@@ -5,7 +5,10 @@
 The exact-membership global Chebyshev field fitter and its channel-ordered
 adapter previously required the selected 11-class base MaCRUISE descriptor.
 They now accept an explicit descriptor-ordered class-type sequence while
-retaining the original 11-class layout as the default. The correction-weight
+retaining the original 11-class layout as the default. The
+update_lesion_toads_exact_inhomogeneity_fields composition applies the
+LesionTOADS degree gate and then fits each attached channel field in source
+order. The correction-weight
 dispatch follows the selected Java method: optimized_csf, optimized_gm, and
 optimized_wm classes use their configured power table; regular obj and lesion
 classes receive unit weight. The selected LesionTOADS wrapper leaves its
@@ -24,18 +27,19 @@ The updated formula harness accepts explicit descriptor class types and
 compares the Python 13-class normal matrix and right-hand side exactly against
 the selected Java source formula. It also checks the fitted coefficients and
 field values within the existing float32 tolerance, for both channels in
-source order. The baseline 11-class degree-2/3 and multichannel tests remain
-in the same run.
+source order. The connected test verifies that the energy gate advances
+degree 1 to degree 2, attached fields retain their identities, and each
+channel fit uses its corresponding image and centroids. Baseline 11-class
+degree-2/3 and multichannel tests remain in the same run.
 
 Focused command:
 
     ./.venv/bin/pytest -q tests/test_toads_exact_polynomial_field_degrees23.py tests/test_toads_multichannel_exact_field_refit.py tests/test_toads_post_thinning_exact_field.py tests/test_toads_post_thinning_exact_field_ramp.py tests/test_lesion_inhomogeneity_transition.py tests/test_toads_inhomogeneity_fit_degree1.py
 
-Result on commit a463d83: **24 passed, 0 failed, 0 skipped in 10.75s**.
+Result on commit 40589eb: **25 passed, 0 failed, 0 skipped in 11.55s**.
 This is synthetic selected-formula evidence. No full pytest suite was run for
-this slice. The refit kernel is now usable with the 13-class descriptor, but
-the full LesionTOADS loop does not yet assemble or consume this refit in its
-production workflow; P39 and the plus workflow remain incomplete.
+this slice. The degree-gated field-refit transition is now composed, but the
+full LesionTOADS iterative loop and plus workflow remain incomplete.
 
 ## Source anchors
 
