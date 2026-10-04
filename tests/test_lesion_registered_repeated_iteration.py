@@ -8,6 +8,10 @@ import numpy as np
 from pymacruise.lesion_descriptor_continuing_iteration import (
     run_lesion_toads_descriptor_continuing_iteration,
 )
+from pymacruise.lesion_descriptor_loop import (
+    LesionToadsDescriptorLoopOptions,
+    run_lesion_toads_descriptor_loop,
+)
 from pymacruise.lesion_descriptor_registered_iteration import (
     register_and_branch_lesion_toads_descriptor_iteration,
 )
@@ -27,7 +31,7 @@ from pymacruise.lesion_standard13_voxel import STANDARD13_TYPES
 FIXTURE = Path(__file__).parent / "data" / "synthetic" / "lesion_registered_initial_membership"
 
 
-def test_registered_continuation_runs_second_synthetic_iteration() -> None:
+def test_registered_loop_driver_matches_two_manual_updates() -> None:
     images = np.asanyarray(nib.load(FIXTURE / "images_ras.nii.gz").dataobj).astype(np.float32)
     labels = np.asanyarray(nib.load(FIXTURE / "constructor_labels_ras.nii.gz").dataobj).astype(np.int16)
     shapes = np.asanyarray(nib.load(FIXTURE / "transformed_shapes_ras.nii.gz").dataobj).astype(np.float32)
@@ -237,4 +241,55 @@ def test_registered_continuation_runs_second_synthetic_iteration() -> None:
     assert third_branch.control.branch.final_classification.classification.shape == images.shape[:3]
     assert third_branch.stage_order.index("registerShapes") < third_branch.stage_order.index(
         "convergence_check"
+    )
+
+    loop = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=LesionToadsDescriptorLoopOptions(
+            images=images,
+            atlas_shape_priors=atlas_shape_priors,
+            shape_priors=shape_priors,
+            smoothing_priors=smoothing_priors,
+            object_types=STANDARD13_TYPES,
+            lesion_class=10,
+            volume_ratio=0.5,
+            thinning_limit=1000.0,
+            image_resolutions_mm=(1.0, 1.0, 1.0),
+            template_resolutions_mm=(1.0, 1.0, 1.0),
+            classification=labels,
+            template_labels=np.arange(13, dtype=np.int16),
+            n_iter_max=3,
+            max_distance=0.0,
+            algorithm_mode="diffeomorphism",
+            relation_limit=3,
+            initial_class_centroids=first.statistics.statistics.centroids.class_centroids,
+            initial_lesion_centroids=first.statistics.statistics.centroids.lesion_centroids,
+            initial_black_hole_centroids=first.statistics.statistics.centroids.black_hole_centroids,
+            ventricle_distances=initial.distance_maps.ventricle,
+            gray_matter_distances=initial.distance_maps.gray_matter,
+            brainstem_distances=initial.distance_maps.brainstem,
+            centroid_options=centroid_options,
+            channel_weight_options=channel_weight_options,
+            outlier_energy=0.1,
+            lesion_power_exponent=1.2,
+            source_zero_variance_nan=False,
+            align_shapes=True,
+            init_align_iter=1,
+        ),
+    )
+    assert tuple(item.iteration for item in loop.passes) == (2, 3)
+    assert loop.stop_reason == "iteration_limit"
+    assert np.array_equal(
+        loop.passes[0].transition.membership.membership.class_memberships,
+        second.membership.membership.class_memberships,
+    )
+    assert np.array_equal(
+        loop.passes[1].transition.membership.membership.class_memberships,
+        third.membership.membership.class_memberships,
+    )
+    assert np.array_equal(
+        loop.final_branch.final_classification.classification,
+        third_branch.control.branch.final_classification.classification,
     )
