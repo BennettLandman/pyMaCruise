@@ -3,7 +3,7 @@
 ## Current planning estimate
 
 Most recently refreshed on 2026-10-04 against tested commit
-`11cb482c17282589ebe8777406644670da69f189`, the estimate is
+`3aadd8b18e3d80fdb90a5f5fe2ed9a9faa0bf78d`, the estimate is
 **about 3,464–4,864 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–36%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -78,10 +78,10 @@ nonconverged, and the 50-cycle synthetic loop misses its 1e-4 convergence
 threshold. This is not whole-workflow equivalence or real-data validation. The
 current approximate TOADS line estimate remains **3,464–4,864 of 13,651**.
 
-The latest 2026-10-04 repository-wide evaluation passed **1,149 tests, 0
-failed, 0 skipped, and 11 expected RAS warnings in 785.28s**, with 15.498 GB
+The latest 2026-10-04 repository-wide evaluation passed **1,150 tests, 0
+failed, 0 skipped, and 11 expected RAS warnings in 846.38s**, with 12.444 GB
 peak sampled RSS under a 24 GB watchdog. See
-[the full-suite report](full-pytest-2026-10-04-descriptor-membership.md). The
-active descriptor data-term and membership dispatches are LesionTOADS work, outside this
+[the full-suite report](full-pytest-2026-10-04-descriptor-iteration-slice.md).
+The active descriptor data-term and membership dispatches are LesionTOADS work, outside this
 report's selected base-TOADS source denominator; source-line delta for this
 estimate is zero, and it remains **3,464–4,864 of 13,651 (25–36%)**.
