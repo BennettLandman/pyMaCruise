@@ -31,4 +31,4 @@ After the full-suite run, the runner was tightened to persist workflow/stage `ru
 
 ## T1-grid contract
 
-The workflow now rejects a segmentation or supplied brain mask whose shape/affine differs from the T1 reference; this makes the requested same-grid brain-mask contract explicit before any crop or segmentation stage. The synthetic file-workflow test includes a shape-mismatched brain mask rejection. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 19.53s** on the current working tree; commit-bound rerun pending.
+The workflow now rejects a segmentation or supplied brain mask whose shape/affine differs from the T1 reference; this makes the requested same-grid brain-mask contract explicit before any crop or segmentation stage. The synthetic file-workflow test includes a shape-mismatched brain mask rejection. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 18.71s** after commit `8307df3`.
