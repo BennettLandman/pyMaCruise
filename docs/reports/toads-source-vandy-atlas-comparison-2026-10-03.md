@@ -207,3 +207,43 @@ tests/test_toads_registered_first_iteration_cycle.py` — **14 passed in
 full-suite evidence remains **1,138 passed, 0 failed, 0 skipped, 11 expected
 RAS warnings in 793.64s** on `ad34321`, before the source-order loader
 change.
+
+## GVF convergence warning and selected-source probe
+
+The full-resolution CRUISE-core run produced one SciPy CG iteration-cap warning
+for each vector component at 200 iterations and relative tolerance `1e-6`.
+Applying the same selected source system to the stored full-resolution output
+gave relative residuals `3.2041e-4`, `3.1943e-4`, and `3.5092e-4` for x/y/z.
+The warning is therefore genuine for the Python stopping rule. It should not
+be described as failure of Java convergence: the selected VandyCRUISE
+`Poisson3d` runs the requested fixed number of multigrid V-cycles and does not
+use this CG residual stopping test.
+
+To measure the solver substitution on the same brain-resolution-derived ACE
+input with the same 200-iteration setting, I ran a stride-4 comparison against
+the copied Java harness. The probe is `(41,52,39)`, uses lambda 1.0, and
+compares each output component. All values are finite; each component meets
+the existing GVF synthetic gate of maximum absolute error ≤`5e-5`:
+
+| Component | MAE | Maximum absolute error | RMSE |
+|---|---:|---:|---:|
+| x | `6.8446e-6` | `3.2157e-5` | `9.7091e-6` |
+| y | `2.6879e-6` | `2.2449e-5` | `4.2178e-6` |
+| z | `2.6789e-6` | `3.6813e-5` | `4.8954e-6` |
+
+Reproduce the comparison after running the base workflow:
+
+```bash
+PYTHONPATH=src ./.venv/bin/python scripts/compare_gvf_java_probe.py \
+  --input build/vandy-brain-resolution-memory/source-order-base-run/stages/cruise-core/attempt-01/ace_enhanced_gm.nii.gz \
+  --factor 4 --iterations 200 --lambda-value 1.0 \
+  --output-dir build/java-reference/vandy-gvf-source-order-probe-reproduction
+```
+
+The script compiles the selected upstream GVF sources and stores the
+comparison JSON plus temporary Java binary interchange files in the ignored
+build directory. This probe checks the solver substitution on a subsampled
+input; it does not validate the full-resolution field numerically. Retain the
+full-resolution warning and residual in workflow provenance until a direct
+Java reference comparison or a more faithful multigrid port resolves that
+gap. No full pytest suite was run for this probe.
