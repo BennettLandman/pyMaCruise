@@ -206,7 +206,12 @@ limitations.
 sized RAS NIfTI membership and atlas-prior fixtures, downsamples them with the
 preserved Java `ImageFunctions.subsample`, and transcribes the selected TOADS
 registration objective, source-faithful coefficient normalization, line
-search, and coarse-to-fine transform handoff at scales 4 and 2. Regenerate the
+search, and coarse-to-fine transform handoff at scales 4 and 2. Its sampler
+matches `MultipleToadAtlas`'s rigid-transform path: `precompute` is true for
+linear transforms, and each coefficient call builds the scale-specific
+`ParametricTransform.precomputeImageToTemplateMatrix` before evaluating the
+same matrix-first affine coordinates as `fastImageToShapeCoordinates`. This
+differs by float32 rounding from calling `imageToTemplate` directly. Regenerate the
 committed JSON reference with
 `scripts/generate_java_toads_registration_pyramid_reference.sh`. The Python
 test compares each scale's initialization and each iteration's transform,

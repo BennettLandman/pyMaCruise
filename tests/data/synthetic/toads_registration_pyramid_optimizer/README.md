@@ -23,5 +23,9 @@ trilinear sampling/derivative methods, and transcribes the selected
 coefficient normalization and gradient line search. The checked comparison
 covers scale 4 and 2, per-stage starting/final transforms, energies, lambda,
 accepted/rejected update counts, per-iteration state, and stopping behavior.
+The harness uses the selected rigid registration's `precompute=true` path,
+including the scale-specific float32 matrix construction before voxel
+coordinate mapping; direct centered-coordinate evaluation has different
+rounding and is not the call path used by this source workflow.
 It validates this rigid-registration slice only; it does not validate atlas
 physical alignment, complete TOADS segmentation, or MaCRUISE workflow outputs.

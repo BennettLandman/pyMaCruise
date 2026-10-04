@@ -45,10 +45,17 @@ public final class ToadsRigidRegistrationPyramidReferenceHarness {
             fullTemplate[0]/2.0f,fullTemplate[1]/2.0f,fullTemplate[2]/2.0f,
             TEMPLATE_RES[0],TEMPLATE_RES[1],TEMPLATE_RES[2],fullTemplate[0],fullTemplate[1],fullTemplate[2]);
         RotationMatrix r=model.computeRotationMatrix(trans); float[][] rot=r.getMatrix();
+        // MultipleToadAtlas initializes precompute=true for a linear transform
+        // and computeExactScaledRegistrationCoefficients refreshes this matrix
+        // at the active pyramid scale before sampling each voxel.
+        float[][] matrix=new float[3][4];
+        model.precomputeImageToTemplateMatrix(matrix,trans,rot,(float)scale);
         float[][] da=r.derivatives(1,0,0),db=r.derivatives(0,1,0),dc=r.derivatives(0,0,1);
         float cost=0,norm=0; float[] grad=new float[6],hess=new float[6];
         for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)for(int k=1;k<mem[0][0][0].length;k++) {
-            float[] pxyz=model.imageToTemplate(x,y,z,trans,rot,(float)scale);
+            float[] pxyz=new float[3];
+            for(int axis=0;axis<3;axis++)
+                pxyz[axis]=matrix[axis][0]*x+matrix[axis][1]*y+matrix[axis][2]*z+matrix[axis][3];
             float p=ImageFunctions.linearClosestInterpolation(shapes[k],pxyz[0],pxyz[1],pxyz[2],shapes[k].length,shapes[k][0].length,shapes[k][0][0].length);
             if(p<=0)continue;
             float m=mem[x][y][z][k]; float m2=m*m; float p2=p*p;

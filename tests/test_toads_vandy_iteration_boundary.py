@@ -127,10 +127,11 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         ).copy()
         registered_classes = np.ones(11, dtype=bool)
         registered_classes[0] = False
+        java_initial_transform = java["iteration1_java_pre_registration_transform"]
         registration_kwargs = {
             "image_resolutions_mm": result.alignment_run.alignment.setup.signed_image_resolutions_mm,
             "template_resolutions_mm": result.alignment_run.alignment.setup.template_resolutions_mm,
-            "transform": tuple(float(value) for value in initial_transform),
+            "transform": tuple(float(value) for value in java_initial_transform),
             "class_bounds_low_xyz": class_bounds_low,
             "class_bounds_high_xyz": class_bounds_high,
             "registered_classes": registered_classes,
@@ -171,12 +172,24 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         assert np.max(
             np.abs(python_hessian - java["iteration1_java_registration_hessian"])
         ) < 3e-6
+        # The selected Vandy atlas constructs its affine mapper with
+        # precompute=true. At a shared transform, source mapping plus
+        # coefficient accumulation should therefore stay within one float32
+        # ULP; a center-relative mapper can be many ULPs away on this grid.
+        for actual, expected in (
+            (python_gradient, java["iteration1_java_registration_gradient"]),
+            (python_hessian, java["iteration1_java_registration_hessian"]),
+        ):
+            ulp_distance = np.abs(
+                actual.view(np.int32).astype(np.int64)
+                - np.asarray(expected, dtype=np.float32).view(np.int32).astype(np.int64)
+            )
+            assert int(ulp_distance.max()) <= 1
         python_registration_energy = vectorized_toads_registration_energy(
             first_memberships,
             atlas_shapes,
             **registration_kwargs,
         )
-        java_initial_transform = java["iteration1_java_pre_registration_transform"]
         shared_java_transform_kwargs = {
             **registration_kwargs,
             "transform": tuple(float(value) for value in java_initial_transform),

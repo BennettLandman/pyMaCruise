@@ -1117,6 +1117,10 @@ def register_toads_atlas_rigid_pyramid(
             scale=level.scale,
             image_center_xyz=image_center,
             template_center_xyz=template_center,
+            # MultipleToadAtlas/MultipleToadDeformableAtlas default their
+            # selected atlas sampler to precompute=true. Preserve its
+            # matrix-first float32 coordinate path at every pyramid scale.
+            precomputed_affine=True,
         )
         transform = result.transform.copy()
         level_results.append(

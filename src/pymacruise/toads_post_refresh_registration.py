@@ -107,6 +107,9 @@ def register_toads_after_template_refresh(
         max_iterations=int(max_iterations),
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
+        # MultipleToadDeformableAtlas defaults precompute=true in the selected
+        # VandyCRUISE source; use the same affine coordinate path here.
+        precomputed_affine=True,
     )
     final_bounds = tuple(
         compute_toad_shape_bounds(
