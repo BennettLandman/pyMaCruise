@@ -2,8 +2,9 @@
 
 This page is the expanded `--help` contract for the supported inputs and
 outputs. The command line exposes preparation, individual scientific stages, and a
-standalone registered TOADS loop. The complete two-pass base and plus workflow
-commands remain under development.
+standalone registered TOADS loop, restartable base workflow, plus FLAIR-registration checkpoint,
+and a restartable plus continuation from precomputed upstream products. Full two-pass
+base and plus workflows remain under development.
 
 ## `pymacruise workflow-preflight`
 
@@ -396,3 +397,31 @@ the component-last GVF, and native-RAS inner/central/outer level sets. Base
 ACE does not merge updated multi-atlas CSF. The selected MATLAB wrapper passes
 the central-surface iteration option to the outer TGDM stage as well, so the
 CLI preserves that mapping. Surfaces and thickness outputs are not generated.
+
+
+## `pymacruise plus-run`
+
+```text
+pymacruise plus-run --t1-reference T1.nii.gz --segmentation MaSeg.nii.gz \
+  --dura-csf CSF.nii.gz --dura-gm GM.nii.gz --dura-wm-fill WMFill.nii.gz \
+  --dura-wm-mask WMMask.nii.gz --multi-atlas-gm AtlasGM.nii.gz \
+  --multi-atlas-wm AtlasWM.nii.gz --multi-atlas-mask AtlasMask.nii.gz \
+  --brain-mask BrainMask.nii.gz --output-dir plus-run [--resume] \
+  [--crop-edge-width 5] [--gvf-lambda 0.2] [--wm-iso-level 0.5] \
+  [--refine-topology-by-maseg | --no-refine-topology-by-maseg]
+```
+
+This restartable continuation starts from the persisted four-channel P39 Dura
+products and already aligned segmentation/atlas/brain-mask inputs. It records
+and verifies three stages: channel transfer and crop; plus topology, ACE, GVF,
+and TGDM; and full-grid restoration, surfaces, and thickness. `--resume`
+requires the same input hashes and settings. Verified stages are skipped; an
+invalid stage is recomputed in a new attempt directory. Outputs include RAS
+`.nii.gz` level sets and thickness, RAS+ millimetre VTK surfaces, thickness
+metrics, and `run.json`.
+
+The command does not run FLAIR registration, atlas registration, TOADS, or
+LesionTOADS. Use `pymacruise plus-register-flair` for the separate ANTsPy rigid
+FLAIR-to-T1 checkpoint. These commands are workflow slices, not a complete
+MaCRUISEplus run or a claim of equivalence to NiftyReg/Aladin or the Java
+workflow.

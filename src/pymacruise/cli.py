@@ -334,6 +334,31 @@ def build_parser() -> argparse.ArgumentParser:
     plus_register.add_argument("--iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
     plus_register.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
     plus_register.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
+
+    plus_run = commands.add_parser(
+        "plus-run",
+        help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
+    )
+    plus_run.add_argument("--t1-reference", required=True, type=Path)
+    plus_run.add_argument("--segmentation", required=True, type=Path)
+    plus_run.add_argument("--dura-csf", required=True, type=Path)
+    plus_run.add_argument("--dura-gm", required=True, type=Path)
+    plus_run.add_argument("--dura-wm-fill", required=True, type=Path)
+    plus_run.add_argument("--dura-wm-mask", required=True, type=Path)
+    plus_run.add_argument("--multi-atlas-gm", required=True, type=Path)
+    plus_run.add_argument("--multi-atlas-wm", required=True, type=Path)
+    plus_run.add_argument("--multi-atlas-mask", required=True, type=Path)
+    plus_run.add_argument("--brain-mask", required=True, type=Path)
+    plus_run.add_argument("--output-dir", required=True, type=Path)
+    plus_run.add_argument("--resume", action="store_true")
+    plus_run.add_argument("--crop-edge-width", type=int, default=5)
+    plus_run.add_argument("--gvf-lambda", type=float, default=0.2)
+    plus_run.add_argument("--wm-iso-level", type=float, default=0.5)
+    plus_run.add_argument(
+        "--refine-topology-by-maseg",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     return parser
 
 
@@ -459,6 +484,34 @@ def main(argv: list[str] | None = None) -> int:
         verb = "Verified and resumed" if result.resumed else "Registered"
         print(f"{verb} FLAIR on the T1 RAS grid: {result.warped_flair_path}")
         print(f"Registration manifest: {result.manifest_path}")
+    elif args.command == "plus-run":
+        from pymacruise.plus_file_workflow import run_plus_file_workflow
+        from pymacruise.plus_pipeline import PlusPipelineOptions
+
+        result = run_plus_file_workflow(
+            t1_reference_path=args.t1_reference,
+            segmentation_path=args.segmentation,
+            dura_csf_path=args.dura_csf,
+            dura_gm_path=args.dura_gm,
+            dura_wm_fill_path=args.dura_wm_fill,
+            dura_wm_mask_path=args.dura_wm_mask,
+            multi_atlas_gm_path=args.multi_atlas_gm,
+            multi_atlas_wm_path=args.multi_atlas_wm,
+            multi_atlas_mask_path=args.multi_atlas_mask,
+            brain_mask_path=args.brain_mask,
+            output_dir=args.output_dir,
+            crop_edge_width=args.crop_edge_width,
+            options=PlusPipelineOptions(
+                gvf_lambda=args.gvf_lambda,
+                wm_iso_level=args.wm_iso_level,
+                refine_topology_by_maseg=args.refine_topology_by_maseg,
+            ),
+            resume=args.resume,
+        )
+        print(f"Plus continuation complete: {result.manifest_path}")
+        print(f"Verified stages skipped: {', '.join(result.resumed_stages) or 'none'}")
+        for name, path in result.outputs.items():
+            print(f"{name}: {path}")
     elif args.command == "toads-loop":
         _require_nifti_gz_output(args.output)
         if args.output.exists():
