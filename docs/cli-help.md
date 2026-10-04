@@ -425,3 +425,23 @@ LesionTOADS. Use `pymacruise plus-register-flair` for the separate ANTsPy rigid
 FLAIR-to-T1 checkpoint. These commands are workflow slices, not a complete
 MaCRUISEplus run or a claim of equivalence to NiftyReg/Aladin or the Java
 workflow.
+
+
+## `pymacruise plus-register-flair`
+
+```text
+pymacruise plus-register-flair --t1 T1.nii.gz --flair FLAIR.nii.gz \
+  --output-dir registration-checkpoint [--resume] \
+  [--metric mattes|meansquares|GC] [--metric-bins 32] \
+  [--sampling-rate 0.2] [--iterations 1000 500 250 0] \
+  [--shrink-factors 6 4 2 1] [--smoothing-sigmas 3 2 1 0]
+```
+
+T1 is the fixed image and FLAIR is the moving image. The command normalizes
+inputs to RAS with warnings for reorientation, then uses the existing rigid
+ANTsPy adapter to write `flair_in_t1.nii.gz`, forward/inverse transform files,
+and `flair-registration.json`. Resume verifies input/settings signatures,
+output hashes, and the warped image grid before skipping registration.
+ANTsPy is an explicit Python backend substitute; NiftyReg/Aladin numerical
+equivalence is unvalidated. This checkpoint alone does not run N4, TOADS,
+LesionTOADS, or the full plus workflow.
