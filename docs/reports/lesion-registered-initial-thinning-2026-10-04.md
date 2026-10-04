@@ -22,11 +22,11 @@ atlas update, optional inhomogeneity correction, and relation/statistics
 stages that precede that result. It still does not calculate those upstream
 values itself.
 
-After that correction, the focused command below passed **21 tests in 6.62s**.
-The full-suite result below is retained as historical evidence for implementation
-commit `abe5bc8`, but that implementation reused the wrong membership product.
-It is not acceptance evidence for the corrected code; rerun the full suite on
-the corrected implementation before marking P39zzzzzzbj Done.
+After the membership and wrapper-order corrections, the focused command below
+passed **21 tests in 6.79s** on commit `45e917de53ad2b5c81be250627576133ea5eff4a`.
+The corrected implementation also passed the full suite on that commit; see
+the fresh full-suite evidence below. The earlier 1,160-test result on `abe5bc8`
+is retained only as historical evidence for the superseded implementation.
 
 ## Scope
 
@@ -56,12 +56,10 @@ PYTHONPATH=src ./.venv/bin/pytest -q \
   tests/test_lesion_initial_segmentation_state.py
 ```
 
-Result after adding explicit dtype checks: **21 passed, 0 failed, 0 skipped in
-6.72s**. The committed implementation under evaluation is `abe5bc8`
-(`abe5bc8d3afdd8e6104cdca4b947b5ba2c71d11b`). The extra dtype assertions were
-rerun in this focused group after the full-suite run; they did not change
-implementation code. The constructor label map is int8; the thinning queue's
-mutable segmentation work array is int16.
+Result after the membership and source-order corrections: **21 passed, 0
+failed, 0 skipped in 6.79s**. Tested implementation commit:
+`45e917de53ad2b5c81be250627576133ea5eff4a`. The constructor label map is int8;
+the thinning queue's mutable segmentation work array is int16.
 
 The new integration test checks RAS topology orientation, atlas and subject
 grid sizes, class order, transformed-template/shape dtypes, constructor and
@@ -71,7 +69,23 @@ Java comparisons for the constituent selected methods remain in their own
 component fixtures/reports; the integration test does not relabel composition
 as a Java match.
 
-## Full-suite evidence
+## Corrected full-suite evidence
+
+Command:
+
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 24 --interval-seconds 0.1 --report-interval-seconds 120 -- \
+  env PYTHONPATH=src ./.venv/bin/pytest -q
+```
+
+Tested implementation commit: **`45e917de53ad2b5c81be250627576133ea5eff4a`**.
+Result: **1,160 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
+863.49s**. Peak sampled RSS was **14.847 GB**; the watchdog did not terminate
+the run. This validates the repository synthetic/regression suite on the
+corrected handoff and wrapper trace.
+
+## Historical full-suite evidence
 
 Command:
 
@@ -87,6 +101,6 @@ Result: **1,160 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
 the run. The later plan and report commits do not change the implementation
 tested here.
 
-This verifies a bounded synthetic integration. It does not establish
-post-registration recrop equivalence, whole LesionTOADS equivalence, plus
-integration, or real-data validation.
+The corrected suite still verifies only a bounded synthetic integration. It
+does not establish post-registration recrop equivalence, whole LesionTOADS
+equivalence, plus integration, or real-data validation.

@@ -1,13 +1,22 @@
-# Full pytest — registered LesionTOADS initial thinning
+# Full test suite — corrected LesionTOADS first-thinning handoff — 2026-10-04
 
-- Tested implementation commit: `abe5bc8d3afdd8e6104cdca4b947b5ba2c71d11b`
-- Command: `./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 24 --interval-seconds 0.1 --report-interval-seconds 120 -- env PYTHONPATH=src ./.venv/bin/pytest -q`
-- Result: **1,160 passed, 0 failed, 0 skipped, 11 expected RAS warnings**
-- Duration: **887.61 seconds**
-- Peak sampled RSS: **13.657 GB**
-- Watchdog result: normal exit; the 24 GB limit was not reached
+Command:
 
-The run uses synthetic fixtures and bundled atlas resources. It does not run
-the supplied human MRI. The subsequent focused rerun added explicit dtype
-assertions to the new integration test; those assertions passed (21 focused
-tests), without changing implementation code.
+```bash
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 24 --interval-seconds 0.1 --report-interval-seconds 120 -- \
+  env PYTHONPATH=src ./.venv/bin/pytest -q
+```
+
+Tested implementation commit: **`45e917de53ad2b5c81be250627576133ea5eff4a`**.
+
+Result: **1,160 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
+863.49s**. Peak sampled RSS: **14.847 GB**. The watchdog did not terminate the
+run.
+
+This is regression evidence on the corrected synthetic composition where the
+post-constructor membership result is distinct from registration memberships
+and the recorded wrapper sequence matches the inspected Java source order. It
+does not establish a composite Java output match, full LesionTOADS equivalence,
+plus-workflow acceptance, or real-MRI validation. The focused composition
+evidence and scope are in the [P39zzzzzzbj report](lesion-registered-initial-thinning-2026-10-04.md).
