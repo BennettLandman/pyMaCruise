@@ -37,9 +37,14 @@ Focused command:
     ./.venv/bin/pytest -q tests/test_toads_exact_polynomial_field_degrees23.py tests/test_toads_multichannel_exact_field_refit.py tests/test_toads_post_thinning_exact_field.py tests/test_toads_post_thinning_exact_field_ramp.py tests/test_lesion_inhomogeneity_transition.py tests/test_toads_inhomogeneity_fit_degree1.py
 
 Result on commit 40589eb: **25 passed, 0 failed, 0 skipped in 11.55s**.
-This is synthetic selected-formula evidence. No full pytest suite was run for
-this slice. The degree-gated field-refit transition is now composed, but the
-full LesionTOADS iterative loop and plus workflow remain incomplete.
+This is synthetic selected-formula evidence. The repository-wide suite
+subsequently passed
+1,143 tests, 0 failed, 0 skipped, and 11 expected RAS warnings in 820.91s on
+implementation commit 40589ebbf5a567b93d9a7dd44cc86a5f9eb6ec0e, with peak
+sampled RSS 14.970 GB under a 24 GB watchdog. See
+[the full-suite report](full-pytest-2026-10-04-lesion-field-refit.md). The
+degree-gated field-refit transition is composed, but the full LesionTOADS
+iterative loop and plus workflow remain incomplete.
 
 ## Source anchors
 
