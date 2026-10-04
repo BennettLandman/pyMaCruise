@@ -26,7 +26,7 @@ def _save_channel(tmp_path: Path, name: str, values: np.ndarray, reference: nib.
     return save_nifti_ras(image, tmp_path / f"{name}.nii.gz")
 
 
-def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path) -> None:
+def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path, capsys) -> None:
     segmentation = _load("segmentation.nii.gz")
     atlas_gm = _load("multi_atlas_gm.nii.gz")
     atlas_wm = _load("multi_atlas_wm.nii.gz")
@@ -91,6 +91,29 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
     metrics = json.loads(first.outputs["thickness_metrics"].read_text())
     assert metrics["spatial_convention"] == "RAS"
     assert metrics["surface_units"] == "mm"
+
+    # Exercise the public CLI against the same files, resuming the valid run.
+    from pymacruise.cli import main
+
+    cli_flags = {
+        "t1_reference_path": "--t1-reference",
+        "segmentation_path": "--segmentation",
+        "dura_csf_path": "--dura-csf",
+        "dura_gm_path": "--dura-gm",
+        "dura_wm_fill_path": "--dura-wm-fill",
+        "dura_wm_mask_path": "--dura-wm-mask",
+        "multi_atlas_gm_path": "--multi-atlas-gm",
+        "multi_atlas_wm_path": "--multi-atlas-wm",
+        "multi_atlas_mask_path": "--multi-atlas-mask",
+        "brain_mask_path": "--brain-mask",
+        "output_dir": "--output-dir",
+    }
+    cli_arguments = ["plus-run"]
+    for name, flag in cli_flags.items():
+        cli_arguments.extend((flag, str(inputs[name])))
+    cli_arguments.extend(("--resume", "--crop-edge-width", "5"))
+    assert main(cli_arguments) == 0
+    assert "Verified stages skipped: transfer_crop, topology_ace_gvf_tgdm, surfaces_thickness" in capsys.readouterr().out
 
     resumed = run_plus_file_workflow(**inputs, crop_edge_width=5, resume=True)
     assert resumed.resumed_stages == ("transfer_crop", "topology_ace_gvf_tgdm", "surfaces_thickness")
