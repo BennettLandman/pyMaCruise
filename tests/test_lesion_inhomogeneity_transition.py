@@ -6,16 +6,21 @@ from pathlib import Path
 import shutil
 import subprocess
 
+import nibabel as nib
 import numpy as np
 import pytest
 
 from pymacruise.lesion_inhomogeneity_transition import (
+    update_lesion_toads_exact_inhomogeneity_fields,
     update_lesion_toads_inhomogeneity_fields,
 )
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_inhomogeneity_transition"
 HARNESS = Path(__file__).parent / "java_reference" / "LesionToadsInhomogeneityTransitionReferenceHarness.java"
+POLYNOMIAL_HARNESS = Path(__file__).parent / "java_reference" / "ToadsExactPolynomialFieldReferenceHarness.java"
+POLYNOMIAL_UPSTREAM = Path(__file__).parent / "java_reference" / "upstream"
+FIELD_FIXTURE = Path(__file__).parent / "data" / "synthetic" / "lesion_inhomogeneity_13class_refit"
 REFERENCE = json.loads((ROOT / "java_reference.json").read_text(encoding="utf-8"))
 HARNESS_SHA256 = "9a4e519a5d98c397c141ed36bcd35788d5527a1ba46c30c65b469dff7f85c84c"
 ALGORITHM_SHA256 = "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb"
@@ -107,3 +112,68 @@ def test_invalid_degree_or_field_state_is_rejected_before_refit() -> None:
             previous_energy_ratio=0.0, max_distance=0.0001,
         )
     assert calls == []
+
+
+def test_adaptive_transition_runs_13_class_exact_refits_in_channel_order(tmp_path: Path) -> None:
+    volumes = [
+        nib.load(str(FIELD_FIXTURE / f"{name}.nii.gz"))
+        for name in ("image", "memberships", "segmentation", "initial_field")
+    ]
+    for volume in volumes:
+        assert nib.aff2axcodes(volume.affine) == ("R", "A", "S")
+    image, memberships, segmentation, initial_field = (
+        np.asarray(volume.dataobj) for volume in volumes
+    )
+    segmentation = segmentation.astype(np.uint8)
+    centers = np.asarray(json.loads((FIELD_FIXTURE / "centroids.json").read_text()), dtype=np.float32)
+    class_types = tuple(json.loads((FIELD_FIXTURE / "class_types.json").read_text()))
+    images = np.stack((image, np.asarray(image * np.float32(0.83) + np.float32(0.06), dtype=np.float32)), axis=-1)
+    channel_centers = np.stack(
+        (centers, np.asarray(centers * np.float32(0.83) + np.float32(0.06), dtype=np.float32))
+    )
+    fields = [initial_field.copy(), initial_field.copy()]
+
+    result = update_lesion_toads_exact_inhomogeneity_fields(
+        images, memberships, segmentation, channel_centers, fields, class_types,
+        degree=1, polynomial_degree=2, previous_energy_ratio=0.005, max_distance=0.0001,
+    )
+
+    assert result.degree == 2
+    assert result.low_energy_ratio == np.float32(0.01)
+    assert result.stage_order[-2:] == (
+        "computeCorrectionField.channel0.degree2",
+        "computeCorrectionField.channel1.degree2",
+    )
+    assert result.fields[0] is fields[0]
+    assert result.fields[1] is fields[1]
+    assert len(result.fits) == 2
+
+    build = tmp_path / "classes"
+    build.mkdir()
+    sources = sorted((POLYNOMIAL_UPSTREAM / "Jama").glob("*.java"))
+    sources += sorted((POLYNOMIAL_UPSTREAM / "Jama" / "util").glob("*.java"))
+    sources += [
+        POLYNOMIAL_UPSTREAM / "gov/nih/mipav/model/structures/jama/JamaMatrix.java",
+        POLYNOMIAL_UPSTREAM / "edu/jhmi/rad/medic/utilities/PowerTable.java",
+        POLYNOMIAL_HARNESS,
+    ]
+    subprocess.run(["javac", "-d", str(build), *map(str, sources)], check=True, capture_output=True, text=True)
+    type_argument = ",".join(class_types)
+    for channel, fit in enumerate(result.fits):
+        input_path = tmp_path / f"lesion_refit_channel{channel}.bin"
+        input_path.write_bytes(b"".join((
+            segmentation.astype(np.int8).tobytes(order="C"),
+            images[..., channel].astype(">f4").tobytes(order="C"),
+            memberships.astype(">f4").tobytes(order="C"),
+            initial_field.astype(">f4").tobytes(order="C"),
+            channel_centers[channel].astype(">f4").tobytes(order="C"),
+        )))
+        reference = json.loads(subprocess.run(
+            ["java", "-cp", str(build), "ToadsExactPolynomialFieldReferenceHarness",
+             str(input_path), *(str(n) for n in image.shape), "13", "2", type_argument],
+            check=True, capture_output=True, text=True,
+        ).stdout)
+        np.testing.assert_array_equal(fit.normal_matrix.ravel(), np.asarray(reference["normal"]))
+        np.testing.assert_array_equal(fit.right_hand_side, np.asarray(reference["rhs"]))
+        expected = np.asarray(reference["field_bits"], dtype=np.int32).view(np.float32).reshape(image.shape)
+        np.testing.assert_allclose(fields[channel], expected, rtol=0, atol=2e-6)

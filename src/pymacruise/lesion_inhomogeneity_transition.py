@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from .toads_inhomogeneity_exact_fit import fit_toads_exact_chebyshev_field
 
 ChannelRefit = Callable[[int, NDArray[np.float32], Any], Any]
 
@@ -31,6 +32,68 @@ class LesionToadsInhomogeneityTransition:
     fields: tuple[NDArray[np.float32], ...]
     fits: tuple[Any, ...]
     stage_order: tuple[str, ...]
+
+
+def update_lesion_toads_exact_inhomogeneity_fields(
+    image_values: Any,
+    memberships: Any,
+    segmentation: Any,
+    centroids: Any,
+    attached_fields: Sequence[ArrayLike],
+    class_types: Sequence[str],
+    *,
+    degree: int,
+    polynomial_degree: int,
+    previous_energy_ratio: float,
+    max_distance: float,
+) -> LesionToadsInhomogeneityTransition:
+    """Apply the LesionTOADS degree gate and exact fit to each source channel.
+
+    Arrays use channel-last images and channel-first centroid vectors. Each
+    attached field is mutated in place by the selected exact fitter, in the
+    same channel order in which the Java wrapper invokes
+    computeCorrectionField. A selected degree of zero retains the source no-op.
+    """
+    images = np.asarray(image_values, dtype=np.float32)
+    mem = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(segmentation)
+    centers = np.asarray(centroids, dtype=np.float32)
+    if images.ndim != 4 or images.shape[-1] < 1:
+        raise ValueError("image_values must be channel-last 4-D with at least one channel")
+    channels = images.shape[-1]
+    if mem.ndim != 4 or mem.shape[:3] != images.shape[:3] or mem.shape[-1] < 2:
+        raise ValueError("memberships must match the image grid and contain at least two classes")
+    classes = mem.shape[-1]
+    if labels.shape != images.shape[:3] or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("segmentation must be integer labels on the shared image grid")
+    if centers.shape != (channels, classes):
+        raise ValueError("centroids must have shape (channels, classes)")
+    if len(attached_fields) != channels:
+        raise ValueError("attached_fields must provide one field per image channel")
+    if len(class_types) != classes:
+        raise ValueError("class_types must provide one type per membership class")
+
+    def refit(channel: int, field: NDArray[np.float32], selected_degree: int) -> Any:
+        if selected_degree == 0:
+            return None
+        return fit_toads_exact_chebyshev_field(
+            images[..., channel],
+            mem,
+            labels,
+            centers[channel],
+            field,
+            degree=selected_degree,
+            class_types=class_types,
+        )
+
+    return update_lesion_toads_inhomogeneity_fields(
+        attached_fields,
+        refit,
+        degree=degree,
+        polynomial_degree=polynomial_degree,
+        previous_energy_ratio=previous_energy_ratio,
+        max_distance=max_distance,
+    )
 
 
 def update_lesion_toads_inhomogeneity_fields(
