@@ -34,4 +34,4 @@ After the full-suite run, the runner was tightened to persist workflow/stage `ru
 The workflow now rejects a segmentation or supplied brain mask whose shape/affine differs from the T1 reference; this makes the requested same-grid brain-mask contract explicit before any crop or segmentation stage. The synthetic file-workflow test includes a shape-mismatched brain mask rejection. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 18.71s** after commit `8307df3`.
 
 
-The workflow regression test now executes the public `pymacruise plus-run` CLI on the synthetic inputs and verifies its resume summary skips all three verified stages. The focused two-test command passed in **18.20s** on the current working tree; post-commit evidence pending.
+The workflow regression test now executes the public `pymacruise plus-run` CLI on the synthetic inputs and verifies its resume summary skips all three verified stages. The focused two-test command passed in **19.87s** on commit `e741c65`.
