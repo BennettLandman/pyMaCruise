@@ -217,7 +217,9 @@ gave relative residuals `3.2041e-4`, `3.1943e-4`, and `3.5092e-4` for x/y/z.
 The warning is therefore genuine for the Python stopping rule. It should not
 be described as failure of Java convergence: the selected VandyCRUISE
 `Poisson3d` runs the requested fixed number of multigrid V-cycles and does not
-use this CG residual stopping test.
+use this CG residual stopping test. That solver substitution has now been
+compared directly on the full `(163,207,156)` crop; it fails the existing
+numerical gate substantially at brain resolution.
 
 To measure the solver substitution on the same brain-resolution-derived ACE
 input with the same 200-iteration setting, I ran a stride-4 comparison against
@@ -247,3 +249,27 @@ input; it does not validate the full-resolution field numerically. Retain the
 full-resolution warning and residual in workflow provenance until a direct
 Java reference comparison or a more faithful multigrid port resolves that
 gap. No full pytest suite was run for this probe.
+
+### Full-grid Java comparison
+
+The same probe was run at `--factor 1` with the complete `(163,207,156)` ACE
+enhanced GM volume, lambda 1.0, and 200 iterations for each implementation.
+The Java multigrid reference completed in about one minute. The combined
+watchdog sampled **1.053 GB** peak RSS against the 16 GB cap; both solvers
+returned finite vectors. Their full-grid numerical differences are far above
+the existing synthetic gate:
+
+| Component | MAE | Maximum absolute error | RMSE |
+|---|---:|---:|---:|
+| x | `2.1823e-3` | `2.0948e-2` | `3.6712e-3` |
+| y | `2.4411e-3` | `2.1780e-2` | `4.0976e-3` |
+| z | `2.7043e-3` | `2.1898e-2` | `4.4090e-3` |
+
+Reproduce with the same command and `--factor 1`, writing to a distinct
+ignored build directory. Full output and solver warnings are in
+`build/java-reference/vandy-gvf-source-order-full/comparison.json` from the
+recorded run. The stride-4 agreement is not representative of the full-grid
+system. The CG implementation cannot be considered a safe source substitute
+for brain-resolution GVF; the next implementation step is to port the
+selected VandyCRUISE multigrid V-cycle, then compare it against the Java
+harness at both compact and full crop resolution.
