@@ -15,6 +15,25 @@
       53,
       60,
       51
+    ],
+    "iteration1_transform": [
+      0.0012983517954126,
+      0.0012983517954126,
+      0.0012983519118279219,
+      -6.717451572418213,
+      -2.248701572418213,
+      -6.781790256500244
+    ],
+    "iteration1_grown_segmentation_grid": [
+      53,
+      60,
+      51
+    ],
+    "iteration1_closest_labels_grid": [
+      53,
+      60,
+      51,
+      4
     ]
   },
   "notes": [
@@ -22,7 +41,8 @@
     "Iteration 1 memberships are within float32 rounding scale; after one continuing thinning pass 42 of 162180 labels differ.",
     "The iteration 2 membership maximum discrepancy is large despite a low tensor mean; this marks source-state drift and is not accepted as membership equivalence.",
     "Per-label iteration 2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
-    "No clinical image was used; this is not a full MaCRUISE output comparison."
+    "No clinical image was used; this is not a full MaCRUISE output comparison.",
+    "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail."
   ],
   "parameters": {
     "convergence_threshold": 0.0001,
@@ -58,7 +78,7 @@
     "iteration2_thinning_different_voxels": 42
   },
   "real_data_validation": false,
-  "reference_arrays_sha256": "7b4b726e61d84a881bd01eb3df3322eb243f3e6512b1ef028d2aa1f55c3791b7",
+  "reference_arrays_sha256": "493ac4c3bfe0bcc0401a739b393eeb8474f29347494ec9f89b59bef6f90617be",
   "regression_envelope": {
     "iteration2_membership_count_over_1e5_max": 10500,
     "iteration2_membership_mae_max": 6e-06,

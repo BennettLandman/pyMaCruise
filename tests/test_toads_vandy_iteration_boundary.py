@@ -101,6 +101,25 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
             - PROVENANCE["java_trace"]["iteration1_objective"]
         ) < 2e-6
 
+        first_cycle = result.registered_cycles[0]
+        java_transform = java["iteration1_registered_transform"]
+        python_transform = np.asarray(
+            first_cycle.registration_control.handoff.transform, dtype=np.float32
+        )
+        transform_delta = python_transform - java_transform
+        expected_transform_delta = np.asarray(
+            [2e-4, 2e-4, 2e-4, 2e-4, 2e-4, 2e-4],
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(transform_delta, expected_transform_delta, rtol=0, atol=5e-7)
+
+        java_grown = java["iteration1_grown_segmentation"]
+        python_grown = first_cycle.registered_iteration.branch.growing.segmentation
+        assert np.count_nonzero(python_grown != java_grown) == 55
+        java_closest = java["iteration1_closest_labels"]
+        python_closest = first_cycle.registered_iteration.branch.relations.closest_labels
+        assert np.count_nonzero(python_closest != java_closest) == 843
+
         next_thinning = result.registered_cycles[0].next_thinning.thinning.segmentation
         java_next_thinning = java["iteration2_thinning_segmentation"]
         assert next_thinning.shape == java_next_thinning.shape == (53, 60, 51)
