@@ -40,6 +40,45 @@ first-pass output is direct evidence for the N4-input route; it should be
 compared with a source-matched workflow reference before changing N4 or TOADS
 behavior.
 
+An additional raw-versus-N4 experiment used the committed compact
+`toads_downsampled_vandy_atlas` phantom `(36,45,34)`, its generated atlas
+descriptor, one shared brain mask, and otherwise matching 50-iteration,
+padding-10 TOADS settings. The raw-T1 run reached its cap at ratio
+`0.00278222049`; the N4-input run converged at iteration 20 at
+`6.68482171e-05`. Their classifications differed in 1,488 of 55,080 voxels
+(97.30% voxel agreement; minimum per-label Dice `0.748344`, label 17). This
+compact A/B is synthetic diagnostic evidence only. Its direction does not
+explain the opposite brain-resolution result, showing that this response is
+fixture/scale-dependent; it does not prove N4 causes or fixes convergence.
+The voxel agreement and Dice compare the raw run stopped at iteration 50 with
+the N4 run stopped at iteration 20; these terminal-output differences are
+descriptive and are not a numerical acceptance result.
+
+The compact A/B can be reproduced from the committed
+`tests/data/synthetic/toads_downsampled_vandy_atlas/` fixture. First create
+the N4 input:
+
+```bash
+./.venv/bin/pymacruise n4 \
+  --input tests/data/synthetic/toads_downsampled_vandy_atlas/t1.nii.gz \
+  --output build/toads-n4-convergence-diagnostic/t1-n4.nii.gz
+```
+
+Run each arm with the same 50-iteration settings (change `--t1-n4` and the
+output/provenance names for the N4 arm):
+
+```bash
+./.venv/bin/pymacruise toads-loop \
+  --t1-n4 tests/data/synthetic/toads_downsampled_vandy_atlas/t1.nii.gz \
+  --brain-mask tests/data/synthetic/toads_downsampled_vandy_atlas/brain-mask.nii.gz \
+  --atlas-descriptor tests/data/synthetic/toads_downsampled_vandy_atlas/atlas.txt \
+  --output build/toads-n4-convergence-diagnostic/raw-classification.nii.gz \
+  --maximum-iterations 50 --registration-levels 1 --registration-iterations 1 \
+  --post-refresh-registration-iterations 1 --registration-max-iterations 1 \
+  --padding 10 --relation-limit 3 --maximum-distance 1e-4 \
+  --provenance build/toads-n4-convergence-diagnostic/raw.json
+```
+
 The final inner, central, outer, and refined MaSeg NIfTI outputs are finite and
 on the native `(172,216,164)` grid with RAS axis codes. The run's peak sampled
 RSS was **8.308 GB** under a **16 GB** process watchdog; it exited with code 0
@@ -48,8 +87,8 @@ skipped all six stages, exited with code 0, and peaked at **0.122 GB**.
 
 ## Reproduction
 
-From the repository root, regenerate the deterministic atlas-derived phantom
-in an ignored build directory:
+From the repository root, regenerate a comparison copy of the committed
+brain-resolution inputs in an ignored build directory:
 
 ```bash
 ./.venv/bin/python tests/data/synthetic/toads_downsampled_vandy_atlas/generate_fixture.py \
@@ -63,11 +102,11 @@ Run the complete synthetic base workflow with converged TOADS iteration limits:
 ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   --limit-gb 16 --interval-seconds 0.1 --report-interval-seconds 120 -- \
   ./.venv/bin/pymacruise base-run \
-  --t1 build/vandy-brain-resolution-memory/t1.nii.gz \
-  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
-  --maseg build/vandy-brain-resolution-memory/maseg.nii.gz \
+  --t1 tests/data/synthetic/base_workflow_brain_resolution/t1.nii.gz \
+  --brain-mask tests/data/synthetic/base_workflow_brain_resolution/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/base_workflow_brain_resolution/maseg.nii.gz \
   --atlas-descriptor data/atlases/cruise-atlas-10obj-toads2008.txt \
-  --output-dir build/vandy-brain-resolution-memory/source-order-base-run-converged \
+  --output-dir build/vandy-brain-resolution-memory/committed-input-base-run \
   --registration-levels 1 --registration-iterations 1 \
   --post-refresh-registration-iterations 1 --registration-max-iterations 1 \
   --toads-iterations 50 --dura-iterations 1 --crop-edge-width 2 \
