@@ -21,6 +21,7 @@ def transform_registered_lesion_shape_priors(
     registration_result,
     atlas_shape_priors: Sequence[ArrayLike],
     *,
+    image_dimensions_xyz: tuple[int, int, int] | None = None,
     image_resolutions_mm: tuple[float, float, float],
     template_resolutions_mm: tuple[float, float, float],
 ) -> NDArray[np.float32]:
@@ -43,8 +44,20 @@ def transform_registered_lesion_shape_priors(
     shapes = [np.asarray(prior, dtype=np.float32) for prior in atlas_shape_priors]
     if not shapes or any(shape.ndim != 3 for shape in shapes):
         raise ValueError("atlas priors must be a nonempty sequence of 3D arrays")
-    image_dims = tuple(int(size) for size in getattr(handoff, "memberships").shape[:3])
-    if any(size < 2 for size in image_dims) or any(shape.shape != shapes[0].shape for shape in shapes):
+    membership_grid = getattr(handoff, "memberships", None)
+    if membership_grid is None:
+        if image_dimensions_xyz is None:
+            raise ValueError(
+                "image_dimensions_xyz is required when registration has no membership grid"
+            )
+        image_dims = tuple(int(size) for size in image_dimensions_xyz)
+    else:
+        image_dims = tuple(int(size) for size in membership_grid.shape[:3])
+        if image_dimensions_xyz is not None and tuple(image_dimensions_xyz) != image_dims:
+            raise ValueError("image_dimensions_xyz must match the registration membership grid")
+    if len(image_dims) != 3 or any(size < 2 for size in image_dims):
+        raise ValueError("image_dimensions_xyz must contain three dimensions >= 2")
+    if any(shape.shape != shapes[0].shape for shape in shapes):
         raise ValueError("atlas priors must share a 3D template grid")
     if any(not np.isfinite(shape).all() for shape in shapes):
         raise ValueError("atlas priors must be finite")
