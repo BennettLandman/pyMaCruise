@@ -22,13 +22,19 @@ The watchdog sampled a peak of **13.960 GB** before pytest exited successfully, 
 
 ## Watchdog repair
 
-The wrapper now rechecks the child's exit status when RSS lookup reports an OS error, treats a confirmed child exit as normal completion, and avoids signaling an exited process group. A deterministic regression forces the poll/read race. Focused validation on commit `8190a5d0a740abec89ddad160e6d7fd12ad66aae`:
+The wrapper now rechecks the child's exit status when RSS lookup reports an OS error, treats a confirmed child exit as normal completion, and waits for a just-exited process group before treating a permission error as a monitor failure. A deterministic regression forces the poll/read race. Focused validation on commit `8190a5d0a740abec89ddad160e6d7fd12ad66aae`:
 
 ```bash
 ./.venv/bin/pytest -q tests/test_rss_watchdog.py
 ```
 
 Result: **2 passed in 0.21s**. The full suite was not rerun after this monitor-only repair; the full-suite pytest result remains tied to `ad34321`.
+
+The exit-race refinement was committed as `724aa69`; `pytest -q
+tests/test_rss_watchdog.py` passed **2 tests in 0.86 s**, and a monitored
+immediate-exit child returned `child_exit=0` with 0.014 GB peak sampled RSS.
+These focused checks validate the wrapper repair; they do not change the
+full-suite result or its tested implementation commit.
 
 ## Selected source-line accounting
 

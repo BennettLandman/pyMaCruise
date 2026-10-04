@@ -204,4 +204,107 @@ Result: **2 passed in 39.20 s**. The test checks that the per-iteration telemetr
 
 The full repository pytest suite subsequently passed **1,138 tests, 0 failed, 0 skipped, 11 expected RAS warnings in 793.64 s** on `ad34321`, with peak sampled RSS **13.960 GB** under the 16 GB watcher. The pytest process exited successfully; the watcher reported an error in its final poll/cleanup race, fixed and covered by **2 passed in 0.21 s** on `8190a5d`. The full-suite record is [here](full-pytest-2026-10-03-brain-resolution.md). The selected TOADS Java source-line estimate was re-evaluated after that run and remains 3,464–4,864 of 13,651 lines (25–36%), with zero new source methods counted.
 
+### Compact convergence and registered-loop timing
+
+After adding elapsed-time fields to registered-loop progress messages, the
+restartable workflow test passed **2 tests in 20.38 s** on `cdc3f0d`. A direct
+two-iteration `toads-loop` on the compact atlas-derived `(36,45,34)` fixture
+reported 0.807 s for unity-field/thinning startup, 0.079 s for the first exact
+membership iteration, 2.832 s for the first registered cycle, and 4.383 s for
+iteration 2. It completed in 10.0 s total, peaked at 0.531 GB sampled RSS, and
+ended at energy ratio `0.248976111` (iteration cap, not converged).
+
+The same compact input and selected registration profile were extended to a
+maximum of 30 iterations. The loop stopped at iteration 12 after **38.8 s**;
+terminal ratio was `7.53300919e-5`, below the configured `1e-4` threshold.
+Peak sampled RSS was **0.593 GB**. This is synthetic grid-specific convergence
+evidence only.
+
+### Fifteen-iteration brain-resolution continuation
+
+The direct brain-resolution `toads-loop` run used the existing N4 T1, supplied
+matching mask, bundled Vandy atlas descriptor, one registration level and one
+registration iteration, and a 15-iteration cap. It ran on timing-instrumented
+implementation commit `cdc3f0d` under the 16 GB RSS watchdog and completed
+without watchdog termination. Total time was **2,103.2 s**; peak sampled RSS
+was **7.995 GB**. Phase measurements were 82.420 s for unity-field/thinning
+startup, 2.850 s for the first exact-membership iteration, 135.850 s for the
+first registered cycle, and 109.842–115.004 s for iterations 3–14. Iteration
+15 took 48.388 s because it took the terminal branch.
+
+Per-iteration energy ratios were:
+
+| Iteration | Energy ratio | Iteration | Energy ratio |
+|---:|---:|---:|---:|
+| 2 | 1.10341454 | 9 | 0.0289222747 |
+| 3 | 0.710631251 | 10 | 0.0216144342 |
+| 4 | 1.0652374 | 11 | 0.232217193 |
+| 5 | 0.205469877 | 12 | 0.131759584 |
+| 6 | 0.123219952 | 13 | 0.0726132318 |
+| 7 | 0.100688219 | 14 | 0.0362984054 |
+| 8 | 0.0455383174 | 15 | 0.0139147937 |
+
+The result is **nonconverged** at the 15-iteration cap. It is a uint8 RAS
+volume of shape `(172,216,164)` with labels `[1,5,6,14,15,16,17,18,22,24,25]`
+and compressed-file SHA-256
+`8673a38edec9ee25b3b5ec75d91333330e48f6084a6ad893043422173f36ecee`. Ratios
+are deterministic through iteration 10 relative to the earlier run; iterations
+11–15 are new evidence. The nonmonotone trajectory means the compact-grid
+convergence result cannot be generalized to brain resolution. The 7.995 GB
+observed peak is within the user's 16 GB target, but is a sampled process RSS,
+not a hard allocation limit.
+
+### Compact Java/Python registered-loop comparison
+
+The first reconstructed Java descriptor used spaces after `Structure:`. The
+selected Vandy parser tokenizes on tabs, so every class shape was silently
+left unloaded. Changing those generated descriptor delimiters to tabs made
+all 11 shape arrays load; a reflection-only check confirmed every slot was
+non-null. The raw topology and shape payloads were converted from the bundled
+NIfTI atlas in source x-fastest order, and source labels were mapped to the
+descriptor's 1–11 class ordinal range.
+
+The Java reference then completed two iterations on a `(36,45,34)` synthetic
+T1 grid, under a 16 GB watchdog. It completed in 8.0 seconds with 1.639 GB
+sampled peak RSS. Its iteration ratios were `0.64046144` and `0.13470852`; the
+Java output is ordinal labels 1–11, SHA-256
+`5db4e1c30459b00e7c88144063bd0e64bf51cb9c69391a9d3b44ae9e7bd705d3` in
+x-fastest order.
+
+Python was run with the same N4 input, matching brain mask, atlas profile,
+padding 10, relation limit 3, one registration level, one registration
+iteration, one registration maximum iteration, and two TOADS iterations. It
+reported energy ratios `0.701972783` at iteration 1 and `0.247157827` at
+iteration 2. After mapping Python's output labels
+`[1,5,6,14,15,16,17,18,22,24,25]` to ordinal labels 1–11, **49,500/55,080
+voxels agreed (89.869%)**. The class-wise Dice scores were:
+
+| Class ordinal | Dice |
+|---:|---:|
+| 1 | 0.969823 |
+| 2 | 0.619781 |
+| 3 | 0.632075 |
+| 4 | 0.593361 |
+| 5 | 0.790535 |
+| 6 | 0.524138 |
+| 7 | 0.768293 |
+| 8 | 0.604478 |
+| 9 | 0.783172 |
+| 10 | 0.689655 |
+| 11 | 0.827181 |
+
+The class-1 Dice is just below the requested 0.97 gate, and every other class
+is substantially below it. The energy ratio and label differences appear by
+the first registered iteration, so the next task is to compare startup
+memberships, first exact membership/objective, transform, and topology queue
+state to find the first divergence. This direct selected-source runtime
+comparison is valid for the reconstructed descriptor and compact synthetic
+case only; it is **not** whole-workflow equivalence, brain-resolution
+equivalence, convergence evidence, or real-data validation.
+
+All exploratory harness files, converted raw arrays, logs, and images are
+inside ignored `build/java-reference/` or `build/downsampled-vandy-base-run/`;
+no source repository files outside `pymacruise` were changed. No plus-workflow
+or real-MRI validation was attempted in this cycle.
+
 Next: compare state transitions/objectives against the selected Java implementation at a source-aligned fixture grid before scheduling another expensive brain-resolution run. Do not treat the endpoint-only trend as proof of source equivalence.

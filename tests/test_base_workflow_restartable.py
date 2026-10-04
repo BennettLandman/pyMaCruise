@@ -77,6 +77,7 @@ def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) 
     assert "TOADS progress +" in toads_log_text
     assert "initial rigid atlas registration complete" in toads_log_text
     assert "registered TOADS segmentation loop complete" in toads_log_text
+    assert "first registered cycle complete; iteration=1, energy_ratio=" in toads_log_text
     assert "registered TOADS iteration 2 complete; energy_ratio=" in toads_log_text
     assert "stop=" in toads_log_text
     assert "elapsed_seconds=" in toads_log_text

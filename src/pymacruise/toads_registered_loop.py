@@ -192,8 +192,11 @@ def run_registered_toads_loop(
     )
     if progress_callback is not None:
         elapsed = time.perf_counter() - phase_started
+        first_control = first_cycle.registered_iteration.branch.control
         progress_callback(
-            "first registered cycle thinning complete; "
+            "first registered cycle complete; iteration=1, "
+            f"energy_ratio={float(first_control.energy_ratio):.9g}, "
+            f"stop={str(bool(first_control.stop)).lower()}, "
             f"elapsed_seconds={elapsed:.3f}"
         )
     exact_iterations: list[Any] = [first_exact] if config.retain_iteration_history else []
