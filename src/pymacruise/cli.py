@@ -319,6 +319,21 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
     base_run.add_argument("--gvf-iterations", type=int, default=200)
     base_run.add_argument("--tgdm-iterations", type=int, default=1)
+
+    plus_register = commands.add_parser(
+        "plus-register-flair",
+        help="register plus FLAIR to the T1 grid and persist a resumable ANTsPy checkpoint",
+    )
+    plus_register.add_argument("--t1", required=True, type=Path, help="fixed T1 reference .nii.gz")
+    plus_register.add_argument("--flair", required=True, type=Path, help="moving FLAIR .nii.gz")
+    plus_register.add_argument("--output-dir", required=True, type=Path)
+    plus_register.add_argument("--resume", action="store_true")
+    plus_register.add_argument("--metric", choices=("mattes", "meansquares", "GC"), default="mattes")
+    plus_register.add_argument("--metric-bins", type=int, default=32)
+    plus_register.add_argument("--sampling-rate", type=float, default=0.2)
+    plus_register.add_argument("--iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
+    plus_register.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
+    plus_register.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
     return parser
 
 
@@ -422,6 +437,28 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         print(f"Base run complete: {manifest_path} (synthetic/native-grid route; inspect stage checks and TOADS stop metadata)")
+    elif args.command == "plus-register-flair":
+        from pymacruise.plus_workflow import run_plus_flair_registration_checkpoint
+        from pymacruise.registration import RegistrationConfig
+
+        result = run_plus_flair_registration_checkpoint(
+            args.t1,
+            args.flair,
+            args.output_dir,
+            config=RegistrationConfig(
+                transform_type="Rigid",
+                metric=args.metric,
+                metric_bins=args.metric_bins,
+                sampling_rate=args.sampling_rate,
+                iterations=tuple(args.iterations),
+                shrink_factors=tuple(args.shrink_factors),
+                smoothing_sigmas=tuple(args.smoothing_sigmas),
+            ),
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Registered"
+        print(f"{verb} FLAIR on the T1 RAS grid: {result.warped_flair_path}")
+        print(f"Registration manifest: {result.manifest_path}")
     elif args.command == "toads-loop":
         _require_nifti_gz_output(args.output)
         if args.output.exists():
