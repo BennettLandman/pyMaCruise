@@ -23,9 +23,10 @@ regression reconstructs the same setup with the production atlas loader:
 PYTHONPATH=src ./.venv/bin/pytest -q tests/test_toads_vandy_iteration_boundary.py
 ```
 
-Focused result: **1 passed, 0 failed, 0 skipped in 10.55s**. The reference
-fixture stores x/y/z/class float32 arrays and the iteration-two thinning labels
-in a compressed NPZ; tests do not require a Java runtime or source checkout.
+Focused result: **1 passed, 0 failed, 0 skipped in 10.56s** on implementation
+commit `6628423`. The reference fixture stores x/y/z/class float32 arrays and
+the iteration-two thinning labels in a compressed NPZ; tests do not require a
+Java runtime or source checkout.
 
 ## Results
 
