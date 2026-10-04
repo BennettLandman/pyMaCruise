@@ -64,7 +64,46 @@
         0.01033773459494114,
         0.008910278789699078
       ]
-    ]
+    ],
+    "iteration1_registration": {
+      "pre_update_transform": [
+        0.0008988237241283059,
+        0.0008988237823359668,
+        0.0008988237823359668,
+        -6.717851161956787,
+        -2.249101161956787,
+        -6.782189846038818
+      ],
+      "measured_energy": 0.3659612834453583,
+      "measured_gradient": [
+        0.0032105972059071064,
+        0.002803174778819084,
+        0.003217815887182951,
+        7.203158816082578e-07,
+        3.4292409623049025e-07,
+        6.463771455855749e-07
+      ],
+      "measured_hessian": [
+        3.5715439319610596,
+        3.1183178424835205,
+        3.5795743465423584,
+        0.0008012963808141649,
+        0.0003814768570009619,
+        0.0007190451724454761
+      ],
+      "line_search_lambdas": [
+        1.0,
+        0.6666667,
+        0.44444445
+      ],
+      "line_search_energies": [
+        0.3659545,
+        0.3659611,
+        0.36596215
+      ],
+      "accepted_lambda_before_growth": 0.44444445,
+      "rejected_trials": 2
+    }
   },
   "notes": [
     "Java raw float arrays were serialized x/y/z/class and converted to float32 for this compressed reference fixture.",
@@ -73,7 +112,8 @@
     "Per-label iteration 2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
     "No clinical image was used; this is not a full MaCRUISE output comparison.",
     "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail.",
-    "Before the second membership update, centroids agree with Java to max absolute error 9.54e-7. Standard deviations differ in five classes on the independently evolved labels; applying the Python variance kernel to the pinned Java labels, memberships, and centroids reproduces the Java standard deviations within 2e-7. This indicates the measured variance split is state-dependent on the prior label divergence, not evidence of a variance-kernel mismatch."
+    "Before the second membership update, centroids agree with Java to max absolute error 9.54e-7. Standard deviations differ in five classes on the independently evolved labels; applying the Python variance kernel to the pinned Java labels, memberships, and centroids reproduces the Java standard deviations within 2e-7. This indicates the measured variance split is state-dependent on the prior label divergence, not evidence of a variance-kernel mismatch.",
+    "Java source registration on this state starts at energy 0.365961283 and rejects lambda 1.0 and 2/3, accepting 4/9. Python exact-measure gradient and Hessian differ only slightly (max 3.3e-9 and 2.4e-6), but its vectorized energy is 0.365961105 and accepts 2/3. The strict one-step line-search branch therefore diverges. This localizes the remaining numerical sensitivity to registration energy evaluation or prior sampling; the source cannot yet be replicated at this branch boundary."
   ],
   "parameters": {
     "convergence_threshold": 0.0001,
@@ -111,10 +151,20 @@
     "iteration2_centroid_max_error": 9.5367431640625e-07,
     "iteration2_standard_deviation_mae": 1.8166481822845526e-05,
     "iteration2_standard_deviation_max_error": 0.00010916776955127716,
-    "iteration2_standard_deviation_count_over_1e6": 5
+    "iteration2_standard_deviation_count_over_1e6": 5,
+    "iteration1_registration_energy": 0.36596110463142395,
+    "iteration1_registration_energy_absolute_difference": 1.7881393432617188e-07,
+    "iteration1_registration_max_gradient_difference": 3.259629011154175e-09,
+    "iteration1_registration_max_hessian_difference": 2.384185791015625e-06,
+    "iteration1_registration_line_search_lambdas_tested": [
+      1.0,
+      0.6666666865348816
+    ],
+    "iteration1_registration_accepted_lambda_before_growth": 0.6666666865348816,
+    "iteration1_registration_rejected_trials": 1
   },
   "real_data_validation": false,
-  "reference_arrays_sha256": "39b5de49fa70a14a77bc3c7185ae91fb3896edd6ea9a95c1c3924a0a28bb8b89",
+  "reference_arrays_sha256": "8688fac14ada815d4cd4ff47395c37234ec0ad9928b47b83eea305359d446298",
   "regression_envelope": {
     "iteration2_membership_count_over_1e5_max": 10500,
     "iteration2_membership_mae_max": 6e-06,

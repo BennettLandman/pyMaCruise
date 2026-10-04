@@ -13,6 +13,12 @@ from pymacruise.toads_atlas import (
     load_toads_optimized_factors,
 )
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
+from pymacruise.toads_registration import exact_registration_measure_coefficients
+from pymacruise.toads_registration_sampling import (
+    vectorized_toads_registration_coefficients,
+    vectorized_toads_registration_energy,
+)
+from pymacruise.toads_atlas import toads_atlas_shapes_in_structure_order
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
     run_registered_toads_loop,
@@ -103,6 +109,63 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         ) < 2e-6
 
         first_cycle = result.registered_cycles[0]
+        java_registration = PROVENANCE["java_trace"]["iteration1_registration"]
+        initial_transform = np.asarray(
+            result.alignment_run.post_refresh_registration.final_transform,
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(
+            initial_transform,
+            java["iteration1_java_pre_registration_transform"],
+            rtol=0,
+            atol=3e-8,
+        )
+        class_bounds_low = np.zeros((11, 3), dtype=np.int32)
+        class_bounds_high = np.broadcast_to(
+            np.asarray(first_memberships.shape[:3], dtype=np.int32), (11, 3)
+        ).copy()
+        registered_classes = np.ones(11, dtype=bool)
+        registered_classes[0] = False
+        registration_kwargs = {
+            "image_resolutions_mm": result.alignment_run.alignment.setup.signed_image_resolutions_mm,
+            "template_resolutions_mm": result.alignment_run.alignment.setup.template_resolutions_mm,
+            "transform": tuple(float(value) for value in initial_transform),
+            "class_bounds_low_xyz": class_bounds_low,
+            "class_bounds_high_xyz": class_bounds_high,
+            "registered_classes": registered_classes,
+            "offset": 0,
+            "subsample": 2,
+            "precomputed_affine": True,
+        }
+        python_coefficients = vectorized_toads_registration_coefficients(
+            first_memberships,
+            toads_atlas_shapes_in_structure_order(atlas, result.alignment_run.atlas_data),
+            **registration_kwargs,
+        )
+        python_gradient, python_hessian = exact_registration_measure_coefficients(
+            python_coefficients.gradient,
+            python_coefficients.hessian,
+            python_coefficients.norm_gradient,
+            python_coefficients.norm_hessian,
+            python_coefficients.norm,
+            source_faithful=True,
+        )
+        assert np.max(
+            np.abs(python_gradient - java["iteration1_java_registration_gradient"])
+        ) < 4e-9
+        assert np.max(
+            np.abs(python_hessian - java["iteration1_java_registration_hessian"])
+        ) < 3e-6
+        python_registration_energy = vectorized_toads_registration_energy(
+            first_memberships,
+            toads_atlas_shapes_in_structure_order(atlas, result.alignment_run.atlas_data),
+            **registration_kwargs,
+        )
+        assert abs(
+            float(python_registration_energy)
+            - float(java["iteration1_java_registration_energy"][0])
+        ) < 2e-7
+
         java_transform = java["iteration1_registered_transform"]
         python_transform = np.asarray(
             first_cycle.registration_control.handoff.transform, dtype=np.float32
