@@ -1,6 +1,7 @@
 """Objective-reporting LesionTOADS membership pass for supported fixed inputs.
 
-This composes the selected OBJECT/LESION/BLACKHOLE/OUTMASK interior update.
+This composes the selected LesionTOADS interior update for OBJECT, LESION,
+BLACKHOLE, OUTMASK, MASK, and OUTLIER class families.
 Images and statistical estimation are upstream: inputs here are fixed energy,
 shape, similarity, and membership maps. Every interior class must be active
 (positive shape) so this slice does not emulate Java's stale ``energy[k]``
@@ -102,12 +103,14 @@ def run_lesion_toads_objective_membership_pass(
     classes = current.shape[-1]
     types = tuple(class_types)
     relations = tuple(relation_types)
-    if len(types) != classes or types.count("BLACKHOLE") != 1 or types.count("OUTMASK") != 1:
-        raise ValueError("class_types must match classes and contain exactly one BLACKHOLE and OUTMASK")
+    if len(types) != classes or types.count("BLACKHOLE") > 1 or types.count("OUTMASK") > 1:
+        raise ValueError("class_types must match classes and contain at most one BLACKHOLE and OUTMASK")
     if sum(kind == "LESION" for kind in types) > 1 or any(
-        kind not in {"OBJECT", "LESION", "BLACKHOLE", "OUTMASK"} for kind in types
+        kind not in {"OBJECT", "LESION", "BLACKHOLE", "OUTMASK", "MASK", "OUTLIER"} for kind in types
     ):
-        raise ValueError("only OBJECT, at most one LESION, BLACKHOLE, and OUTMASK are supported")
+        raise ValueError("unsupported class family in objective membership pass")
+    if not any(kind in {"LESION", "BLACKHOLE"} for kind in types):
+        raise ValueError("the objective membership pass requires a lesion-related class")
     if len(relations) != classes or any(kind not in {"direct", "prior"} for kind in relations):
         raise ValueError("relation_types must contain one direct/prior relation per class")
     if class_data.shape != current.shape or shapes.shape != current.shape:
@@ -141,8 +144,6 @@ def run_lesion_toads_objective_membership_pass(
     lesion_class = max((k for k, kind in enumerate(types) if kind in {"LESION", "BLACKHOLE"}), default=-1)
     if lesion_class < 0:
         raise ValueError("the supported objective pass requires a lesion-related class")
-    black_hole_class = types.index("BLACKHOLE")
-    outmask_class = types.index("OUTMASK")
     class_energy = np.zeros(current.shape, dtype=np.float32)
     lesion_energy = np.zeros(spatial, dtype=np.float32)
     black_hole_energy = np.zeros(spatial, dtype=np.float32)
