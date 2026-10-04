@@ -102,7 +102,108 @@ classification hash is recorded in the ignored diagnostic log
 build artifacts and are not committed. No full pytest suite was run for this
 change.
 
+## Brain-resolution source-order TOADS run
+
+After the source-order loader change, the bounded `toads-loop` CLI completed
+against the generated `(172,216,164)` synthetic T1/mask and the bundled
+audited Vandy atlas descriptor. To regenerate the ignored large synthetic
+input directory and repeat the run from the repository root:
+
+```bash
+./.venv/bin/python tests/data/synthetic/toads_downsampled_vandy_atlas/generate_fixture.py \
+  --target-shape 172 216 164 \
+  --output-dir build/vandy-brain-resolution-memory
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.1 --report-interval-seconds 60 -- \
+  ./.venv/bin/pymacruise toads-loop \
+  --t1-n4 build/vandy-brain-resolution-memory/t1.nii.gz \
+  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
+  --atlas-descriptor data/atlases/cruise-atlas-10obj-toads2008.txt \
+  --output build/vandy-brain-resolution-memory/toads-source-order-two-iterations.nii.gz \
+  --maximum-iterations 2 --registration-levels 1 --registration-iterations 1 \
+  --post-refresh-registration-iterations 1 --registration-max-iterations 1 \
+  --padding 10 --relation-limit 3 \
+  --provenance build/vandy-brain-resolution-memory/toads-source-order-two-iterations.json
+```
+
+The command exited 0 in **525.4 seconds**. The RSS watchdog sampled a peak of
+**6.232 GB** and did not terminate it. TOADS stopped at the requested
+two-iteration limit with terminal ratio `0.323834717`; convergence was not
+reached. The output is finite uint8 NIfTI on the `(172,216,164)` RAS grid with
+labels `[1,5,6,14,15,16,17,18,22,24,25]`. Output SHA-256:
+`736e1796276a09ffbfee7ade0affe8fb7e2d359a28e83bedc0f5efb5a649fc4f`.
+The JSON provenance records the bundled atlas descriptor and effective
+parameters. The `.nii.gz`, JSON, and full log are generated in ignored
+`build/vandy-brain-resolution-memory/`; this is a TOADS-only synthetic run,
+not a completed base workflow or real-data validation.
+
 Next, localize the post-iteration-2 divergence and rerun the restartable base
 workflow using source-ordered atlas inputs. Keep these compact synthetic
 results separate from brain-resolution convergence and whole-workflow
 acceptance.
+
+## Brain-resolution source-order base workflow
+
+The source-order atlas path has now completed the six-stage synthetic base
+workflow on generated `(172,216,164)` brain-resolution T1, brain-mask, and
+MaSeg inputs. The run used the bundled, audited Vandy descriptor and bounded
+stage settings (two TOADS iterations per pass, one Dura iteration, one ACE
+diffusion iteration, and one TGDM iteration per surface). This validates stage
+composition, output-grid checks, manifest hashing, and restart behavior. It
+does not establish TOADS convergence, a whole-workflow Java comparison, Dice
+acceptance, or real-data validation.
+
+Reproduce from the repository root:
+
+```bash
+./.venv/bin/python tests/data/synthetic/toads_downsampled_vandy_atlas/generate_fixture.py \
+  --target-shape 172 216 164 \
+  --output-dir build/vandy-brain-resolution-memory
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --interval-seconds 0.1 --report-interval-seconds 60 -- \
+  ./.venv/bin/pymacruise base-run \
+  --t1 build/vandy-brain-resolution-memory/t1.nii.gz \
+  --brain-mask build/vandy-brain-resolution-memory/brain-mask.nii.gz \
+  --maseg build/vandy-brain-resolution-memory/maseg.nii.gz \
+  --atlas-descriptor data/atlases/cruise-atlas-10obj-toads2008.txt \
+  --output-dir build/vandy-brain-resolution-memory/source-order-base-run-reproduction \
+  --registration-levels 1 --registration-iterations 1 \
+  --registration-max-iterations 1 --toads-iterations 2 \
+  --dura-iterations 1 --crop-edge-width 2 \
+  --ace-diffusion-iterations 1 --tgdm-iterations 1
+```
+
+The workflow exited 0 under the 16 GB RSS watchdog. It completed all six
+stages and their manifest checks: N4, first TOADS, Dura, second TOADS, CRUISE
+core, and MaSeg refinement. Peak sampled RSS was **6.427 GB**. A second run
+with the same command plus `--resume` verified and skipped all six stages,
+exited 0, and peaked at **0.126 GB**. The complete manifest and products are
+under ignored `build/vandy-brain-resolution-memory/source-order-base-run/`.
+
+The manifest is `status=complete`, `converged=false`, and labels the workflow
+scope as `synthetic/native-grid base route; not a full Java-equivalence claim`.
+Both TOADS stages stopped at their two-iteration caps without reaching the
+energy threshold: the first terminal ratio was **1.10402799**, and the second
+was **0.571384311**. All three GVF components emitted a warning that they did
+not converge in 200 iterations. These are explicit outstanding algorithmic
+limits, despite successful stage completion.
+
+Every stage output passed its grid/finite-value/hash check. The final inner,
+central, and outer level sets are finite RAS NIfTIs on the original
+`(172,216,164)` grid; `SEG_refine.nii.gz` is also finite and RAS on that grid.
+The CRUISE internal crop is `(163,207,156)` RAS, and the 3-component GVF is
+`(163,207,156,3)` RAS. The manifest SHA-256 values for the final level sets
+are, respectively, `9ede89a4...e968a2` (inner), `ba537852...bd92f4c`
+(central), and `694d65c6...2b1c378` (outer); refined segmentation is
+`112d2d2a...118dc124`. Full hashes and stage output records are retained in
+the run manifest. The input fixture, stage products, and watchdog logs are
+ignored build artifacts, not committed test samples.
+
+The production loader behavior and focused regression evidence are on code
+commit `4b57532`: `PYTHONPATH=src .venv/bin/pytest -q
+tests/test_atlas_assets.py tests/test_toads_atlas_startup.py
+tests/test_toads_registered_first_iteration_cycle.py` — **14 passed in
+9.64s**. No full pytest suite was run for this integration. The most recent
+full-suite evidence remains **1,138 passed, 0 failed, 0 skipped, 11 expected
+RAS warnings in 793.64s** on `ad34321`, before the source-order loader
+change.
