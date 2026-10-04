@@ -159,17 +159,82 @@ def test_registered_continuation_runs_second_synthetic_iteration() -> None:
         template_labels=np.arange(13, dtype=np.int16),
         lesion_class=10,
         iteration=2,
-        n_iter_max=2,
+        n_iter_max=99,
         max_distance=0.0,
         algorithm_mode="diffeomorphism",
         relation_limit=3,
         align_shapes=True,
         init_align_iter=1,
     )
-    assert second_branch.control.branch.stop is True
-    assert second_branch.control.branch.iteration_limit_stop is True
-    assert second_branch.control.branch.final_classification is not None
-    assert second_branch.control.branch.final_classification.classification.shape == images.shape[:3]
+    assert second_branch.control.branch.stop is False
+    assert second_branch.control.branch.growing is not None
+    assert second_branch.control.branch.relations is not None
     assert second_branch.stage_order.index("registerShapes") < second_branch.stage_order.index(
+        "convergence_check"
+    )
+
+    third_shapes = transform_registered_lesion_shape_priors(
+        second_branch.registration.registration,
+        atlas_shape_priors,
+        image_dimensions_xyz=tuple(images.shape[:3]),
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+    )
+    second_prior = second_branch.control.branch
+    second_relation_table = second_prior.relations.relation_membership[
+        second_prior.relations.relation_map
+    ]
+    third = run_lesion_toads_descriptor_continuing_iteration(
+        second_prior,
+        images,
+        third_shapes,
+        object_types=STANDARD13_TYPES,
+        lesion_class=10,
+        volume_ratio=0.5,
+        thinning_limit=1000.0,
+        initial_class_centroids=second.statistics.statistics.centroids.class_centroids,
+        initial_lesion_centroids=second.statistics.statistics.centroids.lesion_centroids,
+        initial_black_hole_centroids=second.statistics.statistics.centroids.black_hole_centroids,
+        shape_priors=shape_priors,
+        smoothing_priors=smoothing_priors,
+        direct_relations=second_relation_table,
+        ventricle_distances=initial.distance_maps.ventricle,
+        gray_matter_distances=initial.distance_maps.gray_matter,
+        brainstem_distances=initial.distance_maps.brainstem,
+        centroid_options=centroid_options,
+        channel_weight_options=channel_weight_options,
+        outlier_energy=0.1,
+        lesion_power_exponent=1.2,
+        source_zero_variance_nan=False,
+    )
+    assert third.stage_order == second.stage_order
+    assert third.thinning.run.segmentation.shape == images.shape[:3]
+    assert third.membership.membership.class_memberships.shape == (*images.shape[:3], 13)
+    assert np.isfinite(third.membership.membership.class_memberships).all()
+    assert np.isfinite(third.membership.energy_ratio.energy_ratio)
+
+    third_branch = register_and_branch_lesion_toads_descriptor_iteration(
+        third,
+        atlas_shape_priors,
+        second_branch.registration.registration.transform,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        object_types=STANDARD13_TYPES,
+        classification=labels,
+        template_labels=np.arange(13, dtype=np.int16),
+        lesion_class=10,
+        iteration=3,
+        n_iter_max=3,
+        max_distance=0.0,
+        algorithm_mode="diffeomorphism",
+        relation_limit=3,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+    assert third_branch.control.branch.stop is True
+    assert third_branch.control.branch.iteration_limit_stop is True
+    assert third_branch.control.branch.final_classification is not None
+    assert third_branch.control.branch.final_classification.classification.shape == images.shape[:3]
+    assert third_branch.stage_order.index("registerShapes") < third_branch.stage_order.index(
         "convergence_check"
     )
