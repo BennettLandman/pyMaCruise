@@ -14,6 +14,7 @@ from pymacruise.toads_multichannel_exact_field_refit import toads_multichannel_e
 
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_exact_polynomial_field_degrees23"
+LESION_FIXTURE = ROOT / "data" / "synthetic" / "lesion_inhomogeneity_13class_refit"
 HARNESS = ROOT / "java_reference" / "ToadsExactPolynomialFieldReferenceHarness.java"
 UPSTREAM = ROOT / "java_reference" / "upstream"
 
@@ -117,22 +118,18 @@ def test_multichannel_exact_polynomial_field_matches_java_in_source_order(degree
 
 
 def test_exact_polynomial_field_matches_java_for_13_class_lesion_profile(tmp_path: Path) -> None:
-    image, memberships, segmentation, centers, initial_field = _phantom()
-    lesion_memberships = np.zeros(image.shape + (13,), dtype=np.float32)
-    lesion_memberships[..., :11] = memberships
-    lesion_segmentation = segmentation.copy()
-    candidates = np.flatnonzero(lesion_segmentation.ravel() != 0)
-    first = candidates[::19]
-    second = candidates[7::23]
-    lesion_segmentation.ravel()[first] = 11
-    lesion_segmentation.ravel()[second] = 12
-    lesion_memberships[..., 11].ravel()[first] = np.float32(0.35)
-    lesion_memberships[..., 12].ravel()[second] = np.float32(0.65)
-    lesion_centers = np.concatenate((centers, np.asarray([91.0, 117.0], dtype=np.float32)))
-    descriptor_types = (
-        "mask", "optimized_csf", "optimized_csf", *("obj",) * 7,
-        "lesion", "obj", "obj",
+    loaded = [
+        nib.load(str(LESION_FIXTURE / f"{name}.nii.gz"))
+        for name in ("image", "memberships", "segmentation", "initial_field")
+    ]
+    for volume in loaded:
+        assert nib.aff2axcodes(volume.affine) == ("R", "A", "S")
+    image, lesion_memberships, lesion_segmentation, initial_field = (
+        np.asarray(volume.dataobj) for volume in loaded
     )
+    lesion_segmentation = lesion_segmentation.astype(np.uint8)
+    lesion_centers = np.asarray(json.loads((LESION_FIXTURE / "centroids.json").read_text()), dtype=np.float32)
+    descriptor_types = tuple(json.loads((LESION_FIXTURE / "class_types.json").read_text()))
     field = initial_field.copy()
     with pytest.raises(ValueError, match="class_types is required"):
         fit_toads_exact_chebyshev_field(
