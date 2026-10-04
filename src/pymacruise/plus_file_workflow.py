@@ -195,6 +195,13 @@ def run_plus_file_workflow(
         "brain_mask": Path(brain_mask_path).expanduser().resolve(),
     }
     images = {name: _load(path, name.replace("_", " ")) for name, path in named_paths.items()}
+    reference = images["t1_reference"]
+    for name in ("segmentation", "brain_mask"):
+        image = images[name]
+        if image.shape != reference.shape or not np.allclose(
+            image.affine, reference.affine, rtol=0, atol=1e-4
+        ):
+            raise ValueError(f"{name} must match the T1 reference grid")
     settings = {"crop_edge_width": crop_edge_width, "plus_pipeline": options.as_dict()}
     input_records = {
         name: {"path": str(path), "sha256": _sha256(path)}
@@ -255,7 +262,6 @@ def run_plus_file_workflow(
         channels = np.stack(
             [np.asarray(images[name].dataobj, dtype=np.float32) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")]
         )
-        reference = images["t1_reference"]
         if channels.shape[1:] != reference.shape:
             raise ValueError("P39 Dura channels must share the T1 reference dimensions")
         if any(not np.allclose(images[name].affine, reference.affine, rtol=0, atol=1e-4) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")):

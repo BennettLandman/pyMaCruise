@@ -27,3 +27,8 @@ A full repository pytest run under the 24 GB RSS watchdog passed on tested imple
 ## Manifest interruption hardening
 
 After the full-suite run, the runner was tightened to persist workflow/stage `running` status before validation or computation. This prevents a failed resume from retaining a misleading top-level `complete` value. The synthetic test now sets a previously complete tail stage to `running` to simulate interruption, verifies that valid predecessors still resume, confirms the tail reruns, and parses generated VTK meshes to check RAS+ millimetre coordinates. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 17.95s** after commit `371a807`. The repository-wide 1,158-test run above predates this narrow status/validation hardening and remains tied to `4ae3b55`.
+
+
+## T1-grid contract
+
+The workflow now rejects a segmentation or supplied brain mask whose shape/affine differs from the T1 reference; this makes the requested same-grid brain-mask contract explicit before any crop or segmentation stage. The synthetic file-workflow test includes a shape-mismatched brain mask rejection. Focused `tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py`: **2 passed in 19.53s** on the current working tree; commit-bound rerun pending.

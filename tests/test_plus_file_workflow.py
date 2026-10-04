@@ -54,6 +54,19 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
         "output_dir": tmp_path / "plus-run",
     }
 
+    mismatched_mask = save_nifti_ras(
+        nib.Nifti1Image(
+            np.zeros((segmentation.shape[0] - 1, *segmentation.shape[1:]), dtype=np.uint8),
+            segmentation.affine,
+        ),
+        tmp_path / "mismatched-brain-mask.nii.gz",
+    )
+    with pytest.raises(ValueError, match="brain_mask must match the T1 reference grid"):
+        run_plus_file_workflow(
+            **{**inputs, "brain_mask_path": mismatched_mask},
+            crop_edge_width=5,
+        )
+
     first = run_plus_file_workflow(**inputs, crop_edge_width=5)
     assert first.resumed_stages == ()
     manifest = json.loads(first.manifest_path.read_text())
