@@ -87,6 +87,12 @@ def run_lesion_toads_registered_first_iteration(
     direct_relations = initial.relations.relation_membership[
         initial.relations.relation_map
     ]
+    class_deviations = statistics.statistics.variances.class_standard_deviation
+    lesion_deviations = statistics.statistics.variances.lesion_standard_deviation
+    source_zero_variance_nan = bool(
+        np.any(class_deviations == np.float32(0.0))
+        or np.any(lesion_deviations == np.float32(0.0))
+    )
     next_membership = run_lesion_toads_next_gm_membership_update(
         statistics,
         images,
@@ -106,7 +112,7 @@ def run_lesion_toads_registered_first_iteration(
         outlier_energy=outlier_energy,
         lesion_power_exponent=lesion_power_exponent,
         spread=spread,
-        source_zero_variance_nan=True,
+        source_zero_variance_nan=source_zero_variance_nan,
     )
     return LesionRegisteredFirstIteration(
         statistics,
