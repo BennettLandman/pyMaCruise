@@ -79,18 +79,14 @@ def register_toads_after_template_refresh(
         raise ValueError("max_iterations must be a positive integer")
 
     memberships = initial_exact_memberships(images, centers, crop_border=crop_border)
-    bounds = tuple(
-        compute_toad_shape_bounds(
-            shapes[..., klass],
-            image_dimensions_xyz=tuple(int(v) for v in memberships.shape[:3]),
-            image_resolutions_mm=image_resolutions_mm,
-            template_resolutions_mm=template_resolutions_mm,
-            transform=tuple(float(v) for v in transform),
-        )
-        for klass in range(centers.shape[1])
-    )
-    low = np.asarray([item.lower_xyz for item in bounds], dtype=np.int32)
-    high = np.asarray([item.upper_xyz for item in bounds], dtype=np.int32)
+    # MultipleToadDeformableAtlas.computeExactRegistrationCoefficients scans
+    # every image voxel for every registered shape. Shape bounding boxes are
+    # refreshed for transformed-output consumers, but they do not restrict
+    # this source coefficient loop.
+    low = np.zeros((centers.shape[1], 3), dtype=np.int32)
+    high = np.broadcast_to(
+        np.asarray(memberships.shape[:3], dtype=np.int32), low.shape
+    ).copy()
     registered = np.ones(centers.shape[1], dtype=bool)
     registered[background_class_index] = False
     registration = register_toads_atlas_rigid(

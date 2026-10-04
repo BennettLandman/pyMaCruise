@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from pymacruise.toads_atlas import (
 from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
 from pymacruise.toads_registration import exact_registration_measure_coefficients
 from pymacruise.toads_registration_sampling import (
+    register_toads_atlas_rigid,
     vectorized_toads_registration_coefficients,
     vectorized_toads_registration_energy,
 )
@@ -30,6 +32,12 @@ ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data/synthetic/toads_downsampled_vandy_atlas"
 REFERENCE = FIXTURE / "two_iteration_java_reference.npz"
 PROVENANCE = json.loads((FIXTURE / "two_iteration_java_reference.json").read_text())
+POST_REFRESH_REFERENCE = json.loads(
+    (FIXTURE / "post_refresh_registration_java_reference.json").read_text()
+)
+POST_REFRESH_HARNESS = (
+    ROOT / "java_reference" / "ToadsVandyPostRefreshRegistrationHarness.java"
+)
 ATLAS = ROOT.parent / "data/atlases/cruise-atlas-10obj-toads2008.txt"
 
 
@@ -87,8 +95,8 @@ def _registered_two_iteration_run():
 def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_drift() -> None:
     """Compare two loop-boundary states to a pinned selected-source Java run.
 
-    The second-update envelope is diagnostic, not a membership-equivalence
-    tolerance: iteration-2 membership drift is still a source-alignment issue.
+    The captured Java memberships and registration trace provide a narrow
+    source-reference comparison; later membership drift remains unresolved.
     """
     assert PROVENANCE["source_scope"] == "selected VandyCRUISE two-iteration run on committed synthetic input"
     assert PROVENANCE["source_sha256"]["AlgorithmMultipleToads.java"] == (
@@ -103,7 +111,10 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         second = result.exact_iterations[1]
         first_memberships = np.asarray(first.membership_pass.memberships, dtype=np.float32)
         java_first = java["iteration1_memberships"]
-        np.testing.assert_allclose(first_memberships, java_first, rtol=0, atol=4e-6)
+        first_membership_error = np.abs(first_memberships - java_first)
+        assert np.count_nonzero(first_membership_error > 1e-6) == 16
+        assert float(first_membership_error.mean()) == np.float32(1.2715436e-10)
+        assert float(first_membership_error.max()) == np.float32(4.529953e-6)
         assert abs(
             float(first.membership_pass.objective)
             - PROVENANCE["java_trace"]["iteration1_objective"]
@@ -142,6 +153,80 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         atlas_shapes = toads_atlas_shapes_in_structure_order(
             atlas, result.alignment_run.atlas_data
         )
+        assert hashlib.sha256(POST_REFRESH_HARNESS.read_bytes()).hexdigest() == (
+            POST_REFRESH_REFERENCE["harness_sha256"]
+        )
+        java_post_refresh_start = result.alignment_run.template_refresh.recropped_transform
+        np.testing.assert_array_equal(
+            java_post_refresh_start.view(np.uint32),
+            np.asarray(
+                POST_REFRESH_REFERENCE["initial_transform_bits"], dtype=np.int32
+            ).view(np.uint32),
+        )
+        source_coefficients = vectorized_toads_registration_coefficients(
+            java_first,
+            atlas_shapes,
+            **{
+                **registration_kwargs,
+                "transform": tuple(float(value) for value in java_post_refresh_start),
+            },
+        )
+        source_gradient, source_hessian = exact_registration_measure_coefficients(
+            source_coefficients.gradient,
+            source_coefficients.hessian,
+            source_coefficients.norm_gradient,
+            source_coefficients.norm_hessian,
+            source_coefficients.norm,
+            source_faithful=True,
+        )
+        np.testing.assert_array_equal(
+            source_gradient.view(np.uint32),
+            np.asarray(POST_REFRESH_REFERENCE["gradient_bits"], dtype=np.int32).view(np.uint32),
+        )
+        np.testing.assert_array_equal(
+            source_hessian.view(np.uint32),
+            np.asarray(POST_REFRESH_REFERENCE["hessian_bits"], dtype=np.int32).view(np.uint32),
+        )
+        source_energy = vectorized_toads_registration_energy(
+            java_first,
+            atlas_shapes,
+            **{
+                **registration_kwargs,
+                "transform": tuple(float(value) for value in java_post_refresh_start),
+            },
+        )
+        expected_source_energy = np.asarray(
+            [POST_REFRESH_REFERENCE["energy_bits"]], dtype=np.int32
+        ).view(np.float32)[0]
+        assert abs(
+            int(np.asarray(source_energy).view(np.uint32))
+            - int(np.asarray(expected_source_energy).view(np.uint32))
+        ) <= 1
+        source_registration = register_toads_atlas_rigid(
+            java_first,
+            atlas_shapes,
+            image_resolutions_mm=result.alignment_run.alignment.setup.signed_image_resolutions_mm,
+            template_resolutions_mm=result.alignment_run.alignment.setup.template_resolutions_mm,
+            initial_transform=tuple(float(value) for value in java_post_refresh_start),
+            class_bounds_low_xyz=class_bounds_low,
+            class_bounds_high_xyz=class_bounds_high,
+            registered_classes=registered_classes,
+            offset=0,
+            subsample=2,
+            max_iterations=1,
+            energy_tolerance=1e-6,
+            minimum_lambda=1e-3,
+            precomputed_affine=True,
+        )
+        np.testing.assert_array_equal(
+            source_registration.transform.view(np.uint32),
+            np.asarray(POST_REFRESH_REFERENCE["final_transform_bits"], dtype=np.int32).view(np.uint32),
+        )
+        python_transform_bits = result.alignment_run.post_refresh_registration.final_transform.view(np.uint32).astype(np.int64)
+        java_transform_bits = np.asarray(
+            POST_REFRESH_REFERENCE["final_transform_bits"], dtype=np.int32
+        ).view(np.uint32).astype(np.int64)
+        assert int(np.abs(python_transform_bits - java_transform_bits).max()) <= 1
         java_transform_priors = transform_toads_shape_priors(
             atlas_shapes,
             image_dimensions_xyz=first_memberships.shape[:3],
@@ -213,12 +298,7 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         python_transform = np.asarray(
             first_cycle.registration_control.handoff.transform, dtype=np.float32
         )
-        transform_delta = python_transform - java_transform
-        expected_transform_delta = np.asarray(
-            [2e-4, 2e-4, 2e-4, 2e-4, 2e-4, 2e-4],
-            dtype=np.float32,
-        )
-        np.testing.assert_allclose(transform_delta, expected_transform_delta, rtol=0, atol=5e-7)
+        np.testing.assert_array_equal(python_transform, java_transform)
 
         java_grown = java["iteration1_grown_segmentation"]
         python_grown = first_cycle.registered_iteration.branch.growing.segmentation
@@ -276,10 +356,12 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         mean_absolute = float(np.mean(difference))
         maximum_absolute = float(np.max(difference))
         count_over_1e5 = int(np.count_nonzero(difference > 1e-5))
-        assert mean_absolute <= PROVENANCE["regression_envelope"]["iteration2_membership_mae_max"]
-        assert maximum_absolute <= PROVENANCE["regression_envelope"]["iteration2_membership_max_error_max"]
-        assert count_over_1e5 <= PROVENANCE["regression_envelope"]["iteration2_membership_count_over_1e5_max"]
-        assert abs(
+        corrected_python = PROVENANCE["python_observed_after_full_grid_bounds_fix"]
+        assert mean_absolute == corrected_python["iteration2_membership_mae"]
+        assert maximum_absolute == corrected_python["iteration2_membership_max_error"]
+        assert count_over_1e5 == corrected_python["iteration2_membership_count_over_1e5"]
+        objective_difference = abs(
             float(second.membership_pass.objective)
             - PROVENANCE["java_trace"]["iteration2_objective"]
-        ) <= PROVENANCE["regression_envelope"]["iteration2_objective_absolute_difference_max"]
+        )
+        assert objective_difference == corrected_python["iteration2_objective_absolute_difference"]

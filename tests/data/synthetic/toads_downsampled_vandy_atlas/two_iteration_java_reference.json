@@ -113,14 +113,13 @@
   },
   "notes": [
     "Java raw float arrays were serialized x/y/z/class and converted to float32 for this compressed reference fixture.",
-    "Iteration 1 memberships are within float32 rounding scale; after one continuing thinning pass 42 of 162180 labels differ.",
-    "The iteration 2 membership maximum discrepancy is large despite a low tensor mean; this marks source-state drift and is not accepted as membership equivalence.",
-    "Per-label iteration 2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
+    "Iteration-1 Python membership error is reported by count, mean, and maximum in python_observed_after_full_grid_bounds_fix; no tolerance hides the observed values.",
+    "The first registered-loop rigid transform now matches the pinned Java transform bit-for-bit after the Python exact coefficient path was changed to scan the complete image grid, as the selected Java method does.",
+    "Despite matching transforms, the current Python/Java trace still differs at 55 post-growth voxels, 843 closest-label entries, and 42 next-thinning voxels. This is an unresolved downstream state divergence, not attributed to the former registration transform split.",
+    "The iteration-2 membership maximum discrepancy is large despite its low tensor mean; its exact mean, maximum, and count are recorded and it is not accepted as membership equivalence.",
+    "Per-label iteration-2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
     "No clinical image was used; this is not a full MaCRUISE output comparison.",
-    "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail.",
-    "Before the second membership update, centroids agree with Java to max absolute error 9.54e-7. Standard deviations differ in five classes on the independently evolved labels; applying the Python variance kernel to the pinned Java labels, memberships, and centroids reproduces the Java standard deviations within 2e-7. This indicates the measured variance split is state-dependent on the prior label divergence, not evidence of a variance-kernel mismatch.",
-    "Java source registration on this state starts at energy 0.365961283 and rejects lambda 1.0 and 2/3, accepting 4/9. Python exact-measure gradient and Hessian differ only slightly (max 3.3e-9 and 2.4e-6), but its vectorized energy is 0.365961105 and accepts 2/3. The strict one-step line-search branch therefore diverges. This localizes the remaining numerical sensitivity to registration energy evaluation or prior sampling; the source cannot yet be replicated at this branch boundary.",
-    "Using the same Java transform and either Java or Python iteration-1 memberships, Python reproduces the Java registration energy exactly; its transformed shape-prior tensor also matches the Java snapshot bit-for-bit. The 1.93e-8 Python/Java difference in the post-refresh transform alone moves the subsequent registration energy by 1.79e-7 and flips strict line-search acceptance. The split is therefore seeded by the upstream post-refresh transform rounding, not the second-stage energy kernel, on this fixture."
+    "The python_observed_before_full_grid_bounds_fix entry retains the earlier support-bounded-adapter diagnostic for history; it is superseded by python_observed_after_full_grid_bounds_fix."
   ],
   "parameters": {
     "convergence_threshold": 0.0001,
@@ -143,7 +142,21 @@
       51
     ]
   },
-  "python_observed": {
+  "real_data_validation": false,
+  "reference_arrays_sha256": "dd912848baf29f96a00acee97f28bd83e3fbc758a69a78317ed07b6ce49666c3",
+  "regression_envelope": {
+    "iteration2_membership_count_over_1e5_max": 10500,
+    "iteration2_membership_mae_max": 6e-06,
+    "iteration2_membership_max_error_max": 0.4,
+    "iteration2_objective_absolute_difference_max": 0.002,
+    "iteration2_thinning_different_voxels": 42
+  },
+  "source_scope": "selected VandyCRUISE two-iteration run on committed synthetic input",
+  "source_sha256": {
+    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+  },
+  "python_observed_before_full_grid_bounds_fix": {
     "iteration1_membership_count_over_1e6": 67,
     "iteration1_membership_mae": 5.647506906569788e-10,
     "iteration1_membership_max_error": 3.7848949432373047e-06,
@@ -173,18 +186,25 @@
     "registration_energy_with_java_transform_and_python_membership": 0.3659612834453583,
     "registered_priors_match_at_java_transform": true
   },
-  "real_data_validation": false,
-  "reference_arrays_sha256": "dd912848baf29f96a00acee97f28bd83e3fbc758a69a78317ed07b6ce49666c3",
-  "regression_envelope": {
-    "iteration2_membership_count_over_1e5_max": 10500,
-    "iteration2_membership_mae_max": 6e-06,
-    "iteration2_membership_max_error_max": 0.4,
-    "iteration2_objective_absolute_difference_max": 0.002,
-    "iteration2_thinning_different_voxels": 42
-  },
-  "source_scope": "selected VandyCRUISE two-iteration run on committed synthetic input",
-  "source_sha256": {
-    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
-    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+  "python_observed_after_full_grid_bounds_fix": {
+    "iteration1_membership_count_over_1e6": 16,
+    "iteration1_membership_mae": 1.2715435648846807e-10,
+    "iteration1_membership_max_error": 4.5299530029296875e-06,
+    "post_refresh_registration_transform_equal_java_bits": true,
+    "iteration1_registered_transform_equal_java_bits": true,
+    "iteration1_grown_segmentation_different_voxels": 55,
+    "iteration1_closest_label_different_entries": 843,
+    "iteration2_thinning_different_voxels": 42,
+    "iteration2_minimum_class_dice": 0.99558791,
+    "iteration2_centroid_mae": 7.179651e-08,
+    "iteration2_centroid_max_error": 7.152557373046875e-07,
+    "iteration2_standard_deviation_mae": 1.8164747e-05,
+    "iteration2_standard_deviation_max_error": 0.000109164044,
+    "iteration2_standard_deviation_count_over_1e6": 5,
+    "iteration2_membership_count_over_1e5": 2006,
+    "iteration2_membership_mae": 5.3438457143784035e-06,
+    "iteration2_membership_max_error": 0.39456701278686523,
+    "iteration2_objective": 43.74055862426758,
+    "iteration2_objective_absolute_difference": 0.0023953757324193248
   }
 }
