@@ -16,6 +16,9 @@ Command:
 ./.venv/bin/pytest -q tests/test_plus_file_workflow.py tests/test_plus_file_workflow_cli.py
 ```
 
-The committed 25³ folded-cortex fixture supplies the aligned segmentation, atlas maps, brain mask, and synthetic P39 channel inputs. The test checks all three stage records; RAS full-grid `.nii.gz` level sets and thickness; RAS-mm VTK surfaces; thickness metrics; full valid-resume skipping; changed-settings rejection; and recovery from a corrupted final-stage output while reusing the first two stages. Focused result before commit: **2 passed in 16.91s**; CLI help lists every required input and supported setting.
+The committed 25³ folded-cortex fixture supplies the aligned segmentation, atlas maps, brain mask, and synthetic P39 channel inputs. The test checks all three stage records; RAS full-grid `.nii.gz` level sets and thickness; RAS-mm VTK surfaces; thickness metrics; full valid-resume skipping; changed-settings rejection; and recovery from a corrupted final-stage output while reusing the first two stages. Focused result before commit: **2 passed in 16.91s**; post-commit rerun on `4ae3b55`: **2 passed in 17.08s**; CLI help lists every required input and supported setting.
 
 This is file-based synthetic integration from P39 Dura products and prealigned maps. It does not run FLAIR registration, atlas registration, TOADS, or LesionTOADS. It does not establish NiftyReg equivalence, whole MaCRUISEplus equivalence, or real-data performance. Marching cubes retains its tracked JIST `IsoSurfaceOnGrid` comparison risk.
+
+
+A full repository pytest run under the 24 GB RSS watchdog is in progress on tested implementation commit `4ae3b55` to evaluate this workflow integration across the repository.
