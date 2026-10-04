@@ -1,5 +1,20 @@
 # Vandy synthetic TOADS iteration-boundary comparison — 2026-10-04
 
+## Correction — full-grid registration
+
+The original Python/Java transform-split diagnosis and metrics below describe
+the earlier support-bounded Python registration adapter. The selected Java
+coefficient method scans the complete image grid. After the Python adapter was
+changed to match that call path, the post-refresh update is within one float32
+ULP of Java and the first registered-loop transform is bit-identical. The
+source registration coefficients match bit-for-bit at shared Java inputs; the
+baseline energy differs by one ULP. Post-growth labels, closest-label state,
+next thinning, and later memberships still differ. See the corrected
+[full-grid source-match report](toads-registration-full-grid-source-match-2026-10-04.md)
+for current measurements and reproducible focused/full-suite evidence. The
+historical table and first analysis in this report are superseded for the
+Python adapter state after commit `917c15d`.
+
 ## Scope
 
 This compares the first two exact-membership updates and the next thinning
