@@ -55,5 +55,15 @@ Harness source SHA-256:
 Reference output:
 `tests/data/synthetic/lesion_initial_segmentation_state/java_reference.json`.
 
-This focused run does not replace the full suite. The full-suite result and
-Java-source coverage estimate remain tied to their last recorded checkpoint.
+The repository-wide regression suite was run after this implementation was
+integrated. Command:
+
+```text
+./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 24 --interval-seconds 0.1 --report-interval-seconds 120 -- env PYTHONPATH=src ./.venv/bin/pytest -q
+```
+
+Result on implementation commit
+`40589ebbf5a567b93d9a7dd44cc86a5f9eb6ec0e`: **1,143 passed, 0 failed,
+0 skipped, 11 expected RAS warnings in 820.91 seconds**. This supplies suite
+evidence for this constructor slice; it does not extend the slice's scope or
+claim complete LesionTOADS workflow equivalence.
