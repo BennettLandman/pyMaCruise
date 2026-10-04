@@ -32,13 +32,16 @@ def compute_lesion_initial_alignment_bounds(
     alignment: LesionInitialAtlasAlignment,
     shape_priors: Sequence[ArrayLike],
     *,
+    image_dimensions_xyz: tuple[int, int, int] | None = None,
     image_resolutions_mm: tuple[float, float, float],
     template_resolutions_mm: tuple[float, float, float],
 ) -> LesionInitialAlignmentBounds:
     """Reproduce the selected post-pyramid transformed-shape bounds refresh.
 
-    The result consumes the final transform and initialized subject grid from
-    ``initialize_lesion_atlas_alignment``. Bounds use the selected positive
+    The result consumes the final transform from
+    ``initialize_lesion_atlas_alignment``. By default it uses that result's
+    subject grid; ``image_dimensions_xyz`` overrides the grid after a
+    post-registration recrop. Bounds use the selected positive
     interpolated-support scan: minima start at the image dimensions, maxima
     start at zero, and upper coordinates are inclusive source maxima.
     """
@@ -50,7 +53,13 @@ def compute_lesion_initial_alignment_bounds(
         raise ValueError("alignment must contain a finite six-value rigid transform")
     if len(shape_priors) != alignment.memberships.memberships.shape[-1]:
         raise ValueError("one shape prior is required for each initialized class")
-    dimensions = tuple(int(size) for size in alignment.memberships.memberships.shape[:3])
+    dimensions = (
+        tuple(int(size) for size in alignment.memberships.memberships.shape[:3])
+        if image_dimensions_xyz is None
+        else tuple(int(size) for size in image_dimensions_xyz)
+    )
+    if len(dimensions) != 3 or any(size < 2 for size in dimensions):
+        raise ValueError("image_dimensions_xyz must contain three dimensions >= 2")
     bounds = tuple(
         _bounds_for_transform(
             shape,
