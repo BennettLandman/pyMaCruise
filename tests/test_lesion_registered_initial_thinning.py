@@ -62,7 +62,14 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
     topology = nib.load(str(result.topology.path))
     assert aff2axcodes(topology.affine) == ("R", "A", "S")
     assert result.transformed_template.shape == result.transformed_shapes.shape[:3] == (11, 11, 11)
+    assert result.transformed_template.dtype == np.int8
     assert result.transformed_shapes.shape[-1] == 13
+    assert result.transformed_shapes.dtype == np.float32
+    assert result.constructor_state.segmentation.dtype == np.int8
+    assert result.constructor_state.lesion_membership.dtype == np.float32
+    # The queue adapter uses widened int16 mutable work arrays; constructor
+    # state above remains the source's int8 class map.
+    assert result.first_thinning.thinning.run.segmentation.dtype == np.int16
     assert result.stage_order == (
         "preprocess.initialMemberships",
         'atlas.initShapeRegistration(memberships,"rigid",initAlignIter,levels,1.0f)',
