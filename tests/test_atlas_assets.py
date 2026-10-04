@@ -96,10 +96,11 @@ def test_toads_descriptor_rejects_missing_atlas_images(tmp_path) -> None:
         load_toads_atlas(broken)
 
 
-def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
+@pytest.mark.parametrize("source_codes", [("L", "P", "S"), ("L", "I", "A")])
+def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path, source_codes) -> None:
     shape = (2, 3, 4)
     source = np.arange(np.prod(shape), dtype=np.int16).reshape(shape)
-    source_orientation = nib.orientations.axcodes2ornt(("L", "P", "S"))
+    source_orientation = nib.orientations.axcodes2ornt(source_codes)
     ras_orientation = nib.orientations.axcodes2ornt(("R", "A", "S"))
     to_ras = nib.orientations.ornt_transform(source_orientation, ras_orientation)
     ras_array = nib.orientations.apply_orientation(source, to_ras)
@@ -119,7 +120,7 @@ def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
                 "images": [
                     {
                         "nifti_output": name,
-                        "input_axis_codes": ["L", "P", "S"],
+                        "input_axis_codes": list(source_codes),
                         "input_shape": list(shape),
                     }
                     for name in ("topology.nii.gz", "shape.nii.gz")
@@ -127,8 +128,9 @@ def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
             }
         )
     )
-    topology = ToadsAtlasImage("topology", topology_path, shape, (1.0,) * 3, (1.0,) * 3)
-    shape_image = ToadsAtlasImage("shape Test", shape_path, shape, (1.0,) * 3, (1.0,) * 3)
+    ras_shape = tuple(int(value) for value in ras_array.shape)
+    topology = ToadsAtlasImage("topology", topology_path, ras_shape, (1.0,) * 3, (1.0,) * 3)
+    shape_image = ToadsAtlasImage("shape Test", shape_path, ras_shape, (1.0,) * 3, (1.0,) * 3)
     atlas = ToadsAtlas(
         descriptor,
         (),
@@ -145,7 +147,7 @@ def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path) -> None:
 
     np.testing.assert_array_equal(data.topology, source)
     np.testing.assert_array_equal(data.shapes["Test"], source)
-    assert data.source_axis_codes["topology.nii.gz"] == ("L", "P", "S")
+    assert data.source_axis_codes["topology.nii.gz"] == source_codes
 
 
 def test_toads_atlas_python_arrays_reorient_to_ras_and_follow_descriptor_order(tmp_path) -> None:

@@ -50,5 +50,9 @@ Next, compare the selected Java and Python transformed shape priors at the same
 registration state and validate the atlas NIfTI conversion's source axis order.
 Then compare statistics and membership terms using identical constructor
 labels and priors before testing any longer TOADS convergence run. No full
-pytest suite was run for this diagnostic; no Python implementation change was
-made.
+pytest suite was run for this diagnostic. Follow-up atlas-loader work corrected
+the source-order shape check for true axis permutations and added an asymmetric
+`(2,3,4)` round-trip case for both flip-only and permuted axes; the focused
+`PYTHONPATH=src .venv/bin/pytest -q tests/test_atlas_assets.py` run passed **7
+tests in 0.84s**. This validates the general conversion routine, not the
+temporary diagnostic atlas's original axis semantics.

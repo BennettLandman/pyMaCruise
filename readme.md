@@ -32,6 +32,8 @@ Ten and twelve TOADS iterations on the 36×45×34 synthetic atlas case reduce th
 
 A separate same-input synthetic diagnostic corrected the Java raw harness to MIPAV's x-fastest voxel order. Java and Python then matched crop bounds and `(50,59,48)` dimensions, but differed in 17 topology voxels and in 264,798 of 1,557,600 initial membership values by more than `1e-6`. This temporary Java-atlas-to-NIfTI conversion is not certified for source axis order, so it narrows the next investigation to registration/shape sampling but is not accepted as equivalence evidence. Details are in the [first-loop diagnostic](docs/reports/toads-first-loop-source-diagnostic-2026-10-03.md).
 
+The atlas conversion reader now restores source voxel order when RAS normalization permutes axes, as well as when it only flips axes. Its focused atlas suite passed **7 tests in 0.84s**. This covers the general conversion API; it does not certify the temporary diagnostic atlas conversion.
+
 **Next integration milestone:** certify the atlas NIfTI conversion and compare Java/Python transformed shape priors at the same registration state; then compare statistics and initial membership terms before running longer convergence cases. Keep synthetic integration, component source matches, whole-workflow source evidence, and real-data validation distinct.
 
 Test totals and checklist progress are evidence bookkeeping, not measures of workflow completion. See [plan.md](plan.md) for the row-level validation status.

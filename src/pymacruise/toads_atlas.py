@@ -574,6 +574,8 @@ def load_toads_atlas_data(
                 raise ValueError("expected three axis codes")
             source_orientation = nib.orientations.axcodes2ornt(codes)
             image = nib.load(str(item.path))
+            if tuple(int(value) for value in nib.as_closest_canonical(image).shape) != item.shape:
+                raise ValueError("canonical image shape disagrees with atlas metadata")
             ras_orientation = nib.orientations.io_orientation(image.affine)
             transform = nib.orientations.ornt_transform(ras_orientation, source_orientation)
             array = np.asanyarray(image.dataobj)
@@ -583,10 +585,10 @@ def load_toads_atlas_data(
                 f"Cannot restore source index order for atlas image {relative}: {exc}"
             ) from exc
         expected_shape = tuple(int(value) for value in row["input_shape"])
-        if source_order.shape != expected_shape or source_order.shape != item.shape:
+        if source_order.shape != expected_shape:
             raise ToadsAtlasError(
                 f"Restored {item.role} shape {source_order.shape} disagrees with "
-                f"audit {expected_shape} or descriptor image {item.shape}"
+                f"conversion audit {expected_shape}"
             )
         source_codes[relative] = codes  # type: ignore[assignment]
         return np.array(source_order, copy=True)
