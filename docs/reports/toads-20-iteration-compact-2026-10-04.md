@@ -1,12 +1,17 @@
-# Compact source-atlas TOADS loop through 20 iterations
+# Superseded compact TOADS diagnostic with padding 2
+
+> **Not source-parameter-matched.** The command below omitted `--padding` and
+> used the helper default of 2. The selected Java comparison uses padding 10.
+> Do not use its convergence result as selected-source evidence. The corrected
+> padding-10 continuation is in [the 50-ceiling report](toads-50-iteration-compact-2026-10-04.md).
 
 ## Run and result
 
-The selected registered Python TOADS loop ran on the committed compact
-`(36,45,34)` source-atlas synthetic fixture. It reached the requested 20
-iterations, but did **not** meet its `1e-4` stopping threshold; terminal energy
-ratio was **`0.000530811725`**. This is a Python-only convergence/runtime result,
-not a Java equivalence comparison or whole MaCRUISE acceptance result.
+The registered Python TOADS loop ran on the committed compact `(36,45,34)`
+synthetic fixture with the helper's nonmatching padding value of 2. It reached
+20 iterations without meeting its `1e-4` threshold; terminal ratio was
+`0.000530811725`. This run remains documented to explain the parameter audit,
+but it is superseded for source-parameter conclusions.
 
 Reproduce from the repository root:
 
@@ -16,7 +21,7 @@ Reproduce from the repository root:
   ./.venv/bin/python scripts/trace_synthetic_toads_loop.py \
   --fixture tests/data/synthetic/toads_downsampled_vandy_atlas \
   --atlas data/atlases/cruise-atlas-10obj-toads2008.txt \
-  --maximum-iterations 20 \
+  --maximum-iterations 20 --padding 2 \
   --output build/java-reference/python-source-vandy-20iter-low-memory.nii.gz
 ```
 
@@ -38,9 +43,8 @@ trace now disables those diagnostic captures by default and offers explicit
 energy progress is printed without retaining event records. This changes only
 the diagnostic capture policy, not production TOADS code.
 
-The earlier 12-iteration Java comparison remains the available cross-language
-evidence: startup and the first cycle match closely, while the later traces
-diverge. The 20-iteration run establishes only that this deterministic compact
-Python case remains above its stopping threshold at the cap. Brain-resolution
-convergence, the source cause of cross-language divergence, full-workflow
-numerical acceptance, and real-MRI validation remain open.
+The helper default had not matched the selected Java padding. The padding-10
+comparison and convergence run supersede this diagnostic for source-aligned
+claims. Brain-resolution convergence, the source cause of cross-language
+divergence, full-workflow numerical acceptance, and real-MRI validation remain
+open.

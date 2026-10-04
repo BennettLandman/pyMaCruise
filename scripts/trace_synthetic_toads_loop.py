@@ -248,7 +248,8 @@ def main() -> int:
         "settings="
         f"maximum_iterations:{args.maximum_iterations},threshold:{args.convergence_threshold:g},"
         f"registration_levels:{args.registration_levels},registration_iterations:{args.registration_iterations},"
-        f"loop_registration_iterations:{args.loop_registration_iterations},relation_limit:{args.relation_limit}"
+        f"loop_registration_iterations:{args.loop_registration_iterations},padding:{args.padding},"
+        f"relation_limit:{args.relation_limit}"
     )
     print(f"probe.intensity_variant={args.intensity_variant} shape_variant={args.shape_variant}")
     print(
