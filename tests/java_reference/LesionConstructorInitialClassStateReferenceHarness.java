@@ -61,7 +61,9 @@ public final class LesionConstructorInitialClassStateReferenceHarness {
                 }
                 available[x][y][z][k]=false;
             }
-            lesionMembership[x][y][z]=0.25f;
+            // Match LesionToadSegmentation's selected constructor, which
+            // initializes lesionMembership[x][y][z] to 0.0f.
+            lesionMembership[x][y][z]=0.0f;
             outlierMembership[x][y][z]=0.5f;
         }
         StringBuilder volumes=new StringBuilder("[");

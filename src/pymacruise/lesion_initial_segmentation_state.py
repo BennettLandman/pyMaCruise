@@ -52,8 +52,6 @@ class LesionLoadedTemplateFirstThinning:
 def initialize_lesion_segmentation_state(
     transformed_template: ArrayLike,
     template_labels: Sequence[int],
-    *,
-    lesion_prior: float,
 ) -> LesionInitialSegmentationState:
     """Map transformed template labels to constructor-initialized class state.
 
@@ -81,8 +79,6 @@ def initialize_lesion_segmentation_state(
         raise ValueError("template_labels must fit the source signed-byte label range")
     if labels.size > 127:
         raise ValueError("class count must fit the source signed-byte class range")
-    if not np.isfinite(lesion_prior) or not 0.0 <= lesion_prior <= 1.0:
-        raise ValueError("lesion_prior must be finite and lie in [0, 1]")
     if np.any(template < -128) or np.any(template > 127):
         raise ValueError("transformed_template labels must fit the source signed-byte range")
 
@@ -103,7 +99,10 @@ def initialize_lesion_segmentation_state(
         relation_map=segmentation.copy(),
         available=np.zeros((*template.shape, labels.size), dtype=np.bool_),
         ordering=np.zeros(template.shape, dtype=np.float32),
-        lesion_membership=np.full(template.shape, lesion_prior, dtype=np.float32),
+        # The selected LesionToadSegmentation constructor initializes this
+        # auxiliary map to 0.0f. Descriptor lesion priors seed a later
+        # membership calculation; they are not constructor map values.
+        lesion_membership=np.zeros(template.shape, dtype=np.float32),
         outlier_membership=np.full(template.shape, np.float32(0.5), dtype=np.float32),
         class_volume=volumes,
     )
@@ -115,7 +114,6 @@ def run_loaded_template_first_thinning(
     transformed_shape: ArrayLike,
     black_hole_membership: ArrayLike,
     *,
-    lesion_prior: float,
     object_types: Sequence[str],
     lesion_class: int,
     volume_ratio: float,
@@ -132,7 +130,7 @@ def run_loaded_template_first_thinning(
         raise TypeError("alignment must be a LesionLoadedAtlasInitialAlignment")
     atlas_labels = tuple(item.label for item in alignment.priors.structures)
     state = initialize_lesion_segmentation_state(
-        transformed_template, atlas_labels, lesion_prior=lesion_prior
+        transformed_template, atlas_labels
     )
     if state.segmentation.shape != alignment.alignment.memberships.memberships.shape[:3]:
         raise ValueError("transformed_template must use the loaded atlas membership grid")

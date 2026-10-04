@@ -15,7 +15,7 @@ from pymacruise.lesion_initial_segmentation_state import (
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_initial_segmentation_state"
 REFERENCE = json.loads((ROOT / "java_reference.json").read_text())
 HARNESS = Path(__file__).parent / "java_reference" / "LesionConstructorInitialClassStateReferenceHarness.java"
-HARNESS_SHA = "854ca5560b90397c8d16c1a24976cf0bcd3148995cc79ee39e0f7b6d7a5e81aa"
+HARNESS_SHA = "68e93d57f3d31d54a9ea70e745bfaf1666d59b03b5f74c911ba88b77563a0249"
 SOURCE_SHA = "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
 SOURCE = (
     Path(__file__).parents[1]
@@ -40,7 +40,7 @@ def test_constructor_class_state_matches_pinned_java_harness() -> None:
     labels = np.asarray((1, 5, 24), dtype=np.int16)
     source_template = labels[template]
     state = initialize_lesion_segmentation_state(
-        source_template, labels, lesion_prior=0.25
+        source_template, labels
     )
 
     expected_segmentation = np.asarray(REFERENCE["segmentation"], dtype=np.int8).reshape(4, 4, 4)
@@ -51,6 +51,7 @@ def test_constructor_class_state_matches_pinned_java_harness() -> None:
     np.testing.assert_array_equal(state.relation_map, expected_relation)
     assert state.available.ravel().tolist() == REFERENCE["available"]
     assert _bits(state.ordering) == REFERENCE["ordering_bits"]
+    np.testing.assert_array_equal(state.lesion_membership, np.zeros((4, 4, 4), dtype=np.float32))
     assert _bits(state.lesion_membership) == REFERENCE["lesion_membership_bits"]
     assert _bits(state.outlier_membership) == REFERENCE["outlier_membership_bits"]
     assert _bits(state.class_volume) == REFERENCE["class_volume_bits"]
@@ -95,7 +96,6 @@ def test_loaded_atlas_template_state_drives_first_thinning_without_manual_state_
         transformed_template,
         shape_patch,
         np.zeros(transformed_template.shape, dtype=np.float32),
-        lesion_prior=0.4,
         object_types=object_types,
         lesion_class=lesion_class,
         volume_ratio=0.0,
@@ -118,5 +118,5 @@ def test_loaded_atlas_template_state_drives_first_thinning_without_manual_state_
 def test_constructor_state_rejects_undeclared_transformed_template_labels() -> None:
     with np.testing.assert_raises_regex(ValueError, "undeclared labels"):
         initialize_lesion_segmentation_state(
-            np.asarray([[[1, 99]]], dtype=np.int16), (1, 5), lesion_prior=0.2
+            np.asarray([[[1, 99]]], dtype=np.int16), (1, 5)
         )
