@@ -97,6 +97,7 @@ def test_registered_loaded_atlas_composes_transform_constructor_and_first_thinni
     # The queue adapter widens the constructor's int8 label map for work.
     assert result.first_thinning.run.segmentation.dtype == np.int16
     assert result.stage_order == (
+        "preprocess.initialCentroids (normalized pre-registration crop)",
         "preprocess.initialMemberships",
         'atlas.initShapeRegistration(memberships,"rigid",initAlignIter,levels,1.0f)',
         "atlas.setTransform(preprocess.getTransform())",

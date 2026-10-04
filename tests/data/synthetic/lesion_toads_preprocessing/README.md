@@ -8,19 +8,22 @@ entries for T1 MPRAGE and FLAIR:
 
 - Lesion: `[0.4, 1.2]`
 - Black hole: `[0.1, 0.6]`
+- Two-class harness priors: `[[0.1, 0.9], [0.2, 0.8]]`
 
 The selected `AlgorithmLesionToads` source pins `robustMaxMin=false`. Its call
 order is constructor negative clamp and ordinary min/max, `normalizeImages`
-using `(image - Imin) / (Imax - Imin)`, crop, tissue-centroid initialization,
-then the separate lesion and black-hole centroid methods. Those latter
-methods compute robust bounds on the normalized (in the wrapper, cropped)
-channels and use `low + prior * (high - low)`. The fixture harness reproduces
-normalization and those centroid formulas on the full grid; it does not
-reproduce crop selection. It also evaluates the centroid methods on a fixed,
-asymmetric interior region representing an already-cropped normalized input,
-so the post-crop robust bounds are checked independently of full-grid bounds.
-It emits ordinary bounds, centroid robust bounds, every normalized voxel, and
-both initialized centroid vectors for each input region. Source SHA-256 values
+using `(image - Imin) / (Imax - Imin)`, crop, class-centroid initialization,
+then the separate lesion and black-hole centroid methods. All three centroid
+operations compute robust bounds on their normalized input channels and use
+`low + prior * (high - low)`. Class centroids are retained across the
+registration recrop; lesion and black-hole centroids are recomputed on the
+second crop. The fixture harness reproduces normalization and centroid
+formulas on the full grid; it does not reproduce crop selection or atlas
+registration. It also evaluates the centroid methods on a fixed, asymmetric
+interior region representing an already-cropped normalized input, so robust
+bounds are checked independently of full-grid bounds. It emits ordinary
+bounds, centroid robust bounds, every normalized voxel, both initialized
+auxiliary centroid vectors, and class-centroid values for each input region. Source SHA-256 values
 and the wrapper call order are pinned in `java_reference.json`; the test pins
 the Java harness SHA-256.
 

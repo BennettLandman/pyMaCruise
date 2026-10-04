@@ -10,6 +10,7 @@ import pytest
 from nibabel.orientations import aff2axcodes
 
 from pymacruise.lesion_toads_preprocessing import (
+    initialize_lesion_toads_class_centroids,
     initialize_lesion_toads_centroids,
     initialize_lesion_toads_intensities,
     normalize_lesion_toads_images,
@@ -44,7 +45,7 @@ def test_lesion_toads_initialization_matches_java_reference() -> None:
         / "LesionToadsPreprocessingReferenceHarness.java"
     )
     assert hashlib.sha256(harness.read_bytes()).hexdigest() == (
-        "00cec29159fcc6b70bf45b736e9bbf967b26cbc19a91e26c7e7304b6945f11fd"
+        "f0c7d925ff96cc0414c04714fe0335ce03ff023f3a388b1e618a349d1262ae53"
     )
     result = initialize_lesion_toads_intensities(
         _load_channels(),
@@ -166,3 +167,27 @@ def test_selected_wrapper_uses_robust_bounds_only_for_cropped_centroids() -> Non
     )
     assert not np.array_equal(result.robust_minima, full_grid.robust_minima)
     assert not np.array_equal(result.robust_maxima, full_grid.robust_maxima)
+
+
+def test_class_centroids_match_selected_java_initial_centroids() -> None:
+    recipe = json.loads((FIXTURES / "spec.json").read_text())
+    reference = json.loads((FIXTURES / "java_reference.json").read_text())
+    normalized = normalize_lesion_toads_images(_load_channels())
+    cropped = normalized.normalized_images[:, 1:-1, 2:-2, 1:-1]
+    result = initialize_lesion_toads_class_centroids(
+        cropped,
+        np.asarray(recipe["class_intensity_priors"], dtype=np.float32),
+    )
+
+    np.testing.assert_array_equal(
+        result.robust_minima,
+        np.asarray(reference["cropped_centroid_robust_minima"], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        result.robust_maxima,
+        np.asarray(reference["cropped_centroid_robust_maxima"], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        result.class_centroids.view(np.int32),
+        np.asarray(reference["initial_class_centroids"], dtype=np.float32).view(np.int32),
+    )

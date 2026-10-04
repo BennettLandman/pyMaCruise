@@ -19,9 +19,11 @@ from .lesion_atlas_priors import (
     load_lesion_atlas_priors,
     load_lesion_atlas_shape_priors,
 )
+from .lesion_toads_preprocessing import initialize_lesion_toads_class_centroids
 
 
 _CALL_ORDER = (
+    "preprocess.initialCentroids (normalized pre-registration crop)",
     "preprocess.initialMemberships",
     'atlas.initShapeRegistration(memberships,"rigid",initAlignIter,levels,1.0f)',
     "atlas.setTransform(preprocess.getTransform())",
@@ -32,8 +34,9 @@ _CALL_ORDER = (
 
 @dataclass(frozen=True)
 class LesionInitialAtlasAlignment:
-    """The exact initializer map plus selected initial pyramid registration."""
+    """Source-initialized centroids, memberships, and pyramid registration."""
 
+    initial_centroids: NDArray[np.float32]
     memberships: LesionInitialMemberships
     registration: LesionRegistrationPyramidResult
     preprocessing_transform: NDArray[np.float32]
@@ -48,10 +51,10 @@ class LesionInitialAtlasAlignment:
 class LesionLoadedAtlasInitialAlignment:
     """Initial membership and registration using the bundled 13-class atlas.
 
-    The descriptor supplies class-order intensity means and the separate shape
-    loader supplies its matching RAS priors. Keeping both loaded products in
-    the result makes their shared order available to subsequent selected
-    thinning/registration stages without inventing a remapping.
+    The descriptor supplies class-order intensity priors used to calculate
+    robust-bound class centroids on the normalized crop. The separate shape
+    loader supplies matching RAS priors. Both loaded products retain their
+    shared class order for subsequent selected stages.
     """
 
     priors: LesionAtlasPriors
@@ -74,7 +77,9 @@ def initialize_lesion_atlas_alignment(
 ) -> LesionInitialAtlasAlignment:
     """Compose the active wrapper's initial rigid alignment sequence.
 
-    This joins selected `initialMemberships()` to `initShapeRegistration`,
+    ``centroids`` are the class centroids calculated from the normalized,
+    pre-registration crop by ``preprocess.initialCentroids``. This joins the
+    selected ``initialCentroids`` result and ``initialMemberships()`` to ``initShapeRegistration``,
     the preprocessing-seeded transform, same-mode `updateShapeRegistration`,
     and `registerShapesPyramid`. The two registration setup calls both select
     rigid mode, `subsample=2`, and coupling factor 1.0; the already validated
@@ -97,10 +102,12 @@ def initialize_lesion_atlas_alignment(
     if transform.shape != (6,) or not np.isfinite(transform).all():
         raise ValueError("preprocessing_transform must contain six finite rigid values")
     transform = transform.copy()
+    initial_centroids = np.asarray(centroids, dtype=np.float32).copy()
+    initial_centroids.setflags(write=False)
 
     initialized = lesion_initial_memberships(
         padded_images,
-        centroids,
+        initial_centroids,
         crop_bounds=crop_bounds,
         pad_border=pad_border,
     )
@@ -115,6 +122,7 @@ def initialize_lesion_atlas_alignment(
         max_iterations=int(init_align_iterations),
     )
     return LesionInitialAtlasAlignment(
+        initial_centroids=initial_centroids,
         memberships=initialized,
         registration=registration,
         preprocessing_transform=transform,
@@ -157,9 +165,12 @@ def initialize_lesion_atlas_alignment_from_descriptor(
     data = np.asarray(padded_images, dtype=np.float32)
     if data.ndim != 4 or data.shape[0] != 2:
         raise ValueError("padded_images must have shape (2, x, y, z) in T1_MPRAGE/FLAIR order")
+    centroid_result = initialize_lesion_toads_class_centroids(
+        data, priors.intensity_priors
+    )
     alignment = initialize_lesion_atlas_alignment(
         data,
-        priors.intensity_priors,
+        centroid_result.class_centroids,
         tuple(shapes.shape_maps[item.name] for item in priors.structures),
         preprocessing_transform,
         crop_bounds=crop_bounds,

@@ -25,6 +25,10 @@ from pymacruise.lesion_preprocessing_uncrop import uncrop_lesion_toads_preproces
 from pymacruise.lesion_registered_recrop import run_registered_lesion_recrop
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_transformed_template import transform_lesion_toads_template
+from pymacruise.lesion_toads_preprocessing import (
+    initialize_lesion_toads_centroids,
+    initialize_lesion_toads_class_centroids,
+)
 
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_preprocessing_crop_rigid"
@@ -87,9 +91,12 @@ def test_registered_recrop_uses_preprocessing_transform_and_new_atlas_grid() -> 
     exclusive_membership_bounds = tuple(
         (inclusive[2 * axis], inclusive[2 * axis + 1] + 1) for axis in range(3)
     )
+    initial_class_centroids = initialize_lesion_toads_class_centroids(
+        initial_crop.crop.images, priors.intensity_priors
+    )
     alignment_result = initialize_lesion_atlas_alignment(
         initial_crop.crop.images,
-        priors.intensity_priors,
+        initial_class_centroids.class_centroids,
         tuple(shape_maps[item.name] for item in priors.structures),
         initial_crop.crop.transform,
         crop_bounds=exclusive_membership_bounds,
@@ -230,18 +237,46 @@ def test_registered_recrop_uses_preprocessing_transform_and_new_atlas_grid() -> 
         result.constructor_state.segmentation, direct_constructor.segmentation
     )
     np.testing.assert_array_equal(
+        result.alignment.alignment.initial_centroids.view(np.int32),
+        initial_class_centroids.class_centroids.view(np.int32),
+    )
+    np.testing.assert_array_equal(
+        result.class_centroid_state.centroid.view(np.int32),
+        initial_class_centroids.class_centroids.view(np.int32),
+    )
+    np.testing.assert_array_equal(
+        result.class_centroid_state.prior_centroid.view(np.int32),
+        initial_class_centroids.class_centroids.view(np.int32),
+    )
+    expected_special_centroids = initialize_lesion_toads_centroids(
+        result.preprocessing_crop.crop.images,
+        priors.lesion_priors,
+        priors.black_hole_priors,
+    )
+    np.testing.assert_array_equal(
+        result.special_centroid_result.lesion_centroid.view(np.int32),
+        expected_special_centroids.lesion_centroid.view(np.int32),
+    )
+    np.testing.assert_array_equal(
+        result.special_centroid_result.black_hole_centroid.view(np.int32),
+        expected_special_centroids.black_hole_centroid.view(np.int32),
+    )
+    assert result.special_centroid_state.lesion_centroid is result.special_centroid_result.lesion_centroid
+    assert result.special_centroid_state.black_hole_centroid is result.special_centroid_result.black_hole_centroid
+    np.testing.assert_array_equal(
         result.registration_bounds.transform.view(np.int32), atlas_transform.view(np.int32)
     )
     assert not np.array_equal(
         result.registration_bounds.transform.view(np.int32),
         result.preprocessing_crop.crop.transform.view(np.int32),
     )
-    assert result.stage_order[-5:] == (
-        "preprocess.cropImages:preprocessingTransform",
-        "atlas.setImageInfo:recroppedDimensions",
-        "atlas.computeTransformedTemplate:optimizedAtlasTransform",
-        "preprocess.updateTransformedTemplate",
+    assert result.stage_order[-6:] == (
         "MultipleToadSegmentation.constructor:recroppedGrid",
+        "LesionToadSegmentation.initCentroids:retainedPreRegistrationResult",
+        "preprocess.initialLesionCentroid:recroppedNormalizedImages",
+        "preprocess.initialBlackHoleCentroid:recroppedNormalizedImages",
+        "setLesionCentroid:reference",
+        "setBlackHoleCentroid:reference",
     )
     assert result.excluded_wrapper_stages == (
         "preprocess.normalizeImages",

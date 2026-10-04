@@ -14,10 +14,12 @@ code boundary and the selected-source-version caveat.
 The selected ``AlgorithmLesionToads`` pins ``robustMaxMin=false``. The source
 constructor clamps negative channel values and records ordinary minima and
 maxima. The wrapper then calls ``normalizeImages`` before cropping, which
-applies ``(image - Imin) / (Imax - Imin)``. Later, after crop, separate
-``initialLesionCentroid`` and ``initialBlackHoleCentroid`` calls estimate
-robust bounds from those normalized images and use
-``low + prior * (high - low)``. Robust-span normalization and
+applies ``(image - Imin) / (Imax - Imin)``. After the initial crop,
+``initialCentroids`` estimates robust bounds and maps descriptor class
+intensity priors with ``low + prior * (high - low)``; those values carry
+across registration. The later ``initialLesionCentroid`` and
+``initialBlackHoleCentroid`` calls independently estimate robust bounds from
+the post-registration recrop using the same mapping. Robust-span normalization and
 ``low / span + prior`` are only the inactive ``robustMaxMin=true`` branch.
 The calculations here retain Java single-precision operation order.
 
@@ -53,6 +55,15 @@ class LesionToadsCentroids:
     robust_maxima: np.ndarray
     lesion_centroid: np.ndarray
     black_hole_centroid: np.ndarray
+
+
+@dataclass(frozen=True)
+class LesionToadsClassCentroids:
+    """Selected wrapper class-centroid bounds and values before alignment."""
+
+    robust_minima: np.ndarray
+    robust_maxima: np.ndarray
+    class_centroids: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -177,6 +188,49 @@ def initialize_lesion_toads_centroids(
         lesion_centroid,
         black_hole_centroid,
     )
+
+
+def initialize_lesion_toads_class_centroids(
+    normalized_cropped_images: Sequence[np.ndarray] | np.ndarray,
+    intensity_priors: np.ndarray,
+    *,
+    robust_fraction: float = 0.01,
+    robust_scales: int = 2,
+) -> LesionToadsClassCentroids:
+    """Apply ``LesionToadPreprocess.initialCentroids`` to normalized images.
+
+    The selected wrapper's active ``robustMaxMin=false`` branch estimates
+    robust minimum/maximum for each already normalized cropped channel, then
+    maps each atlas intensity prior with ``low + prior * (high - low)``.
+    Class order is retained exactly. The resulting matrix is the scalar
+    initializer carried through atlas registration into the segmentation
+    constructor; it is not recomputed after the post-registration recrop.
+    """
+    channel_images = _validated_channel_images(normalized_cropped_images)
+    priors = np.asarray(intensity_priors, dtype=np.float32)
+    channels = channel_images.shape[0]
+    if priors.ndim != 2 or priors.shape[0] != channels or priors.shape[1] < 1:
+        raise ValueError("intensity_priors must have shape (channels, nonzero classes)")
+    if not np.isfinite(priors).all():
+        raise ValueError("intensity_priors must be finite")
+    low_values = np.empty(channels, dtype=np.float32)
+    high_values = np.empty(channels, dtype=np.float32)
+    class_centroids = np.empty(priors.shape, dtype=np.float32)
+    for channel in range(channels):
+        low, high = robust_intensity_bounds(
+            channel_images[channel], fraction=robust_fraction, scales=robust_scales
+        )
+        span = np.float32(high - low)
+        if not np.isfinite(span) or span <= np.float32(0.0):
+            raise ValueError(
+                f"LesionTOADS channel {channel} has zero or invalid class-centroid span"
+            )
+        low_values[channel] = low
+        high_values[channel] = high
+        for class_index in range(priors.shape[1]):
+            scaled_prior = np.float32(priors[channel, class_index] * span)
+            class_centroids[channel, class_index] = np.float32(low + scaled_prior)
+    return LesionToadsClassCentroids(low_values, high_values, class_centroids)
 
 
 def initialize_lesion_toads_intensities(

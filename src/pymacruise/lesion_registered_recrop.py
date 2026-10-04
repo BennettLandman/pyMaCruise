@@ -22,6 +22,10 @@ from .lesion_initial_segmentation_state import (
     LesionInitialSegmentationState,
     initialize_lesion_segmentation_state,
 )
+from .lesion_centroid_handoff import (
+    LesionToadsCentroidHandoffState,
+    initialize_lesion_toads_segmentation_centroids,
+)
 from .image_io import normalize_image_to_ras
 from .lesion_preprocessing_crop import (
     LesionPreprocessingCrop,
@@ -30,6 +34,14 @@ from .lesion_preprocessing_crop import (
 from .lesion_preprocessing_uncrop import uncrop_lesion_toads_preprocessing_inputs
 from .lesion_registered_shapes import transform_registered_lesion_shape_priors
 from .lesion_transformed_template import transform_lesion_toads_template
+from .lesion_special_centroid_handoff import (
+    LesionToadsSpecialCentroidState,
+    initialize_lesion_toads_special_centroids,
+)
+from .lesion_toads_preprocessing import (
+    LesionToadsCentroids,
+    initialize_lesion_toads_centroids,
+)
 
 
 @dataclass(frozen=True)
@@ -45,6 +57,9 @@ class LesionRegisteredRecrop:
     transformed_template: NDArray[np.int8]
     transformed_shapes: NDArray[np.float32]
     constructor_state: LesionInitialSegmentationState
+    class_centroid_state: LesionToadsCentroidHandoffState
+    special_centroid_result: LesionToadsCentroids
+    special_centroid_state: LesionToadsSpecialCentroidState
     stage_order: tuple[str, ...]
     excluded_wrapper_stages: tuple[str, ...]
 
@@ -163,6 +178,25 @@ def run_registered_lesion_recrop(
         transformed_template,
         tuple(item.label for item in structures),
     )
+    if alignment.alignment.initial_centroids.shape != (recrop.crop.images.shape[0], len(structures)):
+        raise ValueError("retained class centroids must match recropped channel and atlas dimensions")
+    class_centroid_state = LesionToadsCentroidHandoffState.empty(
+        recrop.crop.images.shape[0], len(structures)
+    )
+    initialize_lesion_toads_segmentation_centroids(
+        class_centroid_state, alignment.alignment.initial_centroids
+    )
+    special_centroids = initialize_lesion_toads_centroids(
+        recrop.crop.images,
+        alignment.priors.lesion_priors,
+        alignment.priors.black_hole_priors,
+    )
+    special_centroid_state = LesionToadsSpecialCentroidState()
+    initialize_lesion_toads_special_centroids(
+        special_centroid_state,
+        special_centroids.lesion_centroid,
+        special_centroids.black_hole_centroid,
+    )
 
     return LesionRegisteredRecrop(
         alignment=alignment,
@@ -174,6 +208,9 @@ def run_registered_lesion_recrop(
         transformed_template=transformed_template,
         transformed_shapes=transformed_shapes,
         constructor_state=constructor_state,
+        class_centroid_state=class_centroid_state,
+        special_centroid_result=special_centroids,
+        special_centroid_state=special_centroid_state,
         stage_order=(
             *alignment.alignment.call_order,
             "atlas.registerShapesPyramid:optimizedAtlasTransform",
@@ -184,6 +221,11 @@ def run_registered_lesion_recrop(
             "atlas.computeTransformedTemplate:optimizedAtlasTransform",
             "preprocess.updateTransformedTemplate",
             "MultipleToadSegmentation.constructor:recroppedGrid",
+            "LesionToadSegmentation.initCentroids:retainedPreRegistrationResult",
+            "preprocess.initialLesionCentroid:recroppedNormalizedImages",
+            "preprocess.initialBlackHoleCentroid:recroppedNormalizedImages",
+            "setLesionCentroid:reference",
+            "setBlackHoleCentroid:reference",
         ),
         excluded_wrapper_stages=(
             "preprocess.normalizeImages",

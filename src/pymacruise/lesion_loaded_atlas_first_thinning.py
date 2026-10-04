@@ -92,6 +92,7 @@ def run_loaded_lesion_atlas_first_thinning(
         alignment=alignment,
         thinning=thinning,
         stage_order=(
+            "preprocess.initialCentroids (normalized pre-registration crop)",
             "preprocess.initialMemberships",
             "atlas.registerShapesPyramid",
             "setGMflag",

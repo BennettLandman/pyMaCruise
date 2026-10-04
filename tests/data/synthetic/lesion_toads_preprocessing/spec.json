@@ -44,6 +44,10 @@
     0.10000000149011612,
     0.6000000238418579
   ],
+  "class_intensity_priors": [
+    [0.1, 0.9],
+    [0.2, 0.8]
+  ],
   "recipe": "Two source-indexed modular ramps with periodic negative values, and four high outliers; negatives are clamped to zero before source robust bounds are computed.",
   "java_reference": "java_reference.json"
 }

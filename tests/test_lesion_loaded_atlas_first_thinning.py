@@ -81,6 +81,7 @@ def test_bundled_atlas_memberships_reach_first_topology_thinning_pass() -> None:
 
     assert result.alignment is aligned
     assert result.stage_order == (
+        "preprocess.initialCentroids (normalized pre-registration crop)",
         "preprocess.initialMemberships",
         "atlas.registerShapesPyramid",
         "setGMflag",
