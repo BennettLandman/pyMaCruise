@@ -1,0 +1,74 @@
+{
+  "evidence_kind": "synthetic Java/Python source comparison; not whole-workflow equivalence",
+  "input_sha256": {
+    "T1.nii.gz": "6ac5aea8f3f079103e37689d3ce219266f02488c7476958efe0cf499c460dd36",
+    "atlas-descriptor": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939",
+    "brain-mask.nii.gz": "cb4e06f5876e7a2182c3b52e9492ad949c5b1706c879a43c1e6dbce3ee0416b2"
+  },
+  "java_log_sha256": "80afb1971a4278b7d48de0d859eecb89ef1e36e7112a959acdf733b3d69fbb95",
+  "java_trace": {
+    "iteration1_membership_sha256": "550865cf1a96335f8afcae551fe282f164971a5c72e4470c2b5a065bb4cc19bd",
+    "iteration1_objective": 50.30009,
+    "iteration2_membership_sha256": "6d9ee175a174c23d23fb352cbc649c4c661c567931ce2291c94e130524ea4780",
+    "iteration2_objective": 43.742954,
+    "iteration2_thinning_grid": [
+      53,
+      60,
+      51
+    ]
+  },
+  "notes": [
+    "Java raw float arrays were serialized x/y/z/class and converted to float32 for this compressed reference fixture.",
+    "Iteration 1 memberships are within float32 rounding scale; after one continuing thinning pass 42 of 162180 labels differ.",
+    "The iteration 2 membership maximum discrepancy is large despite a low tensor mean; this marks source-state drift and is not accepted as membership equivalence.",
+    "Per-label iteration 2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
+    "No clinical image was used; this is not a full MaCRUISE output comparison."
+  ],
+  "parameters": {
+    "convergence_threshold": 0.0001,
+    "dimensions_xyz": [
+      36,
+      45,
+      34
+    ],
+    "loop_registration_max_iterations": 1,
+    "maximum_iterations": 2,
+    "modality": "T1_MPRAGE",
+    "padding": 10,
+    "post_refresh_registration_iterations": 1,
+    "registration_iterations": 1,
+    "registration_levels": 1,
+    "relation_limit": 3,
+    "working_dimensions_xyz": [
+      53,
+      60,
+      51
+    ]
+  },
+  "python_observed": {
+    "iteration1_membership_count_over_1e6": 67,
+    "iteration1_membership_mae": 5.647506906569788e-10,
+    "iteration1_membership_max_error": 3.7848949432373047e-06,
+    "iteration1_objective": 50.30009078979492,
+    "iteration2_membership_count_over_1e5": 10403,
+    "iteration2_membership_mae": 5.73800708e-06,
+    "iteration2_membership_max_error": 0.394032359,
+    "iteration2_minimum_class_dice": 0.99558791,
+    "iteration2_objective": 43.7415885925293,
+    "iteration2_thinning_different_voxels": 42
+  },
+  "real_data_validation": false,
+  "reference_arrays_sha256": "7b4b726e61d84a881bd01eb3df3322eb243f3e6512b1ef028d2aa1f55c3791b7",
+  "regression_envelope": {
+    "iteration2_membership_count_over_1e5_max": 10500,
+    "iteration2_membership_mae_max": 6e-06,
+    "iteration2_membership_max_error_max": 0.4,
+    "iteration2_objective_absolute_difference_max": 0.002,
+    "iteration2_thinning_different_voxels": 42
+  },
+  "source_scope": "selected VandyCRUISE two-iteration run on committed synthetic input",
+  "source_sha256": {
+    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+  }
+}
