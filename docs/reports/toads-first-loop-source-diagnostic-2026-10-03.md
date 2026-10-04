@@ -34,6 +34,12 @@ order corrected that harness error.
   objective is `5897.3169`, a 2.33% difference relative to the Java value.
   The arrays are on the same grid, but the uncertain atlas conversion means
   this is a diagnostic discrepancy, not an accepted source-equivalence score.
+- The final rigid transform vectors from this run differ by at most
+  `1.25e-5`. The sampled transformed shape-prior arrays still differ at
+  263,471 of 1,557,600 values (`>1e-6`; mean absolute difference `0.04601`).
+  Because the atlas conversion remains uncertified, this narrows investigation
+  toward source-axis/shape-sampling semantics but cannot distinguish those
+  causes yet.
 
 ## Interpretation and next step
 
@@ -46,11 +52,11 @@ diagnostic and its orientation mapping has not been independently certified;
 shape-prior comparisons from that conversion are not accepted as equivalence
 evidence.
 
-Next, compare the selected Java and Python transformed shape priors at the same
-registration state and validate the atlas NIfTI conversion's source axis order.
-Then compare statistics and membership terms using identical constructor
-labels and priors before testing any longer TOADS convergence run. No full
-pytest suite was run for this diagnostic. Follow-up atlas-loader work corrected
+Next, certify the diagnostic atlas conversion and compare transformed shapes at
+the same registration state, then compare statistics and membership terms
+using identical constructor labels and priors before testing any longer TOADS
+convergence run. No full pytest suite was run for this diagnostic. Follow-up
+atlas-loader work corrected
 the source-order shape check for true axis permutations and added an asymmetric
 `(2,3,4)` round-trip case for both flip-only and permuted axes; the focused
 `PYTHONPATH=src .venv/bin/pytest -q tests/test_atlas_assets.py` run passed **7
