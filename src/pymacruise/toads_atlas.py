@@ -535,11 +535,11 @@ def load_toads_atlas_data(
 ) -> ToadsAtlasData:
     """Load atlas arrays in the historical Java index order.
 
-    The checked-in NIfTIs are RAS-oriented, while the legacy Java code indexes
-    headerless data in the original axis order. The conversion audit records
-    the pre-RAS axis codes and is required to undo only that axis permutation
-    and flipping. No interpolation, resampling, or physical-coordinate
-    transformation is performed.
+    The checked-in converted NIfTIs are RAS-oriented, while the legacy Java
+    code indexes headerless data in the original axis order. Their conversion
+    audit records the pre-RAS axis codes and restores that order without
+    interpolation or resampling. Standalone NIfTI atlases without an audit use
+    their native affine axis codes and retain their native voxel order.
     """
     if conversion_audit_path is not None:
         audit_path = Path(conversion_audit_path)
