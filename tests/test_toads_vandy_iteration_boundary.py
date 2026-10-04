@@ -18,6 +18,7 @@ from pymacruise.toads_registration_sampling import (
     vectorized_toads_registration_coefficients,
     vectorized_toads_registration_energy,
 )
+from pymacruise.toads_shape_volume import transform_toads_shape_priors
 from pymacruise.toads_atlas import toads_atlas_shapes_in_structure_order
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
@@ -137,9 +138,23 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
             "subsample": 2,
             "precomputed_affine": True,
         }
+        atlas_shapes = toads_atlas_shapes_in_structure_order(
+            atlas, result.alignment_run.atlas_data
+        )
+        java_transform_priors = transform_toads_shape_priors(
+            atlas_shapes,
+            image_dimensions_xyz=first_memberships.shape[:3],
+            image_resolutions_mm=result.alignment_run.alignment.setup.signed_image_resolutions_mm,
+            template_resolutions_mm=result.alignment_run.alignment.setup.template_resolutions_mm,
+            transform=java_registration["pre_update_transform"],
+            class_bounds=result.alignment_run.post_refresh_registration.final_shape_bounds,
+        )
+        np.testing.assert_array_equal(
+            java_transform_priors, java["iteration1_registered_shape_priors"]
+        )
         python_coefficients = vectorized_toads_registration_coefficients(
             first_memberships,
-            toads_atlas_shapes_in_structure_order(atlas, result.alignment_run.atlas_data),
+            atlas_shapes,
             **registration_kwargs,
         )
         python_gradient, python_hessian = exact_registration_measure_coefficients(
@@ -158,13 +173,28 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         ) < 3e-6
         python_registration_energy = vectorized_toads_registration_energy(
             first_memberships,
-            toads_atlas_shapes_in_structure_order(atlas, result.alignment_run.atlas_data),
+            atlas_shapes,
             **registration_kwargs,
         )
-        assert abs(
-            float(python_registration_energy)
-            - float(java["iteration1_java_registration_energy"][0])
-        ) < 2e-7
+        java_initial_transform = java["iteration1_java_pre_registration_transform"]
+        shared_java_transform_kwargs = {
+            **registration_kwargs,
+            "transform": tuple(float(value) for value in java_initial_transform),
+        }
+        java_source_energy = np.float32(java["iteration1_java_registration_energy"][0])
+        java_membership_energy = vectorized_toads_registration_energy(
+            java["iteration1_memberships"],
+            atlas_shapes,
+            **shared_java_transform_kwargs,
+        )
+        python_membership_java_transform_energy = vectorized_toads_registration_energy(
+            first_memberships,
+            atlas_shapes,
+            **shared_java_transform_kwargs,
+        )
+        assert java_membership_energy == java_source_energy
+        assert python_membership_java_transform_energy == java_source_energy
+        assert abs(float(python_registration_energy) - float(java_source_energy)) < 2e-7
 
         java_transform = java["iteration1_registered_transform"]
         python_transform = np.asarray(

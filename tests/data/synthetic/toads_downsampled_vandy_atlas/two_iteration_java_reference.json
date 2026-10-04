@@ -103,7 +103,13 @@
       ],
       "accepted_lambda_before_growth": 0.44444445,
       "rejected_trials": 2
-    }
+    },
+    "iteration1_registered_shape_priors_shape": [
+      53,
+      60,
+      51,
+      11
+    ]
   },
   "notes": [
     "Java raw float arrays were serialized x/y/z/class and converted to float32 for this compressed reference fixture.",
@@ -113,7 +119,8 @@
     "No clinical image was used; this is not a full MaCRUISE output comparison.",
     "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail.",
     "Before the second membership update, centroids agree with Java to max absolute error 9.54e-7. Standard deviations differ in five classes on the independently evolved labels; applying the Python variance kernel to the pinned Java labels, memberships, and centroids reproduces the Java standard deviations within 2e-7. This indicates the measured variance split is state-dependent on the prior label divergence, not evidence of a variance-kernel mismatch.",
-    "Java source registration on this state starts at energy 0.365961283 and rejects lambda 1.0 and 2/3, accepting 4/9. Python exact-measure gradient and Hessian differ only slightly (max 3.3e-9 and 2.4e-6), but its vectorized energy is 0.365961105 and accepts 2/3. The strict one-step line-search branch therefore diverges. This localizes the remaining numerical sensitivity to registration energy evaluation or prior sampling; the source cannot yet be replicated at this branch boundary."
+    "Java source registration on this state starts at energy 0.365961283 and rejects lambda 1.0 and 2/3, accepting 4/9. Python exact-measure gradient and Hessian differ only slightly (max 3.3e-9 and 2.4e-6), but its vectorized energy is 0.365961105 and accepts 2/3. The strict one-step line-search branch therefore diverges. This localizes the remaining numerical sensitivity to registration energy evaluation or prior sampling; the source cannot yet be replicated at this branch boundary.",
+    "Using the same Java transform and either Java or Python iteration-1 memberships, Python reproduces the Java registration energy exactly; its transformed shape-prior tensor also matches the Java snapshot bit-for-bit. The 1.93e-8 Python/Java difference in the post-refresh transform alone moves the subsequent registration energy by 1.79e-7 and flips strict line-search acceptance. The split is therefore seeded by the upstream post-refresh transform rounding, not the second-stage energy kernel, on this fixture."
   ],
   "parameters": {
     "convergence_threshold": 0.0001,
@@ -161,10 +168,13 @@
       0.6666666865348816
     ],
     "iteration1_registration_accepted_lambda_before_growth": 0.6666666865348816,
-    "iteration1_registration_rejected_trials": 1
+    "iteration1_registration_rejected_trials": 1,
+    "registration_energy_with_java_transform_and_membership": 0.3659612834453583,
+    "registration_energy_with_java_transform_and_python_membership": 0.3659612834453583,
+    "registered_priors_match_at_java_transform": true
   },
   "real_data_validation": false,
-  "reference_arrays_sha256": "8688fac14ada815d4cd4ff47395c37234ec0ad9928b47b83eea305359d446298",
+  "reference_arrays_sha256": "dd912848baf29f96a00acee97f28bd83e3fbc758a69a78317ed07b6ce49666c3",
   "regression_envelope": {
     "iteration2_membership_count_over_1e5_max": 10500,
     "iteration2_membership_mae_max": 6e-06,
