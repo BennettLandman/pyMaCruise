@@ -34,6 +34,36 @@
       60,
       51,
       4
+    ],
+    "iteration2_centroids": [
+      [
+        5.119466732139699e-05,
+        0.19320988655090332,
+        0.194734588265419,
+        0.6456089615821838,
+        0.5546522736549377,
+        0.5516255497932434,
+        0.7441855072975159,
+        0.8287551403045654,
+        0.9218106269836426,
+        1.0059983730316162,
+        1.0085328817367554
+      ]
+    ],
+    "iteration2_standard_deviations": [
+      [
+        0.00010200271208304912,
+        0.016876548528671265,
+        0.013038226403295994,
+        0.006440712139010429,
+        0.015925753861665726,
+        0.04399048909544945,
+        0.05330035090446472,
+        0.024545129388570786,
+        0.018172141164541245,
+        0.01033773459494114,
+        0.008910278789699078
+      ]
     ]
   },
   "notes": [
@@ -42,7 +72,8 @@
     "The iteration 2 membership maximum discrepancy is large despite a low tensor mean; this marks source-state drift and is not accepted as membership equivalence.",
     "Per-label iteration 2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
     "No clinical image was used; this is not a full MaCRUISE output comparison.",
-    "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail."
+    "Iteration-1 registration/growth snapshot: Python registration transform differs from Java by approximately 0.0002 per parameter; post-growth labels differ at 55 voxels and closest-label entries differ at 843 positions. This localizes the first observed discrete split to the registration/growth handoff, without attributing its cause to a specific implementation detail.",
+    "Before the second membership update, centroids agree with Java to max absolute error 9.54e-7. Standard deviations differ in five classes on the independently evolved labels; applying the Python variance kernel to the pinned Java labels, memberships, and centroids reproduces the Java standard deviations within 2e-7. This indicates the measured variance split is state-dependent on the prior label divergence, not evidence of a variance-kernel mismatch."
   ],
   "parameters": {
     "convergence_threshold": 0.0001,
@@ -75,10 +106,15 @@
     "iteration2_membership_max_error": 0.394032359,
     "iteration2_minimum_class_dice": 0.99558791,
     "iteration2_objective": 43.7415885925293,
-    "iteration2_thinning_different_voxels": 42
+    "iteration2_thinning_different_voxels": 42,
+    "iteration2_centroid_mae": 2.2080811845626158e-07,
+    "iteration2_centroid_max_error": 9.5367431640625e-07,
+    "iteration2_standard_deviation_mae": 1.8166481822845526e-05,
+    "iteration2_standard_deviation_max_error": 0.00010916776955127716,
+    "iteration2_standard_deviation_count_over_1e6": 5
   },
   "real_data_validation": false,
-  "reference_arrays_sha256": "493ac4c3bfe0bcc0401a739b393eeb8474f29347494ec9f89b59bef6f90617be",
+  "reference_arrays_sha256": "39b5de49fa70a14a77bc3c7185ae91fb3896edd6ea9a95c1c3924a0a28bb8b89",
   "regression_envelope": {
     "iteration2_membership_count_over_1e5_max": 10500,
     "iteration2_membership_mae_max": 6e-06,

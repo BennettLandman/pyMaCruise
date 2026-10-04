@@ -39,6 +39,9 @@ checkout.
 | Iteration 1 post-growth segmentation | — | — | 55 of 162,180 voxels differ |
 | Iteration 1 closest-label state | — | — | 843 of 648,720 entries differ |
 | Iteration 2 thinning segmentation | — | — | 42 of 162,180 voxels differ; all 11 class Dice scores are at least `0.99558` |
+| Iteration 2 centroids | — | — | Mean absolute difference `2.21e-7`; maximum `9.54e-7` |
+| Iteration 2 standard deviations | — | — | With each run’s own labels, mean absolute difference `1.82e-5`, maximum `1.09e-4`; 5 of 11 classes exceed `1e-6` |
+| Iteration 2 variance kernel on shared Java state | Java labels, memberships, and centroids | Python kernel | Maximum difference at most `2e-7` |
 | Iteration 2 objective | `43.742954` | `43.74158859` | Absolute difference `0.0013654` |
 | Iteration 2 memberships | — | — | Mean absolute difference `5.738e-6`; maximum `0.39403`; 10,403 of 1,783,980 values exceed `1e-5` |
 | Iteration 2 energy ratio | `0.13944969` | `0.139480755` | The trajectories have split |
@@ -46,14 +49,17 @@ checkout.
 The first exact update is close to float32 rounding scale. The earliest
 observed split is the next registration transform: all six parameters differ
 from Java by about `0.0002`, followed by 55 post-growth label differences.
-Closest-label state has 843 differing entries. This localizes the start of the
-drift but does not identify its cause; registration initialization,
-termination, and floating-point order remain candidates. The second
-membership update has a large local maximum error even though its whole-tensor
-mean remains small, and is not declared equivalent under a tolerance. The
-intermediate thinning result meets the project’s 0.97 segmentation Dice floor,
-but that does not validate later memberships, convergence, or final workflow
-outputs.
+Closest-label state has 843 differing entries. The next thinning state differs
+at 42 voxels. On the resulting independent states, centroids still agree
+within `9.54e-7`, but five class standard deviations differ. Running the
+Python variance kernel with Java’s labels, memberships, and centroids brings
+the output within `2e-7` of Java. This indicates the variance difference
+follows the changed state; it does not yet explain the earlier registration
+update. The second membership update has a large local maximum error even
+though its whole-tensor mean remains small, and is not declared equivalent
+under a tolerance. The intermediate thinning result meets the project’s 0.97
+segmentation Dice floor, but that does not validate later memberships,
+convergence, or final workflow outputs.
 
 ## Source pins
 
@@ -61,8 +67,8 @@ outputs.
   `b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d`
 - `MultipleToadSegmentation.java` SHA-256:
   `63e135f36dd9117a4f6fdda2ec78990230e5e44ad91234ce3745d20e5976cd884`
-- Compressed Java arrays SHA-256 (including the new iteration-1 state pins):
-  `493ac4c3bfe0bcc0401a739b393eeb8474f29347494ec9f89b59bef6f90617be`
+- Compressed Java arrays SHA-256 (including iteration-1 handoff and iteration-2 statistics states):
+  `39b5de49fa70a14a77bc3c7185ae91fb3896edd6ea9a95c1c3924a0a28bb8b89`
 
 The reference uses the selected source run, while the Python result is a
 production-loop synthetic run. Neither is a whole-workflow acceptance result.

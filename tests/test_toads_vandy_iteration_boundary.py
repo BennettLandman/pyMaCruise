@@ -12,6 +12,7 @@ from pymacruise.toads_atlas import (
     load_toads_intensity_variance_factors,
     load_toads_optimized_factors,
 )
+from pymacruise.toads_default_exact_variances import toads_default_exact_class_variances
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
     run_registered_toads_loop,
@@ -137,6 +138,31 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         changed = int(np.count_nonzero(next_thinning != java_next_thinning))
         assert changed == PROVENANCE["regression_envelope"]["iteration2_thinning_different_voxels"] == 42
         assert min(dice_by_label.values()) >= 0.995
+
+        java_centroids = java["iteration2_centroids"]
+        np.testing.assert_allclose(second.centroids, java_centroids, rtol=0, atol=1e-6)
+        java_deviations = java["iteration2_standard_deviations"]
+        deviation_delta = np.abs(second.standard_deviations - java_deviations)
+        assert np.count_nonzero(deviation_delta > 1e-6) == 5
+        assert np.max(deviation_delta) <= 1.1e-4
+
+        # Reuse the Python source-matched variance kernel on identical Java
+        # state to distinguish an input-state split from a kernel mismatch.
+        image_values = np.moveaxis(
+            np.asarray(result.alignment_run.template_refresh.recropped_images, dtype=np.float32),
+            0,
+            -1,
+        )
+        shared_state_deviations = toads_default_exact_class_variances(
+            image_values,
+            java["iteration1_memberships"],
+            java_centroids,
+            java_next_thinning,
+            intensity_field=result.startup.fields,
+        )
+        np.testing.assert_allclose(
+            shared_state_deviations, java_deviations, rtol=0, atol=2e-7
+        )
 
         second_memberships = np.asarray(second.membership_pass.memberships, dtype=np.float32)
         java_second = java["iteration2_memberships"]
