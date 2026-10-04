@@ -8,6 +8,9 @@ import numpy as np
 from pymacruise.lesion_descriptor_continuing_iteration import (
     run_lesion_toads_descriptor_continuing_iteration,
 )
+from pymacruise.lesion_descriptor_registered_iteration import (
+    register_and_branch_lesion_toads_descriptor_iteration,
+)
 from pymacruise.lesion_registered_first_iteration import (
     run_lesion_toads_registered_first_iteration,
 )
@@ -144,3 +147,29 @@ def test_registered_continuation_runs_second_synthetic_iteration() -> None:
     assert np.isfinite(second.membership.membership.class_memberships).all()
     assert np.isfinite(second.membership.energy_ratio.energy_ratio)
     assert second.thinning is not initial.first_thinning.thinning
+
+    second_branch = register_and_branch_lesion_toads_descriptor_iteration(
+        second,
+        atlas_shape_priors,
+        first_branch.registration.registration.transform,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        object_types=STANDARD13_TYPES,
+        classification=labels,
+        template_labels=np.arange(13, dtype=np.int16),
+        lesion_class=10,
+        iteration=2,
+        n_iter_max=2,
+        max_distance=0.0,
+        algorithm_mode="diffeomorphism",
+        relation_limit=3,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+    assert second_branch.control.branch.stop is True
+    assert second_branch.control.branch.iteration_limit_stop is True
+    assert second_branch.control.branch.final_classification is not None
+    assert second_branch.control.branch.final_classification.classification.shape == images.shape[:3]
+    assert second_branch.stage_order.index("registerShapes") < second_branch.stage_order.index(
+        "convergence_check"
+    )
