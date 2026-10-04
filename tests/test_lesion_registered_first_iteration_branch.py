@@ -149,3 +149,92 @@ def test_registered_first_iteration_composes_registration_and_terminal_branch() 
         "updateLesionClassifcation",
     )
     np.testing.assert_array_equal(transform, np.zeros(6, dtype=np.float32))
+
+
+def test_registered_first_iteration_continuation_runs_growth_and_relation_refresh() -> None:
+    initial, images, labels, shapes, centroids, auxiliary = _initial_state()
+    lesion_centroids, black_centroids = auxiliary
+    transition = run_lesion_toads_registered_first_iteration(
+        initial,
+        images,
+        centroids,
+        lesion_centroids,
+        black_centroids,
+        shapes,
+        np.ones(13, dtype=np.float32),
+        np.ones(13, dtype=np.float32),
+        centroid_options={
+            "mode": "none",
+            "modalities": ("T1_MPRAGE", "FLAIR"),
+            "lesion_power_exponents": (0.4, 1.2),
+            "tissue_power_exponents": np.ones((2, 13), dtype=np.float32),
+        },
+        channel_weight_options={"outlier_distance": 0.1, "norm_type": "Identity"},
+        outlier_energy=0.1,
+        lesion_power_exponent=1.2,
+    )
+    atlas_shapes = tuple(shapes[..., class_index] for class_index in range(13))
+    transform = np.zeros(6, dtype=np.float32)
+    resolutions = (1.0, 1.0, 1.0)
+    result = run_lesion_toads_registered_first_iteration_branch(
+        initial,
+        transition,
+        atlas_shapes,
+        transform,
+        image_resolutions_mm=resolutions,
+        template_resolutions_mm=resolutions,
+        object_types=STANDARD13_TYPES,
+        classification=labels,
+        template_labels=np.arange(13, dtype=np.int16),
+        lesion_class=10,
+        iteration=1,
+        n_iter_max=99,
+        max_distance=0.0,
+        algorithm_mode="diffeomorphism",
+        relation_limit=3,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+
+    direct_registration = register_after_next_gm_membership_update(
+        transition.membership,
+        atlas_shapes,
+        transform,
+        image_resolutions_mm=resolutions,
+        template_resolutions_mm=resolutions,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+    thinning = initial.first_thinning.thinning.run
+    direct_branch = continue_after_next_iteration_registration(
+        direct_registration,
+        segmentation=thinning.segmentation,
+        skeleton=thinning.skeleton,
+        ordering=thinning.ordering,
+        class_volume=thinning.class_volume,
+        object_types=STANDARD13_TYPES,
+        classification=labels,
+        template_labels=np.arange(13, dtype=np.int16),
+        lesion_class=10,
+        iteration=1,
+        n_iter_max=99,
+        max_distance=0.0,
+        algorithm_mode="diffeomorphism",
+        relation_limit=3,
+    )
+
+    assert result.branch.branch.stop is False
+    assert result.branch.branch.growing is not None
+    assert result.branch.branch.relations is not None
+    np.testing.assert_array_equal(
+        result.branch.branch.segmentation,
+        direct_branch.branch.segmentation,
+    )
+    np.testing.assert_array_equal(
+        result.branch.branch.relations.relation_map,
+        direct_branch.branch.relations.relation_map,
+    )
+    np.testing.assert_array_equal(
+        result.branch.branch.relations.relation_membership,
+        direct_branch.branch.relations.relation_membership,
+    )
