@@ -25,9 +25,9 @@ from .toads_registration_sampling import (
 )
 from .toads_atlas import (
     ToadsAtlas,
-    ToadsAtlasRASData,
+    ToadsAtlasData,
     load_toads_atlas,
-    load_toads_atlas_ras_data,
+    load_toads_atlas_data,
     load_toads_intensity_priors,
     load_toads_lesion_priors,
     toads_atlas_shapes_in_structure_order,
@@ -202,7 +202,7 @@ class ToadsAtlasAlignmentRun:
     """Loaded atlas state through initial segmentation initialization."""
 
     atlas: ToadsAtlas
-    atlas_data: ToadsAtlasRASData
+    atlas_data: ToadsAtlasData
     alignment: ToadsAlignmentRegistration
     template_refresh: ToadsPostRegistrationTemplateRefresh
     post_refresh_registration: ToadsPostRefreshRegistration
@@ -343,7 +343,8 @@ def register_toads_from_atlas_assets(
     """Wire descriptor assets through startup and initial rigid registration.
 
     This convenience composition loads the selected descriptor, RAS atlas
-    arrays, and the requested intensity-prior profile, then runs the bounded
+    arrays in the original audited Java voxel order, and the requested
+    intensity-prior profile, then runs the bounded
     one-channel startup and rigid-pyramid adapters. Registration levels and
     iteration limits remain explicit call arguments; this function does not
     infer wrapper parameters or claim TOADS iteration/workflow equivalence.
@@ -351,7 +352,7 @@ def register_toads_from_atlas_assets(
     loaded_atlas = load_toads_atlas(atlas) if isinstance(atlas, (str, Path)) else atlas
     if not isinstance(loaded_atlas, ToadsAtlas):
         raise TypeError("atlas must be a ToadsAtlas or a descriptor path")
-    atlas_data = load_toads_atlas_ras_data(loaded_atlas)
+    atlas_data = load_toads_atlas_data(loaded_atlas)
     priors = load_toads_intensity_priors(loaded_atlas.descriptor, [modality])
     lesion_priors = load_toads_lesion_priors(loaded_atlas.descriptor, [modality])
     if progress_callback is not None:
@@ -370,7 +371,7 @@ def register_toads_from_atlas_assets(
         brain_mask,
         atlas_data.topology,
         priors,
-        atlas_data.template_resolution_mm,
+        loaded_atlas.shape_voxel_sizes_mm,
         padding=padding,
         background_ratio=background_ratio,
         background_label=background_label,
@@ -398,7 +399,7 @@ def register_toads_from_atlas_assets(
         image_resolution_mm=tuple(
             abs(value) for value in startup.geometry.signed_image_resolutions_mm
         ),
-        template_resolution_mm=atlas_data.template_resolution_mm,
+        template_resolution_mm=loaded_atlas.shape_voxel_sizes_mm,
         orientation_signs=startup.geometry.orientation_signs,
         robust_ranges=np.asarray(
             [[startup.intensity.robust_minimum, startup.intensity.robust_maximum]],

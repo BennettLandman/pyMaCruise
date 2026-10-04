@@ -541,15 +541,29 @@ def load_toads_atlas_data(
     and flipping. No interpolation, resampling, or physical-coordinate
     transformation is performed.
     """
-    audit_path = (
-        Path(conversion_audit_path)
-        if conversion_audit_path is not None
-        else atlas.descriptor.parent / "CONVERSION_AUDIT.json"
-    )
-    try:
-        audit = json.loads(audit_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ToadsAtlasError(f"Cannot read atlas conversion audit {audit_path}: {exc}") from exc
+    if conversion_audit_path is not None:
+        audit_path = Path(conversion_audit_path)
+    else:
+        candidates = (atlas.descriptor.parent, *atlas.descriptor.parent.parents)
+        audit_path = next(
+            (
+                parent / "CONVERSION_AUDIT.json"
+                for parent in candidates
+                if (parent / "CONVERSION_AUDIT.json").is_file()
+            ),
+            atlas.descriptor.parent / "CONVERSION_AUDIT.json",
+        )
+    audit_available = audit_path.exists()
+    audit_root = audit_path.parent if audit_available else atlas.descriptor.parent
+    if audit_available:
+        try:
+            audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ToadsAtlasError(f"Cannot read atlas conversion audit {audit_path}: {exc}") from exc
+    else:
+        # Standalone synthetic or user-created NIfTI atlases have no prior
+        # raw payload to restore; their native array order is their source order.
+        audit = {}
     rows = {
         str(row["nifti_output"]): row
         for row in audit.get("images", [])
@@ -560,20 +574,24 @@ def load_toads_atlas_data(
 
     def read_image(item: ToadsAtlasImage) -> np.ndarray:
         try:
-            relative = item.path.relative_to(atlas.descriptor.parent).as_posix()
+            relative = item.path.relative_to(audit_root).as_posix()
         except ValueError as exc:
             raise ToadsAtlasError(
                 f"Atlas image is outside descriptor directory: {item.path}"
             ) from exc
         row = rows.get(relative)
-        if row is None:
+        if row is None and audit_available:
             raise ToadsAtlasError(f"No conversion-audit row for atlas image {relative}")
         try:
-            codes = tuple(str(code) for code in row["input_axis_codes"])
+            image = nib.load(str(item.path))
+            codes = (
+                tuple(str(code) for code in row["input_axis_codes"])
+                if row is not None
+                else tuple(str(code) for code in nib.aff2axcodes(image.affine))
+            )
             if len(codes) != 3:
                 raise ValueError("expected three axis codes")
             source_orientation = nib.orientations.axcodes2ornt(codes)
-            image = nib.load(str(item.path))
             if tuple(int(value) for value in nib.as_closest_canonical(image).shape) != item.shape:
                 raise ValueError("canonical image shape disagrees with atlas metadata")
             ras_orientation = nib.orientations.io_orientation(image.affine)
@@ -584,7 +602,11 @@ def load_toads_atlas_data(
             raise ToadsAtlasError(
                 f"Cannot restore source index order for atlas image {relative}: {exc}"
             ) from exc
-        expected_shape = tuple(int(value) for value in row["input_shape"])
+        expected_shape = (
+            tuple(int(value) for value in row["input_shape"])
+            if row is not None
+            else tuple(int(value) for value in image.shape)
+        )
         if source_order.shape != expected_shape:
             raise ToadsAtlasError(
                 f"Restored {item.role} shape {source_order.shape} disagrees with "
@@ -655,18 +677,23 @@ def load_toads_atlas_ras_data(atlas: ToadsAtlas) -> ToadsAtlasRASData:
 
 def toads_atlas_shapes_in_structure_order(
     atlas: ToadsAtlas,
-    ras_data: ToadsAtlasRASData,
+    atlas_data: ToadsAtlasData | ToadsAtlasRASData,
 ) -> np.ndarray:
-    """Stack RAS shape maps as ``(x,y,z,classes)`` in descriptor order."""
-    if not isinstance(ras_data, ToadsAtlasRASData):
-        raise TypeError("ras_data must be ToadsAtlasRASData")
+    """Stack shape maps as ``(x,y,z,classes)`` in descriptor order.
+
+    The returned voxel order is the order used by the supplied atlas data.
+    The source TOADS alignment path uses the audited Java index order; callers
+    may also explicitly pass canonical RAS data for independent RAS workflows.
+    """
+    if not isinstance(atlas_data, (ToadsAtlasData, ToadsAtlasRASData)):
+        raise TypeError("atlas_data must be ToadsAtlasData or ToadsAtlasRASData")
     names = tuple(structure.name for structure in atlas.structures)
-    missing = [name for name in names if name not in ras_data.shapes]
+    missing = [name for name in names if name not in atlas_data.shapes]
     if missing:
         raise ToadsAtlasError(f"RAS atlas data is missing structure shape(s): {missing}")
     if not names:
         raise ToadsAtlasError("Atlas descriptor has no structures")
     return np.stack(
-        tuple(np.asarray(ras_data.shapes[name], dtype=np.float32) for name in names),
+        tuple(np.asarray(atlas_data.shapes[name], dtype=np.float32) for name in names),
         axis=-1,
     )

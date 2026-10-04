@@ -150,6 +150,32 @@ def test_toads_atlas_arrays_restore_original_java_index_order(tmp_path, source_c
     assert data.source_axis_codes["topology.nii.gz"] == source_codes
 
 
+def test_toads_atlas_without_conversion_audit_uses_native_nifti_index_order(tmp_path) -> None:
+    source = np.arange(2 * 3 * 4, dtype=np.int16).reshape((2, 3, 4))
+    affine = np.diag((-1.0, -1.0, 1.0, 1.0))
+    topology_path = tmp_path / "topology.nii.gz"
+    shape_path = tmp_path / "shape.nii.gz"
+    nib.save(nib.Nifti1Image(source, affine), topology_path)
+    nib.save(nib.Nifti1Image(source.astype(np.float32), affine), shape_path)
+    atlas = ToadsAtlas(
+        tmp_path / "atlas.txt",
+        (ToadsStructure("Test", 2, "object"),),
+        ToadsAtlasImage("topology", topology_path, source.shape, (1.0,) * 3, (1.0,) * 3),
+        {"Test": ToadsAtlasImage("shape", shape_path, source.shape, (1.0,) * 3, (1.0,) * 3)},
+        1,
+        source.shape,
+        (1.0,) * 3,
+        (1, 1, 1, 1),
+        (),
+    )
+
+    data = load_toads_atlas_data(atlas)
+
+    assert data.source_axis_codes["topology.nii.gz"] == ("L", "P", "S")
+    np.testing.assert_array_equal(data.topology, source)
+    np.testing.assert_array_equal(data.shapes["Test"], source.astype(np.float32))
+
+
 def test_toads_atlas_python_arrays_reorient_to_ras_and_follow_descriptor_order(tmp_path) -> None:
     source = np.arange(2 * 3 * 4, dtype=np.int16).reshape((2, 3, 4))
     affine = np.diag((-1.0, -1.0, 1.0, 1.0))

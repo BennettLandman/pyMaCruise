@@ -2,63 +2,79 @@
 
 ## Scope
 
-This is a synthetic, one-iteration comparison between the supplied VandyCRUISE
-Java implementation and PyMaCRUISE. Java used the original 11-structure raw
-atlas descriptor and Python used the committed converted NIfTI atlas. Both ran
-against the same `(36,45,34)` synthetic T1 values. The Java input was exported
-in Fortran order to preserve MIPAV's x-fastest voxel convention. This is not a
-whole-workflow equivalence result and is not real-data validation.
+This is a synthetic Java-source/Python comparison on the committed
+`(36,45,34)` Vandy-atlas-derived T1 fixture. The selected Java algorithm reads
+headerless atlas payloads in their original descriptor index order. Python's
+first comparison used canonical RAS arrays and diverged at crop/startup. The
+source-order diagnostic then reproduced the Java crop and startup state. That
+behavior is now used by the production TOADS registration path. This validates
+the captured source slice only; it does not establish complete TOADS or
+MaCRUISE equivalence, convergence on brain-resolution data, or real-data
+performance.
 
-## Atlas conversion check
+## Atlas conversion and ordering
 
-The conversion audit and source-payload round-trip check covered 35 atlas
-images: 32 raw payloads restored exactly using their source dimensions,
-datatype, and MIPAV voxel order; the three Analyze images were voxel-exact when
-canonicalized through their source header affine. The Analyze source-axis
-metadata still disagrees with the conversion audit (`L,A,S` in the headers vs
+The conversion audit covers 35 bundled atlas images. The source-payload
+round-trip check restored all 32 raw payloads exactly using their source
+dimensions, datatype, and MIPAV voxel order. The three Analyze images were
+voxel-exact after canonicalizing through their source header affine. Their
+source-axis metadata still disagrees with the audit (`L,A,S` in the headers vs
 `L,P,S` in the audit), so physical origin/direction claims for those examples
-remain unverified. Those three SPECTRE images are not used in this Vandy atlas
-comparison.
+remain unverified. Those SPECTRE images are not used in this Vandy comparison.
 
-## Java/Python comparison
+The implementation now restores audited NIfTI payloads to Java index order
+for TOADS registration. Standalone NIfTI atlases without a conversion audit
+retain their native array order, using their affine axis codes. The T1 and
+final outputs remain on the RAS input grid; the internal atlas index order
+preserves the source algorithm's descriptor-based mapping.
 
-Java completed one source outer iteration using `VandyCoreSyntheticRunExport`
-with a 3 GB maximum Java heap. Python completed the registered trace with one
-post-refresh registration update and two iterations (the Python loop requires
-at least two). Both runs used one registration level, one registration update
-per branch, and relation limit 3.
+## Matched startup and first-cycle results
 
-Java's startup membership and transformed-prior grids are `(53,60,51,11)`;
-Python's are `(52,60,51,11)`. The Java debug log reports crop bounds
-`[3,35] [3,42] [0,30]`; Python reports `[2,33] [3,42] [0,30]`. With ten
-padding voxels, their shared x extent maps Java planes `0:51` to Python planes
-`1:52`. On that overlapping region:
+Java used the original VandyCRUISE 11-structure raw descriptor and the
+instrumented `VandyCoreSyntheticRunExport` harness. The synthetic T1 values
+were exported in Fortran order to preserve MIPAV's x-fastest voxel convention.
+Python used the committed converted NIfTI atlas through the production loader,
+one registration level, one registration update per branch, padding 10, and
+relation limit 3. Python's trace requires at least two loop iterations; the
+captured first iteration is compared with Java's one-iteration run.
 
-- Startup memberships differ by mean absolute `0.0073713`, maximum `1.0`, and
-  124,459 of 1,716,660 values above `1e-6` (7.25%).
-- Transformed shape priors differ by mean absolute `0.0098571`, maximum
-  `1.0`, and 74,023 of 1,716,660 values above `1e-6` (4.31%).
-- The categorical transformed topology agrees exactly at 143,642 of 156,060
-  voxels (92.04%).
+- Java and Python crop bounds match exactly: `[3,35] [3,42] [0,30]`; both use
+  the `(53,60,51)` padded grid.
+- The initial membership objective matches: Java `171.02353`, Python
+  `171.02352905273438`.
+- The source final rigid transform and Python post-refresh transform agree
+  within `1.7e-7` across the six values (the Java diagnostic prints six
+  significant digits).
+- Transformed shape priors: mean absolute difference `1.0611e-8`, maximum
+  `2.8611e-6`; 4,568 of 1,783,980 values exceed `1e-6`.
+- Initial memberships: mean absolute difference `1.0744e-9`, maximum
+  `1.9670e-6`; 66 of 1,783,980 values exceed `1e-6`.
+- First exact membership update: mean absolute difference `5.6475e-10`,
+  maximum `3.7849e-6`; 67 of 1,783,980 values exceed `1e-6`.
+- Transformed constructor topology matches all 162,180 voxels exactly.
+- First thinning labels match all 162,180 voxels exactly.
+- Iteration 1 objective and energy ratio match: Java `50.30009 / 1.0909222`,
+  Python `50.3000908 / 1.09092224`.
 
-These are comparisons on the crop-derived overlapping grid, not an equivalence
-result. The source and Python startup objective values also differ, but are
-not treated as comparable until the crop and initialization are aligned.
+The reported values are selected Java-reference comparisons on one synthetic
+input. They are not a Dice/Hausdorff/mean-surface-distance acceptance result
+for the final MaCRUISE workflow. Python's final trace output is uint8 on the
+input's `(36,45,34)` RAS grid. No real MRI was used.
 
-The Python run reports iteration energy/ratio `105.751678 / 0.70089215` at
-iteration 1; Java reports `50.30009 / 1.0909222`. These values confirm a
-substantial downstream difference but do not localize it while startup grids
-differ. No attempt is made to tune either implementation to these totals.
+## Evidence and remaining work
 
-## Evidence and next action
+- Java source log: ignored diagnostic file
+  `build/java-reference/source-vandy-atlas-first-loop.log`.
+- Python log after changing the production atlas loader: ignored diagnostic
+  file `build/java-reference/python-source-vandy-postfix-first-loop.log`.
+- Focused regression command after the implementation change:
+  `PYTHONPATH=src .venv/bin/pytest -q tests/test_atlas_assets.py tests/test_toads_atlas_startup.py tests/test_toads_registered_first_iteration_cycle.py`
+  — **14 passed in 9.64s**.
+- The deterministic inputs are committed under
+  `tests/data/synthetic/toads_downsampled_vandy_atlas/`; the atlas NIfTIs are
+  bundled under `data/atlases/`.
+- No full pytest suite was run for this change.
 
-- Java source log: ignored diagnostic file `build/java-reference/source-vandy-atlas-first-loop.log`; source completed with output dimensions `[36,45,34]`.
-- Python source-atlas log: ignored diagnostic file `build/java-reference/python-source-vandy-first-loop.log`; run completed in 19.7 seconds and produced RAS uint8 labels.
-- Synthetic inputs: committed fixture `tests/data/synthetic/toads_downsampled_vandy_atlas/` and bundled atlas `data/atlases/cruise-atlas-10obj-toads2008.txt`.
-- The captured arrays are ignored build artifacts, not committed as test samples.
-- No pytest suite was run for this documentation-only evidence update.
-
-Next, explain the one-voxel startup crop difference and compare constructor
-labels, centroids, variances, and memberships after the bounds and coordinate
-mapping match. Do not infer full TOADS equivalence or workflow readiness from
-this partial overlap comparison.
+Next, continue the Java/Python comparison through later TOADS updates and
+convergence, then rerun the restartable base workflow using source-ordered
+atlas inputs. Keep those results separate from this first-cycle match.
