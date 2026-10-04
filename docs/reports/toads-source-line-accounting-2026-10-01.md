@@ -2,8 +2,8 @@
 
 ## Current planning estimate
 
-Most recently refreshed on 2026-10-04 against implementation commit
-`40589ebbf5a567b93d9a7dd44cc86a5f9eb6ec0e`, the estimate is
+Most recently refreshed on 2026-10-04 against tested commit
+`d60c99777b2a776b95a7898b4120918559c935b0`, the estimate is
 **about 3,464–4,864 source lines represented by Python
 operations, out of 13,651 selected Java source lines (about 25–36%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
@@ -78,10 +78,10 @@ nonconverged, and the 50-cycle synthetic loop misses its 1e-4 convergence
 threshold. This is not whole-workflow equivalence or real-data validation. The
 current approximate TOADS line estimate remains **3,464–4,864 of 13,651**.
 
-The 2026-10-04 repository-wide evaluation passed **1,143 tests, 0 failed,
-0 skipped, and 11 expected RAS warnings in 820.91s**, with 14.970 GB peak
-sampled RSS under a 24 GB watchdog. See
-[the full-suite report](full-pytest-2026-10-04-lesion-field-refit.md). The new
-adaptive field-refit transition is LesionTOADS work, outside this report's
-selected base-TOADS source denominator; source-line delta for this estimate is
-zero, and it remains **3,464–4,864 of 13,651 (25–36%)**.
+The latest 2026-10-04 repository-wide evaluation passed **1,146 tests, 0
+failed, 0 skipped, and 11 expected RAS warnings in 804.55s**, with 15.764 GB
+peak sampled RSS under a 24 GB watchdog. See
+[the full-suite report](full-pytest-2026-10-04-active-lesion-energy.md). The
+active descriptor data-term dispatch is LesionTOADS work, outside this
+report's selected base-TOADS source denominator; source-line delta for this
+estimate is zero, and it remains **3,464–4,864 of 13,651 (25–36%)**.
