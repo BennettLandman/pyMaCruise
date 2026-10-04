@@ -13,6 +13,21 @@ manifest says `status=complete` but `converged=false` and
 integration evidence, not a converged full workflow, Java equivalence, or
 clinical validation.
 
+## Source-configured stopping rule
+
+The MATLAB V3 wrapper `run_Toads_jist.m` configures the selected TOADS loop
+with `-inMaximum 1.0E-4` and `-inMaximum2 50` (source SHA-256
+`8c2e9e8ea554eaf4d731082ae1c6d30e66130d6ccf048e5373d622783eb52575`). Thus
+the integrated first pass stopping at iteration 50 with its energy threshold
+false is consistent with the wrapper's configured iteration cap. It is not,
+on its own, evidence of a Python/source mismatch. The second pass stops earlier
+because it reaches the configured threshold. The manifest retains
+`converged=false` because the first pass did not meet the threshold; stage
+completion means the configured loop returned and the workflow continued, not
+that both loops satisfied the energy threshold. The remaining question is
+whether the selected Python and Java implementations produce sufficiently
+similar intermediate and final results under these same source settings.
+
 ## Standalone versus integrated first-pass input
 
 The standalone brain-resolution convergence report used the generated raw T1
@@ -96,7 +111,8 @@ brain-resolution inputs in an ignored build directory:
   --output-dir build/vandy-brain-resolution-memory
 ```
 
-Run the complete synthetic base workflow with converged TOADS iteration limits:
+Run the complete synthetic base workflow with the wrapper's configured TOADS
+stopping rule (energy threshold `1e-4`, iteration cap 50):
 
 ```bash
 ./.venv/bin/python scripts/run_with_rss_watchdog.py \
