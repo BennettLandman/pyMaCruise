@@ -130,6 +130,7 @@ def toads_next_default_membership_pass(
         transformed_shapes,
         volume_ratio,
         thinning_limit,
+        ordering=branch.growing.ordering,
     )
     membership = toads_default_atlas_membership_pass(
         image_values=images,

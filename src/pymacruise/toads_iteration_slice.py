@@ -97,6 +97,7 @@ def toads_continuing_iteration_slice(
         thinning_shape_values,
         volume_ratio,
         thinning_limit,
+        ordering=ordering,
     )
     updated_memberships, objective = toads_object_membership_pass(
         image_values,
@@ -132,7 +133,7 @@ def toads_continuing_iteration_slice(
         thin.segmentation,
         thin.skeleton,
         updated_memberships,
-        ordering,
+        thin.ordering,
         thin.class_volumes,
         initial_available=thin.available,
     )

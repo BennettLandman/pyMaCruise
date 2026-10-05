@@ -745,7 +745,12 @@ def toads_schedule_thinning_neighbors(
 
 @dataclass(frozen=True)
 class ToadsThinningQueueStep:
-    """Full arrays and local decision after processing one max-heap item."""
+    """Full arrays and local decision after processing one max-heap item.
+
+    ``ordering`` is the source array written by ``propagateThinning`` and
+    consumed as the initial grow priority field by the following
+    ``propagateGrowing`` stage.
+    """
 
     segmentation: NDArray[np.int16]
     skeleton: NDArray[np.int16]
@@ -754,6 +759,7 @@ class ToadsThinningQueueStep:
     popped_item: ToadsHeapItem
     transition: ToadsThinningTransition | None
     inserted_neighbors: tuple[ToadsHeapItem, ...]
+    ordering: NDArray[np.float32]
 
 
 @dataclass(frozen=True)
@@ -771,6 +777,7 @@ class ToadsThinningQueueRun:
     processed_items: tuple[ToadsHeapItem, ...]
     queue: ToadsPriorityHeap4D
     processed_count: int
+    ordering: NDArray[np.float32]
 
 
 @dataclass(frozen=True)
@@ -778,7 +785,8 @@ class ToadsThinningPass:
     """Initialized source thinning state after one complete queue pass.
 
     ``processed_count`` is the scalar queue-pop count; callers can avoid
-    retaining all selected heap items in ``processed_items``.
+    retaining all selected heap items in ``processed_items``. ``ordering``
+    carries per-voxel priorities forward into the source growth stage.
     """
 
     segmentation: NDArray[np.int16]
@@ -790,6 +798,7 @@ class ToadsThinningPass:
     processed_items: tuple[ToadsHeapItem, ...]
     queue: ToadsPriorityHeap4D
     processed_count: int
+    ordering: NDArray[np.float32]
 
 
 def toads_propagate_thinning(
@@ -803,13 +812,17 @@ def toads_propagate_thinning(
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
     record_processed_items: bool = True,
+    ordering: ArrayLike | None = None,
 ) -> ToadsThinningPass:
     """Run source ``initThinningLabels`` and one complete thinning pass.
 
     The source fixes its absolute minimum class volume at 100 and combines it
     with ``volume_ratio * initial_volume`` using Java float32 arithmetic.
-    This composes only the exact-membership thinning path; growing and the
-    larger TOADS iteration remain separate.
+    ``ordering`` is the source instance's carried array; omitted input means
+    the Java constructor's initial zero-valued array. The returned field must
+    be passed to later growth and then carried through subsequent thinning
+    passes. This composes only the exact-membership thinning path; the larger
+    TOADS iteration remains separate.
     """
     ratio32 = np.float32(volume_ratio)
     if not np.isfinite(ratio32):
@@ -837,6 +850,7 @@ def toads_propagate_thinning(
         empty_label=empty_label,
         zero_threshold=zero_threshold,
         record_processed_items=record_processed_items,
+        ordering=ordering,
     )
     return ToadsThinningPass(
         run.segmentation,
@@ -848,6 +862,7 @@ def toads_propagate_thinning(
         run.processed_items,
         run.queue,
         run.processed_count,
+        run.ordering,
     )
 
 
@@ -866,6 +881,7 @@ def toads_run_thinning_queue(
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
     record_processed_items: bool = True,
+    ordering: ArrayLike | None = None,
 ) -> ToadsThinningQueueRun:
     """Run the selected ``propagateThinning`` outer heap loop.
 
@@ -884,6 +900,11 @@ def toads_run_thinning_queue(
     skel = np.asarray(skeleton, dtype=np.int16).copy()
     available_state = np.asarray(available, dtype=np.bool_).copy()
     volumes = np.asarray(class_volumes, dtype=np.float32).copy()
+    orderings = (
+        np.zeros(labels.shape, dtype=np.float32)
+        if ordering is None
+        else np.asarray(ordering, dtype=np.float32).copy()
+    )
     mems = np.asarray(memberships, dtype=np.float32)
     relations = np.asarray(relation_matrix)
     shapes = np.asarray(transformed_shape_values, dtype=np.float32)
@@ -895,6 +916,8 @@ def toads_run_thinning_queue(
         raise ValueError("memberships must be 4-D, match segmentation, and contain at least two classes")
     if available_state.shape != labels.shape + (classes,):
         raise ValueError("available must match segmentation and membership classes")
+    if orderings.shape != labels.shape or not np.isfinite(orderings).all():
+        raise ValueError("ordering must be finite and match segmentation")
     if relations.shape != (classes, classes) or relations.dtype != np.bool_:
         raise ValueError("relation_matrix must be a boolean square matrix matching classes")
     if shapes.shape != mems.shape:
@@ -932,6 +955,7 @@ def toads_run_thinning_queue(
             limit32,
             empty_label=empty_label,
             zero_threshold=zero_threshold,
+            ordering=orderings,
             copy_state=False,
             validate_full_arrays=False,
         )
@@ -939,12 +963,14 @@ def toads_run_thinning_queue(
         skel = step.skeleton
         available_state = step.available
         volumes = step.class_volumes
+        orderings = step.ordering
         previous_priority = step.popped_item.value
         if record_processed_items:
             processed.append(step.popped_item)
         processed_count += 1
     return ToadsThinningQueueRun(
-        labels, skel, available_state, volumes, tuple(processed), queue, processed_count
+        labels, skel, available_state, volumes, tuple(processed), queue, processed_count,
+        orderings,
     )
 
 
@@ -962,6 +988,7 @@ def toads_process_next_thinning_item(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    ordering: ArrayLike | None = None,
     copy_state: bool = True,
     validate_full_arrays: bool = True,
 ) -> ToadsThinningQueueStep:
@@ -1012,6 +1039,14 @@ def toads_process_next_thinning_item(
     updated_skeleton = skel.astype(np.int16, copy=copy_state)
     updated_available = avail.copy() if copy_state else avail
     updated_volumes = volumes.copy() if copy_state else volumes
+    source_ordering = (
+        np.zeros(labels.shape, dtype=np.float32)
+        if ordering is None
+        else np.asarray(ordering, dtype=np.float32)
+    )
+    if source_ordering.shape != labels.shape or not np.isfinite(source_ordering).all():
+        raise ValueError("ordering must be finite and match segmentation")
+    updated_ordering = source_ordering.copy() if copy_state else source_ordering
     popped = queue.pop_first()
     x, y, z, label = popped.x, popped.y, popped.z, popped.label
     transition: ToadsThinningTransition | None = None
@@ -1041,6 +1076,11 @@ def toads_process_next_thinning_item(
         updated_available[x, y, z, :] = transition.available_at_center
         updated_volumes = transition.class_volumes.copy()
         if transition.eligible:
+            # MultipleToadSegmentation.propagateThinning records the popped
+            # priority before subtracting volume and clearing the skeleton.
+            # propagateGrowing consumes this carried field as its initial
+            # ordering, so dropping it here changes the registration-loop path.
+            updated_ordering[x, y, z] = popped.value
             updated_available, inserted = toads_schedule_thinning_neighbors(
                 updated_labels,
                 mems,
@@ -1058,5 +1098,5 @@ def toads_process_next_thinning_item(
             )
     return ToadsThinningQueueStep(
         updated_labels, updated_skeleton, updated_available, updated_volumes,
-        popped, transition, inserted,
+        popped, transition, inserted, updated_ordering,
     )

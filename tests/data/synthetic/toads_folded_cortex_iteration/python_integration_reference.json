@@ -12,7 +12,7 @@
   "thinning_processed": 866,
   "topology_gate_calls": {
     "accepted": 1354,
-    "rejected": 740
+    "rejected": 739
   },
   "thinning_segmentation_sha256": "23072e386044808996b8a1a445f836c6881580fbc58e5dc01a1285918516538f",
   "thinning_skeleton_sha256": "5113075f02c74fe1859170b0e75e3493f8eade67d2bbfa8fc5cf1b0ffe4b02e6",
@@ -25,10 +25,10 @@
     false,
     true
   ],
-  "growing_processed": 1815,
-  "growing_segmentation_sha256": "c1e070b1379e279e2af8dc4bbc75654188a122b172258c4a00566467843f3e5e",
-  "growing_skeleton_sha256": "fe932a8e256de3330a13bef385bf8ac4991a513080434b47c2071b2f4695f64c",
-  "relation_map_sha256": "f466718f7e9c162abfabcf63061441f191be668d02fd8539e3f3e58e42397d2c",
-  "boundary_distance_sha256": "3b0a980ddef08f87a39156bc855293bbd29ac7c4c911918c04530e9a81888047",
-  "closest_labels_sha256": "03079062585cb97a92cf70e60c2918f5c2469d4dddede0c3a9f136de6389e8b0"
+  "growing_processed": 1805,
+  "growing_segmentation_sha256": "6a0afba4697694400cc9d21607a9332b20871dc25ac16cbd9ce450c5523f2b70",
+  "growing_skeleton_sha256": "d6d5e8e62a5195856238c03a746b2f9a6702f2e9926ac93df6bccb8fcf12e76d",
+  "relation_map_sha256": "8f493fb182a2d8d3682d5ae3921ba12e1109eb4e0fa76033d6889f7c487cf0d6",
+  "boundary_distance_sha256": "a509fdc4f66ff581b93d9d7782f5dd19017e73058fbaaf3cabb3eebb07798933",
+  "closest_labels_sha256": "2ddf47f074504d176a8e29fd32d1d449069a647bd8505916f20fa53cf182504e"
 }

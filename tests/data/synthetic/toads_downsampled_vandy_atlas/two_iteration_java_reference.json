@@ -115,9 +115,9 @@
     "Java raw float arrays were serialized x/y/z/class and converted to float32 for this compressed reference fixture.",
     "Iteration-1 Python membership error is reported by count, mean, and maximum in python_observed_after_full_grid_bounds_fix; no tolerance hides the observed values.",
     "The first registered-loop rigid transform now matches the pinned Java transform bit-for-bit after the Python exact coefficient path was changed to scan the complete image grid, as the selected Java method does.",
-    "Despite matching transforms, the current Python/Java trace still differs at 55 post-growth voxels, 843 closest-label entries, and 42 next-thinning voxels. This is an unresolved downstream state divergence, not attributed to the former registration transform split.",
-    "The iteration-2 membership maximum discrepancy is large despite its low tensor mean; its exact mean, maximum, and count are recorded and it is not accepted as membership equivalence.",
-    "Per-label iteration-2 thinning Dice is above 0.9955 and meets the project 0.97 segmentation threshold for this synthetic intermediate only.",
+    "Carrying propagateThinning ordering into propagateGrowing resolves the first post-registration state split: selected Java and Python now match the first grown segmentation, closest-label state, and next thinning exactly. This remains a selected synthetic source comparison, not whole-workflow equivalence.",
+    "After the ordering-state correction, iteration-2 memberships have MAE 2.665871134954756e-10, maximum 4.306435585021973e-6, and zero values above 1e-5; the objective matches the Java float32 value bit-for-bit.",
+    "Iteration-2 per-label thinning Dice is 1.0 on this selected synthetic intermediate; this is not clinical validation or full MaCRUISE validation.",
     "No clinical image was used; this is not a full MaCRUISE output comparison.",
     "The python_observed_before_full_grid_bounds_fix entry retains the earlier support-bounded-adapter diagnostic for history; it is superseded by python_observed_after_full_grid_bounds_fix."
   ],
@@ -149,7 +149,7 @@
     "iteration2_membership_mae_max": 6e-06,
     "iteration2_membership_max_error_max": 0.4,
     "iteration2_objective_absolute_difference_max": 0.002,
-    "iteration2_thinning_different_voxels": 42
+    "iteration2_thinning_different_voxels": 0
   },
   "source_scope": "selected VandyCRUISE two-iteration run on committed synthetic input",
   "source_sha256": {
@@ -206,5 +206,26 @@
     "iteration2_membership_max_error": 0.39456701278686523,
     "iteration2_objective": 43.74055862426758,
     "iteration2_objective_absolute_difference": 0.0023953757324193248
+  },
+  "python_observed_after_ordering_carry_fix": {
+    "iteration1_membership_count_over_1e6": 16,
+    "iteration1_membership_mae": 1.2715435648846807e-10,
+    "iteration1_membership_max_error": 4.5299530029296875e-06,
+    "post_refresh_registration_transform_equal_java_bits": true,
+    "iteration1_registered_transform_equal_java_bits": true,
+    "iteration1_grown_segmentation_different_voxels": 0,
+    "iteration1_closest_label_different_entries": 0,
+    "iteration2_thinning_different_voxels": 0,
+    "iteration2_minimum_class_dice": 1.0,
+    "iteration2_centroid_mae": 7.179650651778502e-08,
+    "iteration2_centroid_max_error": 7.152557373046875e-07,
+    "iteration2_standard_deviation_mae": 1.7484126146882772e-08,
+    "iteration2_standard_deviation_max_error": 1.8114224076271057e-07,
+    "iteration2_standard_deviation_count_over_1e6": 0,
+    "iteration2_membership_count_over_1e5": 0,
+    "iteration2_membership_mae": 2.665871134954756e-10,
+    "iteration2_membership_max_error": 4.306435585021973e-06,
+    "iteration2_objective": 43.74295425415039,
+    "iteration2_objective_absolute_difference": 2.5415039317522314e-07
   }
 }

@@ -52,4 +52,5 @@ def toads_default_continue_thinning(
         shapes,
         volume_ratio=0.5,
         limit=3.0,
+        ordering=transition.growing.ordering,
     )

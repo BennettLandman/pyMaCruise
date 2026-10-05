@@ -123,7 +123,6 @@ def continue_registered_first_exact_iteration_through_next_thinning(
 
     constructor = alignment_run.segmentation_constructor
     relation_state = alignment_run.relation_state
-    initial_ordering = np.zeros(startup.thinning.segmentation.shape, dtype=np.float32)
     registered_iteration = continue_default_membership_registered_iteration(
         registration_control,
         previous_energy=previous_energy,
@@ -132,7 +131,7 @@ def continue_registered_first_exact_iteration_through_next_thinning(
         convergence_threshold=convergence_threshold,
         segmentation=startup.thinning.segmentation,
         skeleton=startup.thinning.skeleton,
-        ordering=initial_ordering,
+        ordering=startup.thinning.ordering,
         class_volumes=startup.thinning.class_volumes,
         boundary_distances=relation_state.boundary_distances,
         template_labels=np.asarray(

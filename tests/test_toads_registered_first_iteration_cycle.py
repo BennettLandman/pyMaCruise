@@ -171,7 +171,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         startup.thinning.segmentation,
         startup.thinning.skeleton,
         exact.membership_pass.memberships,
-        np.zeros(startup.thinning.segmentation.shape, dtype=np.float32),
+        startup.thinning.ordering,
         startup.thinning.class_volumes,
         initial_available=startup.thinning.available,
     )
@@ -204,6 +204,7 @@ def test_registered_first_exact_loop_reaches_iteration_two_memberships() -> None
         expected_shapes,
         volume_ratio=0.5,
         limit=3.0,
+        ordering=direct_growing.ordering,
     )
     np.testing.assert_array_equal(result.next_thinning.thinning.segmentation, expected_thinning.segmentation)
     np.testing.assert_array_equal(result.next_thinning.thinning.skeleton, expected_thinning.skeleton)

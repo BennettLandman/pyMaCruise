@@ -92,11 +92,11 @@ def _registered_two_iteration_run():
     return atlas, run_registered_toads_loop(alignment, config)
 
 
-def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_drift() -> None:
+def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None:
     """Compare two loop-boundary states to a pinned selected-source Java run.
 
-    The captured Java memberships and registration trace provide a narrow
-    source-reference comparison; later membership drift remains unresolved.
+    Compare the selected two-iteration synthetic Vandy reference, with the
+    whole Java composite and natural convergence kept as separate claims.
     """
     assert PROVENANCE["source_scope"] == "selected VandyCRUISE two-iteration run on committed synthetic input"
     assert PROVENANCE["source_sha256"]["AlgorithmMultipleToads.java"] == (
@@ -302,10 +302,10 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
 
         java_grown = java["iteration1_grown_segmentation"]
         python_grown = first_cycle.registered_iteration.branch.growing.segmentation
-        assert np.count_nonzero(python_grown != java_grown) == 55
+        assert np.count_nonzero(python_grown != java_grown) == 0
         java_closest = java["iteration1_closest_labels"]
         python_closest = first_cycle.registered_iteration.branch.relations.closest_labels
-        assert np.count_nonzero(python_closest != java_closest) == 843
+        assert np.count_nonzero(python_closest != java_closest) == 0
 
         next_thinning = result.registered_cycles[0].next_thinning.thinning.segmentation
         java_next_thinning = java["iteration2_thinning_segmentation"]
@@ -322,15 +322,15 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
                 else 2.0 * np.count_nonzero(python_class & java_class) / denominator
             )
         changed = int(np.count_nonzero(next_thinning != java_next_thinning))
-        assert changed == PROVENANCE["regression_envelope"]["iteration2_thinning_different_voxels"] == 42
-        assert min(dice_by_label.values()) >= 0.995
+        assert changed == PROVENANCE["python_observed_after_ordering_carry_fix"]["iteration2_thinning_different_voxels"] == 0
+        assert min(dice_by_label.values()) == 1.0
 
         java_centroids = java["iteration2_centroids"]
         np.testing.assert_allclose(second.centroids, java_centroids, rtol=0, atol=1e-6)
         java_deviations = java["iteration2_standard_deviations"]
         deviation_delta = np.abs(second.standard_deviations - java_deviations)
-        assert np.count_nonzero(deviation_delta > 1e-6) == 5
-        assert np.max(deviation_delta) <= 1.1e-4
+        assert np.count_nonzero(deviation_delta > 1e-6) == 0
+        assert np.max(deviation_delta) <= 2e-7
 
         # Reuse the Python source-matched variance kernel on identical Java
         # state to distinguish an input-state split from a kernel mismatch.
@@ -356,7 +356,7 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
         mean_absolute = float(np.mean(difference))
         maximum_absolute = float(np.max(difference))
         count_over_1e5 = int(np.count_nonzero(difference > 1e-5))
-        corrected_python = PROVENANCE["python_observed_after_full_grid_bounds_fix"]
+        corrected_python = PROVENANCE["python_observed_after_ordering_carry_fix"]
         assert mean_absolute == corrected_python["iteration2_membership_mae"]
         assert maximum_absolute == corrected_python["iteration2_membership_max_error"]
         assert count_over_1e5 == corrected_python["iteration2_membership_count_over_1e5"]
@@ -365,3 +365,4 @@ def test_vandy_iteration_memberships_and_next_thinning_match_java_with_known_dri
             - PROVENANCE["java_trace"]["iteration2_objective"]
         )
         assert objective_difference == corrected_python["iteration2_objective_absolute_difference"]
+        assert np.float32(second.membership_pass.objective) == np.float32(PROVENANCE["java_trace"]["iteration2_objective"])

@@ -236,7 +236,7 @@ def run_registered_toads_loop(
             convergence_threshold=config.convergence_threshold,
             segmentation=previous_thinning.thinning.segmentation,
             skeleton=previous_thinning.thinning.skeleton,
-            ordering=previous_branch.growing.ordering,
+            ordering=previous_thinning.thinning.ordering,
             class_volumes=previous_thinning.thinning.class_volumes,
             boundary_distances=previous_branch.relations.boundary_distances,
             template_labels=np.asarray(

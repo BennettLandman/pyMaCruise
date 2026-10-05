@@ -66,6 +66,7 @@ def toads_post_registration_next_thinning(
         volume_ratio=0.5,
         limit=3.0,
         record_processed_items=record_thinning_items,
+        ordering=branch.growing.ordering,
     )
     return ToadsPostRegistrationNextThinning(
         branch=branch,
