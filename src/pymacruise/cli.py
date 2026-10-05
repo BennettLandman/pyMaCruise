@@ -453,6 +453,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plus_lesion_workflow.add_argument("--resume", action="store_true")
 
+    plus_full = commands.add_parser(
+        "plus-full-run",
+        help="run raw T1/FLAIR/mask inputs through restartable terminal LesionTOADS outputs",
+    )
+    plus_full.add_argument("--t1", required=True, type=Path)
+    plus_full.add_argument("--flair", required=True, type=Path)
+    plus_full.add_argument("--brain-mask", required=True, type=Path)
+    plus_full.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_full.add_argument("--output-dir", required=True, type=Path)
+    plus_full.add_argument("--registration-iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
+    plus_full.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
+    plus_full.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
+    plus_full.add_argument("--registration-sampling-rate", type=float, default=0.25)
+    plus_full.add_argument("--n4-shrink-factor", type=int, default=4)
+    plus_full.add_argument("--n4-iterations", type=int, nargs="+", default=[50, 50, 50, 50])
+    plus_full.add_argument("--n4-convergence-tolerance", type=float, default=0.0)
+    plus_full.add_argument("--n4-spline-mesh", type=int, nargs=3, default=[1, 1, 1])
+    plus_full.add_argument("--crop-padding", type=int, default=10)
+    plus_full.add_argument("--init-align-iterations", type=int, default=10)
+    plus_full.add_argument("--pyramid-levels", type=int, default=2)
+    plus_full.add_argument("--lesion-iterations", type=int, default=99)
+    plus_full.add_argument("--first-thinning-limit", type=float, default=3.0)
+    plus_full.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
+    plus_full.add_argument("--max-distance", type=float, default=0.0)
+    plus_full.add_argument("--loop-convergence-threshold", type=float)
+    plus_full.add_argument("--n-iter-max", type=int, default=99)
+    plus_full.add_argument("--loop-thinning-limit", type=float, default=3.0)
+    plus_full.add_argument("--max-passes", type=int, default=1)
+    plus_full.add_argument("--finite-zero-variance", action="store_true")
+    plus_full.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -748,6 +779,48 @@ def main(argv: list[str] | None = None) -> int:
         )
         verb = "Verified and resumed" if result.resumed else "Completed"
         print(f"{verb} plus LesionTOADS loop workflow: {result.manifest_path}")
+        if result.classification_path is not None:
+            print(f"Terminal classification: {result.classification_path}")
+        if result.lesion_subtype_path is not None:
+            print(f"Lesion subtype: {result.lesion_subtype_path}")
+    elif args.command == "plus-full-run":
+        from pymacruise.plus_full_workflow import run_plus_full_workflow
+        from pymacruise.registration import RegistrationConfig
+
+        registration_config = RegistrationConfig(
+            transform_type="Rigid",
+            metric="mattes",
+            sampling_rate=args.registration_sampling_rate,
+            iterations=tuple(args.registration_iterations),
+            shrink_factors=tuple(args.shrink_factors),
+            smoothing_sigmas=tuple(args.smoothing_sigmas),
+        )
+        n4_config = N4Config(
+            shrink_factor=args.n4_shrink_factor,
+            iterations=tuple(args.n4_iterations),
+            convergence_tolerance=args.n4_convergence_tolerance,
+            spline_mesh=tuple(args.n4_spline_mesh),
+        )
+        result = run_plus_full_workflow(
+            args.t1, args.flair, args.brain_mask, args.atlas_descriptor, args.output_dir,
+            registration_config=registration_config,
+            n4_config=n4_config,
+            crop_padding=args.crop_padding,
+            init_align_iterations=args.init_align_iterations,
+            pyramid_levels=args.pyramid_levels,
+            lesion_iterations=args.lesion_iterations,
+            first_thinning_limit=args.first_thinning_limit,
+            first_thinning_volume_ratio=args.first_thinning_volume_ratio,
+            source_zero_variance_nan=not args.finite_zero_variance,
+            max_distance=args.max_distance,
+            loop_convergence_threshold=args.loop_convergence_threshold,
+            n_iter_max=args.n_iter_max,
+            loop_thinning_limit=args.loop_thinning_limit,
+            max_passes=args.max_passes,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Completed"
+        print(f"{verb} raw-input plus LesionTOADS workflow: {result.manifest_path}")
         if result.classification_path is not None:
             print(f"Terminal classification: {result.classification_path}")
         if result.lesion_subtype_path is not None:

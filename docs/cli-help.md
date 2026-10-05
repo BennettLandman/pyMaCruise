@@ -677,3 +677,24 @@ that reaches convergence or the iteration cap writes terminal classification
 and lesion-subtype NIfTIs; otherwise it writes a continuing checkpoint. This
 does not establish complete MaCRUISEplus, Java composite equivalence, or
 real-image validation.
+
+## `pymacruise plus-full-run`
+
+Run the restartable raw-input plus LesionTOADS path from T1, FLAIR, a user-provided T1-grid brain mask, and a descriptor-owned atlas through preprocessing, crop, initial atlas alignment, registered recrop, and the terminal or continuing registered LesionTOADS checkpoint.
+
+```bash
+pymacruise plus-full-run --t1 T1.nii.gz --flair FLAIR.nii.gz \
+  --brain-mask brain-mask.nii.gz --atlas-descriptor atlas.txt \
+  --output-dir plus-output \
+  --registration-iterations 1000 500 250 0 \
+  --shrink-factors 6 4 2 1 --smoothing-sigmas 3 2 1 0 \
+  --n4-iterations 50 50 50 50 --resume
+```
+
+The required T1-grid mask replaces BET/SPECTRE skull stripping. The FLAIR may have a different physical grid; rigid ANTsPy registration resamples it onto T1. The atlas descriptor resolves its own compressed topology and shape maps. The top-level `plus-full-workflow.json` records ordered child manifests, input/settings signatures, stage state, and hashes. `--resume` verifies completed outputs and delegates repair of invalid checkpoints to each stage. The defaults follow the selected wrapper route; the ANTsPy registration backend is a documented substitute for NiftyReg/Aladin, not source-equivalent registration.
+
+Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last T1/FLAIR modalities, atlas-aligned/recropped state, and registered LesionTOADS continuation products. A terminal stop also writes `final_classification.nii.gz` and `final_lesion_subtype.nii.gz`. This command currently ends at the selected LesionTOADS checkpoint; it does not yet run the remaining Dura-to-CRUISE surface stages or establish complete plus/source equivalence.
+
+Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance`, `--loop-convergence-threshold`, `--n-iter-max`, `--loop-thinning-limit`, and `--max-passes`. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms.
+
+For a compact committed synthetic case, use `tests/data/synthetic/plus_lesion_atlas_init/mini-lesion-toads-atlas.txt` and the matching NIfTI topology/shape maps. See `tests/test_plus_full_workflow.py` for a complete invocation with low-cost settings.
