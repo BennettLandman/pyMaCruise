@@ -36,7 +36,8 @@ complete terminal manifest again.
 
 ## Full regression validation
 
-Implementation commit: `edb7fba9feb5084f9eddc38e5fc982601d7a1d44`.
+Workflow implementation commit: `edb7fba9feb5084f9eddc38e5fc982601d7a1d44`.
+Installed-wheel CLI verification commit: `1bc2b98c7665fe6b337fd940d440bf25db268784`.
 
 ```bash
 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
@@ -44,9 +45,15 @@ PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   env PYTHONPATH=src ./.venv/bin/pytest -q
 ```
 
-Result: **1,196 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
-1,152.11s**. Peak sampled RSS was **15.036 GB**; the watchdog did not
+Result on `1bc2b98c7665fe6b337fd940d440bf25db268784`: **1,196 passed, 0 failed,
+0 skipped, 11 expected RAS warnings in 1,175.06s**. Peak sampled RSS was
+**13.989 GB**; the watchdog did not
 terminate the run.
+
+The isolated wheel test additionally resolves packaged atlases and invokes
+`python -m pymacruise.cli workflow-run --help` with only the installed target
+and an ANTs import marker on the path; it passed **1 test in 23.12s**. The
+entire workflow has not yet been executed from the installed wheel.
 
 ## Scope limit
 
