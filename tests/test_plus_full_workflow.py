@@ -10,6 +10,7 @@ import pytest
 
 from pymacruise.cli import main
 from pymacruise.lesion_dura_outputs import generate_lesion_dura_removal_outputs
+from pymacruise.spatial_transfer import transfer_to_reference_space
 
 
 ROOT = Path(__file__).parent
@@ -64,7 +65,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     assert manifest["terminal"] is True
     assert manifest["stage_order"] == [
         "preprocessing", "crop", "initial_alignment", "registered_recrop",
-        "lesion_workflow", "dura_outputs",
+        "lesion_workflow", "dura_outputs", "native_dura_transfer",
     ]
     for record in manifest["stages"].values():
         child = Path(record["manifest"]["path"])
@@ -187,6 +188,40 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     assert _sha256(Path(
         repaired_loop_workflow["stages"]["registered_loop"]["manifest"]["path"]
     )) == prior_registered_loop_hash
+
+    native_manifest = json.loads(
+        Path(repaired_dura_top["stages"]["native_dura_transfer"]["manifest"]["path"]).read_text()
+    )
+    assert native_manifest["source_order"] == [
+        "transfer GM", "transfer WM-fill", "transfer WM-mask"
+    ]
+    native_reference = nib.load(str(t1))
+    for name in ("gm", "wm_fill", "wm_mask"):
+        source = nib.load(repaired_dura["outputs"][name]["path"])
+        expected_native = transfer_to_reference_space(source, native_reference, cval=0.0)
+        actual_native_path = Path(native_manifest["outputs"][name]["path"])
+        actual_native = nib.load(str(actual_native_path))
+        assert actual_native.shape == native_reference.shape
+        assert actual_native.get_data_dtype() == np.dtype(np.float32)
+        assert nib.aff2axcodes(actual_native.affine) == ("R", "A", "S")
+        np.testing.assert_allclose(actual_native.affine, native_reference.affine, rtol=0, atol=1e-5)
+        np.testing.assert_array_equal(
+            np.asarray(actual_native.dataobj), np.asarray(expected_native.dataobj)
+        )
+
+    native_tail = Path(native_manifest["outputs"]["gm"]["path"])
+    native_tail.write_bytes(b"corrupt native transfer")
+    prior_dura_manifest_hash = _sha256(repaired_dura_manifest)
+    assert main(_command(t1, flair, mask, output, "--resume")) == 0
+    repaired_native_top = json.loads(manifest_path.read_text())
+    repaired_native_manifest_path = Path(
+        repaired_native_top["stages"]["native_dura_transfer"]["manifest"]["path"]
+    )
+    repaired_native_manifest = json.loads(repaired_native_manifest_path.read_text())
+    repaired_native_tail = Path(repaired_native_manifest["outputs"]["gm"]["path"])
+    assert nib.load(str(repaired_native_tail)).shape == native_reference.shape
+    assert _sha256(repaired_native_tail) == repaired_native_manifest["outputs"]["gm"]["sha256"]
+    assert _sha256(repaired_dura_manifest) == prior_dura_manifest_hash
 
     with pytest.raises(ValueError, match="inputs or settings differ"):
         main(_command(t1, flair, mask, output, "--resume", "--crop-padding", "2"))

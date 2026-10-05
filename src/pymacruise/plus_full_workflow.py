@@ -16,6 +16,7 @@ from pymacruise.plus_lesion_dura_output_checkpoint import run_plus_lesion_dura_o
 from pymacruise.plus_lesion_preprocessing import run_plus_lesion_preprocessing_checkpoint
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
 from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
+from pymacruise.plus_lesion_native_dura_transfer import run_plus_lesion_native_dura_transfer
 from pymacruise.registration import RegistrationConfig
 
 
@@ -32,6 +33,7 @@ class PlusFullWorkflowResult:
     classification_path: Path | None
     lesion_subtype_path: Path | None
     dura_output_paths: dict[str, Path]
+    native_dura_output_paths: dict[str, Path]
     resumed: bool
 
 
@@ -145,7 +147,7 @@ def run_plus_full_workflow(
         "stage": "plus-full-workflow",
         "stage_order": [
             "preprocessing", "crop", "initial_alignment", "registered_recrop",
-            "lesion_workflow", "dura_outputs",
+            "lesion_workflow", "dura_outputs", "native_dura_transfer",
         ],
         "spatial_convention": "RAS",
         "inputs": inputs,
@@ -184,6 +186,7 @@ def run_plus_full_workflow(
         "registered_recrop": root / "registered-recrop" / "lesion-registered-recrop.json",
         "lesion_workflow": root / "lesion-workflow" / "plus-lesion-loop-workflow.json",
         "dura_outputs": root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
+        "native_dura_transfer": root / "native-dura" / "native-dura-transfer.json",
     }
     definitions = (
         ("preprocessing", "plus-lesion-input-preparation"),
@@ -192,6 +195,7 @@ def run_plus_full_workflow(
         ("registered_recrop", "plus-lesion-registered-recrops"),
         ("lesion_workflow", "plus-lesion-loop-workflow"),
         ("dura_outputs", "plus-lesion-dura-output-checkpoint"),
+        ("native_dura_transfer", "plus-lesion-native-dura-transfer"),
     )
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
@@ -243,7 +247,7 @@ def run_plus_full_workflow(
                     max_passes=max_passes,
                     resume=resume,
                 )
-            else:
+            elif name == "dura_outputs":
                 recrop = results["registered_recrop"]
                 loop = results["lesion_workflow"]
                 result = run_plus_lesion_dura_output_checkpoint(
@@ -251,6 +255,11 @@ def run_plus_full_workflow(
                     loop.registered_loop_manifest,
                     root / "dura-outputs",
                     resume=resume,
+                )
+            else:
+                dura = results["dura_outputs"]
+                result = run_plus_lesion_native_dura_transfer(
+                    dura.manifest_path, t1, root / "native-dura", resume=resume
                 )
         except Exception as exc:
             manifest["status"] = "failed"
@@ -275,6 +284,7 @@ def run_plus_full_workflow(
 
     loop_result = results["lesion_workflow"]
     dura_result = results["dura_outputs"]
+    native_dura_result = results["native_dura_transfer"]
     manifest["status"] = "complete"
     manifest["active_stage"] = None
     manifest["terminal"] = loop_result.classification_path is not None
@@ -283,6 +293,10 @@ def run_plus_full_workflow(
         **{
             name: _file_record(path)
             for name, path in dura_result.outputs.items()
+        },
+        **{
+            f"native_{name}": _file_record(path)
+            for name, path in native_dura_result.outputs.items()
         },
     }
     _write_json(manifest_path, manifest)
@@ -296,5 +310,6 @@ def run_plus_full_workflow(
         loop_result.classification_path,
         loop_result.lesion_subtype_path,
         dura_result.outputs,
+        native_dura_result.outputs,
         resume,
     )

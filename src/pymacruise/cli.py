@@ -827,6 +827,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Lesion subtype: {result.lesion_subtype_path}")
         for channel, path in result.dura_output_paths.items():
             print(f"LesionTOADS {channel} for Dura: {path}")
+        for channel, path in result.native_dura_output_paths.items():
+            print(f"Native-T1 LesionTOADS {channel}: {path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions
