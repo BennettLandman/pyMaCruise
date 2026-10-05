@@ -335,6 +335,26 @@ def build_parser() -> argparse.ArgumentParser:
     plus_register.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
     plus_register.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
 
+    plus_prepare_lesion = commands.add_parser(
+        "plus-prepare-lesion",
+        help="register FLAIR, N4-correct both modalities, and apply the supplied T1-grid brain mask",
+    )
+    plus_prepare_lesion.add_argument("--t1", required=True, type=Path, help="input T1 .nii.gz")
+    plus_prepare_lesion.add_argument("--flair", required=True, type=Path, help="moving FLAIR .nii.gz")
+    plus_prepare_lesion.add_argument("--brain-mask", required=True, type=Path, help="same-grid T1 brain mask .nii.gz")
+    plus_prepare_lesion.add_argument("--output-dir", required=True, type=Path)
+    plus_prepare_lesion.add_argument("--resume", action="store_true")
+    plus_prepare_lesion.add_argument("--metric", choices=("mattes", "meansquares", "GC"), default="mattes")
+    plus_prepare_lesion.add_argument("--metric-bins", type=int, default=32)
+    plus_prepare_lesion.add_argument("--sampling-rate", type=float, default=0.2)
+    plus_prepare_lesion.add_argument("--registration-iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
+    plus_prepare_lesion.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
+    plus_prepare_lesion.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
+    plus_prepare_lesion.add_argument("--n4-shrink-factor", type=int, default=4)
+    plus_prepare_lesion.add_argument("--n4-iterations", type=int, nargs="+", default=[50, 50, 50, 50])
+    plus_prepare_lesion.add_argument("--n4-convergence-tolerance", type=float, default=0.0)
+    plus_prepare_lesion.add_argument("--n4-spline-mesh", type=int, nargs=3, default=[1, 1, 1])
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -484,6 +504,36 @@ def main(argv: list[str] | None = None) -> int:
         verb = "Verified and resumed" if result.resumed else "Registered"
         print(f"{verb} FLAIR on the T1 RAS grid: {result.warped_flair_path}")
         print(f"Registration manifest: {result.manifest_path}")
+    elif args.command == "plus-prepare-lesion":
+        from pymacruise.n4 import N4Config
+        from pymacruise.plus_lesion_preprocessing import run_plus_lesion_preprocessing_checkpoint
+        from pymacruise.registration import RegistrationConfig
+
+        result = run_plus_lesion_preprocessing_checkpoint(
+            args.t1,
+            args.flair,
+            args.brain_mask,
+            args.output_dir,
+            registration_config=RegistrationConfig(
+                transform_type="Rigid",
+                metric=args.metric,
+                metric_bins=args.metric_bins,
+                sampling_rate=args.sampling_rate,
+                iterations=tuple(args.registration_iterations),
+                shrink_factors=tuple(args.shrink_factors),
+                smoothing_sigmas=tuple(args.smoothing_sigmas),
+            ),
+            n4_config=N4Config(
+                shrink_factor=args.n4_shrink_factor,
+                iterations=tuple(args.n4_iterations),
+                convergence_tolerance=args.n4_convergence_tolerance,
+                spline_mesh=tuple(args.n4_spline_mesh),
+            ),
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Prepared"
+        print(f"{verb} source-ordered T1/FLAIR inputs: {result.modalities_path}")
+        print(f"Lesion-preprocessing manifest: {result.manifest_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

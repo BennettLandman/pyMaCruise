@@ -1,10 +1,11 @@
 # PyMaCRUISE command-line input/output reference
 
 This page is the expanded `--help` contract for the supported inputs and
-outputs. The command line exposes preparation, individual scientific stages, and a
-standalone registered TOADS loop, restartable base workflow, plus FLAIR-registration checkpoint,
-and a restartable plus continuation from precomputed upstream products. Full two-pass
-base and plus workflows remain under development.
+outputs. The command line exposes preparation, individual scientific stages, a
+standalone registered TOADS loop, restartable base workflow, plus FLAIR-registration
+and LesionTOADS image-preparation checkpoints, and a restartable plus continuation
+from precomputed upstream products. Full two-pass base and plus workflows remain
+under development.
 
 ## `pymacruise workflow-preflight`
 
@@ -445,3 +446,26 @@ output hashes, and the warped image grid before skipping registration.
 ANTsPy is an explicit Python backend substitute; NiftyReg/Aladin numerical
 equivalence is unvalidated. This checkpoint alone does not run N4, TOADS,
 LesionTOADS, or the full plus workflow.
+
+## `pymacruise plus-prepare-lesion`
+
+```text
+pymacruise plus-prepare-lesion --t1 T1.nii.gz --flair FLAIR.nii.gz \
+  --brain-mask BrainMask.nii.gz --output-dir lesion-inputs [--resume] \
+  [--metric mattes|meansquares|GC] [--metric-bins 32] \
+  [--sampling-rate 0.2] [--registration-iterations 1000 500 250 0] \
+  [--shrink-factors 6 4 2 1] [--smoothing-sigmas 3 2 1 0] \
+  [--n4-shrink-factor 4] [--n4-iterations 50 50 50 50] \
+  [--n4-convergence-tolerance 0] [--n4-spline-mesh 1 1 1]
+```
+
+This restartable input-preparation checkpoint follows the selected plus order:
+rigidly register FLAIR to T1 with ANTsPy, N4-correct T1 and registered FLAIR,
+then apply the supplied T1-grid brain mask and set negative values to zero. It
+writes `t1_brain.nii.gz`, `flair_brain.nii.gz`, a 4-D channel-last
+`modalities_t1_flair.nii.gz`, and a hash-checked manifest. Inputs must be
+compressed 3-D NIfTI; T1 and mask must share a grid, while FLAIR may start on
+another grid. Outputs use RAS and modality order is exactly `T1, FLAIR`. The
+ANTsPy registration is not numerically validated against NiftyReg/Aladin. This
+command prepares LesionTOADS inputs; it does not execute LesionTOADS, the Dura
+workflow, or complete MaCRUISEplus.
