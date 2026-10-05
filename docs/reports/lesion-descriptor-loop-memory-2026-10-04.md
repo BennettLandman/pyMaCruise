@@ -2,7 +2,7 @@
 
 - Focused command: `./.venv/bin/pytest -q tests/test_lesion_registered_repeated_iteration.py`
 - Focused result: **1 passed, 0 failed, 0 skipped in 14.09s**.
-- Tested loop driver: commit `dbb6a64741a5befc67487a62d8ff0c0d46f723e0` plus this retention-mode change.
+- Tested implementation commit: `30d41c8470b80b9f48051d7273e1b758a37fe9fe`.
 
 The loop driver now stores compact iteration summaries by default rather than
 retaining every full-volume shape, membership, and transition result. Its
@@ -14,4 +14,6 @@ stop outcomes.
 
 The final branch necessarily retains final scientific state. The synthetic
 fixture does not establish peak memory for a brain-resolution LesionTOADS
-run. Full repository regression evidence is pending.
+run. Full repository suite: **1,167 passed, 0 failed, 0 skipped, 11 expected
+RAS warnings in 907.95s**, peak sampled RSS **13.706 GB** under the 24 GB
+watchdog. See the [full-suite report](full-pytest-2026-10-04-lesion-descriptor-loop-memory.md).
