@@ -104,6 +104,7 @@ def run_plus_full_workflow(
     n_iter_max: int = 99,
     loop_thinning_limit: float = 3.0,
     max_passes: int = 1,
+    pipeline_options: PlusPipelineOptions = PlusPipelineOptions(),
     resume: bool = False,
 ) -> PlusFullWorkflowResult:
     """Run raw inputs through LesionTOADS and terminal CRUISE surface outputs.
@@ -115,6 +116,8 @@ def run_plus_full_workflow(
         raise TypeError("registration_config must be RegistrationConfig")
     if not isinstance(n4_config, N4Config):
         raise TypeError("n4_config must be N4Config")
+    if not isinstance(pipeline_options, PlusPipelineOptions):
+        raise TypeError("pipeline_options must be PlusPipelineOptions")
     if not isinstance(resume, bool):
         raise TypeError("resume must be boolean")
     t1 = Path(t1_path).expanduser().resolve()
@@ -310,7 +313,7 @@ def run_plus_full_workflow(
                     multi_atlas_mask_path=cortical.outputs["Atlas_Mask"],
                     brain_mask_path=mask,
                     output_dir=root / "plus-surface",
-                    options=PlusPipelineOptions(),
+                    options=pipeline_options,
                     resume=resume,
                 )
                 result = plus

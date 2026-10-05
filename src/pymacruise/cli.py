@@ -299,6 +299,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="replace an existing run.json manifest only; do not remove other files",
     )
+    workflow_run = commands.add_parser(
+        "workflow-run",
+        help="execute a restartable base or plus workflow from a JSON configuration",
+    )
+    workflow_run.add_argument("--config", required=True, type=Path)
+    workflow_run.add_argument(
+        "--resume", action="store_true",
+        help="resume from verified checkpoints in the configured output directory",
+    )
     base_run = commands.add_parser(
         "base-run",
         help="execute the restartable synthetic/native-grid base MaCRUISE stage chain",
@@ -588,6 +597,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Preflight passed: {manifest_path}")
         print("Dry run only; no N4 correction or segmentation workflow was executed.")
         print(f"Workflow profile: {manifest['workflow_profile']}")
+    elif args.command == "workflow-run":
+        from pymacruise.workflow import run_workflow_config
+
+        config = load_workflow_config_file(args.config)
+        manifest_path = run_workflow_config(config, resume=args.resume)
+        print(f"Workflow complete: {manifest_path}")
+        print(f"Workflow profile: {config.profile.value}")
     elif args.command == "base-run":
         from pymacruise.base_workflow import BaseRunOptions, run_base_workflow
 

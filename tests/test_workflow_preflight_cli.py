@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import nibabel as nib
 import numpy as np
@@ -257,3 +258,55 @@ def test_workflow_config_rejects_unknown_fields_and_non_array_labels(tmp_path) -
     path.write_text(json.dumps(config), encoding="utf-8")
     with pytest.raises(ValueError, match="must be a JSON array"):
         workflow.load_workflow_config_file(path)
+
+
+@pytest.mark.parametrize("profile", ["base", "plus"])
+def test_workflow_run_cli_dispatches_config_to_restartable_runner(
+    tmp_path, monkeypatch, capsys, profile
+) -> None:
+    inputs = _write_input_set(tmp_path / "inputs", include_flair=profile == "plus")
+    config_path = _write_config(tmp_path / "config", inputs, profile=profile)
+    descriptor = tmp_path / "atlas.txt"
+    descriptor.write_text("synthetic bundled descriptor path\n", encoding="utf-8")
+    monkeypatch.setattr(workflow, "get_bundled_atlas_descriptor", lambda _name: descriptor)
+    calls = {}
+    expected_manifest = tmp_path / "run" / "run.json"
+    configured_output = tmp_path / "config" / "run-output"
+    configured_output.mkdir(parents=True)
+    (configured_output / "run.json").write_text(
+        json.dumps(
+            {
+                "dry_run": True,
+                "preflight": {"workflow_executed": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    if profile == "base":
+        from pymacruise import base_workflow
+
+        def fake_base_runner(**kwargs):
+            calls.update(kwargs)
+            return expected_manifest
+
+        monkeypatch.setattr(base_workflow, "run_base_workflow", fake_base_runner)
+    else:
+        from pymacruise import plus_full_workflow
+
+        def fake_plus_runner(*args, **kwargs):
+            calls["args"] = args
+            calls.update(kwargs)
+            return SimpleNamespace(manifest_path=expected_manifest)
+
+        monkeypatch.setattr(plus_full_workflow, "run_plus_full_workflow", fake_plus_runner)
+
+    assert main(["workflow-run", "--config", str(config_path), "--resume"]) == 0
+    assert f"Workflow complete: {expected_manifest}" in capsys.readouterr().out
+    assert (configured_output / "preflight.json").is_file()
+    assert not (configured_output / "run.json").exists()
+    assert calls["resume"] is True
+    assert calls["atlas_descriptor" if profile == "base" else "atlas_descriptor_path"] == descriptor
+    assert calls["maseg_path"] == inputs["maseg_path"]
+    if profile == "plus":
+        assert calls["pipeline_options"].boundary_overlook_labels == (120, 121)

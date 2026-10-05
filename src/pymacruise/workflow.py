@@ -329,6 +329,65 @@ def preflight_workflow(
     return manifest_path, manifest
 
 
+def run_workflow_config(
+    config: WorkflowConfig,
+    *,
+    resume: bool = False,
+) -> Path:
+    """Execute a configured base or plus workflow through its restartable runner."""
+    if not isinstance(config, WorkflowConfig):
+        raise TypeError("config must be WorkflowConfig")
+    if not isinstance(resume, bool):
+        raise TypeError("resume must be boolean")
+    output_dir = Path(config.output_dir).expanduser()
+    preflight_manifest = output_dir / "run.json"
+    if preflight_manifest.is_symlink():
+        raise FileExistsError(f"Refusing to execute through symlinked manifest: {preflight_manifest}")
+    if preflight_manifest.is_file():
+        try:
+            existing_manifest = json.loads(preflight_manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            existing_manifest = None
+        if (
+            isinstance(existing_manifest, dict)
+            and existing_manifest.get("dry_run") is True
+            and isinstance(existing_manifest.get("preflight"), dict)
+            and existing_manifest.get("preflight", {}).get("workflow_executed") is False
+        ):
+            archived_preflight = output_dir / "preflight.json"
+            if archived_preflight.exists() or archived_preflight.is_symlink():
+                raise FileExistsError(
+                    f"Cannot preserve preflight manifest because destination exists: {archived_preflight}"
+                )
+            preflight_manifest.replace(archived_preflight)
+    descriptor = get_bundled_atlas_descriptor(_ATLAS_DESCRIPTORS[config.profile])
+    if config.profile is WorkflowProfile.BASE:
+        from pymacruise.base_workflow import run_base_workflow
+
+        return run_base_workflow(
+            t1_path=config.t1_path,
+            brain_mask_path=config.brain_mask_path,
+            maseg_path=config.maseg_path,
+            atlas_descriptor=descriptor,
+            output_dir=config.output_dir,
+            resume=resume,
+        )
+
+    from pymacruise.plus_full_workflow import run_plus_full_workflow
+
+    result = run_plus_full_workflow(
+        t1_path=config.t1_path,
+        flair_path=config.flair_path,
+        brain_mask_path=config.brain_mask_path,
+        maseg_path=config.maseg_path,
+        atlas_descriptor_path=descriptor,
+        output_dir=config.output_dir,
+        pipeline_options=config.plus_options or PlusPipelineOptions(),
+        resume=resume,
+    )
+    return result.manifest_path
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:

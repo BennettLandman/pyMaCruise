@@ -1,11 +1,10 @@
 # PyMaCRUISE command-line input/output reference
 
 This page is the expanded `--help` contract for the supported inputs and
-outputs. The command line exposes preparation, individual scientific stages, a
-standalone registered TOADS loop, restartable base workflow, plus FLAIR-registration
-and LesionTOADS image-preparation/crop checkpoints, and a restartable plus continuation
-from precomputed upstream products. Full two-pass base and plus workflows remain
-under development.
+outputs. The command line exposes preparation, individual scientific stages,
+restartable base and plus workflows, workflow configuration/preflight, and
+standalone algorithm commands. Synthetic full-workflow validation is available;
+source-equivalence and real-MRI acceptance remain in progress.
 
 ## `pymacruise workflow-preflight`
 
@@ -49,6 +48,22 @@ The plus profile additionally requires `flair_path` and may provide a
 the bundled LesionTOADS atlas descriptor. The base profile uses the bundled
 default TOADS descriptor. Custom atlas paths are not accepted by this
 preflight interface.
+
+## `pymacruise workflow-run`
+
+```text
+pymacruise workflow-run --config workflow.json [--resume]
+```
+
+Executes the restartable workflow selected by the same version-1 JSON
+configuration. Base runs use the bundled TOADS descriptor; plus runs use the
+bundled LesionTOADS descriptor and pass `plus_options` through to the existing
+MaCRUISEplus stages. The output directory must be new or contain a compatible
+restartable run. If it contains the `run.json` produced by
+`workflow-preflight`, that dry-run manifest is preserved as `preflight.json`
+before execution begins. `--resume` verifies existing checkpoints and resumes
+the configured workflow. Non-RAS inputs are normalized by the runners with
+visible warnings; persisted image outputs are RAS `.nii.gz`.
 
 ## `pymacruise topology-correct`
 
