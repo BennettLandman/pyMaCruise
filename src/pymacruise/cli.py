@@ -377,6 +377,17 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_align.add_argument("--pyramid-levels", type=int, default=2)
     plus_lesion_align.add_argument("--resume", action="store_true")
 
+    plus_lesion_recrop = commands.add_parser(
+        "plus-lesion-registered-recrop",
+        help="apply the post-registration uncrop, recrop, and atlas-grid refresh checkpoint",
+    )
+    plus_lesion_recrop.add_argument("--normalized-modalities", required=True, type=Path)
+    plus_lesion_recrop.add_argument("--crop-manifest", required=True, type=Path)
+    plus_lesion_recrop.add_argument("--initial-alignment-manifest", required=True, type=Path)
+    plus_lesion_recrop.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_lesion_recrop.add_argument("--output-dir", required=True, type=Path)
+    plus_lesion_recrop.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -585,6 +596,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{verb} LesionTOADS initial atlas alignment: {result.memberships_path}")
         print(f"Initial rigid transform: {result.transform}")
         print(f"Initial-alignment manifest: {result.manifest_path}")
+    elif args.command == "plus-lesion-registered-recrop":
+        from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
+
+        result = run_plus_lesion_registered_recrop_checkpoint(
+            args.normalized_modalities,
+            args.crop_manifest,
+            args.initial_alignment_manifest,
+            args.atlas_descriptor,
+            args.output_dir,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Completed"
+        print(f"{verb} LesionTOADS registered recrop: {result.modalities_path}")
+        print(f"Transformed topology: {result.topology_path}")
+        print(f"Registered shape maps: {result.shapes_path}")
+        print(f"Registered-recrop manifest: {result.manifest_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

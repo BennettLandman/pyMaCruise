@@ -508,3 +508,26 @@ hash-checked restart manifest. The defaults use ten initial alignment
 iterations and two pyramid levels; these remain explicit settings rather than
 a claim of full LesionTOADS equivalence. This checkpoint does not run the
 iterative LesionTOADS evolution or complete MaCRUISEplus.
+
+## `pymacruise plus-lesion-registered-recrop`
+
+```text
+pymacruise plus-lesion-registered-recrop \
+  --normalized-modalities T1FlairNormalized.nii.gz \
+  --crop-manifest crop.json \
+  --initial-alignment-manifest initial-alignment.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-recrop \
+  [--resume]
+```
+
+Consumes P41f's full-grid normalized image and P41f/P41g manifests. It verifies
+the crop inputs, initial alignment's 13-class membership image and transform
+summary, then follows the source order for uncropping with the preprocessing
+transform, finding/cropping the new image bounds, and sampling the transformed
+topology and shape maps with the optimized atlas transform. It writes
+`recropped_modalities_t1_flair.nii.gz`, `transformed_topology.nii.gz`,
+`transformed_shapes_13.nii.gz`, a summary, and a hash-checked restart manifest.
+All image outputs are RAS `.nii.gz` on one crop grid. Resume verifies the
+inputs and outputs before skipping the recrop. The committed small synthetic
+atlas fixture keeps routine validation bounded; full LesionTOADS iterations
+and real-image behavior remain open.

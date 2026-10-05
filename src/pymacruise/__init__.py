@@ -38,6 +38,10 @@ from pymacruise.plus_lesion_atlas_init import (
     PlusLesionAtlasInitResult,
     run_plus_lesion_initial_atlas_alignment_checkpoint,
 )
+from pymacruise.plus_lesion_registered_recrop import (
+    PlusLesionRecropResult,
+    run_plus_lesion_registered_recrop_checkpoint,
+)
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
 from pymacruise.skeleton import ThinACEImageResult, thin_ace, thin_ace_image
@@ -186,6 +190,8 @@ __all__ = [
     "run_plus_lesion_crop_checkpoint",
     "PlusLesionAtlasInitResult",
     "run_plus_lesion_initial_atlas_alignment_checkpoint",
+    "PlusLesionRecropResult",
+    "run_plus_lesion_registered_recrop_checkpoint",
     "calculate_volume",
     "ace_enhance",
     "ace_enhance_arrays",

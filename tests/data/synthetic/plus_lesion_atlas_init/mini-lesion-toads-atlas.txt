@@ -1,0 +1,73 @@
+Structure Atlas File (edit at your own risks)
+ 
+Structures:	13
+Background	1	mask
+Sulcal-CSF	5	optimized_csf
+Ventricles	6	optimized_csf
+Cerebellum-GM	14	obj
+Cerebrum-GM	15	obj
+Caudate	16	obj
+Thalamus	17	obj
+Putamen	18	obj
+Brainstem	22	obj
+Cerebellum-WM	24	obj
+OuterVentricular-WM	25	lesion
+InterVentricular-WM	26	obj
+Frontal-WM	27	obj
+ 
+Topology Atlas: 
+File:	mini_topology.nii.gz
+Dimensions:	11	11	11
+Resolutions:	0.9375	0.9375	0.9375
+ 
+Shape Atlas:	8
+Dimensions:	11	11	11
+Resolutions:	0.9375	0.9375	0.9375
+Orientations:	1	1	6	3
+Structure:	Background
+File:	shape_atlas_Background.nii.gz
+Structure:	Sulcal-CSF
+File:	shape_atlas_Sulcal-CSF.nii.gz
+Structure:	Ventricles
+File:	shape_atlas_Ventricles.nii.gz
+Structure:	Cerebellum-GM
+File:	shape_atlas_Cerebellum-GM.nii.gz
+Structure:	Cerebrum-GM
+File:	shape_atlas_Cerebrum-GM.nii.gz
+Structure:	Caudate
+File:	shape_atlas_Caudate.nii.gz
+Structure:	Thalamus
+File:	shape_atlas_Thalamus.nii.gz
+Structure:	Putamen
+File:	shape_atlas_Putamen.nii.gz
+Structure:	Brainstem
+File:	shape_atlas_Brainstem.nii.gz
+Structure:	Cerebellum-WM
+File:	shape_atlas_Cerebellum-WM.nii.gz
+Structure:	OuterVentricular-WM
+File:	shape_atlas_Cerebrum-WM.nii.gz
+Structure:	InterVentricular-WM
+File:	shape_atlas_InterVentricular-WM.nii.gz
+Structure:	Frontal-WM
+File:	shape_atlas_Inferior-WM.nii.gz
+  
+Intensity Atlas:	0
+T1_SPGR	0.0	0.2	0.2	0.5	0.5	0.5	0.7	0.7	0.9	0.9	0.9	0.9	0.9
+T2	0.0	0.9	0.9	0.4	0.4	0.4	0.4	0.4	0.3	0.3	0.3	0.3	0.3
+FLAIR	0.0	0.5	0.5	0.8	0.8	0.8	0.8	0.8	0.7	0.7	0.7	1.2	0.75
+T1_MPRAGE	0.0	0.1	0.1	0.7	0.7	0.6	0.6	0.8	1.0	1.0	1.0	1.0	1.0
+PD	0.0	1.0	1.0	0.8	0.8	0.8	0.8	0.8	0.7	0.7	0.7	0.7	0.7
+ 
+Lesions:
+T1_SPGR	0.5	T2	0.9	FLAIR	1.2	T1_MPRAGE	0.4	PD	1.2
+
+Black Holes:
+T1_SPGR	0.2	T2	0.8	FLAIR	0.6	T1_MPRAGE	0.1	PD	1.2
+ 
+Optimized factors:
+T1_SPGR		1.00	1.00	1.00	1.00
+T1_MPRAGE	0.80	1.00	1.00	1.00
+T2			1.00	1.00	1.00	1.00
+FLAIR		1.00	1.00	1.00	0.80
+PD			1.00	1.00	1.00	1.00
+ 
