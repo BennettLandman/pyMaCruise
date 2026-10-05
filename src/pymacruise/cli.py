@@ -365,6 +365,18 @@ def build_parser() -> argparse.ArgumentParser:
     plus_crop_lesion.add_argument("--padding", type=int, default=10)
     plus_crop_lesion.add_argument("--resume", action="store_true")
 
+    plus_lesion_align = commands.add_parser(
+        "plus-lesion-initial-align",
+        help="initialize source-ordered 13-class LesionTOADS memberships and rigid atlas alignment",
+    )
+    plus_lesion_align.add_argument("--cropped-modalities", required=True, type=Path)
+    plus_lesion_align.add_argument("--crop-manifest", required=True, type=Path)
+    plus_lesion_align.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_lesion_align.add_argument("--output-dir", required=True, type=Path)
+    plus_lesion_align.add_argument("--init-align-iterations", type=int, default=10)
+    plus_lesion_align.add_argument("--pyramid-levels", type=int, default=2)
+    plus_lesion_align.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -557,6 +569,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{verb} LesionTOADS modalities: {result.cropped_path}")
         print(f"Inclusive source bounds: {result.crop_bounds}")
         print(f"Lesion-crop manifest: {result.manifest_path}")
+    elif args.command == "plus-lesion-initial-align":
+        from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alignment_checkpoint
+
+        result = run_plus_lesion_initial_atlas_alignment_checkpoint(
+            args.cropped_modalities,
+            args.crop_manifest,
+            args.atlas_descriptor,
+            args.output_dir,
+            init_align_iterations=args.init_align_iterations,
+            pyramid_levels=args.pyramid_levels,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Initialized"
+        print(f"{verb} LesionTOADS initial atlas alignment: {result.memberships_path}")
+        print(f"Initial rigid transform: {result.transform}")
+        print(f"Initial-alignment manifest: {result.manifest_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

@@ -488,3 +488,23 @@ normalized and cropped RAS `.nii.gz` images plus a hash-checked manifest.
 input/settings signature and output files before skipping. This is input
 preparation for initial atlas alignment; it does not execute the iterative
 LesionTOADS workflow.
+
+## `pymacruise plus-lesion-initial-align`
+
+```text
+pymacruise plus-lesion-initial-align --cropped-modalities T1FlairCrop.nii.gz \
+  --crop-manifest crop.json --atlas-descriptor LesionTOADS-atlas.txt \
+  --output-dir initial-alignment [--init-align-iterations 10] \
+  [--pyramid-levels 2] [--resume]
+```
+
+Consumes the crop checkpoint and its manifest, then initializes source-ordered
+13-class T1/FLAIR memberships and the selected rigid atlas alignment. The
+cropped image must be RAS, 4-D channel-last `.nii.gz`, with T1 then FLAIR; the
+manifest must match its hash and describe the same crop geometry. The atlas
+descriptor and its referenced data must be available. Outputs are a
+channel-last 4-D RAS membership image, a transform/call-order summary, and a
+hash-checked restart manifest. The defaults use ten initial alignment
+iterations and two pyramid levels; these remain explicit settings rather than
+a claim of full LesionTOADS equivalence. This checkpoint does not run the
+iterative LesionTOADS evolution or complete MaCRUISEplus.
