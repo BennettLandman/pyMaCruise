@@ -115,10 +115,12 @@ def run_plus_lesion_loop_workflow(
         "correction_polynomial_degree": correction_polynomial_degree,
         "initial_correction_degree": initial_correction_degree,
     }
-    correction_fields_record = (
-        None if correction_fields_path is None
-        else _file_record(Path(correction_fields_path).expanduser().resolve())
-    )
+    correction_fields_record = None
+    if correction_fields_path is not None:
+        fields_path = Path(correction_fields_path).expanduser().resolve()
+        if not fields_path.name.lower().endswith(".nii.gz"):
+            raise ValueError("correction fields must use compressed NIfTI format (.nii.gz)")
+        correction_fields_record = _file_record(fields_path)
     if loop_convergence_threshold is not None and (
         not np.isfinite(loop_convergence_threshold) or loop_convergence_threshold < 0
     ):

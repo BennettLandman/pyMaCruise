@@ -420,6 +420,23 @@ def test_registered_loop_checkpoint_carries_adaptive_fields_across_restart(tmp_p
     assert second_manifest_fields["sha256"]
 
 
+def test_registered_loop_rejects_uncompressed_correction_field_input(tmp_path: Path) -> None:
+    recrop = _run_recrop(tmp_path)
+    initial = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, tmp_path / "initial-branch-uncompressed-fields", iterations=1,
+        first_thinning_limit=1000.0, source_zero_variance_nan=False,
+    )
+    modalities = nib.load(str(recrop.modalities_path))
+    uncompressed = tmp_path / "correction-fields.nii"
+    nib.save(nib.Nifti1Image(np.ones(modalities.shape, dtype=np.float32), modalities.affine), uncompressed)
+    with pytest.raises(ValueError, match=r"correction fields must use compressed NIfTI.*nii.gz"):
+        persist_plus_lesion_registered_loop_checkpoint(
+            initial.manifest_path, ATLAS, tmp_path / "loop-uncompressed-fields",
+            thinning_limit=1000.0, source_zero_variance_nan=False,
+            correction_fields_path=uncompressed,
+        )
+
+
 def test_registered_loop_persists_terminal_classification_for_cap_and_convergence(
     tmp_path: Path, monkeypatch
 ) -> None:

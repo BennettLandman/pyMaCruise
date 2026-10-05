@@ -42,6 +42,11 @@ class RegisteredBranchStateError(ValueError):
     """Raised when a plus checkpoint cannot be safely hydrated."""
 
 
+def _require_compressed_nifti(path: Path, *, name: str) -> None:
+    if not path.name.lower().endswith(".nii.gz"):
+        raise ValueError(f"{name} must use compressed NIfTI format (.nii.gz)")
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -260,6 +265,7 @@ def continue_plus_lesion_registered_loop(
     )
     correction_fields = None
     if fields_path is not None:
+        _require_compressed_nifti(fields_path, name="correction fields")
         fields_image = load_nifti_ras(fields_path)
         if (
             fields_image.shape != image.shape
@@ -432,6 +438,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
     fields_input = None
     if correction_fields_path is not None:
         fields_input_path = Path(correction_fields_path).expanduser().resolve()
+        _require_compressed_nifti(fields_input_path, name="correction fields")
         if not fields_input_path.is_file() or fields_input_path.is_symlink():
             raise FileNotFoundError(f"Missing regular correction-field NIfTI: {fields_input_path}")
         fields_input = {"path": str(fields_input_path), "sha256": _sha256(fields_input_path)}
