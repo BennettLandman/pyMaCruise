@@ -229,6 +229,21 @@ def _assert_installed_wheel_workflow_preflight(target: Path) -> None:
         [os.fspath(target.resolve()), os.fspath(fake_site.resolve())]
     )
     environment["PYTHONNOUSERSITE"] = "1"
+    help_result = subprocess.run(
+        [sys.executable, "-m", "pymacruise.cli", "workflow-run", "--help"],
+        cwd=run_root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert help_result.returncode == 0, (
+        f"installed-wheel workflow-run help failed:\n{help_result.stdout}\n{help_result.stderr}"
+    )
+    assert "pymacruise workflow-run" in help_result.stdout
+    assert "--config CONFIG" in help_result.stdout
+    assert "--resume" in help_result.stdout
+
     result = subprocess.run(
         [
             sys.executable,
