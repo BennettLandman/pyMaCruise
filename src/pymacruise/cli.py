@@ -431,7 +431,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     plus_lesion_workflow = commands.add_parser(
         "plus-lesion-loop-run",
-        help="run persisted plus LesionTOADS initialization and a restartable loop segment",
+        help="run persisted plus LesionTOADS initialization through a restartable or terminal loop result",
     )
     plus_lesion_workflow.add_argument("--registered-recrop-manifest", required=True, type=Path)
     plus_lesion_workflow.add_argument("--atlas-descriptor", required=True, type=Path)
@@ -440,6 +440,10 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_workflow.add_argument("--first-thinning-limit", type=float, default=3.0)
     plus_lesion_workflow.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
     plus_lesion_workflow.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_workflow.add_argument(
+        "--loop-convergence-threshold", type=float,
+        help="optional P41m convergence threshold, separate from P41k max-distance",
+    )
     plus_lesion_workflow.add_argument("--n-iter-max", type=int, default=99)
     plus_lesion_workflow.add_argument("--thinning-limit", type=float, default=3.0)
     plus_lesion_workflow.add_argument("--max-passes", type=int, default=1)
@@ -736,6 +740,7 @@ def main(argv: list[str] | None = None) -> int:
             first_thinning_volume_ratio=args.first_thinning_volume_ratio,
             source_zero_variance_nan=not args.finite_zero_variance,
             max_distance=args.max_distance,
+            loop_convergence_threshold=args.loop_convergence_threshold,
             n_iter_max=args.n_iter_max,
             thinning_limit=args.thinning_limit,
             max_passes=args.max_passes,
@@ -743,6 +748,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         verb = "Verified and resumed" if result.resumed else "Completed"
         print(f"{verb} plus LesionTOADS loop workflow: {result.manifest_path}")
+        if result.classification_path is not None:
+            print(f"Terminal classification: {result.classification_path}")
+        if result.lesion_subtype_path is not None:
+            print(f"Lesion subtype: {result.lesion_subtype_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

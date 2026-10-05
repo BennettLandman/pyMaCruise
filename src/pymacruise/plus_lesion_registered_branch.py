@@ -39,12 +39,14 @@ class PlusLesionRegisteredBranchResult:
     manifest_path: Path
     memberships_path: Path
     segmentation_path: Path
-    skeleton_path: Path
-    availability_path: Path
-    ordering_path: Path
-    relation_map_path: Path
+    skeleton_path: Path | None
+    availability_path: Path | None
+    ordering_path: Path | None
+    relation_map_path: Path | None
     summary_path: Path
     resumed: bool
+    classification_path: Path | None = None
+    lesion_subtype_path: Path | None = None
 
 
 def _sha256(path: Path) -> str:

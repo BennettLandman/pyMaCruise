@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from .plus_lesion_first_iteration import run_plus_lesion_first_iteration_checkpoint
 from .plus_lesion_registered_branch import run_plus_lesion_registered_branch_checkpoint
 from .plus_lesion_registered_loop import persist_plus_lesion_registered_loop_checkpoint
@@ -25,6 +27,8 @@ class PlusLesionLoopWorkflowResult:
     registered_branch_manifest: Path
     registered_loop_manifest: Path
     resumed: bool
+    classification_path: Path | None = None
+    lesion_subtype_path: Path | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -75,6 +79,7 @@ def run_plus_lesion_loop_workflow(
     n_iter_max: int = 99,
     thinning_limit: float = 3.0,
     max_passes: int = 1,
+    loop_convergence_threshold: float | None = None,
     resume: bool = False,
 ) -> PlusLesionLoopWorkflowResult:
     """Run P41i -> P41k -> P41m with a hash-checked top-level manifest.
@@ -101,7 +106,14 @@ def run_plus_lesion_loop_workflow(
         "n_iter_max": int(n_iter_max),
         "thinning_limit": float(thinning_limit),
         "max_passes": int(max_passes),
+        "loop_convergence_threshold": (
+            None if loop_convergence_threshold is None else float(loop_convergence_threshold)
+        ),
     }
+    if loop_convergence_threshold is not None and (
+        not np.isfinite(loop_convergence_threshold) or loop_convergence_threshold < 0
+    ):
+        raise ValueError("loop_convergence_threshold must be finite and nonnegative")
     signature_data = {
         "stage": "plus-lesion-loop-workflow",
         "registered_recrop_manifest": _file_record(parent_path),
@@ -183,6 +195,7 @@ def run_plus_lesion_loop_workflow(
                     thinning_limit=thinning_limit,
                     source_zero_variance_nan=source_zero_variance_nan,
                     max_passes=max_passes,
+                    convergence_threshold=loop_convergence_threshold,
                     resume=resume,
                 )
         except Exception as exc:
@@ -211,8 +224,17 @@ def run_plus_lesion_loop_workflow(
     manifest["status"] = "complete"
     manifest["active_stage"] = None
     manifest["workflow_executed"] = True
-    manifest["result_scope"] = "synthetic selected LesionTOADS continuation through a bounded registered-loop segment"
     manifest["final_outputs"] = manifest["stages"]["registered_loop"]["manifest"]
+    final_loop = _verify_child(child_paths["registered_loop"], stage="plus-lesion-registered-loop")
+    loop_summary = json.loads(Path(final_loop["outputs"]["summary"]["path"]).read_text(encoding="utf-8"))
+    terminal = bool(loop_summary.get("stop"))
+    manifest["terminal"] = terminal
+    manifest["terminal_stop_reason"] = loop_summary.get("stop_reason")
+    manifest["result_scope"] = (
+        "synthetic selected LesionTOADS terminal classification and lesion subtype"
+        if terminal else
+        "synthetic selected LesionTOADS continuation through a bounded registered-loop segment"
+    )
     _write_json(manifest_path, manifest)
     return PlusLesionLoopWorkflowResult(
         manifest_path=manifest_path,
@@ -220,4 +242,12 @@ def run_plus_lesion_loop_workflow(
         registered_branch_manifest=child_paths["registered_branch"],
         registered_loop_manifest=child_paths["registered_loop"],
         resumed=resume,
+        classification_path=(
+            Path(final_loop["outputs"]["classification"]["path"])
+            if "classification" in final_loop["outputs"] else None
+        ),
+        lesion_subtype_path=(
+            Path(final_loop["outputs"]["lesion_subtype"]["path"])
+            if "lesion_subtype" in final_loop["outputs"] else None
+        ),
     )

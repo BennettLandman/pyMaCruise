@@ -659,7 +659,8 @@ pymacruise plus-lesion-loop-run \
   --atlas-descriptor LesionTOADS-atlas.txt --output-dir lesion-loop \
   [--iterations 99] [--first-thinning-limit 3] \
   [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
-  [--n-iter-max 99] [--thinning-limit 3] [--max-passes 1] \
+  [--loop-convergence-threshold N] [--n-iter-max 99] \
+  [--thinning-limit 3] [--max-passes 1] \
   [--finite-zero-variance] [--resume]
 ```
 
@@ -669,6 +670,10 @@ recrop manifest. A top-level JSON manifest links each child manifest by hash
 and records stage state before execution. `--resume` asks each child checkpoint
 to verify and reuse its outputs; corrupt loop outputs are recomputed. Source-
 faithful zero-variance behavior remains the default. `--finite-zero-variance`
-selects the explicit finite synthetic path. This command ends at a continuing
-registered loop checkpoint; it does not produce terminal LesionTOADS outputs,
-complete MaCRUISEplus, Java composite equivalence, or real-image validation.
+selects the explicit finite synthetic path. An optional
+`--loop-convergence-threshold` overrides only P41m's convergence threshold;
+`--max-distance` continues to control the P41k registered branch. A segment
+that reaches convergence or the iteration cap writes terminal classification
+and lesion-subtype NIfTIs; otherwise it writes a continuing checkpoint. This
+does not establish complete MaCRUISEplus, Java composite equivalence, or
+real-image validation.

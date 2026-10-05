@@ -73,10 +73,18 @@ def _load_complete_checkpoint(manifest_path: str | Path) -> tuple[dict, dict[str
         if not path.is_file() or path.is_symlink() or _sha256(path) != record.get("sha256"):
             raise RegisteredBranchStateError(f"registered-branch output {name!r} is missing or hash-mismatched")
         outputs[name] = path
+    if "summary" not in outputs:
+        raise RegisteredBranchStateError("registered checkpoint lacks a summary output")
+    summary = json.loads(outputs["summary"].read_text(encoding="utf-8"))
+    if summary.get("spatial_convention") != "RAS":
+        raise RegisteredBranchStateError("registered checkpoint summary must declare RAS")
     required = {
-        "memberships", "membership_diagnostics", "distance_state", "segmentation",
-        "skeleton", "availability", "ordering", "relation_map", "summary",
+        "memberships", "membership_diagnostics", "distance_state", "segmentation", "summary",
     }
+    if manifest.get("stage") == "plus-lesion-registered-branch" or not summary.get("stop"):
+        required.update({"skeleton", "availability", "ordering", "relation_map"})
+    else:
+        required.update({"classification", "lesion_subtype"})
     missing = required - outputs.keys()
     if missing:
         raise RegisteredBranchStateError(f"registered-branch checkpoint lacks outputs: {sorted(missing)}")
@@ -91,6 +99,8 @@ def hydrate_plus_lesion_registered_branch(
     summary = json.loads(outputs["summary"].read_text(encoding="utf-8"))
     if summary.get("spatial_convention") != "RAS":
         raise RegisteredBranchStateError("registered-branch summary must declare RAS")
+    if summary.get("stop"):
+        raise RegisteredBranchStateError("terminal LesionTOADS checkpoints cannot resume loop iteration")
     images = {
         name: load_nifti_ras(path)
         for name, path in outputs.items()
@@ -185,6 +195,7 @@ def continue_plus_lesion_registered_loop(
     thinning_limit: float = 3.0,
     source_zero_variance_nan: bool | None = None,
     max_passes: int | None = None,
+    convergence_threshold: float | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Hydrate P41k and run the next selected registered P39 iteration.
 
@@ -194,6 +205,13 @@ def continue_plus_lesion_registered_loop(
     if isinstance(n_iter_max, bool) or not isinstance(n_iter_max, int) or n_iter_max < 2:
         raise ValueError("n_iter_max must be an integer of at least 2")
     manifest, outputs = _load_complete_checkpoint(registered_branch_manifest)
+    parent_summary = json.loads(outputs["summary"].read_text(encoding="utf-8"))
+    if parent_summary.get("stop"):
+        raise RegisteredBranchStateError("terminal LesionTOADS checkpoint has no continuing loop state")
+    if convergence_threshold is None:
+        convergence_threshold = float(manifest["settings"]["max_distance"])
+    elif not np.isfinite(convergence_threshold) or convergence_threshold < 0:
+        raise ValueError("convergence_threshold must be finite and nonnegative")
     if source_zero_variance_nan is None:
         source_zero_variance_nan = bool(manifest["settings"]["source_zero_variance_nan"])
     if not isinstance(source_zero_variance_nan, bool):
@@ -254,7 +272,7 @@ def continue_plus_lesion_registered_loop(
         classification=np.asarray(topology.dataobj),
         template_labels=np.asarray([item.label for item in priors.structures], dtype=np.int16),
         n_iter_max=n_iter_max,
-        max_distance=float(manifest["settings"]["max_distance"]),
+        max_distance=float(convergence_threshold),
         algorithm_mode="diffeomorphism",
         relation_limit=3,
         initial_class_centroids=np.asarray(centroids["class_centroids"], dtype=np.float32),
@@ -302,6 +320,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
     source_zero_variance_nan: bool | None = None,
     max_passes: int = 1,
     resume: bool = False,
+    convergence_threshold: float | None = None,
 ):
     """Run and persist a bounded continuing loop segment for restart.
 
@@ -328,9 +347,14 @@ def persist_plus_lesion_registered_loop_checkpoint(
             if source_zero_variance_nan is None else source_zero_variance_nan
         ),
         "max_passes": int(max_passes),
-        "max_distance": float(parent["settings"]["max_distance"]),
+        "max_distance": (
+            float(parent["settings"]["max_distance"])
+            if convergence_threshold is None else float(convergence_threshold)
+        ),
         "first_thinning_volume_ratio": float(parent["settings"]["first_thinning_volume_ratio"]),
     }
+    if not np.isfinite(settings["max_distance"]) or settings["max_distance"] < 0:
+        raise ValueError("convergence_threshold must be finite and nonnegative")
     signature_payload = {
         "stage": "plus-lesion-registered-loop",
         "parent": {"path": str(parent_path), "sha256": _sha256(parent_path)},
@@ -351,13 +375,16 @@ def persist_plus_lesion_registered_loop_checkpoint(
             raise ValueError("Cannot resume registered loop: inputs or settings differ")
         try:
             cached_manifest, cached_outputs = _load_complete_checkpoint(manifest_path)
-            hydrated, _, _ = hydrate_plus_lesion_registered_branch(manifest_path)
             if cached_manifest["stage"] == "plus-lesion-registered-loop":
+                cached_summary = json.loads(cached_outputs["summary"].read_text(encoding="utf-8"))
+                if not cached_summary.get("stop"):
+                    hydrate_plus_lesion_registered_branch(manifest_path)
                 return PlusLesionRegisteredBranchResult(
                     manifest_path, cached_outputs["memberships"], cached_outputs["segmentation"],
-                    cached_outputs["skeleton"], cached_outputs["availability"],
-                    cached_outputs["ordering"], cached_outputs["relation_map"],
+                    cached_outputs.get("skeleton"), cached_outputs.get("availability"),
+                    cached_outputs.get("ordering"), cached_outputs.get("relation_map"),
                     cached_outputs["summary"], True,
+                    cached_outputs.get("classification"), cached_outputs.get("lesion_subtype"),
                 )
         except (OSError, ValueError, KeyError, RegisteredBranchStateError):
             pass
@@ -370,12 +397,13 @@ def persist_plus_lesion_registered_loop_checkpoint(
         thinning_limit=settings["thinning_limit"],
         source_zero_variance_nan=settings["source_zero_variance_nan"],
         max_passes=settings["max_passes"],
+        convergence_threshold=settings["max_distance"],
     )
     branch = loop.final_branch
-    if branch.stop or branch.growing is None or branch.relations is None:
+    if not branch.stop and (branch.growing is None or branch.relations is None):
         raise RegisteredBranchStateError(
             "a continuing checkpoint boundary requires growth and refreshed relations; "
-            "choose a segment that ends before convergence or the iteration limit"
+            "the selected branch is missing those continuing states"
         )
     parent_summary = json.loads(Path(parent["outputs"]["summary"]["path"]).read_text(encoding="utf-8"))
     recrop_path = Path(parent["inputs"]["registered_recrop_manifest"]["path"]).resolve()
@@ -427,23 +455,38 @@ def persist_plus_lesion_registered_loop_checkpoint(
             nifti_ras_on_reference(reference, branch.segmentation, dtype=np.int16),
             root / "registered_segmentation.nii.gz", dtype=np.int16,
         ),
-        "skeleton": save_nifti_ras(
-            nifti_ras_on_reference(reference, branch.growing.skeleton, dtype=np.int16),
-            root / "registered_skeleton.nii.gz", dtype=np.int16,
-        ),
-        "availability": save_nifti_ras(
-            nifti_ras_on_reference(reference, branch.growing.available.astype(np.uint8), dtype=np.uint8),
-            root / "registered_availability_13ch.nii.gz", dtype=np.uint8,
-        ),
-        "ordering": save_nifti_ras(
-            nifti_ras_on_reference(reference, branch.growing.ordering, dtype=np.float32),
-            root / "registered_ordering.nii.gz", dtype=np.float32,
-        ),
-        "relation_map": save_nifti_ras(
-            nifti_ras_on_reference(reference, branch.relations.relation_map, dtype=np.int16),
-            root / "registered_relation_map.nii.gz", dtype=np.int16,
-        ),
     }
+    if branch.stop:
+        if branch.final_classification is None or branch.stop_reason is None:
+            raise RegisteredBranchStateError("terminal loop branch lacks final classifications or stop reason")
+        outputs["classification"] = save_nifti_ras(
+            nifti_ras_on_reference(reference, branch.final_classification.classification, dtype=np.int8),
+            root / "final_classification.nii.gz", dtype=np.int8,
+        )
+        outputs["lesion_subtype"] = save_nifti_ras(
+            nifti_ras_on_reference(reference, branch.final_classification.lesion_classification, dtype=np.int16),
+            root / "final_lesion_subtype.nii.gz", dtype=np.int16,
+        )
+    else:
+        assert branch.growing is not None and branch.relations is not None
+        outputs.update({
+            "skeleton": save_nifti_ras(
+                nifti_ras_on_reference(reference, branch.growing.skeleton, dtype=np.int16),
+                root / "registered_skeleton.nii.gz", dtype=np.int16,
+            ),
+            "availability": save_nifti_ras(
+                nifti_ras_on_reference(reference, branch.growing.available.astype(np.uint8), dtype=np.uint8),
+                root / "registered_availability_13ch.nii.gz", dtype=np.uint8,
+            ),
+            "ordering": save_nifti_ras(
+                nifti_ras_on_reference(reference, branch.growing.ordering, dtype=np.float32),
+                root / "registered_ordering.nii.gz", dtype=np.float32,
+            ),
+            "relation_map": save_nifti_ras(
+                nifti_ras_on_reference(reference, branch.relations.relation_map, dtype=np.int16),
+                root / "registered_relation_map.nii.gz", dtype=np.int16,
+            ),
+        })
     ratio = branch.membership_result.energy_ratio
     bounds = branch.registration_handoff.shape_bounds
     completed_iteration = loop.passes[-1].iteration
@@ -467,17 +510,31 @@ def persist_plus_lesion_registered_loop_checkpoint(
             "lower_xyz": list(item.lower_xyz), "upper_xyz": list(item.upper_xyz),
             "support_count": item.support_count,
         } for item in bounds],
-        "stop": False,
-        "stop_reason": None,
-        "growing_events": len(branch.growing.events),
-        "relation_count": branch.relations.relation_count,
-        "relation_diffusion_iterations": branch.relations.diffusion_iterations,
-        "relation_membership": branch.relations.relation_membership.astype(np.uint8).tolist(),
-        "class_volume": branch.growing.class_volume.tolist(),
+        "stop": bool(branch.stop),
+        "stop_reason": branch.stop_reason,
+        "convergence_stop": bool(branch.convergence_stop),
+        "iteration_limit_stop": bool(branch.iteration_limit_stop),
+        "growing_events": len(branch.growing.events) if branch.growing is not None else None,
+        "relation_count": branch.relations.relation_count if branch.relations is not None else None,
+        "relation_diffusion_iterations": (
+            branch.relations.diffusion_iterations if branch.relations is not None else None
+        ),
+        "relation_membership": (
+            branch.relations.relation_membership.astype(np.uint8).tolist()
+            if branch.relations is not None else None
+        ),
+        "class_volume": branch.growing.class_volume.tolist() if branch.growing is not None else None,
         "stage_order": list(loop.passes[-1].stage_order),
         "completed_iteration": int(completed_iteration),
         "source_zero_variance_nan": settings["source_zero_variance_nan"],
-        "equivalence_note": "Synthetic checkpoint boundary from selected P39 loop APIs; not complete Java composite equivalence.",
+        "final_classification_counts": (
+            {
+                "changed_classification_voxels": branch.final_classification.changed_classification_voxels,
+                "lesion_voxels": branch.final_classification.lesion_voxels,
+            }
+            if branch.final_classification is not None else None
+        ),
+        "equivalence_note": "Synthetic checkpoint from selected P39 loop APIs; not complete Java composite equivalence.",
     }
     summary_path = root / "registered_loop_summary.json"
     _json(summary_path, summary_output)
@@ -499,6 +556,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
     }
     _json(manifest_path, complete_manifest)
     return PlusLesionRegisteredBranchResult(
-        manifest_path, outputs["memberships"], outputs["segmentation"], outputs["skeleton"],
-        outputs["availability"], outputs["ordering"], outputs["relation_map"], summary_path, False,
+        manifest_path, outputs["memberships"], outputs["segmentation"], outputs.get("skeleton"),
+        outputs.get("availability"), outputs.get("ordering"), outputs.get("relation_map"), summary_path, False,
+        outputs.get("classification"), outputs.get("lesion_subtype"),
     )

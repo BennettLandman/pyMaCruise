@@ -379,6 +379,76 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     assert third_summary["completed_iteration"] == 3
 
 
+def test_registered_loop_persists_terminal_classification_for_cap_and_convergence(
+    tmp_path: Path, monkeypatch
+) -> None:
+    recrop = _run_recrop(tmp_path)
+    initial = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, tmp_path / "initial-branch", iterations=1,
+        first_thinning_limit=1000.0, source_zero_variance_nan=False,
+    )
+    captured = []
+    original_continue = registered_loop.continue_plus_lesion_registered_loop
+
+    def capture_continue(*args, **kwargs):
+        result = original_continue(*args, **kwargs)
+        captured.append(result)
+        return result
+
+    monkeypatch.setattr(registered_loop, "continue_plus_lesion_registered_loop", capture_continue)
+    terminal_cases = (
+        (
+            "iteration-limit",
+            {"n_iter_max": 2, "max_passes": 1},
+            "iteration_limit",
+        ),
+        (
+            "convergence",
+            {"n_iter_max": 99, "max_passes": 1, "convergence_threshold": 1.0e6},
+            "convergence",
+        ),
+    )
+    for name, settings, reason in terminal_cases:
+        checkpoint = persist_plus_lesion_registered_loop_checkpoint(
+            initial.manifest_path, ATLAS, tmp_path / name,
+            thinning_limit=1000.0, source_zero_variance_nan=False, **settings,
+        )
+        direct = captured[-1]
+        final = direct.final_branch.final_classification
+        assert direct.final_branch.stop is True
+        assert final is not None
+        manifest = json.loads(checkpoint.manifest_path.read_text())
+        summary = json.loads(checkpoint.summary_path.read_text())
+        assert summary["stop"] is True
+        assert summary["stop_reason"] == reason
+        assert manifest["outputs"]["classification"]["sha256"]
+        assert manifest["outputs"]["lesion_subtype"]["sha256"]
+        assert checkpoint.classification_path is not None
+        assert checkpoint.lesion_subtype_path is not None
+        classification = nib.load(str(checkpoint.classification_path))
+        subtype = nib.load(str(checkpoint.lesion_subtype_path))
+        assert classification.get_data_dtype() == np.dtype(np.int8)
+        assert subtype.get_data_dtype() == np.dtype(np.int16)
+        assert nib.aff2axcodes(classification.affine) == ("R", "A", "S")
+        assert nib.aff2axcodes(subtype.affine) == ("R", "A", "S")
+        np.testing.assert_array_equal(np.asarray(classification.dataobj), final.classification)
+        np.testing.assert_array_equal(np.asarray(subtype.dataobj), final.lesion_classification)
+        with pytest.raises(registered_loop.RegisteredBranchStateError, match="terminal LesionTOADS checkpoint"):
+            hydrate_plus_lesion_registered_branch(checkpoint.manifest_path)
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("valid terminal resume must reuse its hashed outputs")
+
+    monkeypatch.setattr(registered_loop, "continue_plus_lesion_registered_loop", unexpected)
+    resumed = persist_plus_lesion_registered_loop_checkpoint(
+        initial.manifest_path, ATLAS, tmp_path / "convergence",
+        n_iter_max=99, thinning_limit=1000.0, max_passes=1,
+        source_zero_variance_nan=False, convergence_threshold=1.0e6, resume=True,
+    )
+    assert resumed.resumed
+    assert resumed.classification_path is not None
+
+
 def test_registered_loop_cli_routes_checkpoint_settings(tmp_path: Path, monkeypatch) -> None:
     from pymacruise.cli import main
 
@@ -483,6 +553,22 @@ def test_persisted_loop_workflow_connects_and_resumes_p41i_p41k_p41m(tmp_path: P
     assert not repaired_manifest["stages"]["registered_loop"]["resumed"]
     assert json.loads(loop_summary_path.read_text())["completed_iteration"] == 2
 
+    terminal = run_plus_lesion_loop_workflow(
+        recrop.manifest_path,
+        ATLAS,
+        tmp_path / "terminal-workflow",
+        **{**kwargs, "n_iter_max": 2},
+    )
+    terminal_manifest = json.loads(terminal.manifest_path.read_text())
+    assert terminal_manifest["status"] == "complete"
+    assert terminal_manifest["terminal"] is True
+    assert terminal_manifest["terminal_stop_reason"] == "iteration_limit"
+    assert terminal_manifest["result_scope"].endswith("terminal classification and lesion subtype")
+    assert terminal.classification_path is not None
+    assert terminal.lesion_subtype_path is not None
+    assert nib.aff2axcodes(nib.load(str(terminal.classification_path)).affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(nib.load(str(terminal.lesion_subtype_path)).affine) == ("R", "A", "S")
+
 
 def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: Path, monkeypatch) -> None:
     from types import SimpleNamespace
@@ -494,7 +580,10 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
 
     def fake_run(parent, descriptor, output, **kwargs):
         captured.update(parent=parent, descriptor=descriptor, output=output, **kwargs)
-        return SimpleNamespace(manifest_path=tmp_path / "run.json", resumed=kwargs["resume"])
+        return SimpleNamespace(
+            manifest_path=tmp_path / "run.json", resumed=kwargs["resume"],
+            classification_path=None, lesion_subtype_path=None,
+        )
 
     monkeypatch.setattr(workflow, "run_plus_lesion_loop_workflow", fake_run)
     assert main([
@@ -505,12 +594,14 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
         "--iterations", "3",
         "--n-iter-max", "4",
         "--max-passes", "2",
+        "--loop-convergence-threshold", "0.9",
         "--resume",
     ]) == 0
     assert captured["source_zero_variance_nan"] is True
     assert captured["iterations"] == 3
     assert captured["n_iter_max"] == 4
     assert captured["max_passes"] == 2
+    assert captured["loop_convergence_threshold"] == 0.9
     assert captured["resume"] is True
 
 
