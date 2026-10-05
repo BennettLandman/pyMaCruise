@@ -71,6 +71,10 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     assert summary["growing_events"] > 0
     assert summary["relation_count"] > 0
     assert summary["stage_order"].index("registerShapes") < summary["stage_order"].index("convergence_check")
+    assert len(summary["energy_ratio_state"]) == 7
+    assert len(summary["refreshed_centroids"]["class_centroids"]) == 2
+    assert len(summary["registration_shape_bounds"]) == 13
+    assert {"membership_diagnostics", "distance_state"} <= set(manifest["outputs"])
     modalities = nib.load(str(recrop.modalities_path))
     outputs = [
         nib.load(str(result.memberships_path)),
@@ -86,6 +90,12 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     ]
     assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in outputs)
     assert all(np.isfinite(np.asarray(image.dataobj)).all() for image in outputs)
+    diagnostic = nib.load(manifest["outputs"]["membership_diagnostics"]["path"])
+    distance_state = nib.load(manifest["outputs"]["distance_state"]["path"])
+    assert diagnostic.shape == (*modalities.shape[:3], 17)
+    assert distance_state.shape == (*modalities.shape[:3], 6)
+    assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in (diagnostic, distance_state))
+    assert np.isfinite(np.asarray(diagnostic.dataobj)).all()
     result_arrays = [np.asarray(image.dataobj) for image in outputs]
     direct = captured["branch"]
     np.testing.assert_array_equal(
@@ -103,6 +113,15 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     np.testing.assert_array_equal(result_arrays[3], direct.branch.branch.growing.available.astype(np.uint8))
     np.testing.assert_array_equal(result_arrays[4], direct.branch.branch.growing.ordering)
     np.testing.assert_array_equal(result_arrays[5], direct.branch.branch.relations.relation_map)
+    membership = direct.transition.membership.membership
+    np.testing.assert_array_equal(
+        np.asarray(diagnostic.dataobj),
+        np.concatenate((
+            membership.denominator[..., None], membership.class_energies,
+            membership.lesion_energy[..., None], membership.black_hole_energy[..., None],
+            membership.running_objective[..., None],
+        ), axis=-1),
+    )
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid resume must skip branch computation")

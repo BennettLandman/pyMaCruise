@@ -64,7 +64,10 @@ def _valid_cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusL
     if manifest.get("status") != "complete" or manifest.get("run_signature") != signature:
         return None
     paths: dict[str, Path] = {}
-    for key in ("memberships", "segmentation", "skeleton", "availability", "ordering", "relation_map", "summary"):
+    for key in (
+        "memberships", "membership_diagnostics", "distance_state", "segmentation",
+        "skeleton", "availability", "ordering", "relation_map", "summary",
+    ):
         record = manifest.get("outputs", {}).get(key)
         if not isinstance(record, dict):
             return None
@@ -78,8 +81,12 @@ def _valid_cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusL
     except (OSError, ValueError, json.JSONDecodeError):
         return None
     shape = images[0].shape[:3]
+    diagnostics = nib.load(str(paths["membership_diagnostics"]))
+    distances = nib.load(str(paths["distance_state"]))
     if (
         images[0].shape != (*shape, 17)
+        or diagnostics.shape != (*shape, 17)
+        or distances.shape != (*shape, 6)
         or images[1].shape != shape
         or images[2].shape != shape
         or images[3].shape != (*shape, 13)
@@ -87,6 +94,8 @@ def _valid_cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusL
         or images[5].shape != shape
         or any(nib.aff2axcodes(image.affine) != ("R", "A", "S") for image in images)
         or not all(np.isfinite(np.asarray(image.dataobj)).all() for image in images)
+        or not np.isfinite(np.asarray(diagnostics.dataobj)).all()
+        or not np.isfinite(np.asarray(distances.dataobj)).all()
         or summary.get("spatial_convention") != "RAS"
     ):
         return None
@@ -297,8 +306,31 @@ def run_plus_lesion_registered_branch_checkpoint(
             transition.membership.membership.outlier_membership[..., None],
             transition.membership.membership.lesion_relation[..., None],
         ), axis=-1)
+        membership = transition.membership.membership
+        membership_diagnostics = np.concatenate((
+            membership.denominator[..., None],
+            membership.class_energies,
+            membership.lesion_energy[..., None],
+            membership.black_hole_energy[..., None],
+            membership.running_objective[..., None],
+        ), axis=-1).astype(np.float32, copy=False)
+        distance_maps = initial.distance_maps
+        distance_state = np.stack((
+            distance_maps.ventricle_mask,
+            distance_maps.ventricle,
+            distance_maps.gray_matter_mask,
+            distance_maps.gray_matter,
+            distance_maps.brainstem_mask,
+            distance_maps.brainstem,
+        ), axis=-1).astype(np.int16, copy=False)
+        if membership_diagnostics.shape != (*images.shape[:3], 17):
+            raise ValueError("post-thinning membership diagnostics do not have the expected 17 channels")
+        if distance_state.shape != (*images.shape[:3], 6):
+            raise ValueError("initial distance state does not have the expected 6 channels")
         outputs = {
             "memberships": save_nifti_ras(nifti_ras_on_reference(reference, membership_values, dtype=np.float32), root / "registered_memberships_17ch.nii.gz", dtype=np.float32),
+            "membership_diagnostics": save_nifti_ras(nifti_ras_on_reference(reference, membership_diagnostics, dtype=np.float32), root / "registered_membership_diagnostics_17ch.nii.gz", dtype=np.float32),
+            "distance_state": save_nifti_ras(nifti_ras_on_reference(reference, distance_state, dtype=np.int16), root / "initial_distance_state_6ch.nii.gz", dtype=np.int16),
             "segmentation": save_nifti_ras(nifti_ras_on_reference(reference, branch.segmentation, dtype=np.int16), root / "registered_segmentation.nii.gz", dtype=np.int16),
             "skeleton": save_nifti_ras(nifti_ras_on_reference(reference, branch.growing.skeleton, dtype=np.int16), root / "registered_skeleton.nii.gz", dtype=np.int16),
             "availability": save_nifti_ras(nifti_ras_on_reference(reference, branch.growing.available.astype(np.uint8), dtype=np.uint8), root / "registered_availability_13ch.nii.gz", dtype=np.uint8),
@@ -311,7 +343,28 @@ def run_plus_lesion_registered_branch_checkpoint(
             "class_names": [item.name for item in priors.structures],
             "transition_objective": float(transition.membership.membership.objective),
             "energy_ratio": float(transition.membership.energy_ratio.energy_ratio),
+            "energy_ratio_state": {
+                key: float(getattr(transition.membership.energy_ratio, key))
+                for key in (
+                    "previous_energy", "current_energy", "difference", "numerator",
+                    "denominator", "quotient", "energy_ratio",
+                )
+            },
+            "refreshed_centroids": {
+                "class_centroids": transition.statistics.statistics.centroids.class_centroids.tolist(),
+                "lesion_centroids": transition.statistics.statistics.centroids.lesion_centroids.tolist(),
+                "black_hole_centroids": transition.statistics.statistics.centroids.black_hole_centroids.tolist(),
+            },
             "registration_transform": branch_result.registration.registration.transform.tolist(),
+            "registration_rotation": branch_result.registration.registration.rotation.tolist(),
+            "registration_shape_bounds": [
+                {
+                    "lower_xyz": list(bounds.lower_xyz),
+                    "upper_xyz": list(bounds.upper_xyz),
+                    "support_count": bounds.support_count,
+                }
+                for bounds in branch_result.registration.registration.shape_bounds
+            ],
             "stop": branch.stop,
             "stop_reason": branch.stop_reason,
             "growing_events": len(branch.growing.events),
