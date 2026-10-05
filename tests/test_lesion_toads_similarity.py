@@ -69,3 +69,31 @@ def test_centroid_similarity_matches_selected_java_float32_formula() -> None:
     assert mixed["lesion_similarity"][1:] == [0, 0, 0]
     assert mixed["black_hole_similarity"] == [1065353216, 1065353216, 1065353216, 0]
     assert any(value == 0x7FC00000 for value in reference["cases"][3]["class_similarity"])
+
+
+def test_explicit_finite_zero_variance_mode_uses_limiting_similarity() -> None:
+    centroids = np.asarray(((0.0, 0.0, 1.0), (0.0, 0.0, 1.0)), dtype=np.float32)
+    deviations = np.zeros_like(centroids)
+    lesion_centroid = np.asarray((0.0, 0.0), dtype=np.float32)
+    lesion_deviation = np.zeros(2, dtype=np.float32)
+    weights = np.ones(2, dtype=np.float32)
+    types = ("object", "object", "object")
+    names = ("a", "b", "c")
+    black_hole = np.ones(3, dtype=np.float32)
+
+    source = compute_lesion_toads_similarity(
+        centroids, deviations, lesion_centroid, lesion_deviation, weights,
+        types, names, prior_scale=0.1, black_hole_similarity=black_hole,
+    )
+    assert np.isnan(source.class_similarity[0, 1])
+    finite = compute_lesion_toads_similarity(
+        centroids, deviations, lesion_centroid, lesion_deviation, weights,
+        types, names, prior_scale=0.1, black_hole_similarity=black_hole,
+        finite_zero_variance=True,
+    )
+    assert np.isfinite(finite.class_similarity).all()
+    assert np.isfinite(finite.lesion_similarity).all()
+    assert finite.class_similarity[0, 1] == np.float32(1.0)
+    assert finite.class_similarity[0, 2] == np.float32(0.0)
+    assert finite.lesion_similarity[0] == np.float32(1.0)
+    assert finite.lesion_similarity[2] == np.float32(0.0)

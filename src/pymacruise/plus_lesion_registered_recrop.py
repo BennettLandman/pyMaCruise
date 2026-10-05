@@ -330,6 +330,12 @@ def run_plus_lesion_registered_recrop_checkpoint(
             "atlas.computeTransformedTemplate:optimizedAtlasTransform",
             "preprocess.updateTransformedTemplate",
         ],
+        "inputs": {
+            "normalized_modalities": {"path": str(normalized_path), "sha256": _sha256(normalized_path)},
+            "crop_manifest": {"path": str(crop_manifest_path), "sha256": _sha256(crop_manifest_path)},
+            "initial_alignment_manifest": {"path": str(align_manifest_path), "sha256": _sha256(align_manifest_path)},
+            "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
+        },
         "settings": {"padding": padding, "channel_order": ["T1", "FLAIR"], "classes": 13},
         "equivalence_note": "Source-ordered synthetic post-registration recrop and atlas-map refresh; iterative LesionTOADS and whole-workflow equivalence remain open.",
     }
@@ -367,6 +373,9 @@ def run_plus_lesion_registered_recrop_checkpoint(
         "spatial_convention": "RAS",
         "class_names": [item.name for item in alignment.priors.structures],
         "class_labels": [int(item.label) for item in alignment.priors.structures],
+        "initial_class_centroids": alignment.alignment.initial_centroids.tolist(),
+        "lesion_centroid": result.special_centroid_result.lesion_centroid.tolist(),
+        "black_hole_centroid": result.special_centroid_result.black_hole_centroid.tolist(),
         "preprocessing_transform": [float(value) for value in result.preprocessing_crop.crop.transform],
         "atlas_transform": [float(value) for value in result.registration_bounds.transform],
         "recrop_bounds_inclusive": list(bounds),

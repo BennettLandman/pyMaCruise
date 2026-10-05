@@ -531,3 +531,74 @@ All image outputs are RAS `.nii.gz` on one crop grid. Resume verifies the
 inputs and outputs before skipping the recrop. The committed small synthetic
 atlas fixture keeps routine validation bounded; full LesionTOADS iterations
 and real-image behavior remain open.
+
+## `pymacruise plus-lesion-first-iteration`
+
+```text
+pymacruise plus-lesion-first-iteration \
+  --registered-recrop-manifest registered-recrops.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir first-iteration \
+  [--iterations 99] [--first-thinning-limit 3] \
+  [--first-thinning-volume-ratio 0.5] [--finite-zero-variance] [--resume]
+```
+
+Consumes the registered-recrop outputs and computes the selected standard-13
+initial membership pass followed by loop-entry setup and first thinning. It
+writes 17-channel memberships (13 classes plus lesion, black hole, outlier,
+and lesion relation), first-thinning segmentation/skeleton/availability/
+ordering images, a diagnostic summary, and a hash-checked manifest. The
+source-faithful default preserves zero-variance IEEE NaNs; if these make the
+initial objective nonfinite, the manifest records a failed checkpoint and the
+run stops, including counts of nonfinite energy values and memberships plus
+zero-standard-deviation channels. `--finite-zero-variance` enables an explicit stabilization: matching
+centroids with zero deviation have distance zero and nonmatching ones infinite
+distance. The summary records zero-deviation channels and nonfinite membership
+count so this numerical difference remains visible. All outputs use the
+registered RAS grid. This step does not execute later LesionTOADS updates.
+
+## `pymacruise plus-lesion-first-iteration`
+
+```text
+pymacruise plus-lesion-first-iteration \
+  --registered-recrop-manifest registered-recrops.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir first-iteration \
+  [--iterations 99] [--first-thinning-limit 3] \
+  [--first-thinning-volume-ratio 0.5] [--finite-zero-variance] [--resume]
+```
+
+Consumes the registered-recrop outputs and computes the selected standard-13
+initial membership pass followed by loop-entry setup and first thinning. It
+writes 17-channel memberships (13 classes plus lesion, black hole, outlier,
+and lesion relation), first-thinning segmentation/skeleton/availability/
+ordering images, a diagnostic summary, and a hash-checked manifest. The
+source-faithful default preserves zero-variance IEEE NaNs; if these make the
+initial objective nonfinite, the manifest records a failed checkpoint and the
+run stops, including counts of nonfinite energy values and memberships plus
+zero-standard-deviation channels. `--finite-zero-variance` enables an explicit stabilization: matching
+centroids with zero deviation have distance zero and nonmatching ones infinite
+distance. The summary records zero-deviation channels and nonfinite membership
+count so this numerical difference remains visible. All outputs use the
+registered RAS grid. This step does not execute later LesionTOADS updates.
+
+## `pymacruise plus-lesion-first-iteration`
+
+```text
+pymacruise plus-lesion-first-iteration \
+  --registered-recrop-manifest registered-recrops.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir first-iteration \
+  [--iterations 99] [--first-thinning-limit 3] \
+  [--first-thinning-volume-ratio 0.5] [--finite-zero-variance] [--resume]
+```
+
+Consumes the registered-recrop outputs and computes the selected standard-13
+initial membership pass followed by loop-entry setup and first thinning. It
+writes 17-channel memberships (13 classes plus lesion, black hole, outlier,
+and lesion relation), first-thinning segmentation/skeleton/availability/
+ordering images, a diagnostic summary, and a hash-checked manifest. The
+source-faithful default preserves zero-variance IEEE NaNs; if these make the
+initial objective nonfinite, the manifest records a failed checkpoint and the
+run stops. `--finite-zero-variance` enables an explicit stabilization: matching
+centroids with zero deviation have distance zero and nonmatching ones infinite
+distance. The summary records zero-deviation channels and nonfinite membership
+count so this numerical difference remains visible. All outputs use the
+registered RAS grid. This step does not execute later LesionTOADS updates.

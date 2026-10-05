@@ -43,6 +43,7 @@ def compute_lesion_toads_similarity(
     prior_scale: float,
     t1_channel: int = -1,
     black_hole_similarity: ArrayLike,
+    finite_zero_variance: bool = False,
 ) -> LesionToadsSimilarity:
     """Reproduce the selected source's class and lesion similarity setup.
 
@@ -56,7 +57,11 @@ def compute_lesion_toads_similarity(
     an unchanged copy.
 
     Zero standard deviations and a zero prior scale retain source IEEE-754
-    float32 behavior (including NaN and infinity results).
+    float32 behavior (including NaN and infinity results) by default. The
+    explicit ``finite_zero_variance`` option treats an exactly matching
+    centroid with zero deviation as distance zero, and a nonmatching centroid
+    as infinite distance, producing finite limiting similarities for a
+    stabilized workflow.
     """
     centroids = np.asarray(class_centroid, dtype=np.float32)
     deviations = np.asarray(class_stddev, dtype=np.float32)
@@ -67,6 +72,8 @@ def compute_lesion_toads_similarity(
     types = tuple(object_types)
     names = tuple(structure_names)
     scale = np.float32(prior_scale)
+    if not isinstance(finite_zero_variance, (bool, np.bool_)):
+        raise TypeError("finite_zero_variance must be boolean")
 
     if centroids.ndim != 2 or centroids.shape[0] < 1 or centroids.shape[1] < 1:
         raise ValueError("class_centroid must have shape (channels, classes)")
@@ -116,7 +123,10 @@ def compute_lesion_toads_similarity(
                     denominator = np.float32(
                         deviations[t1_channel, k] + deviations[t1_channel, m]
                     )
-                    distance = np.float32(np.float32(term / denominator) / denominator)
+                    if finite_zero_variance and denominator == np.float32(0.0):
+                        distance = np.float32(0.0) if term == np.float32(0.0) else np.float32(np.inf)
+                    else:
+                        distance = np.float32(np.float32(term / denominator) / denominator)
                 else:
                     for channel in range(channels):
                         delta = np.float32(centroids[channel, k] - centroids[channel, m])
@@ -127,9 +137,16 @@ def compute_lesion_toads_similarity(
                         denominator = np.float32(
                             deviations[channel, k] + deviations[channel, m]
                         )
-                        contribution = np.float32(
-                            np.float32(weighted / denominator) / denominator
-                        )
+                        if finite_zero_variance and denominator == np.float32(0.0):
+                            contribution = (
+                                np.float32(0.0)
+                                if weighted == np.float32(0.0)
+                                else np.float32(np.inf)
+                            )
+                        else:
+                            contribution = np.float32(
+                                np.float32(weighted / denominator) / denominator
+                            )
                         distance = np.float32(distance + contribution)
                 class_similarity[k, m] = _similarity(distance, scale)
 
@@ -141,7 +158,14 @@ def compute_lesion_toads_similarity(
                 weighted_delta = np.float32(weights[channel] * delta)
                 weighted = np.float32(weighted_delta * delta)
                 denominator = np.float32(lesion_deviation[channel] + deviations[channel, k])
-                contribution = np.float32(np.float32(weighted / denominator) / denominator)
+                if finite_zero_variance and denominator == np.float32(0.0):
+                    contribution = (
+                        np.float32(0.0)
+                        if weighted == np.float32(0.0)
+                        else np.float32(np.inf)
+                    )
+                else:
+                    contribution = np.float32(np.float32(weighted / denominator) / denominator)
                 distance = np.float32(distance + contribution)
             lesion_similarity[k] = (
                 _similarity(distance, scale) if types[k] not in excluded else np.float32(0.0)

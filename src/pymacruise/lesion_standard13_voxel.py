@@ -167,6 +167,7 @@ def compute_lesion_toads_standard13_voxel(
          "object", "object", "object", "object", "lesion", "object", "object"),
         STANDARD13_NAMES, prior_scale=float(STANDARD13_PRIOR_SCALE), t1_channel=0,
         black_hole_similarity=np.zeros(count, dtype=np.float32),
+        finite_zero_variance=not source_zero_variance_nan,
     )
     class_energy = np.zeros(count, dtype=np.float32)
     lesion_energy = np.float32(0.0)

@@ -73,6 +73,20 @@ class LesionRegisteredInitialMembership:
     excluded_wrapper_stages: tuple[str, ...]
 
 
+class LesionInitialMembershipNonfiniteError(ValueError):
+    """Source-faithful initial membership failed its finite-energy loop gate.
+
+    The computed memberships and variance state are retained as diagnostics so
+    a file workflow can report the exact IEEE nonfinite counts before it
+    stops instead of silently regularizing the historical NaN behavior.
+    """
+
+    def __init__(self, message: str, membership, variances) -> None:
+        super().__init__(message)
+        self.membership = membership
+        self.variances = variances
+
+
 def run_lesion_toads_registered_initial_membership(
     images: ArrayLike,
     segmentation: ArrayLike,
@@ -226,9 +240,16 @@ def run_lesion_toads_registered_initial_membership(
         spread=spread,
         source_zero_variance_nan=source_zero_variance_nan,
     )
-    loop_entry = seed_lesion_toads_initial_loop(
-        membership, iterations=iterations
-    )
+    try:
+        loop_entry = seed_lesion_toads_initial_loop(
+            membership, iterations=iterations
+        )
+    except ValueError as error:
+        if not np.isfinite(membership.objective):
+            raise LesionInitialMembershipNonfiniteError(
+                str(error), membership, variances
+            ) from error
+        raise
     first_thinning = run_lesion_initial_thinning_pass(
         loop_entry,
         labels,

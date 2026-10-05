@@ -110,6 +110,9 @@ def test_registered_recrop_file_checkpoint_matches_array_adapter_and_resumes(
         "Caudate", "Thalamus", "Putamen", "Brainstem", "Cerebellum-WM",
         "OuterVentricular-WM", "InterVentricular-WM", "Frontal-WM",
     ]
+    assert np.asarray(summary["initial_class_centroids"]).shape == (2, 13)
+    assert np.asarray(summary["lesion_centroid"]).shape == (2,)
+    assert np.asarray(summary["black_hole_centroid"]).shape == (2,)
     assert summary["stage_order"].index("preprocess.updateTransformedTemplate") > summary["stage_order"].index(
         "atlas.computeTransformedTemplate:optimizedAtlasTransform"
     )
