@@ -10,6 +10,7 @@ import pytest
 from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alignment_checkpoint
 from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 import pymacruise.plus_lesion_registered_branch as registered_branch
+import pymacruise.plus_lesion_registered_loop as registered_loop
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
 from pymacruise.plus_lesion_registered_loop import (
     continue_plus_lesion_registered_loop,
@@ -138,13 +139,35 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     np.testing.assert_array_equal(registration.transform, direct.registration.registration.transform)
     assert distance_state.shape == (*modalities.shape[:3], 6)
 
+    direct_runner = registered_loop.run_lesion_toads_descriptor_loop
+    loop_inputs = {}
+
+    def capture_loop_inputs(branch, initial_registration, **kwargs):
+        loop_inputs.update(branch=branch, registration=initial_registration, **kwargs)
+        return direct_runner(branch, initial_registration, **kwargs)
+
+    monkeypatch.setattr(registered_loop, "run_lesion_toads_descriptor_loop", capture_loop_inputs)
     loop = continue_plus_lesion_registered_loop(
         result.manifest_path, ATLAS, n_iter_max=2, thinning_limit=1000.0,
         source_zero_variance_nan=False,
     )
+    direct_loop = direct_runner(
+        direct.branch.branch,
+        direct.registration.registration,
+        **{key: value for key, value in loop_inputs.items() if key not in {"branch", "registration"}},
+    )
     assert len(loop.passes) == 1
     assert loop.passes[0].iteration == 2
     assert loop.passes[0].stage_order
+    np.testing.assert_array_equal(loop.final_branch.segmentation, direct_loop.final_branch.segmentation)
+    np.testing.assert_array_equal(
+        loop.final_branch.membership_result.membership.class_memberships,
+        direct_loop.final_branch.membership_result.membership.class_memberships,
+    )
+    np.testing.assert_array_equal(
+        loop.final_branch.registration_handoff.transform,
+        direct_loop.final_branch.registration_handoff.transform,
+    )
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid resume must skip branch computation")
