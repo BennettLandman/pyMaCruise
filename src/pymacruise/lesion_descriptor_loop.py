@@ -62,6 +62,8 @@ class LesionToadsDescriptorLoopOptions:
     flair_channel: int | None = None
     spread: float = 0.5
     source_zero_variance_nan: bool = False
+    correction_polynomial_degree: int | None = None
+    initial_correction_degree: int = 0
     align_shapes: bool = True
     init_align_iter: int = 10
     has_lesion: bool = True
@@ -87,6 +89,7 @@ class LesionToadsDescriptorLoopPass:
     transition: LesionToadsDescriptorContinuingIteration | None = None
     registered: LesionToadsDescriptorRegisteredIteration | None = None
     refreshed_distance_maps: LesionInitialDistanceMaps | None = None
+    correction_degree: int = 0
 
 
 @dataclass(frozen=True)
@@ -101,6 +104,8 @@ class LesionToadsDescriptorLoopResult:
     final_lesion_centroids: np.ndarray
     final_black_hole_centroids: np.ndarray
     final_distance_maps: LesionInitialDistanceMaps | None = None
+    final_fields: np.ndarray | None = None
+    final_correction_degree: int = 0
 
 
 def run_lesion_toads_descriptor_loop(
@@ -147,10 +152,32 @@ def run_lesion_toads_descriptor_loop(
         raise TypeError("source_zero_variance_nan must be boolean")
     if not isinstance(options.retain_iteration_details, (bool, np.bool_)):
         raise TypeError("retain_iteration_details must be boolean")
-
+    if options.correction_polynomial_degree is not None and (
+        isinstance(options.correction_polynomial_degree, (bool, np.bool_))
+        or not isinstance(options.correction_polynomial_degree, (int, np.integer))
+        or int(options.correction_polynomial_degree) not in (1, 2, 3)
+    ):
+        raise ValueError("correction_polynomial_degree must be one of 1, 2, 3, or None")
+    if (
+        isinstance(options.initial_correction_degree, (bool, np.bool_))
+        or not isinstance(options.initial_correction_degree, (int, np.integer))
+        or options.initial_correction_degree < 0
+        or (
+            options.correction_polynomial_degree is not None
+            and options.initial_correction_degree > options.correction_polynomial_degree
+        )
+    ):
+        raise ValueError("initial_correction_degree must be nonnegative and no greater than the fit ceiling")
     images = np.asarray(options.images, dtype=np.float32)
     if images.ndim not in (3, 4):
         raise ValueError("images must be a 3-D volume or channel-last 4-D array")
+    if options.fields is not None:
+        supplied_fields = np.asarray(options.fields, dtype=np.float32)
+        if supplied_fields.shape != images.shape or not np.isfinite(supplied_fields).all():
+            raise ValueError("fields must be finite and match the loop image grid and channels")
+    elif options.correction_polynomial_degree is not None:
+        raise ValueError("fields are required when correction-field refitting is enabled")
+
     transform = np.asarray(getattr(initial_registration, "transform", None), dtype=np.float32).copy()
     if transform.shape != (6,) or not np.isfinite(transform).all():
         raise ValueError("initial_registration must provide a finite six-value rigid transform")
@@ -166,6 +193,12 @@ def run_lesion_toads_descriptor_loop(
     gray_matter_distances = np.asarray(options.gray_matter_distances)
     brainstem_distances = np.asarray(options.brainstem_distances)
     final_distance_maps = None
+    current_fields = (
+        None
+        if options.fields is None
+        else np.array(options.fields, dtype=np.float32, copy=True)
+    )
+    correction_degree = int(options.initial_correction_degree)
     passes: list[LesionToadsDescriptorLoopPass] = []
 
     last_iteration = maximum if max_passes is None else min(
@@ -203,7 +236,7 @@ def run_lesion_toads_descriptor_loop(
             channel_weight_options=options.channel_weight_options,
             outlier_energy=options.outlier_energy,
             lesion_power_exponent=options.lesion_power_exponent,
-            fields=options.fields,
+            fields=current_fields,
             flair_channel=options.flair_channel,
             spread=options.spread,
             source_zero_variance_nan=options.source_zero_variance_nan,
@@ -214,7 +247,13 @@ def run_lesion_toads_descriptor_loop(
             maximum_brainstem_distance=options.maximum_brainstem_distance,
             has_lesion=options.has_lesion,
             previous_distance_maps=final_distance_maps or options.initial_distance_maps,
+            correction_polynomial_degree=options.correction_polynomial_degree,
+            correction_degree=correction_degree,
+            correction_max_distance=options.max_distance,
         )
+        if transition.inhomogeneity is not None:
+            correction_degree = transition.inhomogeneity.degree
+            current_fields = np.stack(transition.inhomogeneity.fields, axis=-1)
         if transition.refreshed_distance_maps is not None:
             final_distance_maps = transition.refreshed_distance_maps
             ventricle_distances = final_distance_maps.ventricle
@@ -255,6 +294,7 @@ def run_lesion_toads_descriptor_loop(
                 transition=transition if options.retain_iteration_details else None,
                 registered=registered if options.retain_iteration_details else None,
                 refreshed_distance_maps=transition.refreshed_distance_maps,
+                correction_degree=correction_degree,
             )
         )
         branch = registered.control.branch
@@ -274,6 +314,8 @@ def run_lesion_toads_descriptor_loop(
                 lesion_centroids.copy(),
                 black_hole_centroids.copy(),
                 final_distance_maps,
+                None if current_fields is None else current_fields.copy(),
+                correction_degree,
             )
 
     if max_passes is not None:
@@ -286,6 +328,8 @@ def run_lesion_toads_descriptor_loop(
             lesion_centroids.copy(),
             black_hole_centroids.copy(),
             final_distance_maps,
+            None if current_fields is None else current_fields.copy(),
+            correction_degree,
         )
 
     raise RuntimeError("selected iteration ceiling completed without a stopping branch")

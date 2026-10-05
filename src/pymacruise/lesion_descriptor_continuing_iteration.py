@@ -28,6 +28,10 @@ from .lesion_post_registration import LesionToadsPostRegistrationBranch
 from .lesion_growth import LesionToadsThinningPass
 from .lesion_registered_initial_membership import LesionInitialDistanceMaps
 from .lesion_distance_refresh import refresh_lesion_toads_distance_maps
+from .lesion_inhomogeneity_transition import (
+    LesionToadsInhomogeneityTransition,
+    update_lesion_toads_exact_inhomogeneity_fields,
+)
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,7 @@ class LesionToadsDescriptorContinuingIteration:
     membership: LesionNextIterationMembership
     stage_order: tuple[str, ...]
     refreshed_distance_maps: LesionInitialDistanceMaps | None = None
+    inhomogeneity: LesionToadsInhomogeneityTransition | None = None
 
 
 def run_lesion_toads_descriptor_continuing_iteration(
@@ -74,6 +79,9 @@ def run_lesion_toads_descriptor_continuing_iteration(
     maximum_brainstem_distance: int = 25,
     has_lesion: bool = True,
     previous_distance_maps: LesionInitialDistanceMaps | None = None,
+    correction_polynomial_degree: int | None = None,
+    correction_degree: int = 0,
+    correction_max_distance: float = 0.0,
 ) -> LesionToadsDescriptorContinuingIteration:
     """Run thinning → 13-class statistics → GM membership and energy ratio.
 
@@ -93,6 +101,7 @@ def run_lesion_toads_descriptor_continuing_iteration(
         raise TypeError("source_zero_variance_nan must be boolean")
     if not isinstance(has_lesion, (bool, np.bool_)):
         raise TypeError("has_lesion must be boolean")
+    values = np.asarray(images, dtype=np.float32)
     membership_update = getattr(previous_branch.membership_result, "membership", None)
     if membership_update is None or not hasattr(membership_update, "class_memberships"):
         raise TypeError("previous branch must carry a 13-class membership result")
@@ -112,9 +121,32 @@ def run_lesion_toads_descriptor_continuing_iteration(
         limit=thinning_limit,
         use_lesion_max=use_lesion_max,
     )
+    inhomogeneity = None
+    if correction_polynomial_degree is not None:
+        if fields is None:
+            raise ValueError("correction fields are required when refitting is enabled")
+        image_fields = np.asarray(fields, dtype=np.float32)
+        if image_fields.shape != values.shape or not np.isfinite(image_fields).all():
+            raise ValueError("fields must be finite and match images when refitting is enabled")
+        previous_membership = getattr(previous_branch.membership_result, "membership", None)
+        if previous_membership is None or not hasattr(previous_membership, "class_memberships"):
+            raise TypeError("previous branch lacks memberships required for field refitting")
+        inhomogeneity = update_lesion_toads_exact_inhomogeneity_fields(
+            values,
+            previous_membership.class_memberships,
+            thinning.run.segmentation,
+            initial_class_centroids,
+            tuple(image_fields[..., channel] for channel in range(image_fields.shape[-1])),
+            tuple(str(kind).lower() for kind in object_types),
+            degree=correction_degree,
+            polynomial_degree=correction_polynomial_degree,
+            previous_energy_ratio=float(previous_branch.energy_ratio),
+            max_distance=correction_max_distance,
+        )
+        fields = np.stack(inhomogeneity.fields, axis=-1)
     statistics = refresh_statistics_after_next_iteration_thinning(
         thinning,
-        images,
+        values,
         class_memberships,
         lesion_membership,
         black_hole_membership,
@@ -145,7 +177,7 @@ def run_lesion_toads_descriptor_continuing_iteration(
         brainstem_distances = refreshed.maps.brainstem
     membership = run_lesion_toads_next_gm_membership_update(
         statistics,
-        images,
+        values,
         transformed_shape_values,
         shape_priors,
         smoothing_priors,
@@ -170,9 +202,11 @@ def run_lesion_toads_descriptor_continuing_iteration(
         statistics,
         membership,
         (
+            *(inhomogeneity.stage_order if inhomogeneity is not None else ()),
             *statistics.stage_order,
             *(refreshed.stage_order if refreshed else ()),
             *membership.stage_order[len(statistics.stage_order):],
         ),
         None if refreshed is None else refreshed.maps,
+        inhomogeneity,
     )

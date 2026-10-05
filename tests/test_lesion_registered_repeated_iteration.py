@@ -340,6 +340,36 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
         detailed_loop.passes[0].transition.membership.membership.objective.view(np.uint32)
     )
 
+    initial_fields = np.ones_like(images, dtype=np.float32)
+    refitted_loop = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=replace(
+            loop_options,
+            fields=initial_fields,
+            correction_polynomial_degree=1,
+            initial_correction_degree=1,
+            retain_iteration_details=True,
+        ),
+        max_passes=1,
+    )
+    refitted_transition = refitted_loop.passes[0].transition
+    assert refitted_transition is not None
+    assert refitted_transition.inhomogeneity is not None
+    assert refitted_transition.inhomogeneity.degree == 1
+    assert refitted_transition.stage_order.index("degreeGate") < refitted_transition.stage_order.index(
+        "computeCentroids"
+    )
+    assert refitted_loop.final_correction_degree == 1
+    assert refitted_loop.final_fields is not None
+    assert np.isfinite(refitted_loop.final_fields).all()
+    np.testing.assert_array_equal(initial_fields, np.ones_like(initial_fields))
+    np.testing.assert_array_equal(
+        refitted_transition.inhomogeneity.fields[0],
+        refitted_loop.final_fields[..., 0],
+    )
+
     converged = run_lesion_toads_descriptor_loop(
         prior_branch,
         first_branch.registration.registration,
