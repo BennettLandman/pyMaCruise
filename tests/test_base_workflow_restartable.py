@@ -8,6 +8,7 @@ import numpy as np
 
 from pymacruise.cli import main
 from pymacruise.base_workflow import _materialize_dura_atlas
+from pymacruise import workflow
 
 
 ROOT = Path(__file__).parent
@@ -27,29 +28,45 @@ def test_base_atlas_materializer_accepts_selected_vandy_structure_names(tmp_path
     assert (derived.parent / "shape-10.nii.gz").is_file()
 
 
-def test_base_run_is_end_to_end_restartable_and_stage_checked(tmp_path, capsys) -> None:
+def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
+    tmp_path, capsys, monkeypatch
+) -> None:
     output = tmp_path / "base-run"
-    # Simulate a previous process that created an attempt directory but died
-    # before it could add that attempt to the run manifest.
+    config_path = tmp_path / "base-workflow.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "profile": "base",
+                "t1_path": str(FIXTURE / "t1.nii.gz"),
+                "maseg_path": str(MASEG),
+                "brain_mask_path": str(FIXTURE / "brain-mask.nii.gz"),
+                "output_dir": str(output),
+                "run_options": {
+                    "registration_levels": 1,
+                    "registration_iterations": 1,
+                    "registration_max_iterations": 1,
+                    "toads_iterations": 2,
+                    "dura_iterations": 1,
+                    "crop_edge_width": 2,
+                    "ace_diffusion_iterations": 1,
+                    "tgdm_iterations": 1,
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(workflow, "get_bundled_atlas_descriptor", lambda _name: ATLAS)
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+    assert main(["workflow-preflight", "--config", str(config_path)]) == 0
+    # Simulate an interrupted attempt after preflight and before execution.
     (output / "stages" / "toads-first" / "attempt-01").mkdir(parents=True)
-    arguments = [
-        "base-run",
-        "--t1", str(FIXTURE / "t1.nii.gz"),
-        "--brain-mask", str(FIXTURE / "brain-mask.nii.gz"),
-        "--atlas-descriptor", str(ATLAS),
-        "--maseg", str(MASEG),
-        "--output-dir", str(output),
-        "--registration-levels", "1",
-        "--registration-iterations", "1",
-        "--registration-max-iterations", "1",
-        "--toads-iterations", "2",
-        "--dura-iterations", "1",
-        "--crop-edge-width", "2",
-        "--ace-diffusion-iterations", "1",
-        "--tgdm-iterations", "1",
-    ]
+    arguments = ["workflow-run", "--config", str(config_path)]
     assert main(arguments) == 0
     first_summary = capsys.readouterr().out
+    assert (output / "preflight.json").is_file()
     assert "Stage check passed: n4" in first_summary
     assert "Stage check passed: toads-first" in first_summary
     assert "Stage check passed: dura" in first_summary
