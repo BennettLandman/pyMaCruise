@@ -4,7 +4,7 @@
   `./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 --interval-seconds 0.1 --report-interval-seconds 30 -- env PYTHONPATH=src ./.venv/bin/pytest -q tests/test_plus_flair_brain_resolution.py`
 - Focused result: **1 passed, 0 failed, 0 skipped in 14.09s**.
 - Peak sampled RSS: **0.858 GB**; the 16 GB watchdog did not terminate the test.
-- Implementation/test commit: recorded after committing this slice.
+- Implementation/test commit: `9e0654f817948b95cd5966bb436816139d0c1d6b`.
 
 The committed analytic RAS phantom is `(172, 216, 164)` and contains nested
 tissue-like regions, folded cortical modulation, contrast-remapped FLAIR, a
