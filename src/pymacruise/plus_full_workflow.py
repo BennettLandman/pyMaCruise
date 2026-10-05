@@ -155,6 +155,7 @@ def run_plus_full_workflow(
     settings: dict[str, Any] = {
         "registration": asdict(registration_config),
         "n4": asdict(n4_config),
+        "pipeline_options": pipeline_options.as_dict(),
         "crop_padding": int(crop_padding),
         "init_align_iterations": int(init_align_iterations),
         "pyramid_levels": int(pyramid_levels),

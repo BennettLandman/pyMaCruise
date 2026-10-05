@@ -44,7 +44,12 @@ this schema for the base profile:
 ```
 
 The plus profile additionally requires `flair_path` and may provide a
-`plus_options` object using the field names in `PlusPipelineOptions`. It uses
+`plus_options` object using the field names in `PlusPipelineOptions`. Either
+profile may provide `run_options`: base fields are names in `BaseRunOptions`;
+plus fields are nested `registration`, `n4`, and `plus` objects matching the
+corresponding runner configuration fields. Unknown fields are rejected. These
+let synthetic runs lower iteration counts without changing algorithm defaults
+in the implementation. The plus profile uses
 the bundled LesionTOADS atlas descriptor. The base profile uses the bundled
 default TOADS descriptor. Custom atlas paths are not accepted by this
 preflight interface.

@@ -11,6 +11,7 @@ import pytest
 from pymacruise.cli import main
 from pymacruise.lesion_dura_outputs import generate_lesion_dura_removal_outputs
 from pymacruise.spatial_transfer import transfer_to_reference_space
+from pymacruise import workflow
 
 
 ROOT = Path(__file__).parent
@@ -24,6 +25,7 @@ def _sha256(path: Path) -> str:
 
 
 def _inputs(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     modalities = nib.load(str(FOLDED / "multi_atlas_gm.nii.gz"))
     gm = np.asarray(modalities.dataobj) > 0
     wm = np.asarray(nib.load(str(FOLDED / "multi_atlas_wm.nii.gz")).dataobj) > 0
@@ -273,3 +275,79 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     )
     with pytest.raises(ValueError, match="brain mask must match the T1 reference grid"):
         main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))
+
+
+def test_workflow_run_config_executes_and_resumes_folded_synthetic_plus(
+    tmp_path: Path, monkeypatch
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    output = tmp_path / "configured-plus"
+    config_path = tmp_path / "workflow.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "profile": "plus",
+                "t1_path": str(t1),
+                "flair_path": str(flair),
+                "brain_mask_path": str(mask),
+                "maseg_path": str(maseg),
+                "output_dir": str(output),
+                "plus_options": {"boundary_overlook_labels": [120, 121]},
+                "run_options": {
+                    "registration": {
+                        "iterations": [2],
+                        "shrink_factors": [1],
+                        "smoothing_sigmas": [0],
+                        "sampling_rate": 1,
+                    },
+                    "n4": {
+                        "shrink_factor": 1,
+                        "iterations": [2],
+                        "spline_mesh": [1, 1, 1],
+                    },
+                    "plus": {
+                        "crop_padding": 1,
+                        "init_align_iterations": 0,
+                        "pyramid_levels": 2,
+                        "lesion_iterations": 1,
+                        "first_thinning_limit": 1000,
+                        "source_zero_variance_nan": False,
+                        "loop_convergence_threshold": 0,
+                        "n_iter_max": 2,
+                        "loop_thinning_limit": 1000,
+                    },
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(workflow, "get_bundled_atlas_descriptor", lambda _name: ATLAS)
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+
+    assert main(["workflow-preflight", "--config", str(config_path)]) == 0
+    assert (output / "run.json").is_file()
+    assert main(["workflow-run", "--config", str(config_path)]) == 0
+    assert (output / "preflight.json").is_file()
+    run_manifest = output / "plus-full-workflow.json"
+    manifest = json.loads(run_manifest.read_text(encoding="utf-8"))
+    assert manifest["status"] == "complete"
+    assert manifest["terminal"] is True
+    assert manifest["stage_order"][-1] == "plus_surface_workflow"
+    assert manifest["settings"]["pipeline_options"]["boundary_overlook_labels"] == [120, 121]
+    for record in manifest["stages"].values():
+        child_manifest_path = Path(record["manifest"]["path"])
+        child_manifest = json.loads(child_manifest_path.read_text(encoding="utf-8"))
+        for output_record in child_manifest.get("outputs", {}).values():
+            artifact = Path(output_record["path"])
+            assert artifact.is_file()
+            assert _sha256(artifact) == output_record["sha256"]
+            if artifact.name.endswith(".nii.gz"):
+                assert nib.aff2axcodes(nib.load(str(artifact)).affine) == ("R", "A", "S")
+
+    assert main(["workflow-run", "--config", str(config_path), "--resume"]) == 0
+    resumed = json.loads(run_manifest.read_text(encoding="utf-8"))
+    assert resumed["status"] == "complete"
+    assert resumed["terminal"] is True

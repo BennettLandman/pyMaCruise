@@ -32,6 +32,7 @@ _WORKFLOW_CONFIG_KEYS = {
     "flair_path",
     "bias_correction",
     "plus_options",
+    "run_options",
 }
 _ATLAS_DESCRIPTORS = {
     WorkflowProfile.BASE: "cruise-atlas-10obj-toads2008.txt",
@@ -59,6 +60,7 @@ class WorkflowConfig:
     flair_path: Path | str | None = None
     bias_correction: str = "N4"
     plus_options: PlusPipelineOptions | None = None
+    run_options: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -73,6 +75,8 @@ class WorkflowConfig:
             object.__setattr__(self, "plus_options", options)
         elif self.plus_options is not None:
             raise ValueError("plus_options are only valid for the plus profile")
+        if self.run_options is not None:
+            object.__setattr__(self, "run_options", _validate_run_options(profile, self.run_options))
         for name in ("t1_path", "maseg_path", "brain_mask_path", "output_dir"):
             object.__setattr__(self, name, Path(getattr(self, name)))
         if self.flair_path is not None:
@@ -95,10 +99,65 @@ class WorkflowConfig:
             result.pop("plus_options")
         else:
             result["plus_options"] = self.plus_options.as_dict()
+        if self.run_options is None:
+            result.pop("run_options")
         return {
             key: (str(value) if isinstance(value, Path) else value.value if isinstance(value, WorkflowProfile) else value)
             for key, value in result.items()
         }
+
+
+def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, Any]:
+    """Validate nested restartable-runner options and normalize JSON schedules."""
+    if not isinstance(values, dict):
+        raise ValueError("Workflow config run_options must be a JSON object")
+    base_fields = {
+        "registration_levels", "registration_iterations",
+        "post_refresh_registration_iterations", "registration_max_iterations",
+        "toads_iterations", "dura_iterations", "crop_edge_width",
+        "ace_diffusion_iterations", "gvf_iterations", "tgdm_iterations",
+    }
+    plus_fields = {
+        "crop_padding", "init_align_iterations", "pyramid_levels",
+        "lesion_iterations", "first_thinning_limit", "first_thinning_volume_ratio",
+        "source_zero_variance_nan", "max_distance", "loop_convergence_threshold",
+        "n_iter_max", "loop_thinning_limit", "max_passes",
+    }
+    registration_fields = {
+        "transform_type", "metric", "metric_bins", "sampling_rate", "iterations",
+        "shrink_factors", "smoothing_sigmas", "deterministic", "random_seed",
+        "single_precision",
+    }
+    n4_fields = {
+        "shrink_factor", "iterations", "convergence_tolerance", "spline_mesh",
+        "rescale_intensities",
+    }
+    if profile is WorkflowProfile.BASE:
+        unknown = sorted(set(values) - base_fields)
+        if unknown:
+            raise ValueError(f"Unknown base run_options field(s): {', '.join(unknown)}")
+        return dict(values)
+
+    unknown_groups = sorted(set(values) - {"plus", "registration", "n4"})
+    if unknown_groups:
+        raise ValueError(f"Unknown plus run_options group(s): {', '.join(unknown_groups)}")
+    result: dict[str, Any] = {}
+    for group, fields in (("plus", plus_fields), ("registration", registration_fields), ("n4", n4_fields)):
+        options = values.get(group, {})
+        if not isinstance(options, dict):
+            raise ValueError(f"Workflow config run_options.{group} must be a JSON object")
+        unknown = sorted(set(options) - fields)
+        if unknown:
+            raise ValueError(f"Unknown run_options.{group} field(s): {', '.join(unknown)}")
+        result[group] = dict(options)
+    for group, keys in (
+        ("registration", ("iterations", "shrink_factors", "smoothing_sigmas")),
+        ("n4", ("iterations", "spline_mesh")),
+    ):
+        for key in keys:
+            if key in result[group] and isinstance(result[group][key], list):
+                result[group][key] = tuple(result[group][key])
+    return result
 
 
 def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
@@ -157,6 +216,10 @@ def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Invalid workflow config plus_options: {exc}") from exc
 
+    run_options = raw.get("run_options")
+    if run_options is not None:
+        run_options = _validate_run_options(WorkflowProfile(raw["profile"]), run_options)
+
     return WorkflowConfig(
         profile=raw["profile"],
         t1_path=resolve_config_path(raw["t1_path"], "t1_path"),
@@ -166,6 +229,7 @@ def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
         flair_path=resolve_config_path(raw.get("flair_path"), "flair_path"),
         bias_correction=raw.get("bias_correction", "N4"),
         plus_options=plus_options,
+        run_options=run_options,
     )
 
 
@@ -362,7 +426,7 @@ def run_workflow_config(
             preflight_manifest.replace(archived_preflight)
     descriptor = get_bundled_atlas_descriptor(_ATLAS_DESCRIPTORS[config.profile])
     if config.profile is WorkflowProfile.BASE:
-        from pymacruise.base_workflow import run_base_workflow
+        from pymacruise.base_workflow import BaseRunOptions, run_base_workflow
 
         return run_base_workflow(
             t1_path=config.t1_path,
@@ -370,10 +434,15 @@ def run_workflow_config(
             maseg_path=config.maseg_path,
             atlas_descriptor=descriptor,
             output_dir=config.output_dir,
+            options=BaseRunOptions(**(config.run_options or {})),
             resume=resume,
         )
 
     from pymacruise.plus_full_workflow import run_plus_full_workflow
+    from pymacruise.n4 import N4Config
+    from pymacruise.registration import RegistrationConfig
+
+    runner_options = config.run_options or {}
 
     result = run_plus_full_workflow(
         t1_path=config.t1_path,
@@ -383,6 +452,9 @@ def run_workflow_config(
         atlas_descriptor_path=descriptor,
         output_dir=config.output_dir,
         pipeline_options=config.plus_options or PlusPipelineOptions(),
+        registration_config=RegistrationConfig(**runner_options.get("registration", {})),
+        n4_config=N4Config(**runner_options.get("n4", {})),
+        **runner_options.get("plus", {}),
         resume=resume,
     )
     return result.manifest_path

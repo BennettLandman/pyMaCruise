@@ -259,6 +259,12 @@ def test_workflow_config_rejects_unknown_fields_and_non_array_labels(tmp_path) -
     with pytest.raises(ValueError, match="must be a JSON array"):
         workflow.load_workflow_config_file(path)
 
+    config["plus_options"] = {}
+    config["run_options"] = {"plus": {"unexpected": 1}}
+    path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ValueError, match="Unknown run_options.plus field"):
+        workflow.load_workflow_config_file(path)
+
 
 @pytest.mark.parametrize("profile", ["base", "plus"])
 def test_workflow_run_cli_dispatches_config_to_restartable_runner(
