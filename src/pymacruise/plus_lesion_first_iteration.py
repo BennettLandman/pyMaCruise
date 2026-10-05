@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import nibabel as nib
@@ -14,6 +15,19 @@ import numpy as np
 from .image_io import load_nifti_ras, nifti_ras_on_reference, save_nifti_ras
 from .lesion_atlas_priors import load_lesion_atlas_priors
 from .lesion_initial_segmentation_state import initialize_lesion_segmentation_state
+from .lesion_initial_loop_entry import seed_lesion_toads_initial_loop
+from .lesion_initial_thinning_composition import LesionInitialThinningComposition
+from .lesion_growth import (
+    LesionToadsThinningInitialization,
+    LesionToadsThinningPass,
+    LesionToadsThinningQueueRun,
+)
+from .lesion_registered_initial_membership import (
+    LesionInitialDistanceMaps,
+    LesionRegisteredInitialMembership,
+)
+from .lesion_relations import LesionRelationList
+from .lesion_standard13_volume import Standard13VolumeResult
 from .lesion_registered_initial_membership import (
     LesionInitialMembershipNonfiniteError,
     run_lesion_toads_registered_initial_membership,
@@ -32,6 +46,120 @@ class PlusLesionFirstIterationResult:
     ordering_path: Path
     summary_path: Path
     resumed: bool
+
+
+def hydrate_plus_lesion_first_iteration_state(
+    first_iteration_manifest_path: str | Path,
+) -> LesionRegisteredInitialMembership:
+    """Reconstruct P41i membership/thinning state from its hashed outputs."""
+    manifest_path = Path(first_iteration_manifest_path).expanduser().resolve()
+    if not manifest_path.is_file() or manifest_path.is_symlink():
+        raise FileNotFoundError(f"Missing regular first-iteration manifest: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("status") != "complete" or manifest.get("stage") != "plus-lesion-first-iteration":
+        raise ValueError("input must be a complete plus first-iteration checkpoint")
+    outputs: dict[str, Path] = {}
+    for name in (
+        "memberships", "membership_diagnostics", "distance_state", "relation_map",
+        "segmentation", "skeleton", "availability", "ordering", "summary",
+    ):
+        record = manifest.get("outputs", {}).get(name, {})
+        path = Path(record.get("path", "")).resolve()
+        if not path.is_file() or path.is_symlink() or _sha256(path) != record.get("sha256"):
+            raise ValueError(f"first-iteration {name} output is missing or hash-mismatched")
+        outputs[name] = path
+    summary = json.loads(outputs["summary"].read_text(encoding="utf-8"))
+    if summary.get("spatial_convention") != "RAS":
+        raise ValueError("first-iteration summary must declare RAS")
+    images = {name: load_nifti_ras(path) for name, path in outputs.items() if name != "summary"}
+    reference = images["memberships"]
+    spatial = reference.shape[:3]
+    for name, image in images.items():
+        if (
+            nib.aff2axcodes(image.affine) != ("R", "A", "S")
+            or image.shape[:3] != spatial
+            or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-4)
+        ):
+            raise ValueError(f"first-iteration {name} output is not on the shared RAS grid")
+    packed = np.asarray(images["memberships"].dataobj, dtype=np.float32)
+    diagnostics = np.asarray(images["membership_diagnostics"].dataobj, dtype=np.float32)
+    distances = np.asarray(images["distance_state"].dataobj, dtype=np.int16)
+    if packed.shape != (*spatial, 17) or diagnostics.shape != (*spatial, 17) or distances.shape != (*spatial, 6):
+        raise ValueError("first-iteration checkpoint state has invalid channel counts")
+    if not np.isfinite(packed).all() or not np.isfinite(diagnostics).all():
+        raise ValueError("first-iteration membership state contains nonfinite values")
+    membership = Standard13VolumeResult(
+        class_memberships=packed[..., :13],
+        lesion_membership=packed[..., 13],
+        black_hole_membership=packed[..., 14],
+        outlier_membership=packed[..., 15],
+        lesion_relation=packed[..., 16],
+        denominator=diagnostics[..., 0],
+        class_energies=diagnostics[..., 1:14],
+        lesion_energy=diagnostics[..., 14],
+        black_hole_energy=diagnostics[..., 15],
+        objective=np.float32(summary["initial_energy"]),
+        running_objective=diagnostics[..., 16],
+    )
+    loop_entry = seed_lesion_toads_initial_loop(
+        membership, iterations=int(manifest["settings"]["iterations"])
+    )
+    thinning_run = LesionToadsThinningQueueRun(
+        segmentation=np.asarray(images["segmentation"].dataobj, dtype=np.int16),
+        skeleton=np.asarray(images["skeleton"].dataobj, dtype=np.int16),
+        available=np.asarray(images["availability"].dataobj, dtype=np.bool_),
+        ordering=np.asarray(images["ordering"].dataobj, dtype=np.float32),
+        class_volume=np.asarray(summary["first_thinning_class_volume"], dtype=np.float32),
+        events=(),
+        queue=None,
+    )
+    thinning_initialization = LesionToadsThinningInitialization(
+        skeleton=thinning_run.skeleton,
+        available=thinning_run.available,
+        class_volume=thinning_run.class_volume,
+        boundary_counts=np.zeros(spatial, dtype=np.int32),
+        inserted_items=(),
+        queue=None,
+    )
+    thinning = LesionToadsThinningPass(
+        initialization=thinning_initialization,
+        minimum_class_volume=np.zeros(13, dtype=np.float32),
+        run=thinning_run,
+    )
+    first_thinning = LesionInitialThinningComposition(
+        loop_entry=loop_entry,
+        thinning=thinning,
+        stage_order=tuple(summary["stage_order"]),
+    )
+    relations = LesionRelationList(
+        np.asarray(images["relation_map"].dataobj, dtype=np.int16),
+        np.asarray(summary["relation_membership"], dtype=np.bool_),
+        diffusion_iterations=int(summary["relation_diffusion_iterations"]),
+    )
+    distance_maps = LesionInitialDistanceMaps(
+        distances[..., 0].astype(np.bool_), distances[..., 1].astype(np.int8),
+        distances[..., 2].astype(np.bool_), distances[..., 3].astype(np.int8),
+        distances[..., 4].astype(np.bool_), distances[..., 5].astype(np.int8),
+    )
+    return LesionRegisteredInitialMembership(
+        relations=relations,
+        variances=SimpleNamespace(class_standard_deviation=None, lesion_standard_deviation=None),
+        channel_weights=np.empty((0,), dtype=np.float32),
+        distance_maps=distance_maps,
+        initial_class_memberships=membership.class_memberships,
+        initial_lesion_membership=membership.lesion_membership,
+        initial_black_hole_membership=membership.black_hole_membership,
+        initial_outlier_membership=membership.outlier_membership,
+        initial_lesion_relation=membership.lesion_relation,
+        membership=membership,
+        loop_entry=loop_entry,
+        first_thinning=first_thinning,
+        stage_order=tuple(summary["stage_order"]),
+        excluded_wrapper_stages=(
+            "atlas registration supplied by registered recrop",
+            "inhomogeneity correction disabled in selected plus profile",
+        ),
+    )
 
 
 def _sha256(path: Path) -> str:
@@ -58,7 +186,10 @@ def _cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusLesionF
         return None
     paths: dict[str, Path] = {}
     records = manifest.get("outputs", {})
-    for name in ("memberships", "segmentation", "skeleton", "availability", "ordering", "summary"):
+    for name in (
+        "memberships", "membership_diagnostics", "distance_state", "relation_map",
+        "segmentation", "skeleton", "availability", "ordering", "summary",
+    ):
         record = records.get(name)
         if not isinstance(record, dict):
             return None
@@ -70,6 +201,9 @@ def _cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusLesionF
         paths[name] = path
     try:
         memberships = nib.load(str(paths["memberships"]))
+        diagnostics = nib.load(str(paths["membership_diagnostics"]))
+        distances = nib.load(str(paths["distance_state"]))
+        relations = nib.load(str(paths["relation_map"]))
         segmentation = nib.load(str(paths["segmentation"]))
         skeleton = nib.load(str(paths["skeleton"]))
         availability = nib.load(str(paths["availability"]))
@@ -81,13 +215,17 @@ def _cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusLesionF
     if (
         len(memberships.shape) != 4
         or memberships.shape[-1] != 17
+        or diagnostics.shape != (*spatial, 17)
+        or distances.shape != (*spatial, 6)
+        or relations.shape != spatial
         or segmentation.shape != spatial
         or skeleton.shape != spatial
         or ordering.shape != spatial
         or len(availability.shape) != 4
         or availability.shape != (*spatial, 13)
-        or any(nib.aff2axcodes(image.affine) != ("R", "A", "S") for image in (memberships, segmentation, skeleton, availability, ordering))
+        or any(nib.aff2axcodes(image.affine) != ("R", "A", "S") for image in (memberships, diagnostics, distances, relations, segmentation, skeleton, availability, ordering))
         or not np.isfinite(np.asarray(memberships.dataobj)).all()
+        or not np.isfinite(np.asarray(diagnostics.dataobj)).all()
         or summary.get("spatial_convention") != "RAS"
     ):
         return None
@@ -306,6 +444,30 @@ def run_plus_lesion_first_iteration_checkpoint(
         nifti_ras_on_reference(reference, memberships, dtype=np.float32),
         root / "initial_memberships_17ch.nii.gz", dtype=np.float32,
     )
+    membership = result.membership
+    diagnostics = np.concatenate((
+        membership.denominator[..., None], membership.class_energies,
+        membership.lesion_energy[..., None], membership.black_hole_energy[..., None],
+        membership.running_objective[..., None],
+    ), axis=-1).astype(np.float32, copy=False)
+    diagnostics_path = save_nifti_ras(
+        nifti_ras_on_reference(reference, diagnostics, dtype=np.float32),
+        root / "initial_membership_diagnostics_17ch.nii.gz", dtype=np.float32,
+    )
+    distance_maps = result.distance_maps
+    distance_state = np.stack((
+        distance_maps.ventricle_mask, distance_maps.ventricle,
+        distance_maps.gray_matter_mask, distance_maps.gray_matter,
+        distance_maps.brainstem_mask, distance_maps.brainstem,
+    ), axis=-1).astype(np.int16, copy=False)
+    distance_state_path = save_nifti_ras(
+        nifti_ras_on_reference(reference, distance_state, dtype=np.int16),
+        root / "initial_distance_state_6ch.nii.gz", dtype=np.int16,
+    )
+    relation_map_path = save_nifti_ras(
+        nifti_ras_on_reference(reference, result.relations.relation_map, dtype=np.int16),
+        root / "initial_relation_map.nii.gz", dtype=np.int16,
+    )
     thinning = result.first_thinning.thinning.run
     segmentation_path = save_nifti_ras(
         nifti_ras_on_reference(reference, thinning.segmentation, dtype=np.int16),
@@ -331,8 +493,13 @@ def run_plus_lesion_first_iteration_checkpoint(
         "membership_channels": [*list(priors.structures[i].name for i in range(13)), "lesion", "black_hole", "outlier", "lesion_relation"],
         "initial_energy": float(result.membership.objective),
         "loop_entry_energy_ratio": float(result.loop_entry.energy_ratio),
+        "loop_entry_previous_energy": float(result.loop_entry.previous_energy),
         "loop_entry_gm_flag": bool(result.loop_entry.gm_flag),
         "first_thinning_events": len(thinning.events),
+        "first_thinning_class_volume": thinning.class_volume.tolist(),
+        "relation_count": result.relations.relation_count,
+        "relation_diffusion_iterations": result.relations.diffusion_iterations,
+        "relation_membership": result.relations.relation_membership.astype(np.uint8).tolist(),
         "nonfinite_membership_values": nan_count,
         "source_zero_variance_nan": source_zero_variance_nan,
         "zero_class_standard_deviation_channels": int(
@@ -354,7 +521,9 @@ def run_plus_lesion_first_iteration_checkpoint(
     manifest["outputs"] = {
         name: {"path": str(path), "sha256": _sha256(path)}
         for name, path in (
-            ("memberships", memberships_path), ("segmentation", segmentation_path),
+            ("memberships", memberships_path), ("membership_diagnostics", diagnostics_path),
+            ("distance_state", distance_state_path), ("relation_map", relation_map_path),
+            ("segmentation", segmentation_path),
             ("skeleton", skeleton_path), ("availability", availability_path),
             ("ordering", ordering_path), ("summary", summary_path),
         )

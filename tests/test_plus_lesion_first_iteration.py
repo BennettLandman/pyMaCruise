@@ -102,13 +102,20 @@ def test_first_iteration_checkpoint_saves_source_ordered_membership_and_thinning
     assert skeleton.shape == modalities.shape[:3]
     assert availability.shape == (*modalities.shape[:3], 13)
     assert ordering.shape == modalities.shape[:3]
+    manifest = json.loads(result.manifest_path.read_text())
+    outputs = manifest["outputs"]
+    diagnostics = nib.load(outputs["membership_diagnostics"]["path"])
+    distance_state = nib.load(outputs["distance_state"]["path"])
+    relation_map = nib.load(outputs["relation_map"]["path"])
+    assert diagnostics.shape == (*modalities.shape[:3], 17)
+    assert distance_state.shape == (*modalities.shape[:3], 6)
+    assert relation_map.shape == modalities.shape[:3]
     assert all(
         nib.aff2axcodes(image.affine) == ("R", "A", "S")
-        for image in (memberships, segmentation, skeleton, availability, ordering)
+        for image in (memberships, diagnostics, distance_state, relation_map, segmentation, skeleton, availability, ordering)
     )
     assert np.isfinite(np.asarray(memberships.dataobj)).all()
 
-    manifest = json.loads(result.manifest_path.read_text())
     summary = json.loads(result.summary_path.read_text())
     assert manifest["status"] == "complete"
     assert manifest["settings"]["source_zero_variance_nan"] is False
@@ -118,6 +125,24 @@ def test_first_iteration_checkpoint_saves_source_ordered_membership_and_thinning
     assert summary["source_zero_variance_nan"] is False
     assert summary["zero_lesion_standard_deviation_channels"] == 2
     assert summary["stage_order"][-1] == "propagateThinning"
+    assert len(summary["relation_membership"]) == summary["relation_count"]
+    assert summary["first_thinning_class_volume"]
+    initial = captured["initial"]
+    expected_diagnostics = np.concatenate((
+        initial.membership.denominator[..., None], initial.membership.class_energies,
+        initial.membership.lesion_energy[..., None], initial.membership.black_hole_energy[..., None],
+        initial.membership.running_objective[..., None],
+    ), axis=-1)
+    np.testing.assert_array_equal(np.asarray(diagnostics.dataobj), expected_diagnostics)
+    np.testing.assert_array_equal(
+        np.asarray(distance_state.dataobj),
+        np.stack((
+            initial.distance_maps.ventricle_mask, initial.distance_maps.ventricle,
+            initial.distance_maps.gray_matter_mask, initial.distance_maps.gray_matter,
+            initial.distance_maps.brainstem_mask, initial.distance_maps.brainstem,
+        ), axis=-1),
+    )
+    np.testing.assert_array_equal(np.asarray(relation_map.dataobj), initial.relations.relation_map)
 
     # The selected source-faithful default still propagates zero-variance
     # NaNs. The explicit finite override must also reach the *next* GM update

@@ -44,6 +44,7 @@ from pymacruise.plus_lesion_registered_recrop import (
 )
 from pymacruise.plus_lesion_first_iteration import (
     PlusLesionFirstIterationResult,
+    hydrate_plus_lesion_first_iteration_state,
     run_plus_lesion_first_iteration_checkpoint,
 )
 from pymacruise.plus_lesion_registered_branch import (
@@ -207,6 +208,7 @@ __all__ = [
     "PlusLesionRecropResult",
     "run_plus_lesion_registered_recrop_checkpoint",
     "PlusLesionFirstIterationResult",
+    "hydrate_plus_lesion_first_iteration_state",
     "run_plus_lesion_first_iteration_checkpoint",
     "PlusLesionRegisteredBranchResult",
     "run_plus_lesion_registered_branch_checkpoint",

@@ -12,6 +12,12 @@ from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 import pymacruise.plus_lesion_registered_branch as registered_branch
 import pymacruise.plus_lesion_registered_loop as registered_loop
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
+from pymacruise.plus_lesion_first_iteration import run_plus_lesion_first_iteration_checkpoint
+import pymacruise.plus_lesion_first_iteration as first_iteration_stage
+from pymacruise.lesion_registered_first_iteration import run_lesion_toads_registered_first_iteration
+from pymacruise.lesion_registered_first_iteration_branch import run_lesion_toads_registered_first_iteration_branch
+from pymacruise.lesion_atlas_priors import load_lesion_atlas_shape_priors, load_lesion_atlas_topology
+from pymacruise.lesion_standard13_voxel import STANDARD13_TYPES
 from pymacruise.plus_lesion_registered_loop import (
     continue_plus_lesion_registered_loop,
     hydrate_plus_lesion_registered_branch,
@@ -50,6 +56,20 @@ def _run_recrop(tmp_path: Path):
 
 def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monkeypatch) -> None:
     recrop = _run_recrop(tmp_path)
+    captured_initial = {}
+    original_initial = first_iteration_stage.run_lesion_toads_registered_initial_membership
+
+    def capture_initial(*args, **kwargs):
+        captured_initial["initial"] = original_initial(*args, **kwargs)
+        return captured_initial["initial"]
+
+    monkeypatch.setattr(
+        first_iteration_stage, "run_lesion_toads_registered_initial_membership", capture_initial
+    )
+    first_iteration = run_plus_lesion_first_iteration_checkpoint(
+        recrop.manifest_path, ATLAS, tmp_path / "first-iteration", iterations=1,
+        first_thinning_limit=1000.0, source_zero_variance_nan=False,
+    )
     captured = {}
     direct_branch = registered_branch.run_lesion_toads_registered_first_iteration_branch
 
@@ -60,6 +80,12 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     monkeypatch.setattr(
         registered_branch, "run_lesion_toads_registered_first_iteration_branch", capture_branch
     )
+    def unexpected_initial(*args, **kwargs):
+        raise AssertionError("P41k must reuse P41i state when a first-iteration manifest is supplied")
+
+    monkeypatch.setattr(
+        registered_branch, "run_lesion_toads_registered_initial_membership", unexpected_initial
+    )
     result = registered_branch.run_plus_lesion_registered_branch_checkpoint(
         recrop.manifest_path,
         ATLAS,
@@ -67,11 +93,13 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         iterations=1,
         first_thinning_limit=1000.0,
         source_zero_variance_nan=False,
+        first_iteration_manifest_path=first_iteration.manifest_path,
     )
     manifest = json.loads(result.manifest_path.read_text())
     summary = json.loads(result.summary_path.read_text())
     assert manifest["status"] == "complete"
     assert manifest["stage"] == "plus-lesion-registered-branch"
+    assert "reuses persisted initial-membership/thinning state" in manifest["equivalence_note"]
     assert summary["spatial_convention"] == "RAS"
     assert summary["stop"] is False
     assert summary["growing_events"] > 0
@@ -104,6 +132,53 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     assert np.isfinite(np.asarray(diagnostic.dataobj)).all()
     result_arrays = [np.asarray(image.dataobj) for image in outputs]
     direct = captured["branch"]
+    initial_summary = json.loads(recrop.summary_path.read_text())
+    images = np.asarray(nib.load(str(recrop.modalities_path)).dataobj, dtype=np.float32)
+    shape_values = np.asarray(nib.load(str(recrop.shapes_path)).dataobj, dtype=np.float32)
+    centroid_options = {
+        "mode": "none", "modalities": ("T1_MPRAGE", "FLAIR"),
+        "lesion_power_exponents": (0.4, 1.2),
+        "tissue_power_exponents": np.ones((2, 13), dtype=np.float32),
+    }
+    transition_direct = run_lesion_toads_registered_first_iteration(
+        captured_initial["initial"], images,
+        np.asarray(initial_summary["initial_class_centroids"], dtype=np.float32),
+        np.asarray(initial_summary["lesion_centroid"], dtype=np.float32),
+        np.asarray(initial_summary["black_hole_centroid"], dtype=np.float32),
+        shape_values, np.ones(13, dtype=np.float32), np.ones(13, dtype=np.float32),
+        centroid_options=centroid_options,
+        channel_weight_options={"outlier_distance": 0.1, "norm_type": "Identity"},
+        outlier_energy=0.1, lesion_power_exponent=1.2,
+        source_zero_variance_nan=False,
+    )
+    shape_atlas = load_lesion_atlas_shape_priors(ATLAS)
+    atlas_topology = load_lesion_atlas_topology(ATLAS)
+    reference_image = nib.load(str(recrop.modalities_path))
+    direct_branch_result = run_lesion_toads_registered_first_iteration_branch(
+        captured_initial["initial"], transition_direct,
+        tuple(shape_atlas.shape_maps[item.name] for item in shape_atlas.structures),
+        np.asarray(initial_summary["atlas_transform"], dtype=np.float32),
+        image_resolutions_mm=tuple(np.linalg.norm(reference_image.affine[:3, :3], axis=0)),
+        template_resolutions_mm=tuple(np.linalg.norm(atlas_topology.image.affine[:3, :3], axis=0)),
+        object_types=STANDARD13_TYPES,
+        classification=np.asarray(nib.load(str(recrop.topology_path)).dataobj),
+        template_labels=np.asarray([item.label for item in shape_atlas.structures], dtype=np.int16),
+        lesion_class=10, iteration=1, n_iter_max=2, max_distance=0.0,
+        algorithm_mode="diffeomorphism", relation_limit=3, align_shapes=True,
+        init_align_iter=1,
+    )
+    np.testing.assert_array_equal(
+        direct.transition.membership.membership.class_memberships,
+        transition_direct.membership.membership.class_memberships,
+    )
+    np.testing.assert_array_equal(
+        direct.registration.registration.transform,
+        direct_branch_result.registration.registration.transform,
+    )
+    np.testing.assert_array_equal(
+        direct.branch.branch.segmentation,
+        direct_branch_result.branch.branch.segmentation,
+    )
     np.testing.assert_array_equal(
         result_arrays[0],
         np.concatenate((
@@ -181,6 +256,7 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         iterations=1,
         first_thinning_limit=1000.0,
         source_zero_variance_nan=False,
+        first_iteration_manifest_path=first_iteration.manifest_path,
         resume=True,
     )
     assert resumed.resumed
@@ -325,9 +401,11 @@ def test_registered_branch_cli_routes_finite_mode(tmp_path: Path, monkeypatch) -
         "--atlas-descriptor", str(ATLAS),
         "--output-dir", "out",
         "--iterations", "1",
+        "--first-iteration-manifest", "first.json",
         "--finite-zero-variance",
         "--resume",
     ]) == 0
     assert captured["source_zero_variance_nan"] is False
     assert captured["iterations"] == 1
+    assert captured["first_iteration_manifest_path"] == Path("first.json")
     assert captured["resume"] is True

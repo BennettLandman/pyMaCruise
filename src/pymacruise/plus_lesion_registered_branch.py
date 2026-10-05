@@ -30,6 +30,7 @@ from .lesion_registered_initial_membership import (
     LesionInitialMembershipNonfiniteError,
     run_lesion_toads_registered_initial_membership,
 )
+from .plus_lesion_first_iteration import hydrate_plus_lesion_first_iteration_state
 from .lesion_standard13_voxel import STANDARD13_TYPES
 
 
@@ -116,6 +117,7 @@ def run_plus_lesion_registered_branch_checkpoint(
     first_thinning_volume_ratio: float = 0.5,
     source_zero_variance_nan: bool = True,
     max_distance: float = 0.0,
+    first_iteration_manifest_path: str | Path | None = None,
     resume: bool = False,
 ) -> PlusLesionRegisteredBranchResult:
     """Run the selected first post-thinning plus update through branch control.
@@ -149,10 +151,40 @@ def run_plus_lesion_registered_branch_checkpoint(
         raise ValueError("registered recrop does not reference this atlas descriptor")
     if upstream["inputs"]["atlas_descriptor"].get("sha256") != _sha256(descriptor):
         raise ValueError("atlas descriptor no longer matches the registered recrop")
+    first_manifest_path = (
+        None if first_iteration_manifest_path is None
+        else Path(first_iteration_manifest_path).expanduser().resolve()
+    )
+    first_manifest: dict[str, Any] | None = None
+    if first_manifest_path is not None:
+        if not first_manifest_path.is_file() or first_manifest_path.is_symlink():
+            raise FileNotFoundError(f"Missing regular first-iteration checkpoint: {first_manifest_path}")
+        first_manifest = json.loads(first_manifest_path.read_text(encoding="utf-8"))
+        linked_recrop = first_manifest.get("inputs", {}).get("registered_recrop_manifest", {})
+        if (
+            first_manifest.get("stage") != "plus-lesion-first-iteration"
+            or first_manifest.get("status") != "complete"
+            or Path(linked_recrop.get("path", "")).resolve() != upstream_path
+            or linked_recrop.get("sha256") != _sha256(upstream_path)
+        ):
+            raise ValueError("first-iteration checkpoint must be complete and reference this registered recrop")
+        first_settings = first_manifest.get("settings", {})
+        if (
+            float(first_settings.get("first_thinning_limit", -1)) != float(first_thinning_limit)
+            or float(first_settings.get("first_thinning_volume_ratio", -1)) != float(first_thinning_volume_ratio)
+            or bool(first_settings.get("source_zero_variance_nan")) != source_zero_variance_nan
+        ):
+            raise ValueError("first-iteration checkpoint settings must match the registered branch request")
+        hydrate_plus_lesion_first_iteration_state(first_manifest_path)
     signature_payload = {
         "stage": "plus-lesion-registered-branch",
         "upstream": {"path": str(upstream_path), "sha256": _sha256(upstream_path)},
         "atlas": {"path": str(descriptor), "sha256": _sha256(descriptor)},
+        "first_iteration": (
+            None if first_manifest_path is None else {
+                "path": str(first_manifest_path), "sha256": _sha256(first_manifest_path),
+            }
+        ),
         "settings": {
             "iterations": iterations,
             "first_thinning_limit": float(first_thinning_limit),
@@ -223,6 +255,11 @@ def run_plus_lesion_registered_branch_checkpoint(
         "inputs": {
             "registered_recrop_manifest": {"path": str(upstream_path), "sha256": _sha256(upstream_path)},
             "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
+            **({} if first_manifest_path is None else {
+                "first_iteration_manifest": {
+                    "path": str(first_manifest_path), "sha256": _sha256(first_manifest_path),
+                }
+            }),
             **{key: {"path": str(path), "sha256": _sha256(path)} for key, path in inputs.items()},
         },
         "source_order": [
@@ -239,18 +276,25 @@ def run_plus_lesion_registered_branch_checkpoint(
             "propagateGrowing:if-continuing",
             "computeRelations:if-continuing",
         ],
-        "equivalence_note": "Synthetic selected API composition through one registered branch; not a restartable full LesionTOADS loop or composite Java match.",
+        "equivalence_note": (
+            "Synthetic selected API composition through one registered branch; "
+            + ("reuses persisted initial-membership/thinning state; " if first_manifest_path else "recomputes initial membership/thinning; ")
+            + "not a full LesionTOADS loop or composite Java match."
+        ),
     }
     _json(manifest_path, manifest)
     try:
-        initial = run_lesion_toads_registered_initial_membership(
-            images, constructor.segmentation, centers, lesion_centroid, black_centroid,
-            shapes, constructor.skeleton, constructor.available, constructor.ordering,
-            iterations=iterations,
-            first_thinning_limit=first_thinning_limit,
-            first_thinning_volume_ratio=first_thinning_volume_ratio,
-            source_zero_variance_nan=source_zero_variance_nan,
-        )
+        if first_manifest_path is None:
+            initial = run_lesion_toads_registered_initial_membership(
+                images, constructor.segmentation, centers, lesion_centroid, black_centroid,
+                shapes, constructor.skeleton, constructor.available, constructor.ordering,
+                iterations=iterations,
+                first_thinning_limit=first_thinning_limit,
+                first_thinning_volume_ratio=first_thinning_volume_ratio,
+                source_zero_variance_nan=source_zero_variance_nan,
+            )
+        else:
+            initial = hydrate_plus_lesion_first_iteration_state(first_manifest_path)
         transition = run_lesion_toads_registered_first_iteration(
             initial,
             images,

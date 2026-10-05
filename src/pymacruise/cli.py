@@ -412,6 +412,7 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_branch.add_argument("--first-thinning-limit", type=float, default=3.0)
     plus_lesion_branch.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
     plus_lesion_branch.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_branch.add_argument("--first-iteration-manifest", type=Path)
     plus_lesion_branch.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_branch.add_argument("--resume", action="store_true")
 
@@ -681,6 +682,7 @@ def main(argv: list[str] | None = None) -> int:
             first_thinning_volume_ratio=args.first_thinning_volume_ratio,
             source_zero_variance_nan=not args.finite_zero_variance,
             max_distance=args.max_distance,
+            first_iteration_manifest_path=args.first_iteration_manifest,
             resume=args.resume,
         )
         verb = "Verified and resumed" if result.resumed else "Completed"

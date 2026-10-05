@@ -611,6 +611,7 @@ pymacruise plus-lesion-registered-branch \
   --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-branch \
   [--iterations 99] [--first-thinning-limit 3] \
   [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
+  [--first-iteration-manifest first-iteration/lesion-first-iteration.json] \
   [--finite-zero-variance] [--resume]
 ```
 
@@ -627,6 +628,9 @@ manifest with its variance and nonfinite-energy diagnostics. Use
 `--finite-zero-variance` to opt into the explicitly stabilized synthetic
 path. This is one selected synthetic branch; later iterations, full plus
 execution, Java composite equivalence, and real-image validation remain open.
+Passing `--first-iteration-manifest` reuses P41i's persisted memberships,
+diagnostic energies, distance maps, relations, and first-thinning state; the
+checkpoint must match the supplied recrop manifest and numeric settings.
 
 ## `pymacruise plus-lesion-registered-loop`
 
