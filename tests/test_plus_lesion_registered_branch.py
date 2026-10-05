@@ -11,6 +11,10 @@ from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alig
 from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 import pymacruise.plus_lesion_registered_branch as registered_branch
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
+from pymacruise.plus_lesion_registered_loop import (
+    continue_plus_lesion_registered_loop,
+    hydrate_plus_lesion_registered_branch,
+)
 
 
 ROOT = Path(__file__).parent
@@ -122,6 +126,25 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
             membership.running_objective[..., None],
         ), axis=-1),
     )
+
+    hydrated, registration, distance_state = hydrate_plus_lesion_registered_branch(result.manifest_path)
+    np.testing.assert_array_equal(
+        hydrated.membership_result.membership.class_memberships,
+        membership.class_memberships,
+    )
+    np.testing.assert_array_equal(hydrated.segmentation, direct.branch.branch.segmentation)
+    np.testing.assert_array_equal(hydrated.growing.skeleton, direct.branch.branch.growing.skeleton)
+    np.testing.assert_array_equal(hydrated.relations.relation_map, direct.branch.branch.relations.relation_map)
+    np.testing.assert_array_equal(registration.transform, direct.registration.registration.transform)
+    assert distance_state.shape == (*modalities.shape[:3], 6)
+
+    loop = continue_plus_lesion_registered_loop(
+        result.manifest_path, ATLAS, n_iter_max=2, thinning_limit=1000.0,
+        source_zero_variance_nan=False,
+    )
+    assert len(loop.passes) == 1
+    assert loop.passes[0].iteration == 2
+    assert loop.passes[0].stage_order
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid resume must skip branch computation")

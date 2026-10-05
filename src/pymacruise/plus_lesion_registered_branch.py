@@ -369,6 +369,7 @@ def run_plus_lesion_registered_branch_checkpoint(
             "stop_reason": branch.stop_reason,
             "growing_events": len(branch.growing.events),
             "relation_count": branch.relations.relation_count,
+            "relation_diffusion_iterations": branch.relations.diffusion_iterations,
             "relation_membership": branch.relations.relation_membership.astype(np.uint8).tolist(),
             "class_volume": branch.growing.class_volume.tolist(),
             "stage_order": list(branch_result.stage_order),
