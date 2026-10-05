@@ -141,7 +141,12 @@ def main() -> int:
                 # exit code before treating a transient lookup failure as a
                 # monitor error.
                 try:
-                    child.wait(timeout=max(arguments.interval_seconds * 2, 0.05))
+                    # A slow process can disappear between poll() and
+                    # proc_pidinfo() before waitpid surfaces its exit. Leave a
+                    # full second for that child-reaping race; short sampling
+                    # intervals must not turn a normal run exit into a monitor
+                    # failure.
+                    child.wait(timeout=max(arguments.interval_seconds * 2, 1.0))
                 except subprocess.TimeoutExpired:
                     raise rss_error
                 else:

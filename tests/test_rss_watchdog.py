@@ -101,7 +101,8 @@ def test_child_exit_between_poll_and_rss_read_is_reported_as_normal_exit(
         "argv",
         [
             str(watchdog), "--limit-gb", "16", "--interval-seconds", "0.01",
-            "--report-interval-seconds", "1", "--", sys.executable, "-c", "pass",
+            "--report-interval-seconds", "1", "--", sys.executable, "-c",
+            "__import__('time').sleep(0.3)",
         ],
     )
 
