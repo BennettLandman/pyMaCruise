@@ -1,4 +1,4 @@
-# TOADS source-line accounting (started 2026-10-01; refreshed 2026-10-04)
+# TOADS source-line accounting (started 2026-10-01; refreshed 2026-10-05)
 
 ## Current planning estimate
 
@@ -85,3 +85,14 @@ peak sampled RSS under a 24 GB watchdog. See
 The active descriptor data-term and membership dispatches are LesionTOADS work, outside this
 report's selected base-TOADS source denominator; source-line delta for this
 estimate is zero, and it remains **3,464–4,864 of 13,651 (25–36%)**.
+
+The 2026-10-05 full suite passed **1,191 tests, 0 failed, 0 skipped, and 11
+expected RAS warnings in 968.47s** on implementation commit
+`483fc25ba12a51316e50ec031672a2e82e7748bc`, with peak sampled RSS **15.270 GB**
+under a 24 GB watchdog. The newly validated dynamic distance refresh is
+LesionTOADS `computeMemberships()` behavior, outside the eight selected base
+TOADS files counted above. Thus this suite's base-TOADS source-line delta is
+zero; the estimate remains **3,464–4,864 of 13,651 (25–36%)**. See the
+[distance-refresh report](lesion-distance-refresh-2026-10-05.md) and
+[full-suite report](full-pytest-2026-10-05-lesion-distance-refresh.md). This
+does not measure Python runtime line coverage or whole-workflow equivalence.
