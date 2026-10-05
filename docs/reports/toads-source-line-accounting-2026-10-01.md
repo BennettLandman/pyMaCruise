@@ -96,3 +96,12 @@ zero; the estimate remains **3,464–4,864 of 13,651 (25–36%)**. See the
 [distance-refresh report](lesion-distance-refresh-2026-10-05.md) and
 [full-suite report](full-pytest-2026-10-05-lesion-distance-refresh.md). This
 does not measure Python runtime line coverage or whole-workflow equivalence.
+
+The next full suite on 2026-10-05 passed **1,192 tests, 0 failed, 0 skipped,
+and 11 expected RAS warnings in 1,014.58s** on implementation commit
+`0ace0ffc330bf733de0a4ebebfb0d9cccb2b61eb`; peak sampled RSS was **14.168 GB**
+under the 24 GB watchdog. P41p adds restartable terminal LesionTOADS output,
+which is outside the selected base-TOADS source files. The base-TOADS
+source-line delta remains **0**, and its coarse estimate remains
+**3,464–4,864 of 13,651 (25–36%)**. See the [terminal checkpoint report](plus-terminal-lesion-checkpoint-2026-10-05.md)
+and [full-suite report](full-pytest-2026-10-05-plus-terminal-lesion.md).
