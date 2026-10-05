@@ -1218,8 +1218,7 @@ group passed 13 tests in 77.60 seconds on commit
 `4b1895e6300ecb9a597bf3ef2a164fabef0f0a5a`. See the [focused validation
 report](reports/toads-exact-polynomial-field-degrees23-2026-10-02.md). This
 expands one correction algorithm method; it does not add degree ramping,
-spline mode, or the complete TOADS workflow. P18cyau remains Started pending
-full-suite evidence.
+spline mode, or the complete TOADS workflow. The exact degree-two/three polynomial-fit slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Exact-field degree ramp and degree-zero no-op (P18cyaz)
@@ -1232,8 +1231,7 @@ membership fit and compare with the selected Java method harness. The focused
 group passed 15 tests in 43.29 seconds on commit
 `11e326613f2c777a82033d3df17f79118ec06ddf`; see the [validation report](reports/toads-exact-field-degree-ramp-2026-10-02.md).
 This closes the correction-degree step only; centroids, later membership,
-registration, and growth remain outside the slice. P18cyaz remains Started
-pending full-suite evidence.
+registration, and growth remain outside the slice. The exact-field degree-ramp slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Field-corrected startup through first thinning (P18cyax)
@@ -1247,7 +1245,7 @@ registered relation and transformed-shape state. See the [focused report](report
 This is bounded synthetic integration, not a combined Java wrapper result or
 full TOADS run; growing and later iteration remain separate. This experiment
 injects a requested fitted field and is not the selected wrapper's startup
-field state. P18cyax remains Started pending full-suite evidence.
+field state. The field-corrected startup/first-thinning slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Field-corrected registered startup membership (P18cyaw)
@@ -1264,7 +1262,7 @@ This does not continue through thinning/growing or establish full TOADS
 equivalence. This is a field-injected experiment, not the selected wrapper's
 initial membership schedule. The wrapper starts with unity correction fields
 and degree zero; see [P18cybd](reports/toads-unity-field-startup-2026-10-02.md).
-P18cyaw remains Started pending full-suite evidence.
+The field-corrected registered-startup slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Registered startup to degree-three correction field (P18cyav)
@@ -1280,7 +1278,7 @@ matches the Java formula reference exactly and the complete field is within
 This is a selected-degree fit composition over registered arrays, not the
 wrapper's startup field update. The wrapper initializes fields to unity and
 starts at degree zero; see [P18cybd](reports/toads-unity-field-startup-2026-10-02.md).
-P18cyav remains Started pending full-suite evidence.
+The registered startup-to-degree-three slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Carried degree through field/statistics/membership continuation (P18cyba)
@@ -1295,8 +1293,7 @@ the degree-specific Java formula harness; the subsequent statistics and
 membership outputs were compared with the selected Java iteration harness.
 See the [validation report](reports/toads-carried-degree-exact-iteration-2026-10-02.md).
 This is a single-channel synthetic continuation, not combined wrapper
-execution or full TOADS equivalence. P18cyba remains Started pending a
-full-suite checkpoint.
+execution or full TOADS equivalence. The carried-degree continuation slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Multi-channel carried-degree exact iteration (P18cybb)
@@ -1310,7 +1307,7 @@ and the degree-zero case preserves both fields while continuing the shared
 statistics/membership stages. See the [validation report](reports/toads-multichannel-carried-degree-2026-10-02.md).
 This adapter composes existing kernels; the multi-channel wrapper call path,
 registration, topology, growth, and full TOADS workflow remain open.
-P18cybb remains Started pending full-suite evidence.
+The multichannel carried-degree exact-iteration slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Source-faithful unity-field startup and degree-zero first loop (P18cybd)
@@ -1325,7 +1322,7 @@ fit. Its focused synthetic RAS test passed 1 test in 21.86 seconds. See the
 [source and validation report](reports/toads-unity-field-startup-2026-10-02.md).
 This corrects interpretation of P18cyav/cyaw/cyax: those are explicit
 field-fit/injection experiments and not the initial selected-wrapper schedule.
-P18cybd remains Started pending full-suite evidence.
+The unity-field startup/degree-zero slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### First exact loop update from unity-field startup (P18cybe)
@@ -1338,8 +1335,7 @@ synthetic startup test passed 1 test in 25.32 seconds and compares all refreshed
 maps and the membership objective exactly against direct calls to the selected
 kernels. See the [validation
 report](reports/toads-first-unity-degree-iteration-2026-10-02.md). This stops
-before registration and growth for the new memberships; P18cybe remains
-Started pending full-suite evidence.
+before registration and growth for the new memberships. The P18cybe first-loop update passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 
 ### Multi-channel membership through registration and next thinning (P18cybc)
@@ -1351,8 +1347,7 @@ refresh, and the next thinning pass. The affected module passed 3 tests in
 registration and the next thinning agrees with a direct selected component
 call. See the [validation report](reports/toads-multichannel-registered-cycle-2026-10-02.md).
 This is composition evidence over separately Java-checked stages, not a
-combined Java wrapper execution or complete TOADS result. P18cybc remains
-Started pending full-suite evidence.
+combined Java wrapper execution or complete TOADS result. P18cybc passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### First registered iteration through next thinning (P18cybf)
 
@@ -1366,7 +1361,7 @@ seconds with exact direct-stage comparisons. See the [validation
 report](reports/toads-registered-first-iteration-cycle-2026-10-02.md). A larger
 recropped phantom exceeded the selected source's fixed `MAXLB=500` relation
 table after growth; the report records this as a Java source input limit.
-P18cybf remains Started pending full-suite evidence.
+The registered first-iteration/next-thinning slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Iteration-two degree decision and exact update (P18cybg)
 
@@ -1380,7 +1375,7 @@ decision and exact second membership outputs. It passed 1 test in 16.88
 seconds. Positive-degree fitting remains covered by the separate carried-degree
 Java-reference rows, not by this iteration-two composition. See the [validation
 report](reports/toads-registered-second-exact-iteration-2026-10-02.md).
-P18cybg remains Started pending full-suite evidence.
+The second exact-iteration slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Iteration-two membership through registration and selected branch (P18cybh)
 
@@ -1393,7 +1388,7 @@ Java registration and branch-control references are covered by the related
 P18cyx/P18cyt evidence. This composition is not a combined Java wrapper run or
 full TOADS equivalence. See the [validation
 report](reports/toads-second-membership-branch-cycle-2026-10-02.md).
-P18cybh remains Started pending full-suite evidence.
+The second registered-branch slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Following carried-degree update from a registered cycle (P18cybi)
 
@@ -1407,7 +1402,7 @@ direct kernel calls. Positive-degree field fits remain separately checked
 against Java formulas; this integration case does not assume a fit when its
 source ratio gate does not schedule one. See the [validation
 report](reports/toads-registered-third-exact-iteration-2026-10-02.md).
-P18cybi remains Started pending full-suite evidence.
+The following carried-degree update slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Iteration-three membership through registration and selected branch (P18cybj)
 
@@ -1419,7 +1414,7 @@ integration test passed 1 test in 26.91 seconds. It verifies identity of the
 membership handoff, selected energy-ratio arithmetic, and the next-thinning
 state when applicable. See the [validation
 report](reports/toads-third-membership-branch-cycle-2026-10-02.md).
-P18cybj remains Started pending full-suite evidence.
+The third registered-branch slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Iteration-four carried-degree exact update (P18cybk)
 
@@ -1431,7 +1426,7 @@ deviations, variance, similarity, membership maps, denominator, and objective.
 This remains synthetic composition over selected kernels, not full TOADS
 equivalence. See the [validation
 report](reports/toads-registered-fourth-exact-iteration-2026-10-02.md).
-P18cybk remains Started pending full-suite evidence.
+The fourth carried-degree exact-update slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Iteration-four registration and terminal classification (P18cybl)
 
@@ -1442,7 +1437,7 @@ compact RAS test passed 1 test in 33.73 seconds; terminal labels and changed
 voxel count match the selected label-transfer kernel. This is synthetic
 composition over source-checked stages, not complete TOADS equivalence. See the
 [validation report](reports/toads-registered-fourth-terminal-branch-2026-10-02.md).
-P18cybl remains Started pending full-suite evidence.
+The fourth terminal-branch slice passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md).
 
 ### Callable registered loop runner (P18cybm)
 
@@ -1458,8 +1453,7 @@ have separate Java-harness evidence in P18cybb/P18cyba. This is a callable synth
 selected kernels, not a Java wrapper match or full two-pass MaCRUISE/dura
 workflow. Source-line coverage is not recalculated until source mapping is
 reviewed at a full-suite checkpoint. See the [validation
-report](reports/toads-registered-loop-runner-2026-10-02.md). P18cybm remains
-Started.
+report](reports/toads-registered-loop-runner-2026-10-02.md). The callable registered-loop runner passed in the full suite: 1,196 passed, 0 failed, 0 skipped on implementation commit edb7fba; see [full-suite evidence](reports/full-pytest-2026-10-05-workflow-config-cli.md). This remains synthetic selected-kernel behavior, not whole-TOADS Java equivalence.
 
 ### Standalone registered TOADS command (P18cybn)
 
