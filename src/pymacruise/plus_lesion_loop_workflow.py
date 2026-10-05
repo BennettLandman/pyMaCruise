@@ -149,41 +149,51 @@ def run_plus_lesion_loop_workflow(
         manifest["active_stage"] = name
         manifest["stages"][name] = {"status": "running"}
         _write_json(manifest_path, manifest)
-        if name == "first_iteration":
-            result = run_plus_lesion_first_iteration_checkpoint(
-                parent_path,
-                descriptor,
-                root / "first-iteration",
-                iterations=iterations,
-                first_thinning_limit=first_thinning_limit,
-                first_thinning_volume_ratio=first_thinning_volume_ratio,
-                source_zero_variance_nan=source_zero_variance_nan,
-                resume=resume,
-            )
-        elif name == "registered_branch":
-            result = run_plus_lesion_registered_branch_checkpoint(
-                parent_path,
-                descriptor,
-                root / "registered-branch",
-                iterations=iterations,
-                first_thinning_limit=first_thinning_limit,
-                first_thinning_volume_ratio=first_thinning_volume_ratio,
-                source_zero_variance_nan=source_zero_variance_nan,
-                max_distance=max_distance,
-                first_iteration_manifest_path=child_paths["first_iteration"],
-                resume=resume,
-            )
-        else:
-            result = persist_plus_lesion_registered_loop_checkpoint(
-                child_paths["registered_branch"],
-                descriptor,
-                root / "registered-loop",
-                n_iter_max=n_iter_max,
-                thinning_limit=thinning_limit,
-                source_zero_variance_nan=source_zero_variance_nan,
-                max_passes=max_passes,
-                resume=resume,
-            )
+        try:
+            if name == "first_iteration":
+                result = run_plus_lesion_first_iteration_checkpoint(
+                    parent_path,
+                    descriptor,
+                    root / "first-iteration",
+                    iterations=iterations,
+                    first_thinning_limit=first_thinning_limit,
+                    first_thinning_volume_ratio=first_thinning_volume_ratio,
+                    source_zero_variance_nan=source_zero_variance_nan,
+                    resume=resume,
+                )
+            elif name == "registered_branch":
+                result = run_plus_lesion_registered_branch_checkpoint(
+                    parent_path,
+                    descriptor,
+                    root / "registered-branch",
+                    iterations=iterations,
+                    first_thinning_limit=first_thinning_limit,
+                    first_thinning_volume_ratio=first_thinning_volume_ratio,
+                    source_zero_variance_nan=source_zero_variance_nan,
+                    max_distance=max_distance,
+                    first_iteration_manifest_path=child_paths["first_iteration"],
+                    resume=resume,
+                )
+            else:
+                result = persist_plus_lesion_registered_loop_checkpoint(
+                    child_paths["registered_branch"],
+                    descriptor,
+                    root / "registered-loop",
+                    n_iter_max=n_iter_max,
+                    thinning_limit=thinning_limit,
+                    source_zero_variance_nan=source_zero_variance_nan,
+                    max_passes=max_passes,
+                    resume=resume,
+                )
+        except Exception as exc:
+            manifest["status"] = "failed"
+            manifest["active_stage"] = name
+            manifest["stages"][name] = {
+                "status": "failed",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            _write_json(manifest_path, manifest)
+            raise
         child_path = Path(result.manifest_path).resolve()
         if child_path != child_paths[name].resolve():
             # The stage APIs own their stable manifest names; the final path

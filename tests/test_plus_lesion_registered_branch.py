@@ -463,6 +463,26 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
     assert captured["resume"] is True
 
 
+def test_loop_workflow_records_source_faithful_nonfinite_failure(tmp_path: Path) -> None:
+    recrop = _run_recrop(tmp_path)
+    output = tmp_path / "source-faithful-workflow"
+    with pytest.raises(ValueError, match="initial membership objective must be finite"):
+        run_plus_lesion_loop_workflow(
+            recrop.manifest_path,
+            ATLAS,
+            output,
+            iterations=1,
+            first_thinning_limit=1000.0,
+        )
+    manifest = json.loads((output / "plus-lesion-loop-workflow.json").read_text())
+    first_stage = json.loads((output / "first-iteration/lesion-first-iteration.json").read_text())
+    assert manifest["status"] == "failed"
+    assert manifest["active_stage"] == "first_iteration"
+    assert manifest["stages"]["first_iteration"]["status"] == "failed"
+    assert "initial membership objective must be finite" in manifest["stages"]["first_iteration"]["error"]
+    assert first_stage["failure"]["source_zero_variance_nan"] is True
+
+
 def test_registered_branch_cli_routes_finite_mode(tmp_path: Path, monkeypatch) -> None:
     from pymacruise.cli import main
 
