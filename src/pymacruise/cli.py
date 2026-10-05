@@ -505,7 +505,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{verb} FLAIR on the T1 RAS grid: {result.warped_flair_path}")
         print(f"Registration manifest: {result.manifest_path}")
     elif args.command == "plus-prepare-lesion":
-        from pymacruise.n4 import N4Config
         from pymacruise.plus_lesion_preprocessing import run_plus_lesion_preprocessing_checkpoint
         from pymacruise.registration import RegistrationConfig
 
