@@ -54,6 +54,7 @@ from pymacruise.plus_lesion_registered_loop import (
     RegisteredBranchStateError,
     continue_plus_lesion_registered_loop,
     hydrate_plus_lesion_registered_branch,
+    persist_plus_lesion_registered_loop_checkpoint,
 )
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
@@ -212,6 +213,7 @@ __all__ = [
     "RegisteredBranchStateError",
     "continue_plus_lesion_registered_loop",
     "hydrate_plus_lesion_registered_branch",
+    "persist_plus_lesion_registered_loop_checkpoint",
     "calculate_volume",
     "ace_enhance",
     "ace_enhance_arrays",

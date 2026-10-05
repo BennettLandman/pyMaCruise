@@ -84,12 +84,15 @@ class LesionToadsDescriptorLoopPass:
 
 @dataclass(frozen=True)
 class LesionToadsDescriptorLoopResult:
-    """Registered iterations through the first selected stop condition."""
+    """Registered iterations ending at a source stop or requested checkpoint."""
 
     passes: tuple[LesionToadsDescriptorLoopPass, ...]
     final_branch: LesionToadsPostRegistrationBranch
     stop_reason: str
     stage_order: tuple[tuple[str, ...], ...]
+    final_class_centroids: np.ndarray
+    final_lesion_centroids: np.ndarray
+    final_black_hole_centroids: np.ndarray
 
 
 def run_lesion_toads_descriptor_loop(
@@ -98,6 +101,7 @@ def run_lesion_toads_descriptor_loop(
     *,
     starting_iteration: int,
     options: LesionToadsDescriptorLoopOptions,
+    max_passes: int | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Run registered 13-class updates until source convergence or loop cap.
 
@@ -125,6 +129,12 @@ def run_lesion_toads_descriptor_loop(
     maximum = abs(int(options.n_iter_max))
     if starting_iteration >= maximum:
         raise ValueError("starting_iteration must be below abs(n_iter_max)")
+    if max_passes is not None and (
+        isinstance(max_passes, (bool, np.bool_))
+        or not isinstance(max_passes, (int, np.integer))
+        or max_passes < 1
+    ):
+        raise ValueError("max_passes must be a positive integer when supplied")
     if not isinstance(options.source_zero_variance_nan, (bool, np.bool_)):
         raise TypeError("source_zero_variance_nan must be boolean")
     if not isinstance(options.retain_iteration_details, (bool, np.bool_)):
@@ -146,7 +156,10 @@ def run_lesion_toads_descriptor_loop(
     branch = initial_branch
     passes: list[LesionToadsDescriptorLoopPass] = []
 
-    for iteration in range(int(starting_iteration) + 1, maximum + 1):
+    last_iteration = maximum if max_passes is None else min(
+        maximum, int(starting_iteration) + int(max_passes)
+    )
+    for iteration in range(int(starting_iteration) + 1, last_iteration + 1):
         shape_values = transform_registered_lesion_shape_priors(
             shape_registration,
             options.atlas_shape_priors,
@@ -231,6 +244,20 @@ def run_lesion_toads_descriptor_loop(
                 branch,
                 branch.stop_reason,
                 tuple(item.stage_order for item in passes),
+                class_centroids.copy(),
+                lesion_centroids.copy(),
+                black_hole_centroids.copy(),
             )
+
+    if max_passes is not None:
+        return LesionToadsDescriptorLoopResult(
+            tuple(passes),
+            branch,
+            "checkpoint_boundary",
+            tuple(item.stage_order for item in passes),
+            class_centroids.copy(),
+            lesion_centroids.copy(),
+            black_hole_centroids.copy(),
+        )
 
     raise RuntimeError("selected iteration ceiling completed without a stopping branch")

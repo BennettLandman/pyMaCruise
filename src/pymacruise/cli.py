@@ -415,6 +415,19 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_branch.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_branch.add_argument("--resume", action="store_true")
 
+    plus_lesion_loop = commands.add_parser(
+        "plus-lesion-registered-loop",
+        help="continue and checkpoint a bounded registered plus LesionTOADS loop segment",
+    )
+    plus_lesion_loop.add_argument("--registered-checkpoint-manifest", required=True, type=Path)
+    plus_lesion_loop.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_lesion_loop.add_argument("--output-dir", required=True, type=Path)
+    plus_lesion_loop.add_argument("--iterations", type=int, default=99)
+    plus_lesion_loop.add_argument("--thinning-limit", type=float, default=3.0)
+    plus_lesion_loop.add_argument("--max-passes", type=int, default=1)
+    plus_lesion_loop.add_argument("--finite-zero-variance", action="store_true")
+    plus_lesion_loop.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -672,6 +685,22 @@ def main(argv: list[str] | None = None) -> int:
         )
         verb = "Verified and resumed" if result.resumed else "Completed"
         print(f"{verb} registered LesionTOADS branch: {result.manifest_path}")
+        print(f"Updated segmentation: {result.segmentation_path}")
+    elif args.command == "plus-lesion-registered-loop":
+        from pymacruise.plus_lesion_registered_loop import persist_plus_lesion_registered_loop_checkpoint
+
+        result = persist_plus_lesion_registered_loop_checkpoint(
+            args.registered_checkpoint_manifest,
+            args.atlas_descriptor,
+            args.output_dir,
+            n_iter_max=args.iterations,
+            thinning_limit=args.thinning_limit,
+            source_zero_variance_nan=not args.finite_zero_variance,
+            max_passes=args.max_passes,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Completed"
+        print(f"{verb} registered LesionTOADS loop segment: {result.manifest_path}")
         print(f"Updated segmentation: {result.segmentation_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow

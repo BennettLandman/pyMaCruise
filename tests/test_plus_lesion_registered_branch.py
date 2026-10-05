@@ -15,6 +15,7 @@ from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_
 from pymacruise.plus_lesion_registered_loop import (
     continue_plus_lesion_registered_loop,
     hydrate_plus_lesion_registered_branch,
+    persist_plus_lesion_registered_loop_checkpoint,
 )
 
 
@@ -204,6 +205,87 @@ def test_registered_branch_rejects_mismatch_and_repairs_corruption(tmp_path: Pat
     )
     assert not repaired.resumed
     assert nib.load(str(repaired.segmentation_path)).shape == nib.load(str(recrop.modalities_path)).shape[:3]
+
+
+def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Path, monkeypatch) -> None:
+    recrop = _run_recrop(tmp_path)
+    initial = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, tmp_path / "initial-branch", iterations=1,
+        first_thinning_limit=1000.0, source_zero_variance_nan=False,
+    )
+    loop = persist_plus_lesion_registered_loop_checkpoint(
+        initial.manifest_path, ATLAS, tmp_path / "loop-2", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
+    )
+    manifest = json.loads(loop.manifest_path.read_text())
+    summary = json.loads(loop.summary_path.read_text())
+    assert manifest["status"] == "complete"
+    assert manifest["stage"] == "plus-lesion-registered-loop"
+    assert summary["completed_iteration"] == 2
+    assert summary["stop"] is False
+    assert nib.aff2axcodes(nib.load(str(loop.segmentation_path)).affine) == ("R", "A", "S")
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("valid loop resume must not recompute")
+
+    monkeypatch.setattr(registered_loop, "continue_plus_lesion_registered_loop", unexpected)
+    resumed = persist_plus_lesion_registered_loop_checkpoint(
+        initial.manifest_path, ATLAS, tmp_path / "loop-2", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False, resume=True,
+    )
+    assert resumed.resumed
+    monkeypatch.undo()
+    loop.segmentation_path.write_bytes(b"corrupt")
+    repaired = persist_plus_lesion_registered_loop_checkpoint(
+        initial.manifest_path, ATLAS, tmp_path / "loop-2", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False, resume=True,
+    )
+    assert not repaired.resumed
+    assert nib.load(str(repaired.segmentation_path)).shape == nib.load(str(recrop.modalities_path)).shape[:3]
+
+    third = persist_plus_lesion_registered_loop_checkpoint(
+        loop.manifest_path, ATLAS, tmp_path / "loop-3", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
+    )
+    third_summary = json.loads(third.summary_path.read_text())
+    assert third_summary["completed_iteration"] == 3
+
+
+def test_registered_loop_cli_routes_checkpoint_settings(tmp_path: Path, monkeypatch) -> None:
+    from pymacruise.cli import main
+
+    captured = {}
+
+    def fake_run(manifest, descriptor, output, **kwargs):
+        captured.update(manifest=manifest, descriptor=descriptor, output=output, **kwargs)
+        return registered_branch.PlusLesionRegisteredBranchResult(
+            tmp_path / "manifest.json",
+            *(tmp_path / f"{name}.nii.gz" for name in (
+                "memberships", "segmentation", "skeleton", "availability", "ordering", "relation",
+            )),
+            tmp_path / "summary.json",
+            True,
+        )
+
+    monkeypatch.setattr(
+        registered_loop, "persist_plus_lesion_registered_loop_checkpoint", fake_run
+    )
+    assert main([
+        "plus-lesion-registered-loop",
+        "--registered-checkpoint-manifest", "branch.json",
+        "--atlas-descriptor", str(ATLAS),
+        "--output-dir", "loop-out",
+        "--iterations", "20",
+        "--thinning-limit", "4",
+        "--max-passes", "2",
+        "--finite-zero-variance",
+        "--resume",
+    ]) == 0
+    assert captured["n_iter_max"] == 20
+    assert captured["thinning_limit"] == 4.0
+    assert captured["max_passes"] == 2
+    assert captured["source_zero_variance_nan"] is False
+    assert captured["resume"] is True
 
 
 def test_source_faithful_zero_variance_failure_is_recorded(tmp_path: Path) -> None:

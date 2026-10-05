@@ -619,8 +619,30 @@ membership and first thinning through the first post-thinning statistics and
 membership update, atlas registration, and one wrapper branch. It writes the
 updated 17-channel membership, segmentation, skeleton, availability, ordering,
 relation map, summary, and hash-checked manifest as RAS `.nii.gz`/JSON. The
+checkpoint also saves membership-energy diagnostics, initial distance maps,
+refreshed centroids, energy-ratio intermediates, and registration bounds for
+the next loop pass. The
 source-faithful zero-variance behavior remains the default and records a failed
 manifest with its variance and nonfinite-energy diagnostics. Use
 `--finite-zero-variance` to opt into the explicitly stabilized synthetic
 path. This is one selected synthetic branch; later iterations, full plus
 execution, Java composite equivalence, and real-image validation remain open.
+
+## `pymacruise plus-lesion-registered-loop`
+
+```text
+pymacruise plus-lesion-registered-loop \
+  --registered-checkpoint-manifest registered-branch/lesion-registered-branch.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-loop-2 \
+  [--iterations 99] [--thinning-limit 3] [--max-passes 1] \
+  [--finite-zero-variance] [--resume]
+```
+
+Continue from a registered branch checkpoint or a previous registered-loop
+checkpoint. `--max-passes` bounds work for this invocation; reaching that
+boundary is recorded as a checkpoint, not as source convergence. The manifest
+stores the iteration number, RAS outputs, atlas/parent hashes, and selected
+settings so a later invocation can continue without replaying the completed
+segment. Source-faithful zero-variance behavior remains the default. This is
+synthetic selected-loop integration; natural convergence, complete Java
+equivalence, and real-image validation remain open.
