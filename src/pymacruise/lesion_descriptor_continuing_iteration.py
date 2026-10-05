@@ -1,9 +1,10 @@
 """Compose a continuing selected 13-class LesionTOADS update.
 
 The transition joins the source-ordered next thinning, statistics refresh,
-GM-enabled volume membership update, and energy ratio. It reuses the selected
-VandyCRUISE-backed adapters; atlas registration, field fitting, spatial-map
-refresh, post-registration growth, and workflow I/O remain separate stages.
+GM-enabled distance refresh (when atlas names are supplied), volume membership
+update, and energy ratio. It reuses selected VandyCRUISE-backed adapters;
+registration, field fitting, post-registration growth, and workflow I/O remain
+separate stages.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ from .lesion_next_iteration_statistics import (
 from .lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
 from .lesion_post_registration import LesionToadsPostRegistrationBranch
 from .lesion_growth import LesionToadsThinningPass
+from .lesion_registered_initial_membership import LesionInitialDistanceMaps
+from .lesion_distance_refresh import refresh_lesion_toads_distance_maps
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,7 @@ class LesionToadsDescriptorContinuingIteration:
     statistics: LesionNextIterationStatistics
     membership: LesionNextIterationMembership
     stage_order: tuple[str, ...]
+    refreshed_distance_maps: LesionInitialDistanceMaps | None = None
 
 
 def run_lesion_toads_descriptor_continuing_iteration(
@@ -64,6 +68,12 @@ def run_lesion_toads_descriptor_continuing_iteration(
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
     use_lesion_max: bool = False,
+    atlas_names: Sequence[str] | None = None,
+    maximum_ventricle_distance: int = 2,
+    maximum_gm_distance: int = 3,
+    maximum_brainstem_distance: int = 25,
+    has_lesion: bool = True,
+    previous_distance_maps: LesionInitialDistanceMaps | None = None,
 ) -> LesionToadsDescriptorContinuingIteration:
     """Run thinning → 13-class statistics → GM membership and energy ratio.
 
@@ -81,6 +91,8 @@ def run_lesion_toads_descriptor_continuing_iteration(
         raise ValueError("the previous branch must carry its standard-mode growth state")
     if not isinstance(source_zero_variance_nan, (bool, np.bool_)):
         raise TypeError("source_zero_variance_nan must be boolean")
+    if not isinstance(has_lesion, (bool, np.bool_)):
+        raise TypeError("has_lesion must be boolean")
     membership_update = getattr(previous_branch.membership_result, "membership", None)
     if membership_update is None or not hasattr(membership_update, "class_memberships"):
         raise TypeError("previous branch must carry a 13-class membership result")
@@ -116,6 +128,21 @@ def run_lesion_toads_descriptor_continuing_iteration(
         channel_weight_options=channel_weight_options,
         flair_channel=flair_channel,
     )
+    refreshed = (
+        refresh_lesion_toads_distance_maps(
+            thinning.run.segmentation,
+            atlas_names,
+            maximum_ventricle_distance=maximum_ventricle_distance,
+            maximum_gm_distance=maximum_gm_distance,
+            maximum_brainstem_distance=maximum_brainstem_distance,
+            previous_maps=previous_distance_maps,
+        )
+        if atlas_names is not None and has_lesion else None
+    )
+    if refreshed is not None:
+        ventricle_distances = refreshed.maps.ventricle
+        gray_matter_distances = refreshed.maps.gray_matter
+        brainstem_distances = refreshed.maps.brainstem
     membership = run_lesion_toads_next_gm_membership_update(
         statistics,
         images,
@@ -143,6 +170,8 @@ def run_lesion_toads_descriptor_continuing_iteration(
         membership,
         (
             *statistics.stage_order,
+            *(refreshed.stage_order if refreshed else ()),
             *membership.stage_order[len(statistics.stage_order):],
         ),
+        None if refreshed is None else refreshed.maps,
     )

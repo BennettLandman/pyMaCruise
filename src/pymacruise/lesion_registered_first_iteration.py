@@ -9,7 +9,7 @@ field correction, convergence branching, growth, or a complete run.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -22,7 +22,11 @@ from .lesion_next_iteration_statistics import (
     LesionNextIterationStatistics,
     refresh_statistics_after_next_iteration_thinning,
 )
-from .lesion_registered_initial_membership import LesionRegisteredInitialMembership
+from .lesion_registered_initial_membership import (
+    LesionInitialDistanceMaps,
+    LesionRegisteredInitialMembership,
+)
+from .lesion_distance_refresh import refresh_lesion_toads_distance_maps
 from .lesion_standard13_voxel import STANDARD13_TYPES
 
 
@@ -33,6 +37,7 @@ class LesionRegisteredFirstIteration:
     statistics: LesionNextIterationStatistics
     membership: LesionNextIterationMembership
     stage_order: tuple[str, ...]
+    refreshed_distance_maps: LesionInitialDistanceMaps | None = None
 
 
 def run_lesion_toads_registered_first_iteration(
@@ -51,12 +56,18 @@ def run_lesion_toads_registered_first_iteration(
     lesion_power_exponent: float,
     spread: float = 1.0,
     source_zero_variance_nan: bool | None = None,
+    atlas_names: Sequence[str] | None = None,
+    maximum_ventricle_distance: int = 2,
+    maximum_gm_distance: int = 3,
+    maximum_brainstem_distance: int = 25,
+    has_lesion: bool = True,
 ) -> LesionRegisteredFirstIteration:
     """Run initial thinning → refreshed statistics → next memberships/ratio.
 
-    Spatial atlas relations and distance maps are carried from the constructor
-    state in ``initial`` as the selected loop does at this point. The current
-    membership maps are the output of the initial GM-enabled call. Class and
+    Spatial atlas relations and membership maps are carried from ``initial``.
+    When atlas names are supplied, source GM-enabled distance maps are rebuilt
+    from the post-thinning segmentation before membership; omitting names
+    retains the fixed constructor maps for reference callers. Class and
     auxiliary centroids are the values carried into the registered recrop.
     Corrected fields are deliberately not synthesized: the selected
     MaCRUISEplus profile disables that optional correction.
@@ -98,6 +109,20 @@ def run_lesion_toads_registered_first_iteration(
         source_zero_variance_nan = detected_zero_variance_nan
     elif not isinstance(source_zero_variance_nan, (bool, np.bool_)):
         raise TypeError("source_zero_variance_nan must be boolean or None")
+    if not isinstance(has_lesion, (bool, np.bool_)):
+        raise TypeError("has_lesion must be boolean")
+    refreshed = (
+        refresh_lesion_toads_distance_maps(
+            initial.first_thinning.thinning.run.segmentation,
+            atlas_names,
+            maximum_ventricle_distance=maximum_ventricle_distance,
+            maximum_gm_distance=maximum_gm_distance,
+            maximum_brainstem_distance=maximum_brainstem_distance,
+            previous_maps=initial.distance_maps,
+        )
+        if atlas_names is not None and has_lesion else None
+    )
+    distance_maps = initial.distance_maps if refreshed is None else refreshed.maps
     next_membership = run_lesion_toads_next_gm_membership_update(
         statistics,
         images,
@@ -110,9 +135,9 @@ def run_lesion_toads_registered_first_iteration(
         previous.black_hole_membership,
         previous.outlier_membership,
         previous.lesion_relation,
-        initial.distance_maps.ventricle,
-        initial.distance_maps.gray_matter,
-        initial.distance_maps.brainstem,
+        distance_maps.ventricle,
+        distance_maps.gray_matter,
+        distance_maps.brainstem,
         previous_energy=float(previous.objective),
         outlier_energy=outlier_energy,
         lesion_power_exponent=lesion_power_exponent,
@@ -122,5 +147,10 @@ def run_lesion_toads_registered_first_iteration(
     return LesionRegisteredFirstIteration(
         statistics,
         next_membership,
-        (*statistics.stage_order, *next_membership.stage_order[len(statistics.stage_order):]),
+        (
+            *statistics.stage_order,
+            *((refreshed.stage_order) if refreshed else ()),
+            *next_membership.stage_order[len(statistics.stage_order):],
+        ),
+        None if refreshed is None else refreshed.maps,
     )

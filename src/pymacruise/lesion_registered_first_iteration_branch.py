@@ -93,10 +93,15 @@ def run_lesion_toads_registered_first_iteration_branch(
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
     )
+    distance_refresh_count = sum(
+        stage in {"computeVentirclsDistance", "computeBstemDistance", "computeGMDistance"}
+        for stage in transition.stage_order
+    )
+    branch_overlap = max(0, len(transition.stage_order) - distance_refresh_count)
     stages = (
         *initial.stage_order,
         *transition.stage_order[1:],
-        *branch.stage_order[len(transition.stage_order):],
+        *branch.stage_order[branch_overlap:],
     )
     return LesionRegisteredFirstIterationBranch(
         transition,

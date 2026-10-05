@@ -16,7 +16,11 @@ from pymacruise.plus_lesion_first_iteration import run_plus_lesion_first_iterati
 import pymacruise.plus_lesion_first_iteration as first_iteration_stage
 from pymacruise.lesion_registered_first_iteration import run_lesion_toads_registered_first_iteration
 from pymacruise.lesion_registered_first_iteration_branch import run_lesion_toads_registered_first_iteration_branch
-from pymacruise.lesion_atlas_priors import load_lesion_atlas_shape_priors, load_lesion_atlas_topology
+from pymacruise.lesion_atlas_priors import (
+    load_lesion_atlas_priors,
+    load_lesion_atlas_shape_priors,
+    load_lesion_atlas_topology,
+)
 from pymacruise.lesion_standard13_voxel import STANDARD13_TYPES
 from pymacruise.plus_lesion_registered_loop import (
     continue_plus_lesion_registered_loop,
@@ -105,6 +109,9 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     assert summary["stop"] is False
     assert summary["growing_events"] > 0
     assert summary["relation_count"] > 0
+    stage_order = summary["stage_order"]
+    assert stage_order.index("computeVentirclsDistance") < stage_order.index("computeBstemDistance")
+    assert stage_order.index("computeBstemDistance") < stage_order.index("computeGMDistance")
     assert summary["stage_order"].index("registerShapes") < summary["stage_order"].index("convergence_check")
     assert len(summary["energy_ratio_state"]) == 7
     assert len(summary["refreshed_centroids"]["class_centroids"]) == 2
@@ -151,6 +158,9 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         channel_weight_options={"outlier_distance": 0.1, "norm_type": "Identity"},
         outlier_energy=0.1, lesion_power_exponent=1.2,
         source_zero_variance_nan=False,
+        atlas_names=tuple(
+            item.name for item in load_lesion_atlas_priors(ATLAS, ("T1", "FLAIR")).structures
+        ),
     )
     shape_atlas = load_lesion_atlas_shape_priors(ATLAS)
     atlas_topology = load_lesion_atlas_topology(ATLAS)
@@ -179,6 +189,22 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     np.testing.assert_array_equal(
         direct.branch.branch.segmentation,
         direct_branch_result.branch.branch.segmentation,
+    )
+    refreshed = direct.transition.refreshed_distance_maps
+    assert refreshed is not None
+    constructor_maps = captured_initial["initial"].distance_maps
+    assert any(not np.array_equal(current, prior) for current, prior in (
+        (refreshed.ventricle, constructor_maps.ventricle),
+        (refreshed.gray_matter, constructor_maps.gray_matter),
+        (refreshed.brainstem, constructor_maps.brainstem),
+    ))
+    np.testing.assert_array_equal(
+        np.asarray(distance_state.dataobj),
+        np.stack((
+            refreshed.ventricle_mask, refreshed.ventricle,
+            refreshed.gray_matter_mask, refreshed.gray_matter,
+            refreshed.brainstem_mask, refreshed.brainstem,
+        ), axis=-1).astype(np.int16),
     )
     np.testing.assert_array_equal(
         result_arrays[0],
@@ -290,6 +316,14 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
         recrop.manifest_path, ATLAS, tmp_path / "initial-branch", iterations=1,
         first_thinning_limit=1000.0, source_zero_variance_nan=False,
     )
+    captured_loop = {}
+    original_continue = registered_loop.continue_plus_lesion_registered_loop
+
+    def capture_continue(*args, **kwargs):
+        captured_loop["result"] = original_continue(*args, **kwargs)
+        return captured_loop["result"]
+
+    monkeypatch.setattr(registered_loop, "continue_plus_lesion_registered_loop", capture_continue)
     loop = persist_plus_lesion_registered_loop_checkpoint(
         initial.manifest_path, ATLAS, tmp_path / "loop-2", n_iter_max=99,
         thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
@@ -301,6 +335,23 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     assert summary["completed_iteration"] == 2
     assert summary["stop"] is False
     assert nib.aff2axcodes(nib.load(str(loop.segmentation_path)).affine) == ("R", "A", "S")
+    direct_loop = captured_loop["result"]
+    refreshed = direct_loop.final_distance_maps
+    assert refreshed is not None
+    persisted_distances = nib.load(manifest["outputs"]["distance_state"]["path"])
+    assert nib.aff2axcodes(persisted_distances.affine) == ("R", "A", "S")
+    np.testing.assert_array_equal(
+        np.asarray(persisted_distances.dataobj),
+        np.stack((
+            refreshed.ventricle_mask, refreshed.ventricle,
+            refreshed.gray_matter_mask, refreshed.gray_matter,
+            refreshed.brainstem_mask, refreshed.brainstem,
+        ), axis=-1).astype(np.int16),
+    )
+    stage_order = direct_loop.passes[-1].stage_order
+    assert stage_order.index("computeVentirclsDistance") < stage_order.index("computeBstemDistance")
+    assert stage_order.index("computeBstemDistance") < stage_order.index("computeGMDistance")
+    assert stage_order.index("computeGMDistance") < stage_order.index("computeMemberships:GMflag=true")
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid loop resume must not recompute")

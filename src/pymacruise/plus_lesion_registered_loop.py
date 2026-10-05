@@ -35,6 +35,7 @@ from .lesion_relations import LesionRelationList
 from .lesion_standard13_volume import Standard13VolumeResult
 from .toads_shapes import ToadShapeBounds
 from .lesion_standard13_voxel import STANDARD13_TYPES
+from .lesion_registered_initial_membership import LesionInitialDistanceMaps
 
 
 class RegisteredBranchStateError(ValueError):
@@ -262,6 +263,7 @@ def continue_plus_lesion_registered_loop(
         ventricle_distances=distance_state[..., 1],
         gray_matter_distances=distance_state[..., 3],
         brainstem_distances=distance_state[..., 5],
+        atlas_names=tuple(item.name for item in priors.structures),
         centroid_options={
             "mode": "none",
             "modalities": ("T1_MPRAGE", "FLAIR"),
@@ -275,6 +277,14 @@ def continue_plus_lesion_registered_loop(
         align_shapes=True,
         init_align_iter=1,
         retain_iteration_details=False,
+        initial_distance_maps=LesionInitialDistanceMaps(
+            distance_state[..., 0].astype(np.bool_),
+            distance_state[..., 1].astype(np.int8),
+            distance_state[..., 2].astype(np.bool_),
+            distance_state[..., 3].astype(np.int8),
+            distance_state[..., 4].astype(np.bool_),
+            distance_state[..., 5].astype(np.int8),
+        ),
     )
     return run_lesion_toads_descriptor_loop(
         branch, registration, starting_iteration=starting_iteration,
@@ -376,10 +386,17 @@ def persist_plus_lesion_registered_loop_checkpoint(
         modalities_image.affine,
         header=modalities_image.header,
     )
-    distance_state = np.asarray(
-        load_nifti_ras(Path(parent["outputs"]["distance_state"]["path"])).dataobj,
-        dtype=np.int16,
-    )
+    distance_maps = loop.final_distance_maps
+    if distance_maps is None:
+        raise RegisteredBranchStateError("GM-enabled loop pass did not refresh distance maps")
+    distance_state = np.stack((
+        distance_maps.ventricle_mask,
+        distance_maps.ventricle,
+        distance_maps.gray_matter_mask,
+        distance_maps.gray_matter,
+        distance_maps.brainstem_mask,
+        distance_maps.brainstem,
+    ), axis=-1).astype(np.int16, copy=False)
     membership = branch.membership_result.membership
     packed_memberships = np.concatenate((
         membership.class_memberships,

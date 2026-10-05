@@ -1,10 +1,10 @@
 """Drive the selected 13-class LesionTOADS registered loop.
 
 This joins already source-checked transition, registration, and wrapper
-branch adapters. Atlas shapes are resampled after each registration. The
-selected distance maps and correction fields are supplied by the caller and
-remain fixed across this bounded loop; preprocessing, initial registration,
-and complete workflow I/O are outside this runner.
+branch adapters. Atlas shapes and, when atlas names are provided, distance
+maps are refreshed after each thinning pass. Correction fields remain caller
+inputs; preprocessing, initial registration, and complete workflow I/O are
+outside this runner.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from .lesion_descriptor_registered_iteration import (
     register_and_branch_lesion_toads_descriptor_iteration,
 )
 from .lesion_post_registration import LesionToadsPostRegistrationBranch
+from .lesion_registered_initial_membership import LesionInitialDistanceMaps
 from .lesion_registered_shapes import transform_registered_lesion_shape_priors
 
 
@@ -66,6 +67,11 @@ class LesionToadsDescriptorLoopOptions:
     has_lesion: bool = True
     use_lesion_max: bool = False
     retain_iteration_details: bool = False
+    atlas_names: Sequence[str] | None = None
+    maximum_ventricle_distance: int = 2
+    maximum_gm_distance: int = 3
+    maximum_brainstem_distance: int = 25
+    initial_distance_maps: LesionInitialDistanceMaps | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +86,7 @@ class LesionToadsDescriptorLoopPass:
     transformed_shape_values: np.ndarray | None = None
     transition: LesionToadsDescriptorContinuingIteration | None = None
     registered: LesionToadsDescriptorRegisteredIteration | None = None
+    refreshed_distance_maps: LesionInitialDistanceMaps | None = None
 
 
 @dataclass(frozen=True)
@@ -93,6 +100,7 @@ class LesionToadsDescriptorLoopResult:
     final_class_centroids: np.ndarray
     final_lesion_centroids: np.ndarray
     final_black_hole_centroids: np.ndarray
+    final_distance_maps: LesionInitialDistanceMaps | None = None
 
 
 def run_lesion_toads_descriptor_loop(
@@ -154,6 +162,10 @@ def run_lesion_toads_descriptor_loop(
     lesion_centroids = np.asarray(options.initial_lesion_centroids, dtype=np.float32)
     black_hole_centroids = np.asarray(options.initial_black_hole_centroids, dtype=np.float32)
     branch = initial_branch
+    ventricle_distances = np.asarray(options.ventricle_distances)
+    gray_matter_distances = np.asarray(options.gray_matter_distances)
+    brainstem_distances = np.asarray(options.brainstem_distances)
+    final_distance_maps = None
     passes: list[LesionToadsDescriptorLoopPass] = []
 
     last_iteration = maximum if max_passes is None else min(
@@ -184,9 +196,9 @@ def run_lesion_toads_descriptor_loop(
             shape_priors=options.shape_priors,
             smoothing_priors=options.smoothing_priors,
             direct_relations=relation_table,
-            ventricle_distances=options.ventricle_distances,
-            gray_matter_distances=options.gray_matter_distances,
-            brainstem_distances=options.brainstem_distances,
+            ventricle_distances=ventricle_distances,
+            gray_matter_distances=gray_matter_distances,
+            brainstem_distances=brainstem_distances,
             centroid_options=options.centroid_options,
             channel_weight_options=options.channel_weight_options,
             outlier_energy=options.outlier_energy,
@@ -196,7 +208,20 @@ def run_lesion_toads_descriptor_loop(
             spread=options.spread,
             source_zero_variance_nan=options.source_zero_variance_nan,
             use_lesion_max=options.use_lesion_max,
+            atlas_names=options.atlas_names,
+            maximum_ventricle_distance=options.maximum_ventricle_distance,
+            maximum_gm_distance=options.maximum_gm_distance,
+            maximum_brainstem_distance=options.maximum_brainstem_distance,
+            has_lesion=options.has_lesion,
+            previous_distance_maps=final_distance_maps or options.initial_distance_maps,
         )
+        if transition.refreshed_distance_maps is not None:
+            final_distance_maps = transition.refreshed_distance_maps
+            ventricle_distances = final_distance_maps.ventricle
+            gray_matter_distances = final_distance_maps.gray_matter
+            brainstem_distances = final_distance_maps.brainstem
+        elif final_distance_maps is None:
+            final_distance_maps = options.initial_distance_maps
         registered = register_and_branch_lesion_toads_descriptor_iteration(
             transition,
             options.atlas_shape_priors,
@@ -223,12 +248,13 @@ def run_lesion_toads_descriptor_loop(
                 energy_ratio=np.float32(transition.membership.energy_ratio.energy_ratio),
                 registration_transform=registered.registration.registration.transform.copy(),
                 stop_reason=branch.stop_reason,
-                stage_order=registered.stage_order,
+                stage_order=(*transition.stage_order, *registered.stage_order),
                 transformed_shape_values=(
                     shape_values.copy() if options.retain_iteration_details else None
                 ),
                 transition=transition if options.retain_iteration_details else None,
                 registered=registered if options.retain_iteration_details else None,
+                refreshed_distance_maps=transition.refreshed_distance_maps,
             )
         )
         branch = registered.control.branch
@@ -247,6 +273,7 @@ def run_lesion_toads_descriptor_loop(
                 class_centroids.copy(),
                 lesion_centroids.copy(),
                 black_hole_centroids.copy(),
+                final_distance_maps,
             )
 
     if max_passes is not None:
@@ -258,6 +285,7 @@ def run_lesion_toads_descriptor_loop(
             class_centroids.copy(),
             lesion_centroids.copy(),
             black_hole_centroids.copy(),
+            final_distance_maps,
         )
 
     raise RuntimeError("selected iteration ceiling completed without a stopping branch")

@@ -314,6 +314,7 @@ def run_plus_lesion_registered_branch_checkpoint(
             outlier_energy=0.1,
             lesion_power_exponent=1.2,
             source_zero_variance_nan=source_zero_variance_nan,
+            atlas_names=tuple(item.name for item in priors.structures),
         )
         if not np.isfinite(transition.membership.membership.objective):
             raise ValueError("post-thinning membership objective is nonfinite; source-faithful zero-variance behavior recorded")
@@ -358,7 +359,9 @@ def run_plus_lesion_registered_branch_checkpoint(
             membership.black_hole_energy[..., None],
             membership.running_objective[..., None],
         ), axis=-1).astype(np.float32, copy=False)
-        distance_maps = initial.distance_maps
+        distance_maps = transition.refreshed_distance_maps
+        if distance_maps is None:
+            raise RuntimeError("GM-enabled post-thinning transition did not refresh distance maps")
         distance_state = np.stack((
             distance_maps.ventricle_mask,
             distance_maps.ventricle,
