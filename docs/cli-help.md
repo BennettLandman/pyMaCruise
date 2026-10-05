@@ -602,3 +602,25 @@ centroids with zero deviation have distance zero and nonmatching ones infinite
 distance. The summary records zero-deviation channels and nonfinite membership
 count so this numerical difference remains visible. All outputs use the
 registered RAS grid. This step does not execute later LesionTOADS updates.
+
+## `pymacruise plus-lesion-registered-branch`
+
+```text
+pymacruise plus-lesion-registered-branch \
+  --registered-recrop-manifest registered-recrops.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-branch \
+  [--iterations 99] [--first-thinning-limit 3] \
+  [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
+  [--finite-zero-variance] [--resume]
+```
+
+This checkpoint runs the compact selected-plus path from initial registered
+membership and first thinning through the first post-thinning statistics and
+membership update, atlas registration, and one wrapper branch. It writes the
+updated 17-channel membership, segmentation, skeleton, availability, ordering,
+relation map, summary, and hash-checked manifest as RAS `.nii.gz`/JSON. The
+source-faithful zero-variance behavior remains the default and records a failed
+manifest with its variance and nonfinite-energy diagnostics. Use
+`--finite-zero-variance` to opt into the explicitly stabilized synthetic
+path. This is one selected synthetic branch; later iterations, full plus
+execution, Java composite equivalence, and real-image validation remain open.

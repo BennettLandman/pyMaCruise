@@ -401,6 +401,20 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_first.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_first.add_argument("--resume", action="store_true")
 
+    plus_lesion_branch = commands.add_parser(
+        "plus-lesion-registered-branch",
+        help="continue registered plus LesionTOADS through one post-thinning branch",
+    )
+    plus_lesion_branch.add_argument("--registered-recrop-manifest", required=True, type=Path)
+    plus_lesion_branch.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_lesion_branch.add_argument("--output-dir", required=True, type=Path)
+    plus_lesion_branch.add_argument("--iterations", type=int, default=99)
+    plus_lesion_branch.add_argument("--first-thinning-limit", type=float, default=3.0)
+    plus_lesion_branch.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
+    plus_lesion_branch.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_branch.add_argument("--finite-zero-variance", action="store_true")
+    plus_lesion_branch.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -642,6 +656,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{verb} LesionTOADS initial memberships: {result.memberships_path}")
         print(f"First thinning segmentation: {result.segmentation_path}")
         print(f"First-iteration manifest: {result.manifest_path}")
+    elif args.command == "plus-lesion-registered-branch":
+        from pymacruise.plus_lesion_registered_branch import run_plus_lesion_registered_branch_checkpoint
+
+        result = run_plus_lesion_registered_branch_checkpoint(
+            args.registered_recrop_manifest,
+            args.atlas_descriptor,
+            args.output_dir,
+            iterations=args.iterations,
+            first_thinning_limit=args.first_thinning_limit,
+            first_thinning_volume_ratio=args.first_thinning_volume_ratio,
+            source_zero_variance_nan=not args.finite_zero_variance,
+            max_distance=args.max_distance,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Completed"
+        print(f"{verb} registered LesionTOADS branch: {result.manifest_path}")
+        print(f"Updated segmentation: {result.segmentation_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions
