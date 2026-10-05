@@ -11,6 +11,17 @@ from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alig
 from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 import pymacruise.plus_lesion_first_iteration as first_stage
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
+from pymacruise.lesion_registered_first_iteration import (
+    run_lesion_toads_registered_first_iteration,
+)
+from pymacruise.lesion_registered_first_iteration_branch import (
+    run_lesion_toads_registered_first_iteration_branch,
+)
+from pymacruise.lesion_atlas_priors import (
+    load_lesion_atlas_shape_priors,
+    load_lesion_atlas_topology,
+)
+from pymacruise.lesion_standard13_voxel import STANDARD13_TYPES
 
 
 ROOT = Path(__file__).parent
@@ -62,6 +73,16 @@ def test_first_iteration_checkpoint_saves_source_ordered_membership_and_thinning
     assert failed["failure"]["nonfinite_initial_energy_values"] > 0
     assert failed["failure"]["zero_lesion_standard_deviation_channels"] == 2
 
+    captured = {}
+    source_initial = first_stage.run_lesion_toads_registered_initial_membership
+
+    def capture_initial(*args, **kwargs):
+        captured["initial"] = source_initial(*args, **kwargs)
+        return captured["initial"]
+
+    monkeypatch.setattr(
+        first_stage, "run_lesion_toads_registered_initial_membership", capture_initial
+    )
     result = first_stage.run_plus_lesion_first_iteration_checkpoint(
         recrop.manifest_path,
         ATLAS,
@@ -97,6 +118,83 @@ def test_first_iteration_checkpoint_saves_source_ordered_membership_and_thinning
     assert summary["source_zero_variance_nan"] is False
     assert summary["zero_lesion_standard_deviation_channels"] == 2
     assert summary["stage_order"][-1] == "propagateThinning"
+
+    # The selected source-faithful default still propagates zero-variance
+    # NaNs. The explicit finite override must also reach the *next* GM update
+    # so a caller can validate a stabilized iterative branch end to end.
+    initial_summary = json.loads(recrop.summary_path.read_text())
+    images = np.asarray(nib.load(str(recrop.modalities_path)).dataobj, dtype=np.float32)
+    shapes = np.asarray(nib.load(str(recrop.shapes_path)).dataobj, dtype=np.float32)
+    transition_inputs = dict(
+        centroid_options={
+            "mode": "none",
+            "modalities": ("T1_MPRAGE", "FLAIR"),
+            "lesion_power_exponents": (0.4, 1.2),
+            "tissue_power_exponents": np.ones((2, 13), dtype=np.float32),
+        },
+        channel_weight_options={"outlier_distance": 0.1, "norm_type": "Identity"},
+        outlier_energy=0.1,
+        lesion_power_exponent=1.2,
+    )
+    source_faithful_transition = run_lesion_toads_registered_first_iteration(
+        captured["initial"],
+        images,
+        np.asarray(initial_summary["initial_class_centroids"], dtype=np.float32),
+        np.asarray(initial_summary["lesion_centroid"], dtype=np.float32),
+        np.asarray(initial_summary["black_hole_centroid"], dtype=np.float32),
+        shapes,
+        np.ones(13, dtype=np.float32),
+        np.ones(13, dtype=np.float32),
+        **transition_inputs,
+    )
+    assert np.isnan(source_faithful_transition.membership.membership.objective)
+    assert np.isnan(source_faithful_transition.membership.energy_ratio.energy_ratio)
+    transition = run_lesion_toads_registered_first_iteration(
+        captured["initial"],
+        images,
+        np.asarray(initial_summary["initial_class_centroids"], dtype=np.float32),
+        np.asarray(initial_summary["lesion_centroid"], dtype=np.float32),
+        np.asarray(initial_summary["black_hole_centroid"], dtype=np.float32),
+        shapes,
+        np.ones(13, dtype=np.float32),
+        np.ones(13, dtype=np.float32),
+        source_zero_variance_nan=False,
+        **transition_inputs,
+    )
+    assert np.isfinite(transition.membership.membership.class_memberships).all()
+    assert np.isfinite(transition.membership.membership.objective)
+    assert np.isfinite(transition.membership.energy_ratio.energy_ratio)
+    shape_atlas = load_lesion_atlas_shape_priors(ATLAS)
+    atlas_topology = load_lesion_atlas_topology(ATLAS)
+    image_spacing = tuple(
+        np.linalg.norm(np.asarray(nib.load(str(recrop.modalities_path)).affine[:3, :3]), axis=0)
+    )
+    template_spacing = tuple(
+        np.linalg.norm(np.asarray(atlas_topology.image.affine[:3, :3]), axis=0)
+    )
+    branch = run_lesion_toads_registered_first_iteration_branch(
+        captured["initial"],
+        transition,
+        tuple(shape_atlas.shape_maps[item.name] for item in shape_atlas.structures),
+        np.asarray(initial_summary["atlas_transform"], dtype=np.float32),
+        image_resolutions_mm=image_spacing,
+        template_resolutions_mm=template_spacing,
+        object_types=STANDARD13_TYPES,
+        classification=np.asarray(nib.load(str(recrop.topology_path)).dataobj),
+        template_labels=np.asarray([item.label for item in shape_atlas.structures]),
+        lesion_class=10,
+        iteration=1,
+        n_iter_max=3,
+        max_distance=0.0,
+        algorithm_mode="diffeomorphism",
+        relation_limit=3,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+    assert branch.registration.registration.transform.shape == (6,)
+    assert branch.branch.branch.stop is False
+    assert branch.branch.branch.growing is not None
+    assert branch.branch.branch.relations is not None
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid resume must skip first membership/thinning")
