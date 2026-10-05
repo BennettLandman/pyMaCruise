@@ -23,15 +23,20 @@ PYTHONPATH=src ./.venv/bin/python -m pytest -q --tb=short \
   tests/test_workflow_preflight_cli.py tests/test_plus_full_workflow.py
 ```
 
-Result: **12 passed, 0 failed, 0 skipped, 6 expected orientation warnings in
-97.25s**. The CLI dispatch tests cover both profiles, bundled descriptor
-selection, resume forwarding, preflight-manifest preservation, and configured
-plus-option forwarding. The existing plus integration case runs the synthetic
-folded-cortex workflow through terminal surfaces and thickness.
+The dispatch/preflight suite passed **11 passed, 0 failed, 0 skipped, 6
+expected orientation warnings in 1.35s**. It covers both profiles, bundled
+descriptor selection, resume forwarding, preflight-manifest preservation,
+unknown config fields, and plus-option forwarding.
+
+The config-launched synthetic integration test passed **1 passed in 73.34s**.
+It executes the 25³ folded-cortex plus workflow through terminal surfaces and
+thickness, starts from a preflight manifest, verifies saved options and RAS
+NIfTI outputs, then runs the same config with `--resume` and verifies a
+complete terminal manifest again.
 
 ## Full regression validation
 
-Implementation commit: `4b86a40f3247e09c3a19949f7e0ddd2485dc0247`.
+Implementation commit: `edb7fba9feb5084f9eddc38e5fc982601d7a1d44`.
 
 ```bash
 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
@@ -39,16 +44,15 @@ PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   env PYTHONPATH=src ./.venv/bin/pytest -q
 ```
 
-Result: **1,195 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
-1,083.83s**. Peak sampled RSS was **15.102 GB**; the watchdog did not
+Result: **1,196 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
+1,152.11s**. Peak sampled RSS was **15.036 GB**; the watchdog did not
 terminate the run.
 
 ## Scope limit
 
-This validates config parsing, profile dispatch, option routing, and the
-underlying synthetic runners in the test suite. It does not yet run a full
-synthetic base or plus workflow by invoking `workflow-run` with a real config
-in one end-to-end test. P42a remains Started until that config-launched
-integration is checked along with clean-install dependency errors and repeat
-resume behavior. No Java/source equivalence or human MRI validation is
-claimed.
+This validates config parsing, profile dispatch, option routing, and a full
+synthetic plus workflow invoked through `workflow-run`, including repeat
+resume. The complete integration test used the source checkout and a bundled-
+atlas resolver redirected to the committed miniature synthetic atlas; clean
+wheel-install execution remains to be checked. No Java/source equivalence or
+human MRI validation is claimed.
