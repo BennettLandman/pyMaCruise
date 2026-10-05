@@ -650,3 +650,25 @@ settings so a later invocation can continue without replaying the completed
 segment. Source-faithful zero-variance behavior remains the default. This is
 synthetic selected-loop integration; natural convergence, complete Java
 equivalence, and real-image validation remain open.
+
+## `pymacruise plus-lesion-loop-run`
+
+```text
+pymacruise plus-lesion-loop-run \
+  --registered-recrop-manifest recrop/registered-recrop.json \
+  --atlas-descriptor LesionTOADS-atlas.txt --output-dir lesion-loop \
+  [--iterations 99] [--first-thinning-limit 3] \
+  [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
+  [--n-iter-max 99] [--thinning-limit 3] [--max-passes 1] \
+  [--finite-zero-variance] [--resume]
+```
+
+Compose the persisted P41i initial membership/thinning, P41k registered
+branch, and one bounded P41m registered-loop segment from a completed P41h
+recrop manifest. A top-level JSON manifest links each child manifest by hash
+and records stage state before execution. `--resume` asks each child checkpoint
+to verify and reuse its outputs; corrupt loop outputs are recomputed. Source-
+faithful zero-variance behavior remains the default. `--finite-zero-variance`
+selects the explicit finite synthetic path. This command ends at a continuing
+registered loop checkpoint; it does not produce terminal LesionTOADS outputs,
+complete MaCRUISEplus, Java composite equivalence, or real-image validation.

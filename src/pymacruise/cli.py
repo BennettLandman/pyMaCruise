@@ -429,6 +429,26 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_loop.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_loop.add_argument("--resume", action="store_true")
 
+    plus_lesion_workflow = commands.add_parser(
+        "plus-lesion-loop-run",
+        help="run persisted plus LesionTOADS initialization and a restartable loop segment",
+    )
+    plus_lesion_workflow.add_argument("--registered-recrop-manifest", required=True, type=Path)
+    plus_lesion_workflow.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_lesion_workflow.add_argument("--output-dir", required=True, type=Path)
+    plus_lesion_workflow.add_argument("--iterations", type=int, default=99)
+    plus_lesion_workflow.add_argument("--first-thinning-limit", type=float, default=3.0)
+    plus_lesion_workflow.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
+    plus_lesion_workflow.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_workflow.add_argument("--n-iter-max", type=int, default=99)
+    plus_lesion_workflow.add_argument("--thinning-limit", type=float, default=3.0)
+    plus_lesion_workflow.add_argument("--max-passes", type=int, default=1)
+    plus_lesion_workflow.add_argument(
+        "--finite-zero-variance", action="store_true",
+        help="use finite limiting similarities; default preserves source-faithful NaN behavior",
+    )
+    plus_lesion_workflow.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -704,6 +724,25 @@ def main(argv: list[str] | None = None) -> int:
         verb = "Verified and resumed" if result.resumed else "Completed"
         print(f"{verb} registered LesionTOADS loop segment: {result.manifest_path}")
         print(f"Updated segmentation: {result.segmentation_path}")
+    elif args.command == "plus-lesion-loop-run":
+        from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
+
+        result = run_plus_lesion_loop_workflow(
+            args.registered_recrop_manifest,
+            args.atlas_descriptor,
+            args.output_dir,
+            iterations=args.iterations,
+            first_thinning_limit=args.first_thinning_limit,
+            first_thinning_volume_ratio=args.first_thinning_volume_ratio,
+            source_zero_variance_nan=not args.finite_zero_variance,
+            max_distance=args.max_distance,
+            n_iter_max=args.n_iter_max,
+            thinning_limit=args.thinning_limit,
+            max_passes=args.max_passes,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Completed"
+        print(f"{verb} plus LesionTOADS loop workflow: {result.manifest_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

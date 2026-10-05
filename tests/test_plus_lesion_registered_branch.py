@@ -23,6 +23,7 @@ from pymacruise.plus_lesion_registered_loop import (
     hydrate_plus_lesion_registered_branch,
     persist_plus_lesion_registered_loop_checkpoint,
 )
+from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
 
 
 ROOT = Path(__file__).parent
@@ -378,6 +379,88 @@ def test_source_faithful_zero_variance_failure_is_recorded(tmp_path: Path) -> No
     assert failure["source_zero_variance_nan"] is True
     assert failure["nonfinite_initial_energy_values"] > 0
     assert failure["zero_class_standard_deviation_channels"] > 0
+
+
+def test_persisted_loop_workflow_connects_and_resumes_p41i_p41k_p41m(tmp_path: Path) -> None:
+    recrop = _run_recrop(tmp_path)
+    output = tmp_path / "loop-workflow"
+    kwargs = {
+        "iterations": 1,
+        "first_thinning_limit": 1000.0,
+        "source_zero_variance_nan": False,
+        "n_iter_max": 99,
+        "thinning_limit": 1000.0,
+        "max_passes": 1,
+    }
+    result = run_plus_lesion_loop_workflow(recrop.manifest_path, ATLAS, output, **kwargs)
+    manifest = json.loads(result.manifest_path.read_text())
+    branch = json.loads(result.registered_branch_manifest.read_text())
+    loop = json.loads(result.registered_loop_manifest.read_text())
+    assert manifest["status"] == "complete"
+    assert manifest["workflow_executed"] is True
+    assert manifest["source_equivalence_claim"] is False
+    assert set(manifest["stages"]) == {"first_iteration", "registered_branch", "registered_loop"}
+    assert branch["inputs"]["first_iteration_manifest"]["path"] == str(result.first_iteration_manifest)
+    assert "reuses persisted initial-membership/thinning state" in branch["equivalence_note"]
+    assert loop["stage"] == "plus-lesion-registered-loop"
+    loop_summary = json.loads(Path(loop["outputs"]["summary"]["path"]).read_text())
+    assert loop_summary["completed_iteration"] == 2
+    for checkpoint in (result.first_iteration_manifest, result.registered_branch_manifest, result.registered_loop_manifest):
+        child = json.loads(checkpoint.read_text())
+        for name, output_record in child["outputs"].items():
+            path = Path(output_record["path"])
+            if name == "summary":
+                continue
+            image = nib.load(str(path))
+            assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+
+    resumed = run_plus_lesion_loop_workflow(
+        recrop.manifest_path, ATLAS, output, resume=True, **kwargs,
+    )
+    assert resumed.resumed
+    resumed_manifest = json.loads(resumed.manifest_path.read_text())
+    assert all(row["resumed"] for row in resumed_manifest["stages"].values())
+
+    loop_summary_path = Path(loop["outputs"]["summary"]["path"])
+    loop_summary_path.write_bytes(b"corrupt")
+    repaired = run_plus_lesion_loop_workflow(
+        recrop.manifest_path, ATLAS, output, resume=True, **kwargs,
+    )
+    repaired_manifest = json.loads(repaired.manifest_path.read_text())
+    assert repaired_manifest["stages"]["first_iteration"]["resumed"]
+    assert repaired_manifest["stages"]["registered_branch"]["resumed"]
+    assert not repaired_manifest["stages"]["registered_loop"]["resumed"]
+    assert json.loads(loop_summary_path.read_text())["completed_iteration"] == 2
+
+
+def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: Path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from pymacruise.cli import main
+    import pymacruise.plus_lesion_loop_workflow as workflow
+
+    captured = {}
+
+    def fake_run(parent, descriptor, output, **kwargs):
+        captured.update(parent=parent, descriptor=descriptor, output=output, **kwargs)
+        return SimpleNamespace(manifest_path=tmp_path / "run.json", resumed=kwargs["resume"])
+
+    monkeypatch.setattr(workflow, "run_plus_lesion_loop_workflow", fake_run)
+    assert main([
+        "plus-lesion-loop-run",
+        "--registered-recrop-manifest", "recrop.json",
+        "--atlas-descriptor", "atlas.txt",
+        "--output-dir", "out",
+        "--iterations", "3",
+        "--n-iter-max", "4",
+        "--max-passes", "2",
+        "--resume",
+    ]) == 0
+    assert captured["source_zero_variance_nan"] is True
+    assert captured["iterations"] == 3
+    assert captured["n_iter_max"] == 4
+    assert captured["max_passes"] == 2
+    assert captured["resume"] is True
 
 
 def test_registered_branch_cli_routes_finite_mode(tmp_path: Path, monkeypatch) -> None:
