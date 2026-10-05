@@ -355,6 +355,16 @@ def build_parser() -> argparse.ArgumentParser:
     plus_prepare_lesion.add_argument("--n4-convergence-tolerance", type=float, default=0.0)
     plus_prepare_lesion.add_argument("--n4-spline-mesh", type=int, nargs=3, default=[1, 1, 1])
 
+    plus_crop_lesion = commands.add_parser(
+        "plus-crop-lesion-inputs",
+        help="normalize source-ordered T1/FLAIR modalities and prepare the padded LesionTOADS crop",
+    )
+    plus_crop_lesion.add_argument("--modalities", required=True, type=Path, help="4-D T1-then-FLAIR .nii.gz")
+    plus_crop_lesion.add_argument("--topology", required=True, type=Path, help="LesionTOADS topology atlas .nii.gz")
+    plus_crop_lesion.add_argument("--output-dir", required=True, type=Path)
+    plus_crop_lesion.add_argument("--padding", type=int, default=10)
+    plus_crop_lesion.add_argument("--resume", action="store_true")
+
     plus_run = commands.add_parser(
         "plus-run",
         help="run the restartable plus continuation from persisted P39 Dura channels and aligned maps",
@@ -533,6 +543,20 @@ def main(argv: list[str] | None = None) -> int:
         verb = "Verified and resumed" if result.resumed else "Prepared"
         print(f"{verb} source-ordered T1/FLAIR inputs: {result.modalities_path}")
         print(f"Lesion-preprocessing manifest: {result.manifest_path}")
+    elif args.command == "plus-crop-lesion-inputs":
+        from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
+
+        result = run_plus_lesion_crop_checkpoint(
+            args.modalities,
+            args.topology,
+            args.output_dir,
+            padding=args.padding,
+            resume=args.resume,
+        )
+        verb = "Verified and resumed" if result.resumed else "Normalized and cropped"
+        print(f"{verb} LesionTOADS modalities: {result.cropped_path}")
+        print(f"Inclusive source bounds: {result.crop_bounds}")
+        print(f"Lesion-crop manifest: {result.manifest_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions

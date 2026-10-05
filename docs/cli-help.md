@@ -3,7 +3,7 @@
 This page is the expanded `--help` contract for the supported inputs and
 outputs. The command line exposes preparation, individual scientific stages, a
 standalone registered TOADS loop, restartable base workflow, plus FLAIR-registration
-and LesionTOADS image-preparation checkpoints, and a restartable plus continuation
+and LesionTOADS image-preparation/crop checkpoints, and a restartable plus continuation
 from precomputed upstream products. Full two-pass base and plus workflows remain
 under development.
 
@@ -469,3 +469,22 @@ another grid. Outputs use RAS and modality order is exactly `T1, FLAIR`. The
 ANTsPy registration is not numerically validated against NiftyReg/Aladin. This
 command prepares LesionTOADS inputs; it does not execute LesionTOADS, the Dura
 workflow, or complete MaCRUISEplus.
+
+## `pymacruise plus-crop-lesion-inputs`
+
+```text
+pymacruise plus-crop-lesion-inputs --modalities T1Flair.nii.gz \
+  --topology LesionTopology.nii.gz --output-dir lesion-crop \
+  [--padding 10] [--resume]
+```
+
+Consumes the 4-D channel-last T1-then-FLAIR image from
+`plus-prepare-lesion` and a 3-D LesionTOADS topology atlas. It applies the
+selected source normalization, unions nonzero image support with transformed
+topology support, crops and zero-pads both channels, then records inclusive
+source bounds and the post-crop rigid translation. It writes whole-grid
+normalized and cropped RAS `.nii.gz` images plus a hash-checked manifest.
+`--padding` defaults to the source-selected ten voxels. Resume verifies both
+input/settings signature and output files before skipping. This is input
+preparation for initial atlas alignment; it does not execute the iterative
+LesionTOADS workflow.

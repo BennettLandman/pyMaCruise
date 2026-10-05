@@ -9,6 +9,7 @@ import pytest
 
 from pymacruise.image_io import save_nifti_ras
 import pymacruise.plus_lesion_preprocessing as preprocessing
+from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 from pymacruise.n4 import N4Config
 from pymacruise.registration import RegistrationConfig
 
@@ -68,6 +69,22 @@ def test_plus_lesion_preprocessing_registers_corrects_strips_and_resumes(
     ]
     assert Path(manifest["registration_manifest"]["path"]).is_file()
     assert "NiftyReg/Aladin" in manifest["equivalence_note"]
+
+    topology = np.ones(fixed.shape, dtype=np.uint8)
+    topology[5:12, 5:12, 5:12] = 2
+    topology_path = save_nifti_ras(
+        nib.Nifti1Image(topology, fixed.affine), tmp_path / "lesion-topology.nii.gz"
+    )
+    cropped = run_plus_lesion_crop_checkpoint(
+        first.modalities_path,
+        topology_path,
+        tmp_path / "lesion-crop",
+        padding=2,
+    )
+    cropped_image = nib.load(str(cropped.cropped_path))
+    assert len(cropped_image.shape) == 4 and cropped_image.shape[-1] == 2
+    assert nib.aff2axcodes(cropped_image.affine) == ("R", "A", "S")
+    assert np.isfinite(np.asarray(cropped_image.dataobj)).all()
 
     def unexpected(*args, **kwargs):
         raise AssertionError("valid resume should not repeat preprocessing")

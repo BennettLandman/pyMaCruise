@@ -33,6 +33,7 @@ from pymacruise.plus_lesion_preprocessing import (
     PlusLesionPreprocessingResult,
     run_plus_lesion_preprocessing_checkpoint,
 )
+from pymacruise.plus_lesion_crop import PlusLesionCropResult, run_plus_lesion_crop_checkpoint
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise.ace import ACEArrayResult, ACEImageResult, ace_enhance, ace_enhance_arrays
 from pymacruise.skeleton import ThinACEImageResult, thin_ace, thin_ace_image
@@ -177,6 +178,8 @@ __all__ = [
     "N4DependencyError",
     "PlusLesionPreprocessingResult",
     "run_plus_lesion_preprocessing_checkpoint",
+    "PlusLesionCropResult",
+    "run_plus_lesion_crop_checkpoint",
     "calculate_volume",
     "ace_enhance",
     "ace_enhance_arrays",
