@@ -112,3 +112,14 @@ and 11 expected RAS warnings in 1,232.66s** on implementation commit
 under the 24 GB watchdog. This LesionTOADS checkpoint/image-contract work adds
 zero lines to the selected base-TOADS estimate, which remains **3,464–4,864 of
 13,651 (25–36%)**. See the [latest full-suite report](full-pytest-2026-10-05-lesion-nifti-field-contract.md).
+
+The 2026-10-05 TOADS ordering-state port adds approximately **3 selected Java
+source lines**: constructor initialization of the persistent priority image,
+the priority write during thinning, and the priority read during growth. The
+coarse represented-source estimate advances from 3,464–4,864 to **3,467–4,867
+of 13,651 lines (about 25–36%)**. The full suite passed **1,202 tests, 0 failed,
+0 skipped, and 11 expected RAS warnings in 1,187.29s** on implementation commit
+`c8a33033e823d9a2fbce5170ee7ebd984008e801`, with peak sampled RSS **13.539 GB**.
+This is not runtime Python line coverage or whole-workflow equivalence; see the
+[ordering-carry report](toads-ordering-carry-2026-10-05.md) and [full-suite
+report](full-pytest-2026-10-05-toads-ordering-carry.md).

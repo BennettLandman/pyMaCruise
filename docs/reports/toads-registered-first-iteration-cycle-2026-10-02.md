@@ -11,8 +11,8 @@ new pose, then enter iteration two through initialization and propagation of
 thinning.
 
 The adapter derives state that the selected Java constructor initializes
-directly: zero-valued grow ordering, the first thinning's labels/skeleton/volume
-and availability arrays, descriptor-ordered output labels, constructor label
+directly: the per-voxel ordering carried out of the first thinning, its
+labels/skeleton/volume and availability arrays, descriptor-ordered output labels, constructor label
 map, and initialized boundary-distance state. Maximum iteration and relation
 limits remain explicit wrapper parameters. The stage kernels were already
 ported; this row composes them and adds no newly countable Java method lines.
@@ -38,7 +38,7 @@ Result: **1 passed, 0 failed, 0 skipped in 10.97 seconds**.
 
 The test requires an actual rigid registration result and checks the source
 stage suffix through the next thinning pass. It recomputes the energy ratio,
-grow result from constructor-zero ordering, relation maps, transformed shape
+grow result from the first thinning's carried ordering, relation maps, transformed shape
 priors, and next thinning directly from their existing kernels, comparing the
 arrays and queue trace exactly. Component registration and wrapper-control
 methods have separate selected-Java reference tests. This is a synthetic
@@ -52,3 +52,6 @@ port correctly raises when the selected source table would overflow; the test
 therefore uses the smaller committed phantom, which stays within the source
 limit. This is a source behavior/input limit to watch during later full-workflow
 validation, not a tolerance adjustment.
+
+
+The original zero-ordering description above was incomplete. The persistent Java ordering field is initialized to zero by the constructor, updated by thinning, and then consumed by growth. This state handoff is corrected and validated against the larger synthetic Vandy run in [the ordering-carry report](toads-ordering-carry-2026-10-05.md).

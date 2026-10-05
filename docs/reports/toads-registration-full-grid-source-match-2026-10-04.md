@@ -1,5 +1,18 @@
 # TOADS full-grid registration source match — 2026-10-04
 
+## Follow-up correction — carried thinning priorities (2026-10-05)
+
+The mismatch table below records the state before Python carried the
+`ordering` array from `propagateThinning` into `propagateGrowing`. The selected
+Java object retains this array across stages: thinning writes each eligible
+popped priority, and growth uses it as its seed ordering. After preserving that
+field, the committed synthetic Vandy run matches Java exactly for the first
+grown segmentation, closest-label state, and next thinning. The iteration-2
+membership MAE is `2.6658711e-10`, maximum difference `4.3064356e-6`, and its
+objective matches at float32 precision. See the [ordering-carry report](toads-ordering-carry-2026-10-05.md)
+for details and current focused evidence. The older mismatch table below is
+retained as a historical measurement from the pre-correction implementation.
+
 ## Scope
 
 This report corrects the earlier diagnosis in
