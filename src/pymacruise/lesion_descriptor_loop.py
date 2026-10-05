@@ -65,16 +65,21 @@ class LesionToadsDescriptorLoopOptions:
     init_align_iter: int = 10
     has_lesion: bool = True
     use_lesion_max: bool = False
+    retain_iteration_details: bool = False
 
 
 @dataclass(frozen=True)
 class LesionToadsDescriptorLoopPass:
-    """One membership update and its following registration/branch."""
+    """Compact pass summary, with full arrays retained only on request."""
 
     iteration: int
-    transformed_shape_values: np.ndarray
-    transition: LesionToadsDescriptorContinuingIteration
-    registered: LesionToadsDescriptorRegisteredIteration
+    energy_ratio: np.float32
+    registration_transform: np.ndarray
+    stop_reason: str | None
+    stage_order: tuple[str, ...]
+    transformed_shape_values: np.ndarray | None = None
+    transition: LesionToadsDescriptorContinuingIteration | None = None
+    registered: LesionToadsDescriptorRegisteredIteration | None = None
 
 
 @dataclass(frozen=True)
@@ -122,6 +127,8 @@ def run_lesion_toads_descriptor_loop(
         raise ValueError("starting_iteration must be below abs(n_iter_max)")
     if not isinstance(options.source_zero_variance_nan, (bool, np.bool_)):
         raise TypeError("source_zero_variance_nan must be boolean")
+    if not isinstance(options.retain_iteration_details, (bool, np.bool_)):
+        raise TypeError("retain_iteration_details must be boolean")
 
     images = np.asarray(options.images, dtype=np.float32)
     if images.ndim not in (3, 4):
@@ -199,7 +206,16 @@ def run_lesion_toads_descriptor_loop(
         )
         passes.append(
             LesionToadsDescriptorLoopPass(
-                iteration, shape_values, transition, registered
+                iteration=iteration,
+                energy_ratio=np.float32(transition.membership.energy_ratio.energy_ratio),
+                registration_transform=registered.registration.registration.transform.copy(),
+                stop_reason=branch.stop_reason,
+                stage_order=registered.stage_order,
+                transformed_shape_values=(
+                    shape_values.copy() if options.retain_iteration_details else None
+                ),
+                transition=transition if options.retain_iteration_details else None,
+                registered=registered if options.retain_iteration_details else None,
             )
         )
         branch = registered.control.branch
@@ -214,7 +230,7 @@ def run_lesion_toads_descriptor_loop(
                 tuple(passes),
                 branch,
                 branch.stop_reason,
-                tuple(item.registered.stage_order for item in passes),
+                tuple(item.stage_order for item in passes),
             )
 
     raise RuntimeError("selected iteration ceiling completed without a stopping branch")

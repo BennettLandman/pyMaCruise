@@ -283,12 +283,33 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
     )
     assert tuple(item.iteration for item in loop.passes) == (2, 3)
     assert loop.stop_reason == "iteration_limit"
+    assert all(item.transition is None and item.transformed_shape_values is None for item in loop.passes)
+    assert np.isfinite([item.energy_ratio for item in loop.passes]).all()
     assert np.array_equal(
-        loop.passes[0].transition.membership.membership.class_memberships,
+        loop.passes[0].registration_transform,
+        second_branch.registration.registration.transform,
+    )
+    assert np.array_equal(
+        loop.passes[1].registration_transform,
+        third_branch.registration.registration.transform,
+    )
+
+    detailed_loop = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=replace(loop_options, retain_iteration_details=True),
+    )
+    assert all(
+        item.transition is not None and item.transformed_shape_values is not None
+        for item in detailed_loop.passes
+    )
+    assert np.array_equal(
+        detailed_loop.passes[0].transition.membership.membership.class_memberships,
         second.membership.membership.class_memberships,
     )
     assert np.array_equal(
-        loop.passes[1].transition.membership.membership.class_memberships,
+        detailed_loop.passes[1].transition.membership.membership.class_memberships,
         third.membership.membership.class_memberships,
     )
     assert np.array_equal(
