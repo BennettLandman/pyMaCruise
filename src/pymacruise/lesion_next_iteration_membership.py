@@ -42,6 +42,7 @@ def run_lesion_toads_next_gm_membership_update(
     lesion_power_exponent: float,
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
+    intensity_fields: ArrayLike | None = None,
 ) -> LesionNextIterationMembership:
     """Call the fixed MaCRUISEplus 13-class volume kernel with ``GMflag=true``.
 
@@ -79,6 +80,7 @@ def run_lesion_toads_next_gm_membership_update(
         gm_flag=True,
         spread=spread,
         source_zero_variance_nan=source_zero_variance_nan,
+        intensity_fields=intensity_fields,
     )
     ratio = lesion_toads_energy_ratio(previous_energy, membership.objective)
     return LesionNextIterationMembership(

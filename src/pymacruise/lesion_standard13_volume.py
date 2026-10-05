@@ -59,6 +59,7 @@ def run_lesion_toads_standard13_volume(
     gm_flag: bool = False,
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
+    intensity_fields: ArrayLike | None = None,
 ) -> Standard13VolumeResult:
     """Run the selected 13-class membership update over one volume.
 
@@ -72,6 +73,9 @@ def run_lesion_toads_standard13_volume(
     if data.ndim != 4 or data.shape[-1] != 2 or min(data.shape[:3], default=0) < 3:
         raise ValueError("images must have shape (x>=3,y>=3,z>=3,2) in T1_MPRAGE/FLAIR order")
     spatial = data.shape[:3]
+    fields = None if intensity_fields is None else np.asarray(intensity_fields, dtype=np.float32)
+    if fields is not None and (fields.shape != data.shape or not np.isfinite(fields).all()):
+        raise ValueError("intensity_fields must be finite and match the image grid and channels")
     shapes = np.asarray(shape_values, dtype=np.float32)
     direct = np.asarray(direct_relations, dtype=np.bool_)
     current = np.asarray(initial_class_memberships, dtype=np.float32).copy()
@@ -124,6 +128,7 @@ def run_lesion_toads_standard13_volume(
                     gray_matter_distance=int(gm[x, y, z]),
                     brainstem_distance=int(brainstem[x, y, z]), spread=spread,
                     gm_flag=gm_flag, source_zero_variance_nan=source_zero_variance_nan,
+                    intensity_field=None if fields is None else fields[x, y, z],
                 )
                 current[x, y, z] = voxel.class_memberships
                 lesion[x, y, z] = voxel.lesion_membership

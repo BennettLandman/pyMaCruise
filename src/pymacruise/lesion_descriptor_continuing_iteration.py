@@ -163,6 +163,7 @@ def run_lesion_toads_descriptor_continuing_iteration(
         lesion_power_exponent=lesion_power_exponent,
         spread=spread,
         source_zero_variance_nan=source_zero_variance_nan,
+        intensity_fields=fields,
     )
     return LesionToadsDescriptorContinuingIteration(
         thinning,

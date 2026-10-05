@@ -317,6 +317,29 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
         third_branch.control.branch.final_classification.classification,
     )
 
+    # The correction field is supplied in the same channel-last form used by
+    # the persisted NIfTI products. It must affect both refreshed statistics
+    # and the 13-class membership data terms in the continuing-loop path.
+    corrected_fields = np.empty_like(images, dtype=np.float32)
+    corrected_fields[..., 0] = np.float32(1.1)
+    corrected_fields[..., 1] = np.float32(0.9)
+    fielded_loop = run_lesion_toads_descriptor_loop(
+        prior_branch,
+        first_branch.registration.registration,
+        starting_iteration=1,
+        options=replace(
+            loop_options,
+            fields=corrected_fields,
+            retain_iteration_details=True,
+        ),
+        max_passes=1,
+    )
+    assert fielded_loop.stop_reason == "checkpoint_boundary"
+    assert fielded_loop.passes[0].transition is not None
+    assert fielded_loop.passes[0].transition.membership.membership.objective.view(np.uint32) != (
+        detailed_loop.passes[0].transition.membership.membership.objective.view(np.uint32)
+    )
+
     converged = run_lesion_toads_descriptor_loop(
         prior_branch,
         first_branch.registration.registration,

@@ -196,3 +196,40 @@ def test_standard13_volume_matches_source_order_java_harness() -> None:
                 "black_hole_energy", "running_objective",
             ):
                 assert not np.any(getattr(result, name)[index_tuple]), name
+
+
+def test_standard13_volume_applies_channel_correction_fields() -> None:
+    state = _state()
+    images = np.asarray(state["images"], dtype=np.float32)
+    uncorrected = run_lesion_toads_standard13_volume(**state)
+    identity_fields = np.ones_like(images, dtype=np.float32)
+    identity = run_lesion_toads_standard13_volume(**state, intensity_fields=identity_fields)
+    for name in (
+        "class_memberships", "lesion_membership", "black_hole_membership",
+        "outlier_membership", "lesion_relation", "denominator", "class_energies",
+        "lesion_energy", "black_hole_energy", "running_objective",
+    ):
+        np.testing.assert_array_equal(getattr(identity, name), getattr(uncorrected, name), err_msg=name)
+    assert identity.objective.view(np.uint32) == uncorrected.objective.view(np.uint32)
+
+    fields = np.empty_like(images)
+    fields[..., 0] = np.float32(1.1)
+    fields[..., 1] = np.float32(0.9)
+    corrected = run_lesion_toads_standard13_volume(**state, intensity_fields=fields)
+    assert corrected.objective.view(np.uint32) != uncorrected.objective.view(np.uint32)
+    assert np.count_nonzero(corrected.class_memberships != uncorrected.class_memberships) > 0
+
+
+def test_standard13_volume_rejects_invalid_correction_field() -> None:
+    state = _state()
+    images = np.asarray(state["images"], dtype=np.float32)
+    for fields in (
+        np.ones((*images.shape[:3], 1), dtype=np.float32),
+        np.full_like(images, np.nan),
+    ):
+        try:
+            run_lesion_toads_standard13_volume(**state, intensity_fields=fields)
+        except ValueError as error:
+            assert "intensity_fields" in str(error)
+        else:  # pragma: no cover - assertion branch
+            raise AssertionError("invalid intensity fields were accepted")

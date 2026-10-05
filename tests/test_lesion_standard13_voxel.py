@@ -143,3 +143,34 @@ def test_standard13_absent_lesion_preserves_previous_auxiliary_maps() -> None:
     assert result.lesion_membership == np.float32(state["lesion_membership"] / result.denominator)
     assert result.black_hole_membership == state["black_hole_membership"]
     assert result.lesion_relation == state["lesion_relation"]
+
+
+def test_standard13_voxel_field_application_matches_unit_and_changes_residuals() -> None:
+    state = _state()
+    uncorrected = compute_lesion_toads_standard13_voxel(**state)
+    identity = compute_lesion_toads_standard13_voxel(
+        **state, intensity_field=np.ones(2, dtype=np.float32)
+    )
+    np.testing.assert_array_equal(identity.class_memberships, uncorrected.class_memberships)
+    np.testing.assert_array_equal(identity.class_energies, uncorrected.class_energies)
+    assert identity.objective.view(np.uint32) == uncorrected.objective.view(np.uint32)
+
+    corrected = compute_lesion_toads_standard13_voxel(
+        **state, intensity_field=np.asarray([1.1, 0.9], dtype=np.float32)
+    )
+    assert corrected.class_energies[3].view(np.uint32) != uncorrected.class_energies[3].view(np.uint32)
+    assert corrected.class_memberships[3].view(np.uint32) != uncorrected.class_memberships[3].view(np.uint32)
+
+
+def test_standard13_voxel_rejects_invalid_correction_field() -> None:
+    state = _state()
+    for field in (
+        np.ones(3, dtype=np.float32),
+        np.asarray([1.0, np.nan], dtype=np.float32),
+    ):
+        try:
+            compute_lesion_toads_standard13_voxel(**state, intensity_field=field)
+        except ValueError as error:
+            assert "intensity_field" in str(error)
+        else:  # pragma: no cover - assertion branch
+            raise AssertionError("invalid intensity field was accepted")

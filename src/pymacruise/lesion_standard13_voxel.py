@@ -95,6 +95,7 @@ def compute_lesion_toads_standard13_voxel(
     gm_flag: bool = False,
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
+    intensity_field: ArrayLike | None = None,
 ) -> Standard13VoxelResult:
     """Update one interior voxel from a complete fixed pre-call state.
 
@@ -111,6 +112,7 @@ def compute_lesion_toads_standard13_voxel(
     computed nonfinite membership terms.
     """
     image = np.asarray(image_values, dtype=np.float32)
+    field = None if intensity_field is None else np.asarray(intensity_field, dtype=np.float32)
     centers = np.asarray(class_centroids, dtype=np.float32)
     deviations = np.asarray(class_stddev, dtype=np.float32)
     lesion_center = np.asarray(lesion_centroid, dtype=np.float32)
@@ -152,6 +154,8 @@ def compute_lesion_toads_standard13_voxel(
                priors, smoothing_coefficients, current, neighbors, lesion_faces, black_hole_faces)
     if any(not np.isfinite(array).all() for array in numeric):
         raise ValueError("numeric state must contain only finite values")
+    if field is not None and (field.shape != image.shape or not np.isfinite(field).all()):
+        raise ValueError("intensity_field must be finite and match image channel count")
     if source_zero_variance_nan and (
         not gm_flag
         or not (np.any(deviations == np.float32(0.0)) or np.any(lesion_deviation == np.float32(0.0)))
@@ -182,7 +186,12 @@ def compute_lesion_toads_standard13_voxel(
         if kind == "MASK":
             raw_class = np.float32(0.0)
             for channel in range(2):
-                mismatch = np.float32(0.0 if image[channel] == np.float32(0.0) else 1.0)
+                channel_value = (
+                    image[channel]
+                    if field is None
+                    else np.float32(field[channel] * image[channel])
+                )
+                mismatch = np.float32(0.0 if channel_value == np.float32(0.0) else 1.0)
                 raw_class = np.float32(raw_class + np.float32(weights[channel] * mismatch))
             raw_lesion = np.float32(0.0)
         elif kind == "OPTIMIZED_CSF":
@@ -194,6 +203,8 @@ def compute_lesion_toads_standard13_voxel(
             energies = compute_lesion_toads_unfielded_data_energies(
                 image, centers[:, k], lesion_center, np.zeros(2, dtype=np.float32), weights,
                 object_type="lesion" if kind == "LESION" else "object",
+                use_field=field is not None,
+                intensity_field=field,
                 flair_channel=1, use_lesion_weight=(kind == "LESION"),
                 lesion_power_exponent=(float(np.float32(lesion_power_exponent)) if kind == "LESION" else None),
                 cached_lesion_power_exponent=(float(np.float32(lesion_power_exponent)) if kind == "LESION" else None),
