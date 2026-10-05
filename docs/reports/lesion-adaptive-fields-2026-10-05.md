@@ -40,5 +40,4 @@ test enables degree-one fitting, checks refit stage order before centroid
 refresh, verifies finite returned field/degree state, and checks the caller's
 initial fields remain unchanged. Existing Java-reference tests in the group
 cover selected-source fielded energy terms and adaptive gate/refit components.
-This is not a composite Java algorithm comparison. Full suite is pending for
-this implementation.
+This is not a composite Java algorithm comparison. Full suite on implementation commit `2b90545a52ace6a3d518925a380c9c34ccac88a0`: **1,200 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,239.07s**, peak sampled RSS **12.993 GB** under the 24 GB watchdog; see [full-suite report](full-pytest-2026-10-05-lesion-adaptive-fields.md).

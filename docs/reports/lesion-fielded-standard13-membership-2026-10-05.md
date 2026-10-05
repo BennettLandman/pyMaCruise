@@ -48,7 +48,7 @@ PYTHONPATH=src ./.venv/bin/pytest -q --tb=short \
 Result: **1 passed, 0 failed, 0 skipped in 16.08s**. A compact RAS synthetic
 case carries non-unit T1/FLAIR fields through the next statistics and
 membership transition; the resulting objective differs from the uncorrected
-control. Full-suite validation for this implementation commit is pending.
+control. Full suite on implementation commit `2b90545a52ace6a3d518925a380c9c34ccac88a0`: **1,200 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,239.07s**, peak sampled RSS **12.993 GB** under the 24 GB watchdog; see [full-suite report](full-pytest-2026-10-05-lesion-adaptive-fields.md).
 
 ## Limits
 
