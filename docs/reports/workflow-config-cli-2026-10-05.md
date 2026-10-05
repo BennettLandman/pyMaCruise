@@ -34,10 +34,16 @@ thickness, starts from a preflight manifest, verifies saved options and RAS
 NIfTI outputs, then runs the same config with `--resume` and verifies a
 complete terminal manifest again.
 
+The base workflow integration test now also invokes `workflow-run` with a
+config on a compact synthetic case, after preflight and a simulated interrupted
+stage attempt. It passed **1 passed in 28.55s**, verified all six stages,
+native-grid RAS outputs, the preserved `preflight.json`, and repeat resume.
+
 ## Full regression validation
 
 Workflow implementation commit: `edb7fba9feb5084f9eddc38e5fc982601d7a1d44`.
 Installed-wheel CLI verification commit: `1bc2b98c7665fe6b337fd940d440bf25db268784`.
+Base config-run integration commit: `308ffd52fa03428bf31dc0cc2dd37e63f0ea1951`.
 
 ```bash
 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
@@ -45,21 +51,24 @@ PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   env PYTHONPATH=src ./.venv/bin/pytest -q
 ```
 
-Result on `1bc2b98c7665fe6b337fd940d440bf25db268784`: **1,196 passed, 0 failed,
-0 skipped, 11 expected RAS warnings in 1,175.06s**. Peak sampled RSS was
-**13.989 GB**; the watchdog did not
+Result on `308ffd52fa03428bf31dc0cc2dd37e63f0ea1951`: **1,196 passed, 0 failed,
+0 skipped, 11 expected RAS warnings in 1,211.97s**. Peak sampled RSS was
+**13.827 GB**; the watchdog did not
 terminate the run.
 
 The isolated wheel test additionally resolves packaged atlases and invokes
 `python -m pymacruise.cli workflow-run --help` with only the installed target
-and an ANTs import marker on the path; it passed **1 test in 23.12s**. The
-entire workflow has not yet been executed from the installed wheel.
+and an ANTs import marker on the path; it passed **1 test in 23.12s**. Complete
+base and plus workflows were run through the config CLI from the source
+checkout; the full pipeline was not repeated from the isolated wheel.
 
 ## Scope limit
 
-This validates config parsing, profile dispatch, option routing, and a full
-synthetic plus workflow invoked through `workflow-run`, including repeat
-resume. The complete integration test used the source checkout and a bundled-
-atlas resolver redirected to the committed miniature synthetic atlas; clean
-wheel-install execution remains to be checked. No Java/source equivalence or
-human MRI validation is claimed.
+This validates config parsing, profile dispatch, option routing, and complete
+synthetic base and plus workflows invoked through `workflow-run`, including
+resume and preflight handoff. The plus integration used a bundled-atlas
+resolver redirected to the committed miniature synthetic atlas; the base
+integration exercised all six stages with the committed small atlas. The
+isolated wheel test validates installed CLI recognition and real bundled atlas
+resolution, but does not repeat the full pipeline from that wheel. No
+Java/source equivalence or human MRI validation is claimed.

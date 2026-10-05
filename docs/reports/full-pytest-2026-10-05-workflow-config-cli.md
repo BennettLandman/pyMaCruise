@@ -1,6 +1,6 @@
 # Full PyMaCRUISE regression suite — 2026-10-05 config-driven workflow CLI
 
-Implementation and package-verification commit: `1bc2b98c7665fe6b337fd940d440bf25db268784`.
+Implementation and package-verification commit: `308ffd52fa03428bf31dc0cc2dd37e63f0ea1951`.
 
 Command:
 
@@ -11,11 +11,11 @@ PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
 ```
 
 Result: **1,196 passed, 0 failed, 0 skipped, 11 expected RAS warnings in
-1,175.06s**. Peak sampled RSS: **13.989 GB**. The watchdog did not terminate
+1,211.97s**. Peak sampled RSS: **13.827 GB**. The watchdog did not terminate
 the run.
 
 This is full Python regression-suite evidence for implementation commit
-`1bc2b98`. It includes synthetic base/plus workflows, including a complete
+`308ffd5`. It includes synthetic base/plus workflows, including complete
 plus run launched through the JSON-config CLI and resumed, and the focused
 config-dispatch behavior described in
 [the P42a report](workflow-config-cli-2026-10-05.md). It is not source-wide
