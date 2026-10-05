@@ -105,3 +105,10 @@ which is outside the selected base-TOADS source files. The base-TOADS
 source-line delta remains **0**, and its coarse estimate remains
 **3,464–4,864 of 13,651 (25–36%)**. See the [terminal checkpoint report](plus-terminal-lesion-checkpoint-2026-10-05.md)
 and [full-suite report](full-pytest-2026-10-05-plus-terminal-lesion.md).
+
+The latest 2026-10-05 full suite passed **1,202 tests, 0 failed, 0 skipped,
+and 11 expected RAS warnings in 1,232.66s** on implementation commit
+`24007918da04195c8dae2df06835f36694fbd3eb`, with peak sampled RSS **12.750 GB**
+under the 24 GB watchdog. This LesionTOADS checkpoint/image-contract work adds
+zero lines to the selected base-TOADS estimate, which remains **3,464–4,864 of
+13,651 (25–36%)**. See the [latest full-suite report](full-pytest-2026-10-05-lesion-nifti-field-contract.md).
