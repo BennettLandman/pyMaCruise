@@ -80,6 +80,9 @@ def run_plus_lesion_loop_workflow(
     thinning_limit: float = 3.0,
     max_passes: int = 1,
     loop_convergence_threshold: float | None = None,
+    correction_fields_path: str | Path | None = None,
+    correction_polynomial_degree: int | None = None,
+    initial_correction_degree: int | None = None,
     resume: bool = False,
 ) -> PlusLesionLoopWorkflowResult:
     """Run P41i -> P41k -> P41m with a hash-checked top-level manifest.
@@ -109,7 +112,13 @@ def run_plus_lesion_loop_workflow(
         "loop_convergence_threshold": (
             None if loop_convergence_threshold is None else float(loop_convergence_threshold)
         ),
+        "correction_polynomial_degree": correction_polynomial_degree,
+        "initial_correction_degree": initial_correction_degree,
     }
+    correction_fields_record = (
+        None if correction_fields_path is None
+        else _file_record(Path(correction_fields_path).expanduser().resolve())
+    )
     if loop_convergence_threshold is not None and (
         not np.isfinite(loop_convergence_threshold) or loop_convergence_threshold < 0
     ):
@@ -118,6 +127,7 @@ def run_plus_lesion_loop_workflow(
         "stage": "plus-lesion-loop-workflow",
         "registered_recrop_manifest": _file_record(parent_path),
         "atlas_descriptor": _file_record(descriptor),
+        "correction_fields": correction_fields_record,
         "settings": settings,
         "spatial_convention": "RAS",
     }
@@ -196,6 +206,9 @@ def run_plus_lesion_loop_workflow(
                     source_zero_variance_nan=source_zero_variance_nan,
                     max_passes=max_passes,
                     convergence_threshold=loop_convergence_threshold,
+                    correction_fields_path=correction_fields_path,
+                    correction_polynomial_degree=correction_polynomial_degree,
+                    initial_correction_degree=initial_correction_degree,
                     resume=resume,
                 )
         except Exception as exc:

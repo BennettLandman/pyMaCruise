@@ -659,6 +659,8 @@ pymacruise plus-lesion-registered-loop \
   --registered-checkpoint-manifest registered-branch/lesion-registered-branch.json \
   --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-loop-2 \
   [--iterations 99] [--thinning-limit 3] [--max-passes 1] \
+  [--correction-fields fields.nii.gz] [--correction-polynomial-degree {1,2,3}] \
+  [--initial-correction-degree N] \
   [--finite-zero-variance] [--resume]
 ```
 
@@ -668,8 +670,14 @@ boundary is recorded as a checkpoint, not as source convergence. The manifest
 stores the iteration number, RAS outputs, atlas/parent hashes, and selected
 settings so a later invocation can continue without replaying the completed
 segment. Source-faithful zero-variance behavior remains the default. This is
-synthetic selected-loop integration; natural convergence, complete Java
-equivalence, and real-image validation remain open.
+synthetic selected-loop integration. Optional correction fields must be a
+channel-last RAS `.nii.gz` on the registered T1/FLAIR grid. An adaptive degree
+ceiling requires fields; each checkpoint writes the updated field volume and
+current degree, and the next segment carries both forward automatically.
+When resuming the same checkpoint output directory, repeat the original
+`--correction-fields` argument if it was used to create that checkpoint.
+Natural convergence, complete Java equivalence, and real-image validation
+remain open.
 
 ## `pymacruise plus-lesion-loop-run`
 
@@ -681,6 +689,8 @@ pymacruise plus-lesion-loop-run \
   [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
   [--loop-convergence-threshold N] [--n-iter-max 99] \
   [--thinning-limit 3] [--max-passes 1] \
+  [--correction-fields fields.nii.gz] [--correction-polynomial-degree {1,2,3}] \
+  [--initial-correction-degree N] \
   [--finite-zero-variance] [--resume]
 ```
 
@@ -697,6 +707,12 @@ that reaches convergence or the iteration cap writes terminal classification
 and lesion-subtype NIfTIs; otherwise it writes a continuing checkpoint. This
 does not establish complete MaCRUISEplus, Java composite equivalence, or
 real-image validation.
+
+Optional correction fields must be channel-last, RAS, compressed NIfTI on the
+registered recrop T1/FLAIR grid. An adaptive degree ceiling requires these
+fields. The registered-loop checkpoint writes updated fields and their degree,
+so later segments resume them; `--resume` with the same workflow also requires
+the original input field path if it was supplied.
 
 ## `pymacruise plus-full-run`
 

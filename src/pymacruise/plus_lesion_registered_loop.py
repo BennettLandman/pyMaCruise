@@ -196,6 +196,9 @@ def continue_plus_lesion_registered_loop(
     source_zero_variance_nan: bool | None = None,
     max_passes: int | None = None,
     convergence_threshold: float | None = None,
+    correction_fields_path: str | Path | None = None,
+    correction_polynomial_degree: int | None = None,
+    initial_correction_degree: int | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Hydrate P41k and run the next selected registered P39 iteration.
 
@@ -246,6 +249,29 @@ def continue_plus_lesion_registered_loop(
     ):
         raise RegisteredBranchStateError("registered-recrop modalities and topology must share a RAS grid")
     images = np.asarray(image.dataobj, dtype=np.float32)
+    persisted_fields = outputs.get("correction_fields")
+    if persisted_fields is not None and correction_fields_path is not None:
+        raise RegisteredBranchStateError(
+            "checkpoint already carries correction fields; do not replace them on continuation"
+        )
+    fields_path = (
+        Path(correction_fields_path).expanduser().resolve()
+        if correction_fields_path is not None else persisted_fields
+    )
+    correction_fields = None
+    if fields_path is not None:
+        fields_image = load_nifti_ras(fields_path)
+        if (
+            fields_image.shape != image.shape
+            or nib.aff2axcodes(fields_image.affine) != ("R", "A", "S")
+            or not np.allclose(fields_image.affine, image.affine, rtol=0, atol=1e-4)
+        ):
+            raise RegisteredBranchStateError(
+                "correction fields must be a channel-last NIfTI on the registered modalities RAS grid"
+            )
+        correction_fields = np.asarray(fields_image.dataobj, dtype=np.float32)
+        if not np.isfinite(correction_fields).all():
+            raise RegisteredBranchStateError("correction fields must contain only finite values")
     priors = load_lesion_atlas_priors(atlas_path, ("T1", "FLAIR"))
     atlas_shapes = load_lesion_atlas_shape_priors(atlas_path)
     atlas_topology = load_lesion_atlas_topology(atlas_path)
@@ -256,6 +282,23 @@ def continue_plus_lesion_registered_loop(
     if n_iter_max <= starting_iteration:
         raise ValueError("n_iter_max must exceed the checkpoint's completed iteration")
     centroids = summary["refreshed_centroids"]
+    if initial_correction_degree is None:
+        initial_correction_degree = int(summary.get("final_correction_degree", 0))
+    if isinstance(initial_correction_degree, bool) or not isinstance(initial_correction_degree, int):
+        raise TypeError("initial_correction_degree must be an integer")
+    if correction_polynomial_degree is None:
+        correction_polynomial_degree = summary.get("correction_polynomial_degree")
+    if correction_polynomial_degree is not None:
+        if (
+            isinstance(correction_polynomial_degree, bool)
+            or not isinstance(correction_polynomial_degree, int)
+            or correction_polynomial_degree not in (1, 2, 3)
+        ):
+            raise ValueError("correction_polynomial_degree must be 1, 2, 3, or None")
+        if correction_fields is None:
+            raise RegisteredBranchStateError(
+                "adaptive correction refitting requires initial or checkpointed correction fields"
+            )
     resolution = tuple(float(value) for value in np.linalg.norm(image.affine[:3, :3], axis=0))
     template_resolution = tuple(float(value) for value in np.linalg.norm(atlas_topology.image.affine[:3, :3], axis=0))
     options = LesionToadsDescriptorLoopOptions(
@@ -292,6 +335,9 @@ def continue_plus_lesion_registered_loop(
         outlier_energy=0.1,
         lesion_power_exponent=1.2,
         source_zero_variance_nan=source_zero_variance_nan,
+        fields=correction_fields,
+        correction_polynomial_degree=correction_polynomial_degree,
+        initial_correction_degree=initial_correction_degree,
         align_shapes=True,
         init_align_iter=1,
         retain_iteration_details=False,
@@ -321,6 +367,9 @@ def persist_plus_lesion_registered_loop_checkpoint(
     max_passes: int = 1,
     resume: bool = False,
     convergence_threshold: float | None = None,
+    correction_fields_path: str | Path | None = None,
+    correction_polynomial_degree: int | None = None,
+    initial_correction_degree: int | None = None,
 ):
     """Run and persist a bounded continuing loop segment for restart.
 
@@ -352,7 +401,40 @@ def persist_plus_lesion_registered_loop_checkpoint(
             if convergence_threshold is None else float(convergence_threshold)
         ),
         "first_thinning_volume_ratio": float(parent["settings"]["first_thinning_volume_ratio"]),
+        "correction_polynomial_degree": (
+            correction_polynomial_degree
+            if correction_polynomial_degree is not None
+            else json.loads(Path(parent["outputs"]["summary"]["path"]).read_text(encoding="utf-8")).get(
+                "correction_polynomial_degree"
+            )
+        ),
+        "initial_correction_degree": (
+            initial_correction_degree
+            if initial_correction_degree is not None
+            else int(json.loads(Path(parent["outputs"]["summary"]["path"]).read_text(encoding="utf-8")).get(
+                "final_correction_degree", 0
+            ))
+        ),
     }
+    if settings["correction_polynomial_degree"] is not None and (
+        isinstance(settings["correction_polynomial_degree"], bool)
+        or settings["correction_polynomial_degree"] not in (1, 2, 3)
+    ):
+        raise ValueError("correction_polynomial_degree must be 1, 2, 3, or None")
+    if (
+        isinstance(settings["initial_correction_degree"], bool)
+        or not isinstance(settings["initial_correction_degree"], int)
+        or settings["initial_correction_degree"] < 0
+    ):
+        raise ValueError("initial_correction_degree must be a nonnegative integer")
+    if settings["correction_polynomial_degree"] is not None and settings["initial_correction_degree"] > settings["correction_polynomial_degree"]:
+        raise ValueError("initial_correction_degree cannot exceed correction_polynomial_degree")
+    fields_input = None
+    if correction_fields_path is not None:
+        fields_input_path = Path(correction_fields_path).expanduser().resolve()
+        if not fields_input_path.is_file() or fields_input_path.is_symlink():
+            raise FileNotFoundError(f"Missing regular correction-field NIfTI: {fields_input_path}")
+        fields_input = {"path": str(fields_input_path), "sha256": _sha256(fields_input_path)}
     if not np.isfinite(settings["max_distance"]) or settings["max_distance"] < 0:
         raise ValueError("convergence_threshold must be finite and nonnegative")
     signature_payload = {
@@ -360,6 +442,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
         "parent": {"path": str(parent_path), "sha256": _sha256(parent_path)},
         "atlas": {"path": str(descriptor), "sha256": _sha256(descriptor)},
         "settings": settings,
+        "correction_fields": fields_input,
     }
     signature = hashlib.sha256(
         json.dumps(signature_payload, sort_keys=True, separators=(",", ":")).encode()
@@ -398,6 +481,9 @@ def persist_plus_lesion_registered_loop_checkpoint(
         source_zero_variance_nan=settings["source_zero_variance_nan"],
         max_passes=settings["max_passes"],
         convergence_threshold=settings["max_distance"],
+        correction_fields_path=correction_fields_path,
+        correction_polynomial_degree=settings["correction_polynomial_degree"],
+        initial_correction_degree=settings["initial_correction_degree"],
     )
     branch = loop.final_branch
     if not branch.stop and (branch.growing is None or branch.relations is None):
@@ -456,6 +542,13 @@ def persist_plus_lesion_registered_loop_checkpoint(
             root / "registered_segmentation.nii.gz", dtype=np.int16,
         ),
     }
+    if loop.final_fields is not None:
+        if loop.final_fields.shape != np.asarray(modalities_image.dataobj).shape:
+            raise RegisteredBranchStateError("fitted correction fields do not match the registered modalities grid")
+        outputs["correction_fields"] = save_nifti_ras(
+            nifti_ras_on_reference(reference, loop.final_fields, dtype=np.float32),
+            root / "correction_fields.nii.gz", dtype=np.float32,
+        )
     if branch.stop:
         if branch.final_classification is None or branch.stop_reason is None:
             raise RegisteredBranchStateError("terminal loop branch lacks final classifications or stop reason")
@@ -526,6 +619,8 @@ def persist_plus_lesion_registered_loop_checkpoint(
         "class_volume": branch.growing.class_volume.tolist() if branch.growing is not None else None,
         "stage_order": list(loop.passes[-1].stage_order),
         "completed_iteration": int(completed_iteration),
+        "final_correction_degree": int(loop.final_correction_degree),
+        "correction_polynomial_degree": settings["correction_polynomial_degree"],
         "source_zero_variance_nan": settings["source_zero_variance_nan"],
         "final_classification_counts": (
             {
@@ -551,6 +646,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
             "parent_checkpoint": {"path": str(parent_path), "sha256": _sha256(parent_path)},
             "registered_recrop_manifest": parent["inputs"]["registered_recrop_manifest"],
             "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
+            "correction_fields": fields_input,
         },
         "outputs": {key: {"path": str(path), "sha256": _sha256(path)} for key, path in outputs.items()},
     }

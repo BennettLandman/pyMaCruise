@@ -435,6 +435,15 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_loop.add_argument("--iterations", type=int, default=99)
     plus_lesion_loop.add_argument("--thinning-limit", type=float, default=3.0)
     plus_lesion_loop.add_argument("--max-passes", type=int, default=1)
+    plus_lesion_loop.add_argument(
+        "--correction-fields", type=Path,
+        help="optional channel-last RAS .nii.gz correction fields matching the registered modalities",
+    )
+    plus_lesion_loop.add_argument(
+        "--correction-polynomial-degree", type=int, choices=(1, 2, 3),
+        help="refit and carry adaptive correction fields with this source degree ceiling",
+    )
+    plus_lesion_loop.add_argument("--initial-correction-degree", type=int)
     plus_lesion_loop.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_loop.add_argument("--resume", action="store_true")
 
@@ -456,6 +465,11 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_workflow.add_argument("--n-iter-max", type=int, default=99)
     plus_lesion_workflow.add_argument("--thinning-limit", type=float, default=3.0)
     plus_lesion_workflow.add_argument("--max-passes", type=int, default=1)
+    plus_lesion_workflow.add_argument("--correction-fields", type=Path)
+    plus_lesion_workflow.add_argument(
+        "--correction-polynomial-degree", type=int, choices=(1, 2, 3),
+    )
+    plus_lesion_workflow.add_argument("--initial-correction-degree", type=int)
     plus_lesion_workflow.add_argument(
         "--finite-zero-variance", action="store_true",
         help="use finite limiting similarities; default preserves source-faithful NaN behavior",
@@ -771,6 +785,9 @@ def main(argv: list[str] | None = None) -> int:
             thinning_limit=args.thinning_limit,
             source_zero_variance_nan=not args.finite_zero_variance,
             max_passes=args.max_passes,
+            correction_fields_path=args.correction_fields,
+            correction_polynomial_degree=args.correction_polynomial_degree,
+            initial_correction_degree=args.initial_correction_degree,
             resume=args.resume,
         )
         verb = "Verified and resumed" if result.resumed else "Completed"
@@ -792,6 +809,9 @@ def main(argv: list[str] | None = None) -> int:
             n_iter_max=args.n_iter_max,
             thinning_limit=args.thinning_limit,
             max_passes=args.max_passes,
+            correction_fields_path=args.correction_fields,
+            correction_polynomial_degree=args.correction_polynomial_degree,
+            initial_correction_degree=args.initial_correction_degree,
             resume=args.resume,
         )
         verb = "Verified and resumed" if result.resumed else "Completed"

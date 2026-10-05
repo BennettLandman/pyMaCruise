@@ -379,6 +379,47 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     assert third_summary["completed_iteration"] == 3
 
 
+def test_registered_loop_checkpoint_carries_adaptive_fields_across_restart(tmp_path: Path) -> None:
+    recrop = _run_recrop(tmp_path)
+    initial = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, tmp_path / "initial-branch-fields", iterations=1,
+        first_thinning_limit=1000.0, source_zero_variance_nan=False,
+    )
+    modalities = nib.load(str(recrop.modalities_path))
+    field_values = np.ones(modalities.shape, dtype=np.float32)
+    field_values[..., 0] = 1.05
+    field_path = tmp_path / "initial-correction-fields.nii.gz"
+    nib.save(nib.Nifti1Image(field_values, modalities.affine), str(field_path))
+
+    first = persist_plus_lesion_registered_loop_checkpoint(
+        initial.manifest_path, ATLAS, tmp_path / "loop-fields-2", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
+        correction_fields_path=field_path, correction_polynomial_degree=1,
+        initial_correction_degree=0,
+    )
+    first_manifest = json.loads(first.manifest_path.read_text())
+    first_summary = json.loads(first.summary_path.read_text())
+    assert first_manifest["inputs"]["correction_fields"]["sha256"]
+    assert first_manifest["settings"]["correction_polynomial_degree"] == 1
+    assert first_manifest["outputs"]["correction_fields"]["sha256"]
+    stored = nib.load(first_manifest["outputs"]["correction_fields"]["path"])
+    assert nib.aff2axcodes(stored.affine) == ("R", "A", "S")
+    assert stored.shape == modalities.shape
+    assert np.isfinite(np.asarray(stored.dataobj)).all()
+    assert first_summary["correction_polynomial_degree"] == 1
+    assert first_summary["final_correction_degree"] in (0, 1)
+
+    second = persist_plus_lesion_registered_loop_checkpoint(
+        first.manifest_path, ATLAS, tmp_path / "loop-fields-3", n_iter_max=99,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
+    )
+    second_summary = json.loads(second.summary_path.read_text())
+    assert second_summary["completed_iteration"] == 3
+    assert second_summary["correction_polynomial_degree"] == 1
+    second_manifest_fields = json.loads(second.manifest_path.read_text())["outputs"]["correction_fields"]
+    assert second_manifest_fields["sha256"]
+
+
 def test_registered_loop_persists_terminal_classification_for_cap_and_convergence(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -477,6 +518,9 @@ def test_registered_loop_cli_routes_checkpoint_settings(tmp_path: Path, monkeypa
         "--thinning-limit", "4",
         "--max-passes", "2",
         "--finite-zero-variance",
+        "--correction-fields", "fields.nii.gz",
+        "--correction-polynomial-degree", "2",
+        "--initial-correction-degree", "1",
         "--resume",
     ]) == 0
     assert captured["n_iter_max"] == 20
@@ -484,6 +528,9 @@ def test_registered_loop_cli_routes_checkpoint_settings(tmp_path: Path, monkeypa
     assert captured["max_passes"] == 2
     assert captured["source_zero_variance_nan"] is False
     assert captured["resume"] is True
+    assert captured["correction_fields_path"] == Path("fields.nii.gz")
+    assert captured["correction_polynomial_degree"] == 2
+    assert captured["initial_correction_degree"] == 1
 
 
 def test_source_faithful_zero_variance_failure_is_recorded(tmp_path: Path) -> None:
@@ -504,6 +551,10 @@ def test_source_faithful_zero_variance_failure_is_recorded(tmp_path: Path) -> No
 
 def test_persisted_loop_workflow_connects_and_resumes_p41i_p41k_p41m(tmp_path: Path) -> None:
     recrop = _run_recrop(tmp_path)
+    recrop_manifest = json.loads(recrop.manifest_path.read_text())
+    modalities = nib.load(recrop_manifest["outputs"]["modalities"]["path"])
+    fields_path = tmp_path / "workflow-correction-fields.nii.gz"
+    nib.save(nib.Nifti1Image(np.ones(modalities.shape, dtype=np.float32), modalities.affine), fields_path)
     output = tmp_path / "loop-workflow"
     kwargs = {
         "iterations": 1,
@@ -512,11 +563,16 @@ def test_persisted_loop_workflow_connects_and_resumes_p41i_p41k_p41m(tmp_path: P
         "n_iter_max": 99,
         "thinning_limit": 1000.0,
         "max_passes": 1,
+        "correction_fields_path": fields_path,
+        "correction_polynomial_degree": 1,
+        "initial_correction_degree": 0,
     }
     result = run_plus_lesion_loop_workflow(recrop.manifest_path, ATLAS, output, **kwargs)
     manifest = json.loads(result.manifest_path.read_text())
     branch = json.loads(result.registered_branch_manifest.read_text())
     loop = json.loads(result.registered_loop_manifest.read_text())
+    assert loop["outputs"]["correction_fields"]["sha256"]
+    assert manifest["correction_fields"]["sha256"]
     assert manifest["status"] == "complete"
     assert manifest["workflow_executed"] is True
     assert manifest["source_equivalence_claim"] is False
@@ -595,6 +651,9 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
         "--n-iter-max", "4",
         "--max-passes", "2",
         "--loop-convergence-threshold", "0.9",
+        "--correction-fields", "fields.nii.gz",
+        "--correction-polynomial-degree", "2",
+        "--initial-correction-degree", "1",
         "--resume",
     ]) == 0
     assert captured["source_zero_variance_nan"] is True
@@ -602,6 +661,9 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
     assert captured["n_iter_max"] == 4
     assert captured["max_passes"] == 2
     assert captured["loop_convergence_threshold"] == 0.9
+    assert captured["correction_fields_path"] == Path("fields.nii.gz")
+    assert captured["correction_polynomial_degree"] == 2
+    assert captured["initial_correction_degree"] == 1
     assert captured["resume"] is True
 
 
