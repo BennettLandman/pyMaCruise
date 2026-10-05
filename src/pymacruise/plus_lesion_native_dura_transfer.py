@@ -83,7 +83,10 @@ def run_plus_lesion_native_dura_transfer(
         if not np.isfinite(reference_values).all():
             raise ValueError("T1 reference must contain finite numeric voxels")
 
-    channel_names = ("gm", "wm_fill", "wm_mask")
+    # Preserve CSF as an auxiliary channel for downstream APIs that accept the
+    # source's four-channel generator product, even though selected plus only
+    # routes GM, WM-fill, and WM-mask.
+    channel_names = ("csf", "gm", "wm_fill", "wm_mask")
     source_paths: dict[str, Path] = {}
     for name in channel_names:
         record = dura_manifest.get("outputs", {}).get(name)
@@ -105,7 +108,7 @@ def run_plus_lesion_native_dura_transfer(
     signature_data = {
         "schema_version": 1,
         "stage": "plus-lesion-native-dura-transfer",
-        "source_order": ["transfer GM", "transfer WM-fill", "transfer WM-mask"],
+        "source_order": ["transfer CSF auxiliary", "transfer GM", "transfer WM-fill", "transfer WM-mask"],
         "interpolation": "nearest-neighbor",
         "coordinate_mapping": "physical RAS affine",
         "spatial_convention": "RAS",

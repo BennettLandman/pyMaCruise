@@ -15,6 +15,7 @@ from pymacruise.spatial_transfer import transfer_to_reference_space
 
 ROOT = Path(__file__).parent
 SYNTHETIC = ROOT / "data/synthetic/plus_lesion_atlas_init"
+FOLDED = ROOT / "data/synthetic/plus_pre_tgdm_composition"
 ATLAS = SYNTHETIC / "mini-lesion-toads-atlas.txt"
 
 
@@ -22,25 +23,32 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
-    modalities = nib.load(str(SYNTHETIC / "synthetic_t1_flair.nii.gz"))
-    values = np.asarray(modalities.dataobj, dtype=np.float32)
+def _inputs(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+    modalities = nib.load(str(FOLDED / "multi_atlas_gm.nii.gz"))
+    gm = np.asarray(modalities.dataobj) > 0
+    wm = np.asarray(nib.load(str(FOLDED / "multi_atlas_wm.nii.gz")).dataobj) > 0
+    brain = np.asarray(nib.load(str(FOLDED / "multi_atlas_brain_mask.nii.gz")).dataobj) > 0
+    values = (20.0 + 70.0 * gm + 110.0 * wm).astype(np.float32)
     t1 = tmp_path / "t1.nii.gz"
     flair = tmp_path / "flair-shifted-grid.nii.gz"
     mask = tmp_path / "brain-mask.nii.gz"
-    nib.save(nib.Nifti1Image(values[..., 0], modalities.affine), t1)
+    maseg = tmp_path / "maseg.nii.gz"
+    nib.save(nib.Nifti1Image(values, modalities.affine), t1)
     shifted = modalities.affine.copy()
     shifted[0, 3] += 0.25
-    nib.save(nib.Nifti1Image(values[..., 1], shifted), flair)
-    topology = np.asarray(nib.load(str(SYNTHETIC / "synthetic_topology.nii.gz")).dataobj)
-    nib.save(nib.Nifti1Image((topology > 0).astype(np.uint8), modalities.affine), mask)
-    return t1, flair, mask
+    nib.save(nib.Nifti1Image((values * 0.7 + 10).astype(np.float32), shifted), flair)
+    nib.save(nib.Nifti1Image(brain.astype(np.uint8), modalities.affine), mask)
+    labels = np.zeros(modalities.shape, dtype=np.uint16)
+    labels[gm] = 100
+    labels[wm] = 4
+    nib.save(nib.Nifti1Image(labels, modalities.affine), maseg)
+    return t1, flair, mask, maseg
 
 
-def _command(t1: Path, flair: Path, mask: Path, output: Path, *extra: str) -> list[str]:
+def _command(t1: Path, flair: Path, mask: Path, maseg: Path, output: Path, *extra: str) -> list[str]:
     return [
         "plus-full-run", "--t1", str(t1), "--flair", str(flair),
-        "--brain-mask", str(mask), "--atlas-descriptor", str(ATLAS),
+        "--brain-mask", str(mask), "--maseg", str(maseg), "--atlas-descriptor", str(ATLAS),
         "--output-dir", str(output),
         "--registration-iterations", "2", "--shrink-factors", "1",
         "--smoothing-sigmas", "0", "--registration-sampling-rate", "1",
@@ -54,9 +62,9 @@ def _command(t1: Path, flair: Path, mask: Path, output: Path, *extra: str) -> li
 
 
 def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_path: Path) -> None:
-    t1, flair, mask = _inputs(tmp_path)
+    t1, flair, mask, maseg = _inputs(tmp_path)
     output = tmp_path / "plus-full"
-    command = _command(t1, flair, mask, output)
+    command = _command(t1, flair, mask, maseg, output)
     assert main(command) == 0
 
     manifest_path = output / "plus-full-workflow.json"
@@ -66,6 +74,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     assert manifest["stage_order"] == [
         "preprocessing", "crop", "initial_alignment", "registered_recrop",
         "lesion_workflow", "dura_outputs", "native_dura_transfer",
+        "maseg_cortical_separation", "plus_surface_workflow",
     ]
     for record in manifest["stages"].values():
         child = Path(record["manifest"]["path"])
@@ -125,7 +134,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         np.testing.assert_allclose(image.affine, reference.affine, rtol=0, atol=1e-5)
         np.testing.assert_array_equal(np.asarray(image.dataobj), expected)
 
-    assert main(_command(t1, flair, mask, output, "--resume")) == 0
+    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
     resumed = json.loads(manifest_path.read_text())
     assert resumed["status"] == "complete"
     assert all(stage["resumed"] for stage in resumed["stages"].values())
@@ -136,7 +145,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         if name != "lesion_workflow"
     }
     subtype_path.write_bytes(b"corrupt synthetic checkpoint output")
-    assert main(_command(t1, flair, mask, output, "--resume")) == 0
+    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
     repaired_top = json.loads(manifest_path.read_text())
     repaired_loop_workflow = json.loads(
         Path(repaired_top["stages"]["lesion_workflow"]["manifest"]["path"]).read_text()
@@ -170,7 +179,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     prior_registered_loop_hash = _sha256(prior_registered_loop)
     dura_tail = Path(repaired_dura["outputs"]["wm_fill"]["path"])
     dura_tail.write_bytes(b"corrupt Dura output")
-    assert main(_command(t1, flair, mask, output, "--resume")) == 0
+    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
     repaired_dura_top = json.loads(manifest_path.read_text())
     repaired_dura = json.loads(
         Path(repaired_dura_top["stages"]["dura_outputs"]["manifest"]["path"]).read_text()
@@ -193,7 +202,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         Path(repaired_dura_top["stages"]["native_dura_transfer"]["manifest"]["path"]).read_text()
     )
     assert native_manifest["source_order"] == [
-        "transfer GM", "transfer WM-fill", "transfer WM-mask"
+        "transfer CSF auxiliary", "transfer GM", "transfer WM-fill", "transfer WM-mask"
     ]
     native_reference = nib.load(str(t1))
     for name in ("gm", "wm_fill", "wm_mask"):
@@ -209,10 +218,40 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
             np.asarray(actual_native.dataobj), np.asarray(expected_native.dataobj)
         )
 
+    expected_surface_products = {
+        "inner_level_set", "central_level_set", "outer_level_set", "thickness_volume",
+        "inner_surface", "central_surface", "outer_surface", "thickness_metrics",
+    }
+    top_outputs = repaired_dura_top["final_outputs"]
+    assert {
+        name.removeprefix("plus_")
+        for name in top_outputs
+        if name.startswith("plus_")
+    } == expected_surface_products
+    for name in expected_surface_products - {"thickness_metrics"}:
+        record = top_outputs[f"plus_{name}"]
+        artifact = Path(record["path"])
+        assert _sha256(artifact) == record["sha256"]
+        if artifact.suffix == ".gz":
+            image = nib.load(str(artifact))
+            assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+            assert np.isfinite(np.asarray(image.dataobj)).all()
+        else:
+            vtk = artifact.read_text()
+            assert "DATASET POLYDATA" in vtk and "POINTS " in vtk
+    metrics_path = Path(top_outputs["plus_thickness_metrics"]["path"])
+    metrics = json.loads(metrics_path.read_text())
+    assert metrics["spatial_convention"] == "RAS"
+    assert metrics["surface_units"] == "mm"
+    assert np.isfinite(metrics["surface"]["mean_mm"])
+    assert metrics["volume"]["crossing_voxel_count"] == 0
+    assert metrics["volume"]["available"] is False
+    assert metrics["volume"]["mean_mm"] is None
+
     native_tail = Path(native_manifest["outputs"]["gm"]["path"])
     native_tail.write_bytes(b"corrupt native transfer")
     prior_dura_manifest_hash = _sha256(repaired_dura_manifest)
-    assert main(_command(t1, flair, mask, output, "--resume")) == 0
+    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
     repaired_native_top = json.loads(manifest_path.read_text())
     repaired_native_manifest_path = Path(
         repaired_native_top["stages"]["native_dura_transfer"]["manifest"]["path"]
@@ -224,7 +263,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     assert _sha256(repaired_dura_manifest) == prior_dura_manifest_hash
 
     with pytest.raises(ValueError, match="inputs or settings differ"):
-        main(_command(t1, flair, mask, output, "--resume", "--crop-padding", "2"))
+        main(_command(t1, flair, mask, maseg, output, "--resume", "--crop-padding", "2"))
 
     wrong_grid_mask = tmp_path / "wrong-grid-mask.nii.gz"
     t1_image = nib.load(str(t1))
@@ -233,4 +272,4 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         wrong_grid_mask,
     )
     with pytest.raises(ValueError, match="brain mask must match the T1 reference grid"):
-        main(_command(t1, flair, wrong_grid_mask, tmp_path / "rejected-input"))
+        main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))

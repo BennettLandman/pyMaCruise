@@ -416,19 +416,26 @@ def run_plus_file_workflow(
             write_legacy_vtk(mesh, path)
             tail_outputs[name] = path
         metrics = root_attempt / "thickness.json"
+        def finite_metric(value: float) -> float | None:
+            """Represent unavailable empty-region statistics as JSON null."""
+            numeric = float(value)
+            return numeric if np.isfinite(numeric) else None
+
+        crossing_voxels = int(post.thickness.volume.crossing_voxel_count)
         _write_json(metrics, {
             "spatial_convention": "RAS",
             "surface_units": "mm",
             "volume": {
-                "mean_mm": post.thickness.volume.mean_mm,
-                "standard_deviation_mm": post.thickness.volume.standard_deviation_mm,
-                "minimum_mm": post.thickness.volume.minimum_mm,
-                "maximum_mm": post.thickness.volume.maximum_mm,
-                "crossing_voxel_count": post.thickness.volume.crossing_voxel_count,
+                "mean_mm": finite_metric(post.thickness.volume.mean_mm),
+                "standard_deviation_mm": finite_metric(post.thickness.volume.standard_deviation_mm),
+                "minimum_mm": finite_metric(post.thickness.volume.minimum_mm),
+                "maximum_mm": finite_metric(post.thickness.volume.maximum_mm),
+                "crossing_voxel_count": crossing_voxels,
+                "available": crossing_voxels > 0,
             },
             "surface": {
-                "mean_mm": post.thickness.surface.mean_mm,
-                "standard_deviation_mm": post.thickness.surface.standard_deviation_mm,
+                "mean_mm": finite_metric(post.thickness.surface.mean_mm),
+                "standard_deviation_mm": finite_metric(post.thickness.surface.standard_deviation_mm),
                 "nonzero_vertex_count": post.thickness.surface.nonzero_vertex_count,
             },
         })

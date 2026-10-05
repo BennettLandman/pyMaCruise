@@ -8,8 +8,15 @@ import json
 from pathlib import Path
 from typing import Any
 
+import nibabel as nib
+import numpy as np
+
+from pymacruise.image_io import normalize_image_to_ras
 from pymacruise.lesion_atlas_priors import load_lesion_atlas_topology
 from pymacruise.n4 import N4Config
+from pymacruise.plus_maseg_cortical_checkpoint import run_plus_maseg_cortical_checkpoint
+from pymacruise.plus_file_workflow import run_plus_file_workflow
+from pymacruise.plus_pipeline import PlusPipelineOptions
 from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alignment_checkpoint
 from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
 from pymacruise.plus_lesion_dura_output_checkpoint import run_plus_lesion_dura_output_checkpoint
@@ -34,6 +41,7 @@ class PlusFullWorkflowResult:
     lesion_subtype_path: Path | None
     dura_output_paths: dict[str, Path]
     native_dura_output_paths: dict[str, Path]
+    surface_output_paths: dict[str, Path]
     resumed: bool
 
 
@@ -57,11 +65,11 @@ def _file_record(path: Path) -> dict[str, str]:
     return {"path": str(path.resolve()), "sha256": _sha256(path)}
 
 
-def _verify_stage(path: Path, stage: str) -> dict[str, Any]:
+def _verify_stage(path: Path, stage: str | None) -> dict[str, Any]:
     if not path.is_file() or path.is_symlink():
         raise FileNotFoundError(f"Missing {stage} manifest: {path}")
     record = json.loads(path.read_text(encoding="utf-8"))
-    if record.get("status") != "complete" or record.get("stage") != stage:
+    if record.get("status") != "complete" or (stage is not None and record.get("stage") != stage):
         raise RuntimeError(f"Stage {stage!r} did not complete: {path}")
     for name, output in record.get("outputs", {}).items():
         output_path = Path(output.get("path", ""))
@@ -78,6 +86,7 @@ def run_plus_full_workflow(
     t1_path: str | Path,
     flair_path: str | Path,
     brain_mask_path: str | Path,
+    maseg_path: str | Path,
     atlas_descriptor_path: str | Path,
     output_dir: str | Path,
     *,
@@ -97,11 +106,10 @@ def run_plus_full_workflow(
     max_passes: int = 1,
     resume: bool = False,
 ) -> PlusFullWorkflowResult:
-    """Run preprocessing through a terminal or continuing LesionTOADS result.
+    """Run raw inputs through LesionTOADS and terminal CRUISE surface outputs.
 
     The required brain mask is always a user input on the T1 grid. BET and
-    SPECTRE are not invoked. Dura-to-CRUISE surface processing remains a
-    downstream workflow; this runner ends at the selected P41m checkpoint.
+    SPECTRE are not invoked. The supplied MaSeg and brain mask must match T1.
     """
     if not isinstance(registration_config, RegistrationConfig):
         raise TypeError("registration_config must be RegistrationConfig")
@@ -112,12 +120,29 @@ def run_plus_full_workflow(
     t1 = Path(t1_path).expanduser().resolve()
     flair = Path(flair_path).expanduser().resolve()
     mask = Path(brain_mask_path).expanduser().resolve()
+    maseg = Path(maseg_path).expanduser().resolve()
     descriptor = Path(atlas_descriptor_path).expanduser().resolve()
     root = Path(output_dir).expanduser().resolve()
+    # Reject grid mismatches before costly preprocessing/registration. Compare
+    # physical RAS grids after axis reorientation; no interpolation is done.
+    t1_image = nib.load(str(t1))
+    if not isinstance(t1_image, (nib.Nifti1Image, nib.Nifti2Image)) or len(t1_image.shape) != 3:
+        raise ValueError("T1 must be a 3-D NIfTI reference image")
+    t1_ras = normalize_image_to_ras(t1_image, source_name="T1")
+    for path, name in ((mask, "brain mask"), (maseg, "MaSeg")):
+        image = nib.load(str(path))
+        if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)) or len(image.shape) != 3:
+            raise ValueError(f"{name} must be a 3-D NIfTI image")
+        image_ras = normalize_image_to_ras(image, source_name=name)
+        if image_ras.shape != t1_ras.shape or not np.allclose(
+            image_ras.affine, t1_ras.affine, rtol=0, atol=1e-5
+        ):
+            raise ValueError(f"{name} must match the T1 reference grid after RAS normalization")
     inputs = {
         "t1": _file_record(t1),
         "flair": _file_record(flair),
         "brain_mask": _file_record(mask),
+        "maseg": _file_record(maseg),
         "atlas_descriptor": _file_record(descriptor),
     }
     # Resolve and validate the descriptor-owned topology file before starting
@@ -148,6 +173,7 @@ def run_plus_full_workflow(
         "stage_order": [
             "preprocessing", "crop", "initial_alignment", "registered_recrop",
             "lesion_workflow", "dura_outputs", "native_dura_transfer",
+            "maseg_cortical_separation", "plus_surface_workflow",
         ],
         "spatial_convention": "RAS",
         "inputs": inputs,
@@ -187,6 +213,8 @@ def run_plus_full_workflow(
         "lesion_workflow": root / "lesion-workflow" / "plus-lesion-loop-workflow.json",
         "dura_outputs": root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
         "native_dura_transfer": root / "native-dura" / "native-dura-transfer.json",
+        "maseg_cortical_separation": root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
+        "plus_surface_workflow": root / "plus-surface" / "run.json",
     }
     definitions = (
         ("preprocessing", "plus-lesion-input-preparation"),
@@ -196,6 +224,8 @@ def run_plus_full_workflow(
         ("lesion_workflow", "plus-lesion-loop-workflow"),
         ("dura_outputs", "plus-lesion-dura-output-checkpoint"),
         ("native_dura_transfer", "plus-lesion-native-dura-transfer"),
+        ("maseg_cortical_separation", "plus-maseg-cortical-separation"),
+        ("plus_surface_workflow", None),
     )
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
@@ -256,11 +286,34 @@ def run_plus_full_workflow(
                     root / "dura-outputs",
                     resume=resume,
                 )
-            else:
+            elif name == "native_dura_transfer":
                 dura = results["dura_outputs"]
                 result = run_plus_lesion_native_dura_transfer(
                     dura.manifest_path, t1, root / "native-dura", resume=resume
                 )
+            elif name == "maseg_cortical_separation":
+                result = run_plus_maseg_cortical_checkpoint(
+                    maseg, root / "maseg-cortical-separation", resume=resume
+                )
+            else:
+                native = results["native_dura_transfer"]
+                cortical = results["maseg_cortical_separation"]
+                plus = run_plus_file_workflow(
+                    t1_reference_path=t1,
+                    segmentation_path=maseg,
+                    dura_csf_path=native.outputs["csf"],
+                    dura_gm_path=native.outputs["gm"],
+                    dura_wm_fill_path=native.outputs["wm_fill"],
+                    dura_wm_mask_path=native.outputs["wm_mask"],
+                    multi_atlas_gm_path=cortical.outputs["Atlas_GM"],
+                    multi_atlas_wm_path=cortical.outputs["Atlas_WM"],
+                    multi_atlas_mask_path=cortical.outputs["Atlas_Mask"],
+                    brain_mask_path=mask,
+                    output_dir=root / "plus-surface",
+                    options=PlusPipelineOptions(),
+                    resume=resume,
+                )
+                result = plus
         except Exception as exc:
             manifest["status"] = "failed"
             manifest["active_stage"] = name
@@ -278,13 +331,17 @@ def run_plus_full_workflow(
             "status": "complete",
             "manifest": _file_record(child_path),
             "output_count": len(child.get("outputs", {})),
-            "resumed": bool(getattr(result, "resumed", False)),
+            "resumed": bool(
+                getattr(result, "resumed", False)
+                or getattr(result, "resumed_stages", ())
+            ),
         }
         _write_json(manifest_path, manifest)
 
     loop_result = results["lesion_workflow"]
     dura_result = results["dura_outputs"]
     native_dura_result = results["native_dura_transfer"]
+    plus_surface_result = results["plus_surface_workflow"]
     manifest["status"] = "complete"
     manifest["active_stage"] = None
     manifest["terminal"] = loop_result.classification_path is not None
@@ -297,6 +354,10 @@ def run_plus_full_workflow(
         **{
             f"native_{name}": _file_record(path)
             for name, path in native_dura_result.outputs.items()
+        },
+        **{
+            f"plus_{name}": _file_record(path)
+            for name, path in plus_surface_result.outputs.items()
         },
     }
     _write_json(manifest_path, manifest)
@@ -311,5 +372,6 @@ def run_plus_full_workflow(
         loop_result.lesion_subtype_path,
         dura_result.outputs,
         native_dura_result.outputs,
+        plus_surface_result.outputs,
         resume,
     )

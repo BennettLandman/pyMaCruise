@@ -455,11 +455,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     plus_full = commands.add_parser(
         "plus-full-run",
-        help="run raw T1/FLAIR/mask inputs through restartable terminal LesionTOADS outputs",
+        help="run raw T1/FLAIR/MaSeg/mask inputs through restartable MaCRUISEplus surfaces",
     )
     plus_full.add_argument("--t1", required=True, type=Path)
     plus_full.add_argument("--flair", required=True, type=Path)
     plus_full.add_argument("--brain-mask", required=True, type=Path)
+    plus_full.add_argument("--maseg", required=True, type=Path)
     plus_full.add_argument("--atlas-descriptor", required=True, type=Path)
     plus_full.add_argument("--output-dir", required=True, type=Path)
     plus_full.add_argument("--registration-iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
@@ -802,7 +803,8 @@ def main(argv: list[str] | None = None) -> int:
             spline_mesh=tuple(args.n4_spline_mesh),
         )
         result = run_plus_full_workflow(
-            args.t1, args.flair, args.brain_mask, args.atlas_descriptor, args.output_dir,
+            args.t1, args.flair, args.brain_mask, args.maseg,
+            args.atlas_descriptor, args.output_dir,
             registration_config=registration_config,
             n4_config=n4_config,
             crop_padding=args.crop_padding,
@@ -829,6 +831,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"LesionTOADS {channel} for Dura: {path}")
         for channel, path in result.native_dura_output_paths.items():
             print(f"Native-T1 LesionTOADS {channel}: {path}")
+        for product, path in result.surface_output_paths.items():
+            print(f"MaCRUISEplus {product}: {path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions
