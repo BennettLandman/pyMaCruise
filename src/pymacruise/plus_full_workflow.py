@@ -12,6 +12,7 @@ from pymacruise.lesion_atlas_priors import load_lesion_atlas_topology
 from pymacruise.n4 import N4Config
 from pymacruise.plus_lesion_atlas_init import run_plus_lesion_initial_atlas_alignment_checkpoint
 from pymacruise.plus_lesion_crop import run_plus_lesion_crop_checkpoint
+from pymacruise.plus_lesion_dura_output_checkpoint import run_plus_lesion_dura_output_checkpoint
 from pymacruise.plus_lesion_preprocessing import run_plus_lesion_preprocessing_checkpoint
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
 from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
@@ -30,6 +31,7 @@ class PlusFullWorkflowResult:
     lesion_workflow_manifest: Path
     classification_path: Path | None
     lesion_subtype_path: Path | None
+    dura_output_paths: dict[str, Path]
     resumed: bool
 
 
@@ -142,7 +144,8 @@ def run_plus_full_workflow(
         "schema_version": 1,
         "stage": "plus-full-workflow",
         "stage_order": [
-            "preprocessing", "crop", "initial_alignment", "registered_recrop", "lesion_workflow"
+            "preprocessing", "crop", "initial_alignment", "registered_recrop",
+            "lesion_workflow", "dura_outputs",
         ],
         "spatial_convention": "RAS",
         "inputs": inputs,
@@ -180,6 +183,7 @@ def run_plus_full_workflow(
         "initial_alignment": root / "initial-alignment" / "lesion-initial-atlas-alignment.json",
         "registered_recrop": root / "registered-recrop" / "lesion-registered-recrop.json",
         "lesion_workflow": root / "lesion-workflow" / "plus-lesion-loop-workflow.json",
+        "dura_outputs": root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
     }
     definitions = (
         ("preprocessing", "plus-lesion-input-preparation"),
@@ -187,6 +191,7 @@ def run_plus_full_workflow(
         ("initial_alignment", "plus-lesion-initial-atlas-alignment"),
         ("registered_recrop", "plus-lesion-registered-recrops"),
         ("lesion_workflow", "plus-lesion-loop-workflow"),
+        ("dura_outputs", "plus-lesion-dura-output-checkpoint"),
     )
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
@@ -223,7 +228,7 @@ def run_plus_full_workflow(
                     crop.normalized_path, crop.manifest_path, alignment.manifest_path,
                     descriptor, root / name, resume=resume,
                 )
-            else:
+            elif name == "lesion_workflow":
                 recrop = results["registered_recrop"]
                 result = run_plus_lesion_loop_workflow(
                     recrop.manifest_path, descriptor, root / name,
@@ -236,6 +241,15 @@ def run_plus_full_workflow(
                     n_iter_max=n_iter_max,
                     thinning_limit=loop_thinning_limit,
                     max_passes=max_passes,
+                    resume=resume,
+                )
+            else:
+                recrop = results["registered_recrop"]
+                loop = results["lesion_workflow"]
+                result = run_plus_lesion_dura_output_checkpoint(
+                    recrop.manifest_path,
+                    loop.registered_loop_manifest,
+                    root / "dura-outputs",
                     resume=resume,
                 )
         except Exception as exc:
@@ -260,10 +274,17 @@ def run_plus_full_workflow(
         _write_json(manifest_path, manifest)
 
     loop_result = results["lesion_workflow"]
+    dura_result = results["dura_outputs"]
     manifest["status"] = "complete"
     manifest["active_stage"] = None
     manifest["terminal"] = loop_result.classification_path is not None
-    manifest["final_outputs"] = _file_record(loop_result.manifest_path)
+    manifest["final_outputs"] = {
+        "dura_checkpoint": _file_record(dura_result.manifest_path),
+        **{
+            name: _file_record(path)
+            for name, path in dura_result.outputs.items()
+        },
+    }
     _write_json(manifest_path, manifest)
     return PlusFullWorkflowResult(
         manifest_path,
@@ -274,5 +295,6 @@ def run_plus_full_workflow(
         stage_paths["lesion_workflow"],
         loop_result.classification_path,
         loop_result.lesion_subtype_path,
+        dura_result.outputs,
         resume,
     )

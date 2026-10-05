@@ -825,6 +825,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Terminal classification: {result.classification_path}")
         if result.lesion_subtype_path is not None:
             print(f"Lesion subtype: {result.lesion_subtype_path}")
+        for channel, path in result.dura_output_paths.items():
+            print(f"LesionTOADS {channel} for Dura: {path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions
