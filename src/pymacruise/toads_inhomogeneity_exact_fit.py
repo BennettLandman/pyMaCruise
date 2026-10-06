@@ -31,6 +31,70 @@ class ToadsExactChebyshevFieldFit:
     correction_mask: NDArray[np.bool_]
 
 
+def _jama_lu_solve_square(
+    matrix: NDArray[np.float64], right_hand_side: NDArray[np.float64]
+) -> NDArray[np.float64]:
+    """Solve a square system in the selected JAMA loop and operation order.
+
+    `Jama.Matrix.solve` dispatches square systems to `LUDecomposition.solve`.
+    This ports that left-looking Crout/Doolittle factorization, strict-`>`
+    partial-pivot selection, and forward/back substitutions. The order is
+    material here: NumPy/LAPACK returns coefficients that differ by a few
+    double-precision ULPs, which accumulate into later float32 field values.
+    Source reference: `tests/java_reference/upstream/Jama/LUDecomposition.java`
+    (SHA-256 pinned by the degree-1/2/3 Java fit harnesses).
+    """
+    a = np.asarray(matrix, dtype=np.float64)
+    b = np.asarray(right_hand_side, dtype=np.float64)
+    if a.ndim != 2 or a.shape[0] != a.shape[1]:
+        raise ValueError("JAMA solve requires a square matrix")
+    n = a.shape[0]
+    if b.shape != (n,):
+        raise ValueError("JAMA right-hand side must match the square matrix")
+    if not np.isfinite(a).all() or not np.isfinite(b).all():
+        raise ValueError("JAMA solve inputs must be finite")
+
+    lu = a.copy()
+    piv = np.arange(n, dtype=np.int64)
+    column = np.empty(n, dtype=np.float64)
+    for j in range(n):
+        column[:] = lu[:, j]
+        for i in range(n):
+            total = np.float64(0.0)
+            for k in range(min(i, j)):
+                total = np.float64(total + np.float64(lu[i, k] * column[k]))
+            lu[i, j] = np.float64(column[i] - total)
+            column[i] = lu[i, j]
+
+        pivot = j
+        for i in range(j + 1, n):
+            if abs(column[i]) > abs(column[pivot]):
+                pivot = i
+        if pivot != j:
+            lu[[pivot, j], :] = lu[[j, pivot], :]
+            piv[pivot], piv[j] = piv[j], piv[pivot]
+        if lu[j, j] != 0.0:
+            for i in range(j + 1, n):
+                lu[i, j] = np.float64(lu[i, j] / lu[j, j])
+
+    if np.any(np.diag(lu) == 0.0):
+        raise ValueError("source normal system is singular for this fit")
+
+    solution = b[piv].reshape(n, 1).copy()
+    for k in range(n):
+        for i in range(k + 1, n):
+            solution[i, 0] = np.float64(
+                solution[i, 0] - np.float64(solution[k, 0] * lu[i, k])
+            )
+    for k in range(n - 1, -1, -1):
+        solution[k, 0] = np.float64(solution[k, 0] / lu[k, k])
+        for i in range(k):
+            solution[i, 0] = np.float64(
+                solution[i, 0] - np.float64(solution[k, 0] * lu[i, k])
+            )
+    return solution[:, 0]
+
+
 def fit_toads_exact_chebyshev_field(
     image_values: Any,
     memberships: Any,
@@ -162,8 +226,8 @@ def fit_toads_exact_chebyshev_field(
     if not np.isfinite(rhs).all() or not np.isfinite(normal).all():
         raise ValueError("source normal system contains nonfinite values")
     try:
-        coefficients = np.linalg.solve(normal, rhs)
-    except np.linalg.LinAlgError as exc:
+        coefficients = _jama_lu_solve_square(normal, rhs)
+    except ValueError as exc:
         raise ValueError("source normal system is singular for this fit") from exc
     if not np.isfinite(coefficients).all():
         raise ValueError("source normal system produced nonfinite coefficients")

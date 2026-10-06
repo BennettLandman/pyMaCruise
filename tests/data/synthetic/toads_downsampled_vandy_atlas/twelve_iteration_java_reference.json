@@ -89,10 +89,10 @@
     }
   ],
   "notes": [
-    "All 12 Java membership arrays are committed in the companion NPZ. Membership values are bit-identical through iteration 10; iteration 11 differs in 279 values above 1e-6 but retains exact argmax agreement; iteration 12 differs in more values but also retains exact argmax agreement.",
-    "The Java registration transform is pinned as IEEE-754 float32 bits after each registration cycle. Python matches all six transform parameters exactly through iteration 11; iteration 12 has a small recorded parameter difference after membership values first diverge.",
-    "The Java final label image is committed as RAS NIfTI. The current source-faithful Python output is voxel-identical on this compact synthetic fixture: all per-label Dice scores are 1.0. This fixture-level result is not whole-workflow or real-MRI validation.",
-    "Both selected Java and Python runs reach the 12-iteration cap. Neither result is reported as energy-converged."
+    "All 12 Java membership arrays are committed in the companion NPZ. Python membership values and argmax maps are compared at each iteration; diagnostics record exact difference counts and maxima.",
+    "The Java post-registration pose is pinned as six IEEE-754 float32 uint32 bit patterns per iteration. Python pose and field-fit differences are recorded by cycle.",
+    "The Java final RAS classification is committed in this fixture. Final label Dice is a synthetic fixture comparison and does not establish whole-workflow or real-MRI validation.",
+    "Both selected Java and Python runs reach the configured 12-iteration cap; neither is reported as energy-converged."
   ],
   "java_membership_archive": {
     "path": "twelve_iteration_java_memberships.npz",
@@ -306,8 +306,8 @@
     },
     {
       "iteration": 10,
-      "mean_abs": 2.7407502249031336e-15,
-      "max_abs": 4.889443516731262e-09,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
       "count_gt_1e6": 0,
       "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
@@ -328,10 +328,10 @@
     },
     {
       "iteration": 11,
-      "mean_abs": 1.6888381804136543e-09,
-      "max_abs": 8.64863395690918e-05,
-      "count_gt_1e6": 279,
-      "count_gt_1e5": 16,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
+      "count_gt_1e6": 0,
+      "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
       "per_class_dice": [
@@ -350,10 +350,10 @@
     },
     {
       "iteration": 12,
-      "mean_abs": 1.2235433111129623e-08,
-      "max_abs": 0.0001436471939086914,
-      "count_gt_1e6": 3717,
-      "count_gt_1e5": 250,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
+      "count_gt_1e6": 0,
+      "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
       "per_class_dice": [
@@ -529,15 +529,15 @@
     },
     {
       "iteration": 12,
-      "bitwise_equal": false,
-      "max_abs": 3.528594970703125e-05
+      "bitwise_equal": true,
+      "max_abs": 0.0
     }
   ],
   "python_run_after_source_faithful_registration_energy_fix": {
     "iterations": 12,
     "energy_threshold_reached": false,
     "iteration_limit_reached": true,
-    "terminal_energy_ratio": 0.02333061955869198,
+    "terminal_energy_ratio": 0.023335229605436325,
     "python_classification_sha256": "aff69a659d72b3733edf3d6913c8bd7212d445c977dcc4c2dfe2b2cdb7a2e1c3"
   },
   "java_python_final_label_dice_after_source_faithful_registration_energy_fix": {
@@ -563,5 +563,61 @@
     "source_sha256": "e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2",
     "method": "registerGradientDescent -> registerShapes -> registerAllShapes",
     "trace": "getTransform() captured immediately after each AlgorithmMultipleToads iteration calls atlas.registerShapes(); values stored as uint32 float32 bit patterns in Java x/y/z-independent six-parameter order"
-  }
+  },
+  "python_java_exact_field_diagnostics": [
+    {
+      "iteration": 4,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 5,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 6,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 7,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 8,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 9,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 10,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 11,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    },
+    {
+      "iteration": 12,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "different_float32_values": 0
+    }
+  ]
 }

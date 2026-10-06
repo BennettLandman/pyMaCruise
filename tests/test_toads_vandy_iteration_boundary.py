@@ -371,8 +371,8 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
         assert np.float32(second.membership_pass.objective) == np.float32(PROVENANCE["java_trace"]["iteration2_objective"])
 
 
-def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate() -> None:
-    """Check corrected source coefficients and per-label output acceptance.
+def test_vandy_source_faithful_loop_matches_java_iteration_trace_and_label_gate() -> None:
+    """Check the source-faithful numerical loop and final label acceptance.
 
     Registration transforms are compared against a source trace at each
     iteration boundary. The final labels use the agreed per-label Dice gate.
@@ -404,6 +404,7 @@ def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate(
             )
             java_memberships = np.asarray(java[f"iteration{iteration}"], dtype=np.float32)
             assert python_memberships.shape == java_memberships.shape == (53, 60, 51, 11)
+            np.testing.assert_array_equal(python_memberships, java_memberships)
             difference = np.abs(python_memberships - java_memberships)
             diagnostic = reference["python_java_membership_diagnostics"][iteration - 1]
             assert float(difference.mean()) == diagnostic["mean_abs"]
@@ -422,17 +423,9 @@ def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate(
                 reference["java_post_registration_transform_uint32"][iteration - 1],
                 dtype=np.uint32,
             )
-            if iteration <= 11:
-                np.testing.assert_array_equal(
-                    python_transform.view(np.uint32), java_transform_bits
-                )
-            else:
-                java_transform = java_transform_bits.view(np.float32)
-                assert float(np.max(np.abs(python_transform - java_transform))) == (
-                    reference["python_java_post_registration_transform_diagnostics"][
-                        iteration - 1
-                    ]["max_abs"]
-                )
+            np.testing.assert_array_equal(
+                python_transform.view(np.uint32), java_transform_bits
+            )
 
     labels = np.asarray(result.native_classification, dtype=np.uint8)
     assert labels.shape == (36, 45, 34)
