@@ -630,7 +630,7 @@ pymacruise plus-lesion-registered-branch \
   --registered-recrop-manifest registered-recrops.json \
   --atlas-descriptor LesionTOADS-atlas.txt --output-dir registered-branch \
   [--iterations 99] [--first-thinning-limit 3] \
-  [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
+  [--first-thinning-volume-ratio 0.5] [--max-distance 0.0001] \
   [--first-iteration-manifest first-iteration/lesion-first-iteration.json] \
   [--finite-zero-variance] [--resume]
 ```
@@ -686,25 +686,27 @@ pymacruise plus-lesion-loop-run \
   --registered-recrop-manifest recrop/registered-recrop.json \
   --atlas-descriptor LesionTOADS-atlas.txt --output-dir lesion-loop \
   [--iterations 99] [--first-thinning-limit 3] \
-  [--first-thinning-volume-ratio 0.5] [--max-distance 0] \
+  [--first-thinning-volume-ratio 0.5] [--max-distance 0.0001] \
   [--loop-convergence-threshold N] [--n-iter-max 99] \
-  [--thinning-limit 3] [--max-passes 1] \
+  [--thinning-limit 3] [--max-passes 99] \
   [--correction-fields fields.nii.gz] [--correction-polynomial-degree {1,2,3}] \
   [--initial-correction-degree N] \
   [--finite-zero-variance] [--resume]
 ```
 
 Compose the persisted P41i initial membership/thinning, P41k registered
-branch, and one bounded P41m registered-loop segment from a completed P41h
+branch, and P41m registered-loop iterations from a completed P41h
 recrop manifest. A top-level JSON manifest links each child manifest by hash
 and records stage state before execution. `--resume` asks each child checkpoint
 to verify and reuse its outputs; corrupt loop outputs are recomputed. Source-
 faithful zero-variance behavior remains the default. `--finite-zero-variance`
 selects the explicit finite synthetic path. An optional
 `--loop-convergence-threshold` overrides only P41m's convergence threshold;
-`--max-distance` continues to control the P41k registered branch. A segment
-that reaches convergence or the iteration cap writes terminal classification
-and lesion-subtype NIfTIs; otherwise it writes a continuing checkpoint. This
+`--max-distance` continues to control the P41k registered branch and defaults
+to the selected source tolerance `1e-4`. The workflow allows 99 P41m passes by
+default, stopping at convergence or `--n-iter-max`; an explicitly smaller
+`--max-passes` writes a continuing checkpoint instead. A terminal result
+writes classification and lesion-subtype NIfTIs. This
 does not establish complete MaCRUISEplus, Java composite equivalence, or
 real-image validation.
 
@@ -732,6 +734,6 @@ The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the br
 
 Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last T1/FLAIR modalities, atlas-aligned/recropped state, registered LesionTOADS products, Dura channels, and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, and JSON metrics. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness.
 
-Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance`, `--loop-convergence-threshold`, `--n-iter-max`, `--loop-thinning-limit`, and `--max-passes`. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms.
+Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance` (default `1e-4`), `--loop-convergence-threshold` (defaults to `--max-distance`), `--n-iter-max` (default `99`), `--loop-thinning-limit`, and `--max-passes` (default `99`). `plus-full-run` runs until terminal convergence or the configured iteration ceiling; use an explicit smaller `--max-passes` for a restartable bounded segment. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms.
 
 For a compact committed synthetic case, use `tests/data/synthetic/plus_lesion_atlas_init/mini-lesion-toads-atlas.txt` and the matching NIfTI topology/shape maps. `tests/test_plus_full_workflow.py` runs a 25³ folded-cortex synthetic T1/FLAIR/MaSeg/mask through the complete CLI composition with low-cost settings, including resume and corruption repair. This validates synthetic workflow composition, not composite Java equivalence or real-MRI behavior.
