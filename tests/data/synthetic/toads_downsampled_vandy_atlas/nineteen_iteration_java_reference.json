@@ -1,0 +1,273 @@
+{
+  "evidence_kind": "selected VandyCRUISE Java compact synthetic registered-loop reference; not whole-workflow equivalence",
+  "source_scope": "Instrumented AlgorithmMultipleToads with the committed compact synthetic T1, selected 11-class source atlas, one registration level/update, and wrapper convergence threshold 1e-4; run is allowed to stop naturally before the 50-cycle maximum.",
+  "source_sha256": {
+    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+    "MultipleToadDeformableAtlas.java": "e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2"
+  },
+  "input_sha256": {
+    "T1.nii.gz": "6ac5aea8f3f079103e37689d3ce219266f02488c7476958efe0cf499c460dd36",
+    "atlas-descriptor": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939",
+    "brain-mask.nii.gz": "cb4e06f5876e7a2182c3b52e9492ad949c5b1706c879a43c1e6dbce3ee0416b2"
+  },
+  "iterations": 19,
+  "maximum_iterations": 50,
+  "terminal_energy_ratio_java_printed": 9.45949e-05,
+  "energy_threshold_reached": true,
+  "iteration_limit_reached": false,
+  "java_final_classification_sha256": "170709d51a984c74a6f1a400c7ca156045e62f54a94f9d7131adef628206bfb6",
+  "java_final_classification_nifti": "nineteen_iteration_java_classification.nii.gz",
+  "java_final_classification_nifti_sha256": "99e16b1e6e3f76b9bb1da5bab849da0776e06904f5c76a42cacc6d47190da9d7",
+  "membership_trace_order": "Java traceWrite nested loops x,y,z,class (C-order for [x,y,z,class]); reference hashes use little-endian float32 bytes to match traceHash.",
+  "java_membership_trace": [
+    {
+      "iteration": 1,
+      "membership_sha256_little_endian_c_order": "550865cf1a96335f8afcae551fe282f164971a5c72e4470c2b5a065bb4cc19bd"
+    },
+    {
+      "iteration": 2,
+      "membership_sha256_little_endian_c_order": "6d9ee175a174c23d23fb352cbc649c4c661c567931ce2291c94e130524ea4780"
+    },
+    {
+      "iteration": 3,
+      "membership_sha256_little_endian_c_order": "5a7c9465f6214257c707a62554ac94b545a1b7436ff79fd974b21964293ed5a7"
+    },
+    {
+      "iteration": 4,
+      "membership_sha256_little_endian_c_order": "22924c5f26e2cb975cfcf93926e9a1c75df7b92d35ce3e88c1473542ec3d82b7"
+    },
+    {
+      "iteration": 5,
+      "membership_sha256_little_endian_c_order": "831fea2e9c38da3a4dab2d20d9e4eb6f7968e3905ccb4f65daa69f97825b1a6d"
+    },
+    {
+      "iteration": 6,
+      "membership_sha256_little_endian_c_order": "e68b5a989d503a2103936bb079ee69f250fc974971403144592ee863f60efdae"
+    },
+    {
+      "iteration": 7,
+      "membership_sha256_little_endian_c_order": "7938543863d829e6aa3798f1801d1f94e7e2b655fd2d6caefee1519c77d722a0"
+    },
+    {
+      "iteration": 8,
+      "membership_sha256_little_endian_c_order": "eb23b45f04cb4665a2cdb9b4be2d45dcaed4cdf477414db670e07d97c0b4ca86"
+    },
+    {
+      "iteration": 9,
+      "membership_sha256_little_endian_c_order": "24bd250f9208ac6cc71add3f17003341bd1235714f293416be454c84f4ba5428"
+    },
+    {
+      "iteration": 10,
+      "membership_sha256_little_endian_c_order": "8025cd4175a9c28bf46c549775aea2af98fb745dd5ea22d37e93d828a59a89e4"
+    },
+    {
+      "iteration": 11,
+      "membership_sha256_little_endian_c_order": "271ea38802b9428a0eda23e5e6c367cad3cdabe4e0dbb4ec7e1d4cc5f139d437"
+    },
+    {
+      "iteration": 12,
+      "membership_sha256_little_endian_c_order": "05821219c54e40018733ae995b073c27ccda7262898135fb6f59a7894b8c0093"
+    },
+    {
+      "iteration": 13,
+      "membership_sha256_little_endian_c_order": "985a98598733b26eaa5f4b7d431925fcdfe903cc980c4044d87e184e7b7d76f0"
+    },
+    {
+      "iteration": 14,
+      "membership_sha256_little_endian_c_order": "3dba5e0eea0a19674c485cdcacc52bcf5fbd7b4c1eace6293d001c9c62011f66"
+    },
+    {
+      "iteration": 15,
+      "membership_sha256_little_endian_c_order": "a436e52414c430d82fc0cd0493cf83693e418d2c4bb54b7875560334375feb74"
+    },
+    {
+      "iteration": 16,
+      "membership_sha256_little_endian_c_order": "bdad9bc34be1850a3510379f652aa6df398c787ce74a6c6e0f4bfd5a5ef55a10"
+    },
+    {
+      "iteration": 17,
+      "membership_sha256_little_endian_c_order": "125219e7507ccf82e1df9356a20189c7d88eb41439eb4a4da0f494a859a18a68"
+    },
+    {
+      "iteration": 18,
+      "membership_sha256_little_endian_c_order": "108d3108d4f58cff8bf5546cb16a246aab80159c5065b49034f9288e9ca25222"
+    },
+    {
+      "iteration": 19,
+      "membership_sha256_little_endian_c_order": "d4d627cd86648798c60a425c0acf7904f99aa21ba971fad0d9cc2c953452cbdd"
+    }
+  ],
+  "java_post_registration_transform_uint32": [
+    [
+      984231285,
+      984231285,
+      984231286,
+      3235312989,
+      3222268602,
+      3235447917
+    ],
+    [
+      984365200,
+      984365200,
+      984365201,
+      3235312956,
+      3222268537,
+      3235447884
+    ],
+    [
+      984365200,
+      984365200,
+      984365201,
+      3235312956,
+      3222268537,
+      3235447884
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      985890574,
+      985890574,
+      985890575,
+      3235312584,
+      3222267792,
+      3235447512
+    ],
+    [
+      986024492,
+      986024492,
+      986024493,
+      3235312551,
+      3222267727,
+      3235447479
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ],
+    [
+      986325809,
+      986325809,
+      986325810,
+      3235312477,
+      3222267580,
+      3235447405
+    ]
+  ],
+  "java_runner": "Temporary VandyCoreSyntheticRunSized source driver invoked against source and instrumented classes; trace output collected under ignored build/java-reference/.",
+  "python_java_final_label_dice": {
+    "per_label": {
+      "1": 1.0,
+      "5": 1.0,
+      "6": 1.0,
+      "14": 1.0,
+      "15": 1.0,
+      "16": 1.0,
+      "17": 1.0,
+      "18": 1.0,
+      "22": 1.0,
+      "24": 1.0,
+      "25": 1.0
+    },
+    "minimum_dice": 1.0,
+    "changed_voxels": 0
+  }
+}

@@ -38,6 +38,9 @@ TWELVE_ITERATION_PROVENANCE = json.loads(
     (FIXTURE / "twelve_iteration_java_reference.json").read_text()
 )
 TWELVE_ITERATION_MEMBERSHIPS = FIXTURE / "twelve_iteration_java_memberships.npz"
+NINETEEN_ITERATION_PROVENANCE = json.loads(
+    (FIXTURE / "nineteen_iteration_java_reference.json").read_text()
+)
 POST_REFRESH_REFERENCE = json.loads(
     (FIXTURE / "post_refresh_registration_java_reference.json").read_text()
 )
@@ -371,29 +374,33 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
         assert np.float32(second.membership_pass.objective) == np.float32(PROVENANCE["java_trace"]["iteration2_objective"])
 
 
-def test_vandy_source_faithful_loop_matches_java_iteration_trace_and_label_gate() -> None:
-    """Check the source-faithful numerical loop and final label acceptance.
+def test_vandy_source_faithful_loop_matches_java_trace_through_convergence() -> None:
+    """Check the selected Java loop trace through its natural convergence.
 
     Registration transforms are compared against a source trace at each
-    iteration boundary. The final labels use the agreed per-label Dice gate.
+    iteration boundary. Java membership hashes retain the exact C-order float
+    payload for all 19 cycles; full Java arrays are also retained for cycles
+    1–12. The final labels use the agreed per-label Dice gate.
     """
-    reference = TWELVE_ITERATION_PROVENANCE
-    assert reference["source_sha256"]["AlgorithmMultipleToads.java"] == (
+    reference12 = TWELVE_ITERATION_PROVENANCE
+    reference19 = NINETEEN_ITERATION_PROVENANCE
+    assert reference19["source_sha256"]["AlgorithmMultipleToads.java"] == (
         PROVENANCE["source_sha256"]["AlgorithmMultipleToads.java"]
     )
-    assert reference["input_sha256"] == PROVENANCE["input_sha256"]
+    assert reference19["input_sha256"] == PROVENANCE["input_sha256"]
     assert hashlib.sha256(TWELVE_ITERATION_MEMBERSHIPS.read_bytes()).hexdigest() == (
-        reference["java_membership_archive"]["sha256"]
+        reference12["java_membership_archive"]["sha256"]
     )
 
-    atlas, result = _registered_two_iteration_run(maximum_iterations=12)
+    atlas, result = _registered_two_iteration_run(maximum_iterations=50)
     assert len(atlas.structures) == 11
-    python_run = reference["python_run_after_source_faithful_registration_energy_fix"]
-    assert reference["iterations"] == 12
-    assert result.iteration_count == python_run["iterations"] == 12
-    assert result.iteration_limit_reached is True
-    assert result.energy_threshold_reached is False
-    assert float(result.terminal_energy_ratio) == python_run["terminal_energy_ratio"]
+    assert reference19["iterations"] == result.iteration_count == 19
+    assert result.iteration_limit_reached is False
+    assert result.energy_threshold_reached is True
+    assert np.float32(result.terminal_energy_ratio) == np.float32(
+        reference19["terminal_energy_ratio_java_printed"]
+    )
+    assert len(result.exact_iterations) == len(result.registered_cycles) == 19
 
     with np.load(TWELVE_ITERATION_MEMBERSHIPS, allow_pickle=False) as java:
         for iteration, (exact, cycle) in enumerate(
@@ -402,25 +409,36 @@ def test_vandy_source_faithful_loop_matches_java_iteration_trace_and_label_gate(
             python_memberships = np.asarray(
                 exact.membership_pass.memberships, dtype=np.float32
             )
-            java_memberships = np.asarray(java[f"iteration{iteration}"], dtype=np.float32)
-            assert python_memberships.shape == java_memberships.shape == (53, 60, 51, 11)
-            np.testing.assert_array_equal(python_memberships, java_memberships)
-            difference = np.abs(python_memberships - java_memberships)
-            diagnostic = reference["python_java_membership_diagnostics"][iteration - 1]
-            assert float(difference.mean()) == diagnostic["mean_abs"]
-            assert float(difference.max()) == diagnostic["max_abs"]
-            assert int(np.count_nonzero(difference > 1e-6)) == diagnostic["count_gt_1e6"]
-            assert int(np.count_nonzero(difference > 1e-5)) == diagnostic["count_gt_1e5"]
-            python_argmax = np.argmax(python_memberships, axis=-1)
-            java_argmax = np.argmax(java_memberships, axis=-1)
-            assert float(np.mean(python_argmax == java_argmax)) == diagnostic[
-                "argmax_agreement"
+            assert python_memberships.shape == (53, 60, 51, 11)
+            java_trace_hash = reference19["java_membership_trace"][iteration - 1][
+                "membership_sha256_little_endian_c_order"
             ]
+            actual_trace_hash = hashlib.sha256(
+                np.asarray(python_memberships, dtype="<f4").tobytes(order="C")
+            ).hexdigest()
+            assert actual_trace_hash == java_trace_hash
+            if iteration <= 12:
+                java_memberships = np.asarray(
+                    java[f"iteration{iteration}"], dtype=np.float32
+                )
+                assert java_memberships.shape == python_memberships.shape
+                np.testing.assert_array_equal(python_memberships, java_memberships)
+                difference = np.abs(python_memberships - java_memberships)
+                diagnostic = reference12["python_java_membership_diagnostics"][iteration - 1]
+                assert float(difference.mean()) == diagnostic["mean_abs"]
+                assert float(difference.max()) == diagnostic["max_abs"]
+                assert int(np.count_nonzero(difference > 1e-6)) == diagnostic["count_gt_1e6"]
+                assert int(np.count_nonzero(difference > 1e-5)) == diagnostic["count_gt_1e5"]
+                python_argmax = np.argmax(python_memberships, axis=-1)
+                java_argmax = np.argmax(java_memberships, axis=-1)
+                assert float(np.mean(python_argmax == java_argmax)) == diagnostic[
+                    "argmax_agreement"
+                ]
             python_transform = np.asarray(
                 cycle.registration_control.handoff.transform, dtype=np.float32
             )
             java_transform_bits = np.asarray(
-                reference["java_post_registration_transform_uint32"][iteration - 1],
+                reference19["java_post_registration_transform_uint32"][iteration - 1],
                 dtype=np.uint32,
             )
             np.testing.assert_array_equal(
@@ -431,17 +449,17 @@ def test_vandy_source_faithful_loop_matches_java_iteration_trace_and_label_gate(
     assert labels.shape == (36, 45, 34)
     labels_source_order = np.asfortranarray(labels)
     actual_hash = hashlib.sha256(labels_source_order.tobytes(order="F")).hexdigest()
-    assert actual_hash == python_run["python_classification_sha256"]
+    assert actual_hash == reference19["java_final_classification_sha256"]
 
-    java_path = FIXTURE / reference["java_final_classification_nifti"]
+    java_path = FIXTURE / reference19["java_final_classification_nifti"]
     assert hashlib.sha256(java_path.read_bytes()).hexdigest() == (
-        reference["java_final_classification_nifti_sha256"]
+        reference19["java_final_classification_nifti_sha256"]
     )
     java_labels = np.asanyarray(nib.load(str(java_path)).dataobj, dtype=np.uint8)
     java_source_hash = hashlib.sha256(
         np.asfortranarray(java_labels).tobytes(order="F")
     ).hexdigest()
-    assert java_source_hash == reference["java_final_classification_sha256"]
+    assert java_source_hash == reference19["java_final_classification_sha256"]
     dice_by_label = {}
     for structure in atlas.structures:
         label = int(structure.label)
@@ -453,9 +471,7 @@ def test_vandy_source_faithful_loop_matches_java_iteration_trace_and_label_gate(
             if denominator == 0
             else 2.0 * np.count_nonzero(python_class & java_class) / denominator
         )
-    java_python = reference[
-        "java_python_final_label_dice_after_source_faithful_registration_energy_fix"
-    ]
+    java_python = reference19["python_java_final_label_dice"]
     assert dice_by_label == {
         int(key): value for key, value in java_python["per_label"].items()
     }
