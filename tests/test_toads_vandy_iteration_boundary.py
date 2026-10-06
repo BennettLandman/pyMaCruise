@@ -32,6 +32,9 @@ ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data/synthetic/toads_downsampled_vandy_atlas"
 REFERENCE = FIXTURE / "two_iteration_java_reference.npz"
 PROVENANCE = json.loads((FIXTURE / "two_iteration_java_reference.json").read_text())
+TWELVE_ITERATION_PROVENANCE = json.loads(
+    (FIXTURE / "twelve_iteration_java_reference.json").read_text()
+)
 POST_REFRESH_REFERENCE = json.loads(
     (FIXTURE / "post_refresh_registration_java_reference.json").read_text()
 )
@@ -41,7 +44,7 @@ POST_REFRESH_HARNESS = (
 ATLAS = ROOT.parent / "data/atlases/cruise-atlas-10obj-toads2008.txt"
 
 
-def _registered_two_iteration_run():
+def _registered_two_iteration_run(maximum_iterations: int = 2):
     atlas = load_toads_atlas(ATLAS)
     t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
@@ -80,7 +83,7 @@ def _registered_two_iteration_run():
         smoothing=0.2 / 6.0 / len(atlas.structures),
         prior_factor=0.5,
         prior_coefficient=2.0 / len(atlas.structures),
-        maximum_iterations=2,
+        maximum_iterations=maximum_iterations,
         convergence_threshold=1e-4,
         relation_limit=3,
         do_growing=True,
@@ -366,3 +369,30 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
         )
         assert objective_difference == corrected_python["iteration2_objective_absolute_difference"]
         assert np.float32(second.membership_pass.objective) == np.float32(PROVENANCE["java_trace"]["iteration2_objective"])
+
+
+def test_vandy_twelve_iteration_final_labels_match_java_reference() -> None:
+    """Compare the capped long-loop output hash with the selected Java run.
+
+    Intermediate objective/membership trajectories are intentionally not
+    called equivalent: their small differences can amplify before the cap.
+    This test validates the final classification on this specific synthetic
+    input and setting only.
+    """
+    reference = TWELVE_ITERATION_PROVENANCE
+    assert reference["source_sha256"]["AlgorithmMultipleToads.java"] == (
+        PROVENANCE["source_sha256"]["AlgorithmMultipleToads.java"]
+    )
+    assert reference["input_sha256"] == PROVENANCE["input_sha256"]
+
+    atlas, result = _registered_two_iteration_run(maximum_iterations=12)
+    assert len(atlas.structures) == 11
+    assert result.iteration_count == reference["iterations"] == 12
+    assert result.iteration_limit_reached is True
+    assert result.energy_threshold_reached is False
+
+    labels = np.asarray(result.native_classification, dtype=np.uint8)
+    assert labels.shape == (36, 45, 34)
+    labels_source_order = np.asfortranarray(labels)
+    actual_hash = hashlib.sha256(labels_source_order.tobytes(order="F")).hexdigest()
+    assert actual_hash == reference["java_final_classification_sha256"]

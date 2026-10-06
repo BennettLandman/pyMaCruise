@@ -1,0 +1,95 @@
+{
+  "evidence_kind": "selected synthetic Java/Python final-classification hash comparison; intermediate trajectory differences are not claimed equivalent",
+  "source_scope": "selected VandyCRUISE AlgorithmMultipleToads run on the committed compact synthetic input; 12-iteration limit, one-level registration and one registration iteration as pinned by the existing two-iteration fixture/configuration",
+  "source_sha256": {
+    "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
+    "MultipleToadSegmentation.java": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
+  },
+  "input_sha256": {
+    "T1.nii.gz": "6ac5aea8f3f079103e37689d3ce219266f02488c7476958efe0cf499c460dd36",
+    "atlas-descriptor": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939",
+    "brain-mask.nii.gz": "cb4e06f5876e7a2182c3b52e9492ad949c5b1706c879a43c1e6dbce3ee0416b2"
+  },
+  "source_log_sha256": "450ade72d8434c36da4f3a0f446f601ace800c6a5e3b418daff55e5e2ba27666",
+  "iterations": 12,
+  "java_final_classification_sha256": "aff69a659d72b3733edf3d6913c8bd7212d445c977dcc4c2dfe2b2cdb7a2e1c3",
+  "java_trace": [
+    {
+      "iteration": 1,
+      "objective": 50.30009,
+      "energy_ratio": 1.0909222,
+      "membership_sha256": "550865cf1a96335f8afcae551fe282f164971a5c72e4470c2b5a065bb4cc19bd"
+    },
+    {
+      "iteration": 2,
+      "objective": 43.742954,
+      "energy_ratio": 0.13944969,
+      "membership_sha256": "6d9ee175a174c23d23fb352cbc649c4c661c567931ce2291c94e130524ea4780"
+    },
+    {
+      "iteration": 3,
+      "objective": 43.892612,
+      "energy_ratio": 0.0034154672,
+      "membership_sha256": "5a7c9465f6214257c707a62554ac94b545a1b7436ff79fd974b21964293ed5a7"
+    },
+    {
+      "iteration": 4,
+      "objective": 50.072083,
+      "energy_ratio": 0.1315275,
+      "membership_sha256": "22924c5f26e2cb975cfcf93926e9a1c75df7b92d35ce3e88c1473542ec3d82b7"
+    },
+    {
+      "iteration": 5,
+      "objective": 45.65079,
+      "energy_ratio": 0.09237691,
+      "membership_sha256": "831fea2e9c38da3a4dab2d20d9e4eb6f7968e3905ccb4f65daa69f97825b1a6d"
+    },
+    {
+      "iteration": 6,
+      "objective": 44.462265,
+      "energy_ratio": 0.026378557,
+      "membership_sha256": "e68b5a989d503a2103936bb079ee69f250fc974971403144592ee863f60efdae"
+    },
+    {
+      "iteration": 7,
+      "objective": 43.67956,
+      "energy_ratio": 0.017760089,
+      "membership_sha256": "7938543863d829e6aa3798f1801d1f94e7e2b655fd2d6caefee1519c77d722a0"
+    },
+    {
+      "iteration": 8,
+      "objective": 43.643696,
+      "energy_ratio": 0.0008214486,
+      "membership_sha256": "eb23b45f04cb4665a2cdb9b4be2d45dcaed4cdf477414db670e07d97c0b4ca86"
+    },
+    {
+      "iteration": 9,
+      "objective": 43.722015,
+      "energy_ratio": 0.0017929128,
+      "membership_sha256": "24bd250f9208ac6cc71add3f17003341bd1235714f293416be454c84f4ba5428"
+    },
+    {
+      "iteration": 10,
+      "objective": 43.68666,
+      "energy_ratio": 0.00080894976,
+      "membership_sha256": "8025cd4175a9c28bf46c549775aea2af98fb745dd5ea22d37e93d828a59a89e4"
+    },
+    {
+      "iteration": 11,
+      "objective": 43.702415,
+      "energy_ratio": 0.0003605645,
+      "membership_sha256": "271ea38802b9428a0eda23e5e6c367cad3cdabe4e0dbb4ec7e1d4cc5f139d437"
+    },
+    {
+      "iteration": 12,
+      "objective": 44.73426,
+      "energy_ratio": 0.02333523,
+      "membership_sha256": "05821219c54e40018733ae995b073c27ccda7262898135fb6f59a7894b8c0093"
+    }
+  ],
+  "notes": [
+    "Final class-label bytes are hashed in MIPAV x-fastest voxel order.",
+    "The Java and current Python final classification hashes match exactly for this fixture.",
+    "Intermediate objectives and membership trajectories diverge modestly after iteration 5; this fixture does not establish full trajectory equivalence or convergence equivalence."
+  ]
+}
