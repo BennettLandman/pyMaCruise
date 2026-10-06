@@ -86,3 +86,25 @@ def test_initialized_full_thinning_pass_matches_java_source_harness() -> None:
     assert np.any(result.class_volumes < result.minimum_class_volumes)
     assert np.any(result.minimum_class_volumes == np.float32(100.0))
     assert np.any(result.minimum_class_volumes > np.float32(100.0))
+
+    compiled = toads_propagate_thinning(
+        segmentation,
+        memberships,
+        relation_matrix=np.zeros((4, 4), dtype=np.bool_),
+        transformed_shape_values=np.zeros_like(memberships),
+        volume_ratio=_from_bits(reference["volume_ratio_bits"]),
+        limit=_from_bits(reference["limit_bits"]),
+        record_processed_items=False,
+    )
+    assert compiled.processed_items == ()
+    assert compiled.processed_count == len(reference["processed"])
+    np.testing.assert_array_equal(compiled.segmentation, result.segmentation)
+    np.testing.assert_array_equal(compiled.skeleton, result.skeleton)
+    np.testing.assert_array_equal(compiled.available, result.available)
+    np.testing.assert_array_equal(compiled.class_volumes, result.class_volumes)
+    np.testing.assert_array_equal(compiled.ordering, result.ordering)
+    compiled_queue_after = []
+    while compiled.queue:
+        item = compiled.queue.pop_first()
+        compiled_queue_after.append([_bits(item.value), item.x, item.y, item.z, item.label])
+    assert compiled_queue_after == reference["queue_after"]

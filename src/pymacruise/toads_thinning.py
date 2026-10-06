@@ -938,6 +938,44 @@ def toads_run_thinning_queue(
         raise ValueError("segmentation labels must be valid membership class indices")
     if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
         raise ValueError("skeleton labels must be valid class indices or empty_label")
+
+    if not record_processed_items:
+        # Production registered loops do not retain millions of per-event
+        # Python objects. Use the compiled kernel only at this no-trace
+        # boundary; the event-recording path below remains the readable
+        # source-order reference used by diagnostics and Java comparisons.
+        from pymacruise.toads_critical_lut import load_critical186_lut
+        from pymacruise.toads_thinning_compiled import run_compiled_thinning_queue
+
+        labels, skel, available_state, volumes, orderings, processed_count = (
+            run_compiled_thinning_queue(
+                labels,
+                skel,
+                mems,
+                available_state,
+                relations,
+                shapes,
+                volumes,
+                minimums,
+                orderings,
+                queue,
+                limit32,
+                empty_label,
+                np.float32(zero_threshold),
+                load_critical186_lut(),
+            )
+        )
+        return ToadsThinningQueueRun(
+            labels,
+            skel,
+            available_state,
+            volumes,
+            (),
+            queue,
+            processed_count,
+            orderings,
+        )
+
     previous_priority = np.float32(0.0)
     processed: list[ToadsHeapItem] = []
     processed_count = 0
