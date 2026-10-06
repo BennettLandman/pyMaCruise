@@ -8,6 +8,7 @@ import numpy as np
 
 from pymacruise.toads_approximate_thinning_startup import initialize_toads_approximate_thinning
 from pymacruise.toads_approximate_thinning_step import process_next_approximate_thinning_item
+from pymacruise.toads_approximate_neighbor_schedule import schedule_approximate_thinning_neighbors
 
 
 ROOT = Path(__file__).parent
@@ -16,6 +17,9 @@ HARNESS = ROOT / "java_reference/ToadsApproximateThinningOneStepReferenceHarness
 SOURCE = ROOT.parent.parent / "toads-cruise-scm-2026-09-26/VandyCRUISE/src/edu/jhmi/rad/medic/methods/MultipleToadSegmentation.java"
 SOURCE_SHA256 = "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884"
 HARNESS_SHA256 = "44a21b9b7fd5c35e4e2bde88eb45110363d4295f54e4d983325243d414a3aef3"
+NEIGHBOR_REFERENCE = ROOT / "data/synthetic/toads_approximate_thinning_one_step/neighbor_schedule_java_reference.json"
+NEIGHBOR_HARNESS = ROOT / "java_reference/ToadsApproximateNeighborScheduleReferenceHarness.java"
+NEIGHBOR_HARNESS_SHA256 = "483a3de5f045d093cd5a84978fd0c425415d2847b15daed0d6e8462a13cace9e"
 
 
 def _arrays() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -82,3 +86,44 @@ def test_sparse_approximate_thinning_initial_state_processes_one_java_pinned_eve
     # sparse volume removal and skeleton update while preserving segmentation.
     assert np.count_nonzero(result.segmentation != segmentation) == 0
     assert result.skeleton[item.x, item.y, item.z] == -1
+
+
+def test_approximate_thinning_reschedules_face_neighbors_like_java() -> None:
+    reference = json.loads(NEIGHBOR_REFERENCE.read_text())
+    assert hashlib.sha256(SOURCE.read_bytes()).hexdigest() == SOURCE_SHA256
+    assert hashlib.sha256(NEIGHBOR_HARNESS.read_bytes()).hexdigest() == NEIGHBOR_HARNESS_SHA256
+    segmentation, mems, best = _arrays()
+    startup = initialize_toads_approximate_thinning(
+        segmentation, mems, best, class_count=3,
+    )
+    event = process_next_approximate_thinning_item(
+        segmentation, mems, best, startup,
+        np.zeros((3, 3), dtype=bool),
+        np.zeros(segmentation.shape + (3,), dtype=np.float32),
+        np.zeros(3, dtype=np.float32),
+    )
+    item = event.popped_item
+    assert [int(item.value.view(np.int32)), item.x, item.y, item.z, item.label] == reference["popped"]
+    queue_size_before_schedule = event.remaining_queue.size
+    scheduled = schedule_approximate_thinning_neighbors(
+        event.segmentation,
+        mems,
+        best,
+        event.available,
+        event.remaining_queue,
+        (item.x, item.y, item.z),
+        item.label,
+        item.value,
+        event.class_volumes[item.label],
+        0.0,
+        1000.0,
+        copy_state=False,
+    )
+    actual = [
+        [int(entry.value.view(np.int32)), entry.x, entry.y, entry.z, entry.label]
+        for entry in scheduled.inserted
+    ]
+    assert actual == reference["inserted"]
+    assert event.remaining_queue.size == queue_size_before_schedule + len(actual)
+    for _, x, y, z, label in actual:
+        assert not scheduled.available[x, y, z, label]

@@ -1,0 +1,12 @@
+{
+  "source_file": "VandyCRUISE/src/edu/jhmi/rad/medic/methods/MultipleToadSegmentation.java",
+  "source_sha256": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+  "harness_sha256": "483a3de5f045d093cd5a84978fd0c425415d2847b15daed0d6e8462a13cace9e",
+  "fixture": "tests/test_toads_approximate_thinning_step.py::_arrays (9x9x9 folded three-class case)",
+  "scope": "selected Java post-removal six-face neighbor queue scheduling excerpt; volume gate opened with a synthetic zero minimum",
+  "popped": [-1082130432, 1, 1, 1, 0],
+  "inserted": [
+    [-1073741824, 1, 2, 1, 0],
+    [-1073741824, 2, 1, 1, 0]
+  ]
+}
