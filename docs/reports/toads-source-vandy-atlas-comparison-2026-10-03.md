@@ -79,7 +79,15 @@ input's `(36,45,34)` RAS grid. No real MRI was used.
   same algorithm settings and final classification.
 - No full pytest suite was run for this change.
 
-## Twelve-iteration compact comparison
+## Historical 12-iteration compact comparison before ordering carry
+
+The measurements in this subsection are from the pre-P18cycaag implementation
+and are retained for historical context only. They were superseded by the
+post-ordering-carry run documented in the [2026-10-06 12-iteration
+comparison](toads-vandy-12-iteration-output-2026-10-06.md), which matches the
+selected Java final-classification hash exactly on this fixture. The newer run
+still has intermediate objective/membership trajectory differences and does
+not establish matching convergence behavior.
 
 Both Java and Python completed 12 iterations on this compact synthetic case,
 but neither reached the `1e-4` energy-ratio threshold. Java ended at
