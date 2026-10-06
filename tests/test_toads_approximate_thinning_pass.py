@@ -87,3 +87,29 @@ def test_approximate_thinning_pass_applies_source_default_volume_floor() -> None
     assert result.processed_count == int(result.boundary_counts.sum())
     assert np.count_nonzero(result.skeleton[1:-1, 1:-1, 1:-1] >= 0) == 343
     assert np.all(result.class_volumes > 0.0)
+
+
+def test_approximate_queue_validates_full_volume_inputs_once(monkeypatch) -> None:
+    labels, memberships, candidates = _folded_case()
+    shapes = np.zeros(labels.shape + (3,), dtype=np.float32)
+    original = np.isfinite
+    whole_volume_checks = {memberships.shape: 0, shapes.shape: 0}
+
+    def counted_isfinite(values, *args, **kwargs):
+        shape = np.shape(values)
+        if shape in whole_volume_checks:
+            whole_volume_checks[shape] += 1
+        return original(values, *args, **kwargs)
+
+    monkeypatch.setattr(np, "isfinite", counted_isfinite)
+    run_approximate_thinning_pass(
+        labels,
+        memberships,
+        candidates,
+        np.zeros((3, 3), dtype=bool),
+        shapes,
+        class_count=3,
+        limit=1000.0,
+        explicit_minimum_class_volumes=np.zeros(3, dtype=np.float32),
+    )
+    assert whole_volume_checks == {memberships.shape: 1, shapes.shape: 1}

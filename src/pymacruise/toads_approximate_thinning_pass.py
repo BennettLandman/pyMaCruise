@@ -147,6 +147,7 @@ def run_approximate_thinning_pass(
                 minimums[event.popped_item.label],
                 limit32,
                 copy_state=False,
+                validate_full_arrays=False,
             )
             available = scheduled.available
 

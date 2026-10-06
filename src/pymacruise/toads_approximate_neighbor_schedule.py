@@ -40,6 +40,7 @@ def schedule_approximate_thinning_neighbors(
     *,
     zero: float = 1e-10,
     copy_state: bool = True,
+    validate_full_arrays: bool = True,
 ) -> ToadsApproximateNeighborSchedule:
     """Add the selected source's eligible six-face queue entries.
 
@@ -60,11 +61,13 @@ def schedule_approximate_thinning_neighbors(
     if state.ndim != 4 or state.shape[:3] != labels.shape or state.dtype != np.bool_:
         raise ValueError("available must be a boolean grid matching segmentation and classes")
     classes = state.shape[-1]
-    if classes < 2 or np.any(best < 0) or np.any(best >= classes):
+    if classes < 2 or (
+        validate_full_arrays and (np.any(best < 0) or np.any(best >= classes))
+    ):
         raise ValueError("sparse class indices must contain valid classes")
     if state.shape != labels.shape + (classes,):
         raise ValueError("available must be a boolean grid matching segmentation and classes")
-    if not np.isfinite(mems).all():
+    if validate_full_arrays and not np.isfinite(mems).all():
         raise ValueError("sparse memberships must be finite")
     if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
         raise ValueError("queue must be a TOADS max heap")

@@ -69,7 +69,10 @@ def process_next_approximate_thinning_item(
     if best.shape != mems.shape or not np.issubdtype(best.dtype, np.integer):
         raise ValueError("best_class_indices must match sparse_memberships")
     classes = startup.class_volumes.size
-    if np.any(best < 0) or np.any(best >= classes) or np.any(labels_in < 0) or np.any(labels_in >= classes):
+    if validate_full_arrays and (
+        np.any(best < 0) or np.any(best >= classes)
+        or np.any(labels_in < 0) or np.any(labels_in >= classes)
+    ):
         raise ValueError("segmentation and sparse class labels must be valid startup classes")
     if startup.skeleton.shape != labels_in.shape or startup.available.shape != labels_in.shape + (classes,):
         raise ValueError("startup state must match segmentation and class dimensions")
@@ -78,7 +81,9 @@ def process_next_approximate_thinning_item(
     minima = np.asarray(minimum_class_volumes, dtype=np.float32)
     if relations.shape != (classes, classes) or relations.dtype != np.bool_:
         raise ValueError("relation_matrix must be a boolean square matrix matching classes")
-    if shapes.shape != labels_in.shape + (classes,) or not np.isfinite(shapes).all():
+    if shapes.shape != labels_in.shape + (classes,) or (
+        validate_full_arrays and not np.isfinite(shapes).all()
+    ):
         raise ValueError("transformed_shape_values must be finite on the segmentation grid")
     if minima.shape != (classes,) or not np.isfinite(minima).all():
         raise ValueError("minimum_class_volumes must be finite and match classes")
