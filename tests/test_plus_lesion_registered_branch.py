@@ -111,7 +111,8 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         "distance_map_refresh:complete",
         "gm_membership_update:complete",
         "shape_registration:complete",
-        "convergence_growth_relations:complete",
+        "growth:complete",
+        "relation_refresh:complete",
         "materialize_branch_outputs:complete",
     ):
         assert operation in operations

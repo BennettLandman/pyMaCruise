@@ -16,7 +16,13 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .lesion_objective import reduce_lesion_toads_objective
-from .lesion_standard13_voxel import compute_lesion_toads_standard13_voxel
+from .lesion_similarity import compute_lesion_toads_similarity
+from .lesion_standard13_voxel import (
+    STANDARD13_NAMES,
+    STANDARD13_PRIOR_SCALE,
+    STANDARD13_TYPES,
+    compute_lesion_toads_standard13_voxel,
+)
 
 
 @dataclass(frozen=True)
@@ -102,6 +108,22 @@ def run_lesion_toads_standard13_volume(
     black_hole_energy = np.zeros(spatial, dtype=np.float32)
     denominator = np.zeros(spatial, dtype=np.float32)
     nx, ny, nz = spatial
+    # LesionToadSegmentation computes centroid similarities once before its
+    # ordered voxel sweep. Keeping this invariant source state outside the
+    # sweep avoids rebuilding the same 13x13 matrices at every voxel.
+    similarities = compute_lesion_toads_similarity(
+        class_centroids,
+        class_stddev,
+        lesion_centroid,
+        lesion_stddev,
+        channel_weights,
+        tuple(kind.lower() for kind in STANDARD13_TYPES),
+        STANDARD13_NAMES,
+        prior_scale=float(STANDARD13_PRIOR_SCALE),
+        t1_channel=0,
+        black_hole_similarity=np.zeros(13, dtype=np.float32),
+        finite_zero_variance=not source_zero_variance_nan,
+    )
 
     # Java uses x outermost, then y, then z, mutating maps before the next
     # coordinate reads its six neighbors.
@@ -129,6 +151,7 @@ def run_lesion_toads_standard13_volume(
                     brainstem_distance=int(brainstem[x, y, z]), spread=spread,
                     gm_flag=gm_flag, source_zero_variance_nan=source_zero_variance_nan,
                     intensity_field=None if fields is None else fields[x, y, z],
+                    precomputed_similarities=similarities,
                 )
                 current[x, y, z] = voxel.class_memberships
                 lesion[x, y, z] = voxel.lesion_membership

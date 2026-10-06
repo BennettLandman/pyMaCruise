@@ -31,7 +31,7 @@ from .lesion_membership import (
     update_lesion_toads_smoothing_energies,
     modulate_lesion_toads_membership_by_distances,
 )
-from .lesion_similarity import compute_lesion_toads_similarity
+from .lesion_similarity import LesionToadsSimilarity, compute_lesion_toads_similarity
 from .lesion_objective import reduce_lesion_toads_objective
 
 
@@ -96,6 +96,7 @@ def compute_lesion_toads_standard13_voxel(
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
     intensity_field: ArrayLike | None = None,
+    precomputed_similarities: LesionToadsSimilarity | None = None,
 ) -> Standard13VoxelResult:
     """Update one interior voxel from a complete fixed pre-call state.
 
@@ -165,14 +166,29 @@ def compute_lesion_toads_standard13_voxel(
     # those classes (setting membership to zero). Registered atlas support is
     # class-specific, so this is expected outside individual class bounds.
 
-    similarities = compute_lesion_toads_similarity(
-        centers, deviations, lesion_center, lesion_deviation, weights,
-        ("mask", "optimized_csf", "optimized_csf", "object", "object", "object",
-         "object", "object", "object", "object", "lesion", "object", "object"),
-        STANDARD13_NAMES, prior_scale=float(STANDARD13_PRIOR_SCALE), t1_channel=0,
-        black_hole_similarity=np.zeros(count, dtype=np.float32),
-        finite_zero_variance=not source_zero_variance_nan,
-    )
+    if precomputed_similarities is None:
+        similarities = compute_lesion_toads_similarity(
+            centers, deviations, lesion_center, lesion_deviation, weights,
+            ("mask", "optimized_csf", "optimized_csf", "object", "object", "object",
+             "object", "object", "object", "object", "lesion", "object", "object"),
+            STANDARD13_NAMES, prior_scale=float(STANDARD13_PRIOR_SCALE), t1_channel=0,
+            black_hole_similarity=np.zeros(count, dtype=np.float32),
+            finite_zero_variance=not source_zero_variance_nan,
+        )
+    elif (
+        not isinstance(precomputed_similarities, LesionToadsSimilarity)
+        or precomputed_similarities.class_similarity.shape != (count, count)
+        or precomputed_similarities.lesion_similarity.shape != (count,)
+        or precomputed_similarities.black_hole_similarity.shape != (count,)
+        or (not source_zero_variance_nan and not all(np.isfinite(values).all() for values in (
+            precomputed_similarities.class_similarity,
+            precomputed_similarities.lesion_similarity,
+            precomputed_similarities.black_hole_similarity,
+        )))
+    ):
+        raise ValueError("precomputed_similarities must be a finite standard-13 similarity state")
+    else:
+        similarities = precomputed_similarities
     class_energy = np.zeros(count, dtype=np.float32)
     lesion_energy = np.float32(0.0)
     black_hole_energy = np.float32(0.0)

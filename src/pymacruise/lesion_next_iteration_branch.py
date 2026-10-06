@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
 from numpy.typing import ArrayLike
 
@@ -41,6 +41,7 @@ def continue_after_next_iteration_registration(
     relation_limit: int,
     has_lesion: bool = True,
     use_lesion_max: bool = False,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionNextIterationBranch:
     """Apply selected post-registration stop, optional growth, and refresh.
 
@@ -72,6 +73,7 @@ def continue_after_next_iteration_registration(
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
         source_energy_ratio=update.energy_ratio,
+        progress_callback=progress_callback,
     )
     return LesionNextIterationBranch(
         registration,

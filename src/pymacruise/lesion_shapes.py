@@ -112,6 +112,7 @@ def sample_lesion_shape_prior(
     scale: float = 1.0,
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
+    _prevalidated_shape: bool = False,
 ) -> LesionShapeSample:
     """Sample one class as in `LesionToadAtlas.getRegularTransformedShape`.
 
@@ -130,7 +131,9 @@ def sample_lesion_shape_prior(
     values = np.asarray(shape, dtype=np.float32)
     if values.ndim != 3 or any(size < 2 for size in values.shape):
         raise ValueError("LesionTOADS shape prior must be 3D with dimensions >= 2")
-    if not np.isfinite(values).all():
+    if not isinstance(_prevalidated_shape, (bool, np.bool_)):
+        raise TypeError("_prevalidated_shape must be boolean")
+    if not _prevalidated_shape and not np.isfinite(values).all():
         raise ValueError("LesionTOADS shape prior must contain only finite values")
     image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
     point = _triple_int(image_point_xyz, "image_point_xyz")
@@ -172,6 +175,7 @@ def sample_lesion_shape_prior(
         image_center_xyz=image_center_xyz,
         template_center_xyz=template_center_xyz,
         _java_float32_norm=True,
+        _prevalidated_shape=_prevalidated_shape,
     )
     if bounds.template_xyz is None:
         return LesionShapeSample(default, None)
@@ -453,6 +457,7 @@ def lesion_registration_volume_coefficients(
                         scale=scale,
                         image_center_xyz=image_center_xyz,
                         template_center_xyz=template_center_xyz,
+                        _prevalidated_shape=True,
                     )
                     priors[x, y, z, class_index] = sample.value
                     if sample.template_gradient_xyz is not None:

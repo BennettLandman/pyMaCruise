@@ -101,6 +101,7 @@ def run_lesion_toads_registered_first_iteration_branch(
         relation_limit=relation_limit,
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
+        progress_callback=progress_callback,
     )
     if progress_callback is not None:
         progress_callback("convergence_growth_relations:complete")

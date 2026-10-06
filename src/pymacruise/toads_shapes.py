@@ -173,6 +173,7 @@ def sample_toad_shape_prior(
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
     _java_float32_norm: bool = False,
+    _prevalidated_shape: bool = False,
 ) -> ToadShapeSample:
     """Sample a source TOADS shape prior at one input-grid voxel.
 
@@ -196,7 +197,9 @@ def sample_toad_shape_prior(
     values = np.asarray(shape, dtype=np.float32)
     if values.ndim != 3 or any(size < 2 for size in values.shape):
         raise ValueError("TOADS shape prior must be 3D with dimensions >= 2")
-    if not np.isfinite(values).all():
+    if not isinstance(_prevalidated_shape, (bool, np.bool_)):
+        raise TypeError("_prevalidated_shape must be boolean")
+    if not _prevalidated_shape and not np.isfinite(values).all():
         raise ValueError("TOADS shape prior must contain only finite values")
     image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
     point = _triple_int(image_point_xyz, "image_point_xyz")

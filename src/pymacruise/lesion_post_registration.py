@@ -8,7 +8,7 @@ updates; it does not implement the full published evolution.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -60,6 +60,7 @@ def lesion_toads_post_registration_branch(
     has_lesion: bool = True,
     use_lesion_max: bool = False,
     source_energy_ratio: LesionEnergyRatio | None = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionToadsPostRegistrationBranch:
     """Run only the selected wrapper's branch immediately after alignment.
 
@@ -83,6 +84,8 @@ def lesion_toads_post_registration_branch(
         use_lesion_max, (bool, np.bool_)
     ):
         raise TypeError("lesion flags must be boolean")
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable or None")
     if isinstance(iteration, (bool, np.bool_)) or not isinstance(
         iteration, (int, np.integer)
     ) or iteration < 1:
@@ -171,6 +174,8 @@ def lesion_toads_post_registration_branch(
     growing = None
     if run_growing:
         stages.append("propagateGrowing")
+        if progress_callback is not None:
+            progress_callback("growth:running")
         growing = propagate_lesion_toads_growing(
             source_segmentation,
             skeleton,
@@ -184,6 +189,8 @@ def lesion_toads_post_registration_branch(
             use_lesion_max=bool(use_lesion_max),
         )
         segmentation_after = growing.segmentation.copy()
+        if progress_callback is not None:
+            progress_callback("growth:complete")
     else:
         segmentation_after = source_segmentation.astype(np.int16, copy=True)
 
@@ -191,6 +198,8 @@ def lesion_toads_post_registration_branch(
     relations = None
     if stop:
         stages.extend(("updateClassificationFromLabels", "updateLesionClassifcation"))
+        if progress_callback is not None:
+            progress_callback("terminal_classification:running")
         final_classification = lesion_toads_final_classification(
             segmentation_after,
             template_labels,
@@ -201,11 +210,17 @@ def lesion_toads_post_registration_branch(
             lesion_class,
             has_lesion=bool(has_lesion),
         )
+        if progress_callback is not None:
+            progress_callback("terminal_classification:complete")
     else:
         stages.append("computeRelations")
+        if progress_callback is not None:
+            progress_callback("relation_refresh:running")
         relations = lesion_compute_relations(
             segmentation_after, updated_memberships.shape[-1], int(relation_limit)
         )
+        if progress_callback is not None:
+            progress_callback("relation_refresh:complete")
 
     return LesionToadsPostRegistrationBranch(
         membership_result=membership_result,
