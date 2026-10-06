@@ -139,3 +139,18 @@ report](toads-approximate-neighbor-schedule-2026-10-06.md) and [full-suite
 evidence](full-pytest-2026-10-06-approx-neighbor-schedule.md). This remains a
 planning estimate, not measured Python runtime line coverage or whole-workflow
 equivalence.
+
+P18cycaak then composes those queue operations into the bounded source loop,
+adding approximately **12 newly represented selected Java lines** for
+priority-limit control, event popping, and production minimum-volume/skeleton
+gates (within `propagateThinning`, approximately lines 1889–1905). The combined
+cycle delta is **about 37 lines**, and the coarse estimate advances from
+**3,467–4,867** to **3,504–4,904 of 13,651 lines (about 26–36%)**. The complete
+synthetic 343-event trace matches the source-derived harness by event hash and
+terminal class-volume bits. Full suite on implementation commit `2e16f4b`:
+**1,206 passed, 0 failed, 0 skipped, and 11 expected RAS warnings in
+1,212.71s**, peak sampled RSS **14.427 GB** under the 24 GB watchdog. See the
+[approximate pass report](toads-approximate-thinning-pass-2026-10-06.md) and
+[full-suite evidence](full-pytest-2026-10-06-approx-thinning-pass.md). The
+source estimate remains coarse and does not imply coverage of the other
+`propagateThinning` branches or full TOADS workflow equivalence.
