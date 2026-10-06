@@ -18,6 +18,7 @@ ROOT = Path(__file__).parent
 SYNTHETIC = ROOT / "data/synthetic/plus_lesion_atlas_init"
 FOLDED = ROOT / "data/synthetic/plus_pre_tgdm_composition"
 ATLAS = SYNTHETIC / "mini-lesion-toads-atlas.txt"
+LARGER_GRID = ROOT / "data/synthetic/plus_larger_grid"
 
 
 def _sha256(path: Path) -> str:
@@ -275,6 +276,60 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     )
     with pytest.raises(ValueError, match="brain mask must match the T1 reference grid"):
         main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))
+
+
+def test_plus_full_run_completes_on_larger_asymmetric_folded_ras_grid(tmp_path: Path) -> None:
+    shape = (36, 45, 34)
+    t1, flair, mask, maseg = tuple(
+        LARGER_GRID / name
+        for name in ("t1.nii.gz", "flair.nii.gz", "brain-mask.nii.gz", "maseg.nii.gz")
+    )
+    fixture_record = json.loads((LARGER_GRID / "provenance.json").read_text())
+    for path in (t1, flair, mask, maseg):
+        assert path.is_file()
+        record = fixture_record["images"][path.name]
+        assert _sha256(path) == record["sha256"]
+        image = nib.load(str(path))
+        assert list(image.shape) == record["shape"] == list(shape)
+        assert nib.aff2axcodes(image.affine) == tuple(record["axis_codes"]) == ("R", "A", "S")
+    output = tmp_path / "plus-larger-grid"
+    command = _command(t1, flair, mask, maseg, output)
+    assert main(command) == 0
+
+    manifest_path = output / "plus-full-workflow.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["status"] == "complete"
+    assert manifest["terminal"] is True
+    assert manifest["stage_order"][-1] == "plus_surface_workflow"
+    for stage in manifest["stages"].values():
+        child = Path(stage["manifest"]["path"])
+        assert _sha256(child) == stage["manifest"]["sha256"]
+        child_data = json.loads(child.read_text())
+        for record in child_data.get("outputs", {}).values():
+            path = Path(record["path"])
+            assert _sha256(path) == record["sha256"]
+            if path.name.endswith(".nii.gz"):
+                image = nib.load(str(path))
+                assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+                assert np.isfinite(np.asarray(image.dataobj)).all()
+
+    recrop = json.loads(Path(manifest["stages"]["registered_recrop"]["manifest"]["path"]).read_text())
+    recrop_image = nib.load(recrop["outputs"]["modalities"]["path"])
+    assert nib.aff2axcodes(recrop_image.affine) == ("R", "A", "S")
+    # LesionTOADS intentionally recrops to registered topology support.
+    assert all(0 < dim <= full_dim for dim, full_dim in zip(recrop_image.shape[:3], shape, strict=True))
+    final_outputs = manifest["final_outputs"]
+    for name in (
+        "native_gm", "native_wm_fill", "native_wm_mask", "plus_inner_level_set",
+        "plus_central_level_set", "plus_outer_level_set", "plus_thickness_volume",
+    ):
+        image = nib.load(final_outputs[name]["path"])
+        assert image.shape == shape
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
+    resumed = json.loads(manifest_path.read_text())
+    assert resumed["status"] == "complete"
+    assert all(stage["resumed"] for stage in resumed["stages"].values())
 
 
 def test_workflow_run_config_executes_and_resumes_folded_synthetic_plus(
