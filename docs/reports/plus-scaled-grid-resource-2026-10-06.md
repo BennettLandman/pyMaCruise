@@ -44,6 +44,31 @@ reflect an external process or execution-environment limit. It is not evidence
 of an algorithm exception or a successful workflow. The memory figure is the
 watchdog's sampled child RSS and may miss brief peaks.
 
+## Instrumented retry and registration hot path
+
+The registered-branch checkpoint now records atomic substage markers in its
+manifest. A source-checkout retry under the 24 GB ceiling showed this sequence:
+initial state hydration, statistics refresh, distance-map refresh, and
+GM-enabled membership all completed; `shape_registration:running` remained
+active. After roughly ten minutes without leaving that stage, the run was
+interrupted deliberately through the watchdog so the identified slow stage
+could be improved. It sampled **0.329 GB peak RSS** and did not reach growth,
+relation refresh, or output materialization. This did not reproduce the earlier
+25.825 GB peak; the location of that peak remains unknown.
+
+The selected registration path called both TOADS and LesionTOADS shape
+samplers at every sampled voxel, and each sampler rescanned an entire atlas
+volume for finite values even though the registration-volume caller had
+already validated those maps. That repeated full-map validation is now skipped
+only through an internal prevalidated-input path. The standard-13 membership
+pass also computed the same centroid-similarity matrices at every voxel; these
+are now computed once before the Java-ordered scan, as invariant iteration
+state. Commit `c437b238a624effdd50a8556a9445ec9d45c5e76` passed the source-order
+Java standard-13 membership harness and focused shape/checkpoint regressions:
+**21 passed, 0 failed, 0 skipped in 27.19s**, peak sampled RSS **0.460 GB** under
+an 8 GB watchdog. This confirms fixture-level arithmetic but does not yet
+measure the 64×80×64 optimized registration stage.
+
 Reproduction command (run from `build/wheel-plus-natural/`, using the isolated
 installed package at `site/`):
 
@@ -56,8 +81,8 @@ env PYTHONNOUSERSITE=1 PYTHONPATH=/Users/landmaba/dev/mipav/pymacruise/build/whe
 The 64×80×64 run is **not validated**. The partial checkpoint is retained under
 the ignored `build/wheel-plus-natural/natural-run-64/` directory. Do not count
 the nine-stage plus workflow as complete on this grid or infer brain-resolution
-capacity from it. P41x now targets stage-level diagnostics and a memory/runtime
-reduction in the registered LesionTOADS branch while preserving selected
-source order and numerical outputs. The acceptance target is a complete,
+capacity from it. P41x is measuring the optimized registration and later
+branch stages under bounded RSS while preserving selected source order and
+numerical outputs. The acceptance target is a complete,
 naturally converged run, finite RAS outputs, verified hashes and resume, plus a
 sampled RSS peak below a conservative 24 GB ceiling.
