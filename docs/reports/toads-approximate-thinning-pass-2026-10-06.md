@@ -13,6 +13,7 @@ Added `run_approximate_thinning_pass`, composing sparse `useApprox` thinning ini
 - With the selected default 100-voxel minimum floor, this compact fixture's classes remain below threshold: initial boundary items are popped without removal, matching the source guard's intended behavior.
 - Focused command: `./.venv/bin/python -m pytest -q --tb=short tests/test_toads_approximate_thinning_pass.py tests/test_toads_approximate_thinning_step.py tests/test_toads_approximate_thinning_startup.py` — **6 passed in 0.65s**.
 - Full suite on implementation commit `2e16f4b`: **1,206 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,212.71s**, peak sampled RSS **14.427 GB** under the 24 GB watchdog; see [full-suite report](full-pytest-2026-10-06-approx-thinning-pass.md).
+- Runtime follow-up commit `9f44477` avoids full membership/shape rescans per event; focused queue group: **7 passed in 0.66s**. Full suite on that tested commit: **1,207 passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,217.29s**, peak sampled RSS **14.615 GB**; see [validation-boundary full-suite report](full-pytest-2026-10-06-approx-thinning-validation-boundary.md).
 
 ## Limits
 

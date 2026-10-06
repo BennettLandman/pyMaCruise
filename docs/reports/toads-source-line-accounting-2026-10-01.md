@@ -154,3 +154,12 @@ terminal class-volume bits. Full suite on implementation commit `2e16f4b`:
 [full-suite evidence](full-pytest-2026-10-06-approx-thinning-pass.md). The
 source estimate remains coarse and does not imply coverage of the other
 `propagateThinning` branches or full TOADS workflow equivalence.
+
+The subsequent P18cycaak validation-boundary optimization is Python-only and
+adds **zero selected Java source lines**. Full-volume membership and shape
+checks now occur once before the queue loop; direct event APIs retain their
+full validation defaults. The complete suite on implementation commit
+`9f44477` passed **1,207 tests, 0 failed, 0 skipped, and 11 expected RAS
+warnings in 1,217.29s**, with **14.615 GB** peak sampled RSS under the 24 GB
+watchdog. The source estimate remains **3,504–4,904 of 13,651**; see the
+[validation-boundary full-suite report](full-pytest-2026-10-06-approx-thinning-validation-boundary.md).
