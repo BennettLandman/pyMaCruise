@@ -1,5 +1,5 @@
 {
-  "evidence_kind": "selected synthetic Java/Python final-classification hash comparison; intermediate trajectory differences are not claimed equivalent",
+  "evidence_kind": "selected Java compact synthetic reference with source-faithful Python trajectory and final per-label Dice re-evaluation",
   "source_scope": "selected VandyCRUISE AlgorithmMultipleToads run on the committed compact synthetic input; 12-iteration limit, one-level registration and one registration iteration as pinned by the existing two-iteration fixture/configuration",
   "source_sha256": {
     "AlgorithmMultipleToads.java": "b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d",
@@ -88,10 +88,10 @@
     }
   ],
   "notes": [
-    "Final class-label bytes are hashed in MIPAV x-fastest voxel order.",
-    "The Java and current Python final classification hashes match exactly for this fixture.",
-    "Intermediate objectives and membership trajectories diverge modestly after iteration 5; this fixture does not establish full trajectory equivalence or convergence equivalence.",
-    "All 12 Java membership arrays are committed in the companion NPZ fixture. Python per-iteration membership MAE/max errors and argmax-map agreement are diagnostic; membership argmax is not the TOADS final classification operation."
+    "All 12 Java membership arrays are committed in the companion NPZ fixture. Python per-iteration membership MAE/max errors and argmax-map agreement are diagnostic; membership argmax is not the TOADS final classification operation.",
+    "Java final labels are committed in the companion RAS NIfTI; compare final label Dice rather than byte hashes after the source-faithful coefficient correction.",
+    "The corrected Python run converges at iteration 11 while this selected Java run reaches its 12-iteration cap.",
+    "Memberships match Java exactly through iteration 3; later floating differences grow, but final per-label Dice is recorded separately against the Java NIfTI."
   ],
   "java_membership_archive": {
     "path": "twelve_iteration_java_memberships.npz",
@@ -107,9 +107,9 @@
   "python_java_membership_diagnostics": [
     {
       "iteration": 1,
-      "mean_abs": 1.2715435648846807e-10,
-      "max_abs": 4.5299530029296875e-06,
-      "count_gt_1e6": 16,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
+      "count_gt_1e6": 0,
       "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
@@ -129,9 +129,9 @@
     },
     {
       "iteration": 2,
-      "mean_abs": 2.665871134954756e-10,
-      "max_abs": 4.306435585021973e-06,
-      "count_gt_1e6": 47,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
+      "count_gt_1e6": 0,
       "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
@@ -151,9 +151,9 @@
     },
     {
       "iteration": 3,
-      "mean_abs": 4.313624180074527e-10,
-      "max_abs": 2.9206275939941406e-06,
-      "count_gt_1e6": 96,
+      "mean_abs": 0.0,
+      "max_abs": 0.0,
+      "count_gt_1e6": 0,
       "count_gt_1e5": 0,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
@@ -173,10 +173,10 @@
     },
     {
       "iteration": 4,
-      "mean_abs": 5.3677604583413085e-09,
-      "max_abs": 1.4424324035644531e-05,
-      "count_gt_1e6": 3465,
-      "count_gt_1e5": 3,
+      "mean_abs": 1.967076457276562e-07,
+      "max_abs": 0.001500409096479416,
+      "count_gt_1e6": 19632,
+      "count_gt_1e5": 5636,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
       "per_class_dice": [
@@ -195,10 +195,10 @@
     },
     {
       "iteration": 5,
-      "mean_abs": 1.0524357385577332e-08,
-      "max_abs": 0.00039011240005493164,
-      "count_gt_1e6": 4528,
-      "count_gt_1e5": 162,
+      "mean_abs": 2.320321925708413e-07,
+      "max_abs": 0.0013795197010040283,
+      "count_gt_1e6": 22010,
+      "count_gt_1e5": 6373,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
       "per_class_dice": [
@@ -217,12 +217,12 @@
     },
     {
       "iteration": 6,
-      "mean_abs": 6.177822911013209e-07,
-      "max_abs": 0.0006197094917297363,
-      "count_gt_1e6": 38219,
-      "count_gt_1e5": 19714,
-      "argmax_agreement": 1.0,
-      "min_argmax_dice": 1.0,
+      "mean_abs": 1.3310359463503119e-06,
+      "max_abs": 0.4990583658218384,
+      "count_gt_1e6": 28406,
+      "count_gt_1e5": 7246,
+      "argmax_agreement": 0.999993834011592,
+      "min_argmax_dice": 0.9975669099756691,
       "per_class_dice": [
         1.0,
         1.0,
@@ -232,19 +232,19 @@
         1.0,
         1.0,
         1.0,
+        0.9975669099756691,
         1.0,
-        1.0,
-        1.0
+        0.9998430387694239
       ]
     },
     {
       "iteration": 7,
-      "mean_abs": 8.168949960918326e-08,
-      "max_abs": 0.00034618377685546875,
-      "count_gt_1e6": 24142,
-      "count_gt_1e5": 2364,
-      "argmax_agreement": 1.0,
-      "min_argmax_dice": 1.0,
+      "mean_abs": 1.5873200709393132e-06,
+      "max_abs": 0.5133732557296753,
+      "count_gt_1e6": 27893,
+      "count_gt_1e5": 7296,
+      "argmax_agreement": 0.999993834011592,
+      "min_argmax_dice": 0.9975550122249389,
       "per_class_dice": [
         1.0,
         1.0,
@@ -254,19 +254,19 @@
         1.0,
         1.0,
         1.0,
+        0.9975550122249389,
         1.0,
-        1.0,
-        1.0
+        0.9998430387694239
       ]
     },
     {
       "iteration": 8,
-      "mean_abs": 4.994234359401162e-08,
-      "max_abs": 0.0005537271499633789,
-      "count_gt_1e6": 15599,
-      "count_gt_1e5": 1349,
-      "argmax_agreement": 1.0,
-      "min_argmax_dice": 1.0,
+      "mean_abs": 1.7062150163837941e-06,
+      "max_abs": 0.5135310888290405,
+      "count_gt_1e6": 35860,
+      "count_gt_1e5": 8575,
+      "argmax_agreement": 0.999993834011592,
+      "min_argmax_dice": 0.9975669099756691,
       "per_class_dice": [
         1.0,
         1.0,
@@ -276,39 +276,39 @@
         1.0,
         1.0,
         1.0,
+        0.9975669099756691,
         1.0,
-        1.0,
-        1.0
+        0.9998430387694239
       ]
     },
     {
       "iteration": 9,
-      "mean_abs": 1.5257627694609255e-07,
-      "max_abs": 0.0016913414001464844,
-      "count_gt_1e6": 25837,
-      "count_gt_1e5": 3272,
-      "argmax_agreement": 1.0,
-      "min_argmax_dice": 1.0,
+      "mean_abs": 6.753854904673062e-06,
+      "max_abs": 0.5143035650253296,
+      "count_gt_1e6": 46351,
+      "count_gt_1e5": 23140,
+      "argmax_agreement": 0.9999876680231841,
+      "min_argmax_dice": 0.9964664310954063,
       "per_class_dice": [
         1.0,
         1.0,
+        0.9965397923875432,
         1.0,
         1.0,
         1.0,
+        0.9964664310954063,
         1.0,
+        0.9975669099756691,
         1.0,
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        0.9998430387694239
       ]
     },
     {
       "iteration": 10,
-      "mean_abs": 1.0955538698453893e-07,
-      "max_abs": 0.0004013180732727051,
-      "count_gt_1e6": 28009,
-      "count_gt_1e5": 4245,
+      "mean_abs": 1.7946122170542367e-06,
+      "max_abs": 0.07262992858886719,
+      "count_gt_1e6": 48777,
+      "count_gt_1e5": 25663,
       "argmax_agreement": 1.0,
       "min_argmax_dice": 1.0,
       "per_class_dice": [
@@ -327,12 +327,12 @@
     },
     {
       "iteration": 11,
-      "mean_abs": 2.864945543024078e-07,
-      "max_abs": 0.0020277947187423706,
-      "count_gt_1e6": 38352,
-      "count_gt_1e5": 11822,
+      "mean_abs": 1.4512846746583818e-06,
+      "max_abs": 0.08395679295063019,
+      "count_gt_1e6": 51613,
+      "count_gt_1e5": 29623,
       "argmax_agreement": 0.999993834011592,
-      "min_argmax_dice": 0.9974424552429667,
+      "min_argmax_dice": 0.9964912280701754,
       "per_class_dice": [
         1.0,
         1.0,
@@ -340,34 +340,39 @@
         1.0,
         1.0,
         1.0,
-        1.0,
-        1.0,
-        0.9975550122249389,
-        0.9974424552429667,
-        1.0
-      ]
-    },
-    {
-      "iteration": 12,
-      "mean_abs": 2.365145155636128e-05,
-      "max_abs": 0.20491501688957214,
-      "count_gt_1e6": 38204,
-      "count_gt_1e5": 14915,
-      "argmax_agreement": 0.9999321741275127,
-      "min_argmax_dice": 0.9588014981273408,
-      "per_class_dice": [
-        1.0,
-        0.9996394664102872,
-        0.9588014981273408,
-        1.0,
-        0.9999113082039911,
-        0.975609756097561,
-        0.9861111111111112,
+        0.9964912280701754,
         1.0,
         1.0,
         1.0,
-        1.0
+        0.9998430387694239
       ]
     }
-  ]
+  ],
+  "python_run_after_float32_coefficient_fix": {
+    "iterations": 11,
+    "energy_threshold_reached": true,
+    "iteration_limit_reached": false,
+    "terminal_energy_ratio": 7.67560486565344e-05,
+    "python_classification_sha256": "caaec9dd4a82798480c0175b3c9233fe89354a7f926c3dc6c27de22384dfd9bc"
+  },
+  "java_python_final_label_dice_after_float32_coefficient_fix": {
+    "per_label": {
+      "1": 1.0,
+      "5": 0.9995568358076667,
+      "6": 1.0,
+      "14": 1.0,
+      "15": 0.9997544405336826,
+      "16": 1.0,
+      "17": 1.0,
+      "18": 1.0,
+      "22": 1.0,
+      "24": 0.9975186104218362,
+      "25": 1.0
+    },
+    "minimum_dice": 0.9975186104218362,
+    "changed_voxels": 4,
+    "python_output_sha256": "caaec9dd4a82798480c0175b3c9233fe89354a7f926c3dc6c27de22384dfd9bc"
+  },
+  "java_final_classification_nifti": "twelve_iteration_java_classification.nii.gz",
+  "java_final_classification_nifti_sha256": "73c89c973132fd0f543904e5f956792724e2b5e240852fd3d88d9f088081da47"
 }

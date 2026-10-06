@@ -213,9 +213,11 @@ def main() -> int:
         ),
         smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
         atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
-        smoothing=0.2 / 6.0 / len(atlas.structures),
+        smoothing=registered_loop.toads_effective_smoothing(0.2, len(atlas.structures)),
         prior_factor=0.5,
-        prior_coefficient=2.0 / len(atlas.structures),
+        prior_coefficient=registered_loop.toads_effective_prior_coefficient(
+            2.0, len(atlas.structures)
+        ),
         maximum_iterations=args.maximum_iterations,
         convergence_threshold=args.convergence_threshold,
         relation_limit=args.relation_limit,

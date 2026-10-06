@@ -40,7 +40,12 @@ from pymacruise.toads_atlas import (
     load_toads_intensity_variance_factors,
     load_toads_optimized_factors,
 )
-from pymacruise.toads_registered_loop import ToadsRegisteredLoopConfig, run_registered_toads_loop
+from pymacruise.toads_registered_loop import (
+    ToadsRegisteredLoopConfig,
+    run_registered_toads_loop,
+    toads_effective_prior_coefficient,
+    toads_effective_smoothing,
+)
 from pymacruise.volume_ops import calculate_volume
 from pymacruise.workflow import load_workflow_config_file, preflight_workflow
 
@@ -954,11 +959,11 @@ def main(argv: list[str] | None = None) -> int:
             ),
             smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
             atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
-            smoothing=0.2 / 6.0 / len(atlas.structures),
+            smoothing=toads_effective_smoothing(0.2, len(atlas.structures)),
             # AlgorithmMultipleToads hard-codes atlasCoupling=0.5; this is
             # forwarded as priorFactor to MultipleToadSegmentation.
             prior_factor=0.5,
-            prior_coefficient=2.0 / len(atlas.structures),
+            prior_coefficient=toads_effective_prior_coefficient(2.0, len(atlas.structures)),
             maximum_iterations=args.maximum_iterations,
             convergence_threshold=args.convergence_threshold,
             relation_limit=args.relation_limit,

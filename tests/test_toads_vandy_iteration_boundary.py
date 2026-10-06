@@ -25,6 +25,8 @@ from pymacruise.toads_atlas import toads_atlas_shapes_in_structure_order
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
     run_registered_toads_loop,
+    toads_effective_prior_coefficient,
+    toads_effective_smoothing,
 )
 
 
@@ -81,9 +83,9 @@ def _registered_two_iteration_run(maximum_iterations: int = 2):
         ),
         smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
         atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
-        smoothing=0.2 / 6.0 / len(atlas.structures),
+        smoothing=toads_effective_smoothing(0.2, len(atlas.structures)),
         prior_factor=0.5,
-        prior_coefficient=2.0 / len(atlas.structures),
+        prior_coefficient=toads_effective_prior_coefficient(2.0, len(atlas.structures)),
         maximum_iterations=maximum_iterations,
         convergence_threshold=1e-4,
         relation_limit=3,
@@ -115,10 +117,7 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
         second = result.exact_iterations[1]
         first_memberships = np.asarray(first.membership_pass.memberships, dtype=np.float32)
         java_first = java["iteration1_memberships"]
-        first_membership_error = np.abs(first_memberships - java_first)
-        assert np.count_nonzero(first_membership_error > 1e-6) == 16
-        assert float(first_membership_error.mean()) == np.float32(1.2715436e-10)
-        assert float(first_membership_error.max()) == np.float32(4.529953e-6)
+        np.testing.assert_array_equal(first_memberships, java_first)
         assert abs(
             float(first.membership_pass.objective)
             - PROVENANCE["java_trace"]["iteration1_objective"]
@@ -372,13 +371,12 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
         assert np.float32(second.membership_pass.objective) == np.float32(PROVENANCE["java_trace"]["iteration2_objective"])
 
 
-def test_vandy_twelve_iteration_final_labels_match_java_reference() -> None:
-    """Compare the capped long-loop output hash with the selected Java run.
+def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate() -> None:
+    """Check corrected source coefficients and per-label output acceptance.
 
-    Intermediate objective/membership trajectories are intentionally not
-    called equivalent: their small differences can amplify before the cap.
-    This test validates the final classification on this specific synthetic
-    input and setting only.
+    Python now reaches its configured energy threshold before the selected
+    Java iteration cap. Compare final labels by the agreed per-label Dice
+    metric; do not require matching iteration counts or hashes.
     """
     reference = TWELVE_ITERATION_PROVENANCE
     assert reference["source_sha256"]["AlgorithmMultipleToads.java"] == (
@@ -391,9 +389,12 @@ def test_vandy_twelve_iteration_final_labels_match_java_reference() -> None:
 
     atlas, result = _registered_two_iteration_run(maximum_iterations=12)
     assert len(atlas.structures) == 11
-    assert result.iteration_count == reference["iterations"] == 12
-    assert result.iteration_limit_reached is True
-    assert result.energy_threshold_reached is False
+    python_run = reference["python_run_after_float32_coefficient_fix"]
+    assert reference["iterations"] == 12
+    assert result.iteration_count == python_run["iterations"] == 11
+    assert result.iteration_limit_reached is False
+    assert result.energy_threshold_reached is True
+    assert float(result.terminal_energy_ratio) == python_run["terminal_energy_ratio"]
 
     with np.load(TWELVE_ITERATION_MEMBERSHIPS, allow_pickle=False) as java:
         for iteration, exact in enumerate(result.exact_iterations, start=1):
@@ -418,4 +419,32 @@ def test_vandy_twelve_iteration_final_labels_match_java_reference() -> None:
     assert labels.shape == (36, 45, 34)
     labels_source_order = np.asfortranarray(labels)
     actual_hash = hashlib.sha256(labels_source_order.tobytes(order="F")).hexdigest()
-    assert actual_hash == reference["java_final_classification_sha256"]
+    assert actual_hash == python_run["python_classification_sha256"]
+
+    java_path = FIXTURE / reference["java_final_classification_nifti"]
+    assert hashlib.sha256(java_path.read_bytes()).hexdigest() == (
+        reference["java_final_classification_nifti_sha256"]
+    )
+    java_labels = np.asanyarray(nib.load(str(java_path)).dataobj, dtype=np.uint8)
+    java_source_hash = hashlib.sha256(
+        np.asfortranarray(java_labels).tobytes(order="F")
+    ).hexdigest()
+    assert java_source_hash == reference["java_final_classification_sha256"]
+    dice_by_label = {}
+    for structure in atlas.structures:
+        label = int(structure.label)
+        python_class = labels == label
+        java_class = java_labels == label
+        denominator = int(np.count_nonzero(python_class) + np.count_nonzero(java_class))
+        dice_by_label[label] = (
+            1.0
+            if denominator == 0
+            else 2.0 * np.count_nonzero(python_class & java_class) / denominator
+        )
+    java_python = reference["java_python_final_label_dice_after_float32_coefficient_fix"]
+    assert dice_by_label == {
+        int(key): value for key, value in java_python["per_label"].items()
+    }
+    assert min(dice_by_label.values()) == java_python["minimum_dice"]
+    assert min(dice_by_label.values()) >= 0.97
+    assert int(np.count_nonzero(labels != java_labels)) == java_python["changed_voxels"] == 4

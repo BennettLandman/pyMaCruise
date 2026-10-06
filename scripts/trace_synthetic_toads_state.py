@@ -27,6 +27,8 @@ from pymacruise.toads_atlas import (
 from pymacruise.toads_registered_loop import (
     ToadsRegisteredLoopConfig,
     run_registered_toads_loop,
+    toads_effective_prior_coefficient,
+    toads_effective_smoothing,
 )
 import pymacruise.toads_registered_loop as registered_loop
 
@@ -199,9 +201,9 @@ def build_trace(
         ),
         smoothing_priors=np.ones(len(atlas.structures), dtype=np.float32),
         atlas_shape_priors=np.ones(len(atlas.structures), dtype=np.float32),
-        smoothing=0.2 / 6.0 / len(atlas.structures),
+        smoothing=toads_effective_smoothing(0.2, len(atlas.structures)),
         prior_factor=0.5,
-        prior_coefficient=2.0 / len(atlas.structures),
+        prior_coefficient=toads_effective_prior_coefficient(2.0, len(atlas.structures)),
         maximum_iterations=maximum_iterations,
         convergence_threshold=0.0,
         relation_limit=relation_limit,

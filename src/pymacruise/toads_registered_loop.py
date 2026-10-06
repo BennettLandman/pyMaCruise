@@ -44,9 +44,45 @@ from .toads_registered_unity_field_startup import (
 )
 
 
+def toads_effective_smoothing(raw_smoothing: float, class_count: int) -> float:
+    """Return the source-effective smoothing in Java float32 operation order.
+
+    ``MultipleToadSegmentation`` computes ``smooth / 6 / classes`` with two
+    sequential Java ``float`` divisions. Keeping each intermediate as float32
+    matters: a Python double expression rounded once can differ by one ULP
+    and that perturbation can grow during the alternating TOADS updates.
+    """
+    if (
+        isinstance(class_count, (bool, np.bool_))
+        or not isinstance(class_count, (int, np.integer))
+        or int(class_count) < 1
+    ):
+        raise ValueError("class_count must be a positive integer")
+    smooth = np.float32(raw_smoothing)
+    if not np.isfinite(smooth) or smooth < np.float32(0.0):
+        raise ValueError("raw_smoothing must be finite and nonnegative")
+    per_neighbor = np.float32(smooth / np.float32(6.0))
+    per_neighbor_class = np.float32(per_neighbor / np.float32(class_count))
+    return float(per_neighbor_class)
+
+
+def toads_effective_prior_coefficient(raw_coefficient: float, class_count: int) -> float:
+    """Return the selected Java ``priorCoeff / classes`` float32 value."""
+    if (
+        isinstance(class_count, (bool, np.bool_))
+        or not isinstance(class_count, (int, np.integer))
+        or int(class_count) < 1
+    ):
+        raise ValueError("class_count must be a positive integer")
+    coefficient = np.float32(raw_coefficient)
+    if not np.isfinite(coefficient) or coefficient < np.float32(0.0):
+        raise ValueError("raw_coefficient must be finite and nonnegative")
+    return float(np.float32(coefficient / np.float32(class_count)))
+
+
 @dataclass(frozen=True)
 class ToadsRegisteredLoopConfig:
-    """Explicit atlas/statistics parameters and selected loop controls."""
+    """Explicit source-effective atlas/statistics parameters and loop controls."""
 
     category_exponents: Any
     exponent_by_channel_class: Any
@@ -54,6 +90,8 @@ class ToadsRegisteredLoopConfig:
     class_variance_weights: Any
     smoothing_priors: Any
     atlas_shape_priors: Any
+    # These are already divided into source-effective values. Use the helper
+    # functions above when deriving them from wrapper-level parameters.
     smoothing: float
     # AlgorithmMultipleToads' selected wrapper sets atlasCoupling=0.5, which
     # MultipleToadSegmentation receives as priorFactor.
