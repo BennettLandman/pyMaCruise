@@ -104,4 +104,26 @@ def test_folded_lesion_growing_pass_matches_java_through_queue_exhaustion() -> N
         assert any(event.topology_accepted is False for event in result.events)
         assert any(event.topology_accepted is None for event in result.events)
 
+        compact = propagate_lesion_toads_growing(
+            segmentation,
+            skeleton,
+            memberships,
+            ordering,
+            np.asarray([1, 2, 3, 4], dtype=np.float32),
+            ("obj", "lesion", "blackhole", "optimized_lesion"),
+            lesion,
+            black_hole,
+            lesion_class=1,
+            use_lesion_max=bool(case["use_lesion_max"]),
+            retain_event_states=False,
+        )
+        assert _event_trace(compact.events) == case["events"], case["name"]
+        assert np.array_equal(compact.segmentation, result.segmentation)
+        assert np.array_equal(compact.skeleton, result.skeleton)
+        assert np.array_equal(compact.available, result.available)
+        assert np.array_equal(compact.ordering, result.ordering)
+        assert np.array_equal(compact.class_volume, result.class_volume)
+        assert compact.events
+        assert all(not hasattr(event, "segmentation") for event in compact.events)
+
     assert not np.array_equal(reference["cases"][0]["volume_bits"], reference["cases"][1]["volume_bits"])

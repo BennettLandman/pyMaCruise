@@ -355,6 +355,7 @@ def run_plus_lesion_registered_branch_checkpoint(
             align_shapes=True,
             init_align_iter=1,
             progress_callback=record_progress,
+            retain_growth_event_states=False,
         )
         branch = branch_result.branch.branch
         if branch.growing is None or branch.relations is None:

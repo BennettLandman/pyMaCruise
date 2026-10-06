@@ -50,6 +50,7 @@ def register_and_branch_lesion_toads_descriptor_iteration(
     init_align_iter: int = 10,
     has_lesion: bool = True,
     use_lesion_max: bool = False,
+    retain_growth_event_states: bool = True,
 ) -> LesionToadsDescriptorRegisteredIteration:
     """Run the selected order: ``registerShapes`` then control and branching.
 
@@ -88,6 +89,7 @@ def register_and_branch_lesion_toads_descriptor_iteration(
         relation_limit=relation_limit,
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
+        retain_growth_event_states=retain_growth_event_states,
     )
     return LesionToadsDescriptorRegisteredIteration(
         transition,

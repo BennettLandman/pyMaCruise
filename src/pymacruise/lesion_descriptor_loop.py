@@ -68,6 +68,7 @@ class LesionToadsDescriptorLoopOptions:
     init_align_iter: int = 10
     has_lesion: bool = True
     use_lesion_max: bool = False
+    retain_growth_event_states: bool = True
     retain_iteration_details: bool = False
     atlas_names: Sequence[str] | None = None
     maximum_ventricle_distance: int = 2
@@ -152,6 +153,8 @@ def run_lesion_toads_descriptor_loop(
         raise TypeError("source_zero_variance_nan must be boolean")
     if not isinstance(options.retain_iteration_details, (bool, np.bool_)):
         raise TypeError("retain_iteration_details must be boolean")
+    if not isinstance(options.retain_growth_event_states, (bool, np.bool_)):
+        raise TypeError("retain_growth_event_states must be boolean")
     if options.correction_polynomial_degree is not None and (
         isinstance(options.correction_polynomial_degree, (bool, np.bool_))
         or not isinstance(options.correction_polynomial_degree, (int, np.integer))
@@ -280,6 +283,7 @@ def run_lesion_toads_descriptor_loop(
             init_align_iter=options.init_align_iter,
             has_lesion=options.has_lesion,
             use_lesion_max=options.use_lesion_max,
+            retain_growth_event_states=options.retain_growth_event_states,
         )
         passes.append(
             LesionToadsDescriptorLoopPass(

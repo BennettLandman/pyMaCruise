@@ -344,7 +344,7 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     monkeypatch.setattr(registered_loop, "continue_plus_lesion_registered_loop", capture_continue)
     loop = persist_plus_lesion_registered_loop_checkpoint(
         initial.manifest_path, ATLAS, tmp_path / "loop-2", n_iter_max=99,
-        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False,
+        thinning_limit=1000.0, max_passes=1, source_zero_variance_nan=False, resume=True,
     )
     manifest = json.loads(loop.manifest_path.read_text())
     summary = json.loads(loop.summary_path.read_text())

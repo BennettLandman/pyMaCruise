@@ -57,6 +57,15 @@ class LesionToadsGrowingEvent:
 
 
 @dataclass(frozen=True)
+class LesionToadsGrowingTraceEvent:
+    """Compact event metadata for volume-scale runs without state snapshots."""
+
+    popped_item: ToadsHeapItem
+    topology_accepted: bool | None
+    inserted_neighbors: tuple[ToadsHeapItem, ...]
+
+
+@dataclass(frozen=True)
 class LesionToadsGrowingPass:
     """Final state and selected-source event trace after queue exhaustion."""
 
@@ -65,7 +74,7 @@ class LesionToadsGrowingPass:
     available: NDArray[np.bool_]
     ordering: NDArray[np.float32]
     class_volume: NDArray[np.float32]
-    events: tuple[LesionToadsGrowingEvent, ...]
+    events: tuple[LesionToadsGrowingEvent | LesionToadsGrowingTraceEvent, ...]
     remaining_queue: tuple[ToadsHeapItem, ...]
 
 
@@ -1276,12 +1285,16 @@ def propagate_lesion_toads_growing(
     use_lesion_max: bool = False,
     empty_label: int = -1,
     zero: float = 1.0e-10,
+    retain_event_states: bool = True,
 ) -> LesionToadsGrowingPass:
     """Run the selected lesion-aware growing pass until its min-heap empties.
 
     This composes the separately checked ``initGrowingLabels`` and one-pop
     ``propagateGrowing`` operations. Returned arrays do not alias the caller's
-    arrays. The event trace is useful for source comparison and provenance.
+    arrays. By default, the event trace retains full per-pop image snapshots
+    for source comparison. Set ``retain_event_states=False`` in volume
+    workflows to keep only scalar/heap event metadata; retaining every
+    full-volume snapshot grows memory with queue length times image size.
     No lesion-membership estimation, competition, or thinning is performed.
     """
     labels = np.asarray(segmentation)
@@ -1292,6 +1305,8 @@ def propagate_lesion_toads_growing(
     lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
     types = tuple(object_types)
+    if not isinstance(retain_event_states, (bool, np.bool_)):
+        raise TypeError("retain_event_states must be boolean")
     initialized = initialize_lesion_toads_growing_frontier(
         skel,
         mems,
@@ -1308,7 +1323,7 @@ def propagate_lesion_toads_growing(
     current_available = initialized.available
     current_ordering = orderings.copy()
     current_volume = volumes.copy()
-    events: list[LesionToadsGrowingEvent] = []
+    events: list[LesionToadsGrowingEvent | LesionToadsGrowingTraceEvent] = []
     while initialized.queue:
         event = process_lesion_toads_growing_event(
             current_labels,
@@ -1326,7 +1341,16 @@ def propagate_lesion_toads_growing(
             empty_label=empty_label,
             zero=zero,
         )
-        events.append(event)
+        if retain_event_states:
+            events.append(event)
+        else:
+            events.append(
+                LesionToadsGrowingTraceEvent(
+                    event.popped_item,
+                    event.topology_accepted,
+                    event.inserted_neighbors,
+                )
+            )
         current_labels = event.segmentation
         current_skeleton = event.skeleton
         current_available = event.available

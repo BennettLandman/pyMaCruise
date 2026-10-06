@@ -61,6 +61,7 @@ def lesion_toads_post_registration_branch(
     use_lesion_max: bool = False,
     source_energy_ratio: LesionEnergyRatio | None = None,
     progress_callback: Callable[[str], None] | None = None,
+    retain_growth_event_states: bool = True,
 ) -> LesionToadsPostRegistrationBranch:
     """Run only the selected wrapper's branch immediately after alignment.
 
@@ -86,6 +87,8 @@ def lesion_toads_post_registration_branch(
         raise TypeError("lesion flags must be boolean")
     if progress_callback is not None and not callable(progress_callback):
         raise TypeError("progress_callback must be callable or None")
+    if not isinstance(retain_growth_event_states, (bool, np.bool_)):
+        raise TypeError("retain_growth_event_states must be boolean")
     if isinstance(iteration, (bool, np.bool_)) or not isinstance(
         iteration, (int, np.integer)
     ) or iteration < 1:
@@ -187,6 +190,7 @@ def lesion_toads_post_registration_branch(
             membership.black_hole_membership,
             lesion_class=lesion_class,
             use_lesion_max=bool(use_lesion_max),
+            retain_event_states=bool(retain_growth_event_states),
         )
         segmentation_after = growing.segmentation.copy()
         if progress_callback is not None:

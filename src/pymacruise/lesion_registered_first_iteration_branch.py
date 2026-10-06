@@ -51,6 +51,7 @@ def run_lesion_toads_registered_first_iteration_branch(
     has_lesion: bool = True,
     use_lesion_max: bool = False,
     progress_callback: Callable[[str], None] | None = None,
+    retain_growth_event_states: bool = True,
 ) -> LesionRegisteredFirstIterationBranch:
     """Run first-loop membership → atlas registration → source branch.
 
@@ -103,6 +104,7 @@ def run_lesion_toads_registered_first_iteration_branch(
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
         progress_callback=progress_callback,
+        retain_growth_event_states=retain_growth_event_states,
     )
     if progress_callback is not None:
         progress_callback("convergence_growth_relations:complete")

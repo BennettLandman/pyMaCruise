@@ -42,6 +42,7 @@ def continue_after_next_iteration_registration(
     has_lesion: bool = True,
     use_lesion_max: bool = False,
     progress_callback: Callable[[str], None] | None = None,
+    retain_growth_event_states: bool = True,
 ) -> LesionNextIterationBranch:
     """Apply selected post-registration stop, optional growth, and refresh.
 
@@ -74,6 +75,7 @@ def continue_after_next_iteration_registration(
         use_lesion_max=use_lesion_max,
         source_energy_ratio=update.energy_ratio,
         progress_callback=progress_callback,
+        retain_growth_event_states=retain_growth_event_states,
     )
     return LesionNextIterationBranch(
         registration,

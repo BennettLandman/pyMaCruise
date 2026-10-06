@@ -346,6 +346,7 @@ def continue_plus_lesion_registered_loop(
         initial_correction_degree=initial_correction_degree,
         align_shapes=True,
         init_align_iter=1,
+        retain_growth_event_states=False,
         retain_iteration_details=False,
         initial_distance_maps=LesionInitialDistanceMaps(
             distance_state[..., 0].astype(np.bool_),
@@ -478,8 +479,10 @@ def persist_plus_lesion_registered_loop_checkpoint(
                 )
         except (OSError, ValueError, KeyError, RegisteredBranchStateError):
             pass
-    elif resume:
-        raise FileNotFoundError(f"Cannot resume; no registered-loop manifest exists: {manifest_path}")
+    # A parent workflow can resume after completing its registered-branch
+    # checkpoint but before this downstream loop checkpoint was created.
+    # In that case, ``resume=True`` means reuse any valid child checkpoint and
+    # start this missing stage from the completed parent state.
 
     loop = continue_plus_lesion_registered_loop(
         parent_path, descriptor,
