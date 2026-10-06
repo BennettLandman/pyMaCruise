@@ -50,16 +50,54 @@ therefore localizes the later natural-run drift to already-carried state
 differences; it does not find a new mismatch in the iteration-4 field or
 membership kernel.
 
+## Corrected first-iteration state trace
+
+On 2026-10-06, I repeated the selected Java trace after finding that an older
+ignored diagnostic input writer serialized NumPy C order while MIPAV's
+`ModelImage.importData` expects x-fastest storage. That exploratory C-order run
+produced a different padded grid and is excluded from comparisons. The
+corrected Java input was written in NumPy Fortran order and both implementations
+then used the same `(53,60,51)` padded grid. The committed T1 values and geometry
+were unchanged.
+
+On that common grid, the Java and Python pre-update initialization membership
+arrays are bit-identical (Java trace SHA-256
+`b279944c954adc2240cd95768c79eba88b72259a8d337cd7c9742af3dc0afd0e`). The
+startup assigned-class standard deviations, closest-label map, startup shape
+samples, and first thinning segmentation also match exactly. The startup
+membership update differs at 77,339 float entries, but the maximum absolute
+difference is one float32 ULP (`1.1920929e-7`), the mean absolute difference is
+`1.3466327e-10`, and no entry differs by more than `1e-6`.
+
+For the first loop update, Python was seeded with the Java startup memberships,
+Java iteration-1 centroids and thinned labels, Java closest-label state and
+shape samples, and a unity correction field. The Python exact membership pass
+then matches the Java iteration-1 output within one float32 ULP (maximum
+`1.1920929e-7`, mean `8.5862491e-11`, zero values above `1e-6`); its objective
+is the same float32 value (`50.3000908`). By contrast, the natural Python
+iteration-1 membership array differs by at most `4.5299530e-6`, with 16 values
+above `1e-6`. This confirms the selected first-update kernel on Java-seeded
+state and points to amplification of the tiny natural-run roundoff difference
+as the loop advances. It does not establish converged trajectory equivalence.
+
+The Java traces were produced by `VandyCoreSyntheticRunExport` with a 6 GB JVM
+heap cap, 12-iteration cap, and one registration update. The Python diagnostic
+used `dump_python_toads_source_vandy_history.py` with iteration history enabled.
+All raw trace files and temporary harness instrumentation remain under ignored
+`build/java-reference/`; no production algorithm source changed. No pytest or
+full-suite run was performed for this diagnostic, and the selected TOADS line
+estimate is unchanged.
+
 ## Scope and next comparison
 
 This is a state-seeded selected-method comparison on one compact synthetic
 fixture. It is not whole-loop convergence equivalence, final MaCRUISE output
 acceptance, a real-MRI test, or proof that the accumulated trajectory remains
-within the requested segmentation tolerance on other inputs. The earliest
-measurable natural-run divergence appears at the first exact update: startup
-memberships differ by at most one ULP, while iteration-1 memberships differ
-by at most `4.5299530e-6` at 16 values. The next TOADS comparison should seed
-the first loop update from identical Java state and compare its thinning
-priority/state and exact-membership stages separately.
+within the requested segmentation tolerance on other inputs. With corrected
+x-fastest Java input serialization, the earliest measured divergence remains
+the natural iteration-1 exact update, while direct replay from Java state
+matches within one ULP. The next TOADS comparison should trace source/Python
+centroid calculation and the first carried state after that update, then
+repeat the source-state replay at subsequent loop boundaries.
 
 No full repository suite was run for this diagnostic; no source code changed.
