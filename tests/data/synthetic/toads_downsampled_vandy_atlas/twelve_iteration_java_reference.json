@@ -90,6 +90,284 @@
   "notes": [
     "Final class-label bytes are hashed in MIPAV x-fastest voxel order.",
     "The Java and current Python final classification hashes match exactly for this fixture.",
-    "Intermediate objectives and membership trajectories diverge modestly after iteration 5; this fixture does not establish full trajectory equivalence or convergence equivalence."
+    "Intermediate objectives and membership trajectories diverge modestly after iteration 5; this fixture does not establish full trajectory equivalence or convergence equivalence.",
+    "All 12 Java membership arrays are committed in the companion NPZ fixture. Python per-iteration membership MAE/max errors and argmax-map agreement are diagnostic; membership argmax is not the TOADS final classification operation."
+  ],
+  "java_membership_archive": {
+    "path": "twelve_iteration_java_memberships.npz",
+    "sha256": "8c1be15ab6df8c05181710c90e3ba4fad24b81e7f09c5fd817e1dbce4bcab419",
+    "shape": [
+      53,
+      60,
+      51,
+      11
+    ],
+    "float_format": "IEEE-754 float32 in Java x,y,z,class traversal; NPZ arrays are stored as float32 x,y,z,class"
+  },
+  "python_java_membership_diagnostics": [
+    {
+      "iteration": 1,
+      "mean_abs": 1.2715435648846807e-10,
+      "max_abs": 4.5299530029296875e-06,
+      "count_gt_1e6": 16,
+      "count_gt_1e5": 0,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 2,
+      "mean_abs": 2.665871134954756e-10,
+      "max_abs": 4.306435585021973e-06,
+      "count_gt_1e6": 47,
+      "count_gt_1e5": 0,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 3,
+      "mean_abs": 4.313624180074527e-10,
+      "max_abs": 2.9206275939941406e-06,
+      "count_gt_1e6": 96,
+      "count_gt_1e5": 0,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 4,
+      "mean_abs": 5.3677604583413085e-09,
+      "max_abs": 1.4424324035644531e-05,
+      "count_gt_1e6": 3465,
+      "count_gt_1e5": 3,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 5,
+      "mean_abs": 1.0524357385577332e-08,
+      "max_abs": 0.00039011240005493164,
+      "count_gt_1e6": 4528,
+      "count_gt_1e5": 162,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 6,
+      "mean_abs": 6.177822911013209e-07,
+      "max_abs": 0.0006197094917297363,
+      "count_gt_1e6": 38219,
+      "count_gt_1e5": 19714,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 7,
+      "mean_abs": 8.168949960918326e-08,
+      "max_abs": 0.00034618377685546875,
+      "count_gt_1e6": 24142,
+      "count_gt_1e5": 2364,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 8,
+      "mean_abs": 4.994234359401162e-08,
+      "max_abs": 0.0005537271499633789,
+      "count_gt_1e6": 15599,
+      "count_gt_1e5": 1349,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 9,
+      "mean_abs": 1.5257627694609255e-07,
+      "max_abs": 0.0016913414001464844,
+      "count_gt_1e6": 25837,
+      "count_gt_1e5": 3272,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 10,
+      "mean_abs": 1.0955538698453893e-07,
+      "max_abs": 0.0004013180732727051,
+      "count_gt_1e6": 28009,
+      "count_gt_1e5": 4245,
+      "argmax_agreement": 1.0,
+      "min_argmax_dice": 1.0,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "iteration": 11,
+      "mean_abs": 2.864945543024078e-07,
+      "max_abs": 0.0020277947187423706,
+      "count_gt_1e6": 38352,
+      "count_gt_1e5": 11822,
+      "argmax_agreement": 0.999993834011592,
+      "min_argmax_dice": 0.9974424552429667,
+      "per_class_dice": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.9975550122249389,
+        0.9974424552429667,
+        1.0
+      ]
+    },
+    {
+      "iteration": 12,
+      "mean_abs": 2.365145155636128e-05,
+      "max_abs": 0.20491501688957214,
+      "count_gt_1e6": 38204,
+      "count_gt_1e5": 14915,
+      "argmax_agreement": 0.9999321741275127,
+      "min_argmax_dice": 0.9588014981273408,
+      "per_class_dice": [
+        1.0,
+        0.9996394664102872,
+        0.9588014981273408,
+        1.0,
+        0.9999113082039911,
+        0.975609756097561,
+        0.9861111111111112,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
   ]
 }

@@ -9,8 +9,9 @@ This synthetic check reruns the compact committed VandyCRUISE fixture using the 
 - Java source: selected VandyCRUISE `AlgorithmMultipleToads.java`, SHA-256 `b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d` (same source hash as the pinned two-iteration reference).
 - Input hashes: same T1, brain mask, and atlas descriptor hashes as the committed two-iteration Java fixture.
 - Java trace log SHA-256: `450ade72d8434c36da4f3a0f446f601ace800c6a5e3b418daff55e5e2ba27666` (local instrumented-run log; its full log remains a build artifact).
+- Twelve Java per-iteration membership arrays are committed in [`twelve_iteration_java_memberships.npz`](../../tests/data/synthetic/toads_downsampled_vandy_atlas/twelve_iteration_java_memberships.npz), SHA-256 `8c1be15ab6df8c05181710c90e3ba4fad24b81e7f09c5fd817e1dbce4bcab419`. The selected Java class order and x/y/z/class traversal are preserved.
 - Java final classification SHA-256: `aff69a659d72b3733edf3d6913c8bd7212d445c977dcc4c2dfe2b2cdb7a2e1c3`, with MIPAV x-fastest voxel byte order.
-- Focused validation: `./.venv/bin/python -m pytest -q --tb=line tests/test_toads_vandy_iteration_boundary.py` — **2 passed, 0 failed, 0 skipped in 44.03s**.
+- Focused validation: `./.venv/bin/python -m pytest -q --tb=line tests/test_toads_vandy_iteration_boundary.py` — **2 passed, 0 failed, 0 skipped in 44.22s**.
 - Current Python run: same final classification SHA-256 as Java, exact across all 55,080 output voxels.
 - Both runs hit the 12-iteration cap; neither claims convergence equivalence.
 
@@ -32,6 +33,8 @@ This synthetic check reruns the compact committed VandyCRUISE fixture using the 
 | 12 | 44.73426 | 46.1163673 | 0.02333523 | 0.0536041185 |
 
 Objectives and ratios are close through iteration 5. They begin to separate at iteration 6 and diverge further by the cap (Java objective 44.73426, Python 46.11637). Despite this trajectory difference, the final class-label arrays are byte-identical on this fixture. This result does not explain the intermediate drift and does not establish matching convergence behavior under another input or cap.
+
+The committed membership arrays localize numeric drift more precisely. Python/Java membership MAE and maximum error are `1.27e-10` / `4.53e-6` at iteration 1 and `4.31e-10` / `2.92e-6` at iteration 3. At iteration 4, three membership values exceed `1e-5`; by iteration 6, 19,714 values exceed `1e-5` (maximum error `6.20e-4`). Per-voxel membership argmax maps agree exactly through iteration 10, agree at 99.9994% in iteration 11, and at 99.9932% in iteration 12; the minimum class Dice for that *diagnostic argmax map* is 0.9588 at iteration 12. This is not the final TOADS label map: the final Java/Python classification hashes still match exactly. The diagnostics identify a membership/statistics trajectory gap without treating a soft-membership argmax as the segmentation result.
 
 ## Reproduction
 

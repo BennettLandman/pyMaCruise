@@ -35,6 +35,7 @@ PROVENANCE = json.loads((FIXTURE / "two_iteration_java_reference.json").read_tex
 TWELVE_ITERATION_PROVENANCE = json.loads(
     (FIXTURE / "twelve_iteration_java_reference.json").read_text()
 )
+TWELVE_ITERATION_MEMBERSHIPS = FIXTURE / "twelve_iteration_java_memberships.npz"
 POST_REFRESH_REFERENCE = json.loads(
     (FIXTURE / "post_refresh_registration_java_reference.json").read_text()
 )
@@ -384,12 +385,34 @@ def test_vandy_twelve_iteration_final_labels_match_java_reference() -> None:
         PROVENANCE["source_sha256"]["AlgorithmMultipleToads.java"]
     )
     assert reference["input_sha256"] == PROVENANCE["input_sha256"]
+    assert hashlib.sha256(TWELVE_ITERATION_MEMBERSHIPS.read_bytes()).hexdigest() == (
+        reference["java_membership_archive"]["sha256"]
+    )
 
     atlas, result = _registered_two_iteration_run(maximum_iterations=12)
     assert len(atlas.structures) == 11
     assert result.iteration_count == reference["iterations"] == 12
     assert result.iteration_limit_reached is True
     assert result.energy_threshold_reached is False
+
+    with np.load(TWELVE_ITERATION_MEMBERSHIPS, allow_pickle=False) as java:
+        for iteration, exact in enumerate(result.exact_iterations, start=1):
+            python_memberships = np.asarray(
+                exact.membership_pass.memberships, dtype=np.float32
+            )
+            java_memberships = np.asarray(java[f"iteration{iteration}"], dtype=np.float32)
+            assert python_memberships.shape == java_memberships.shape == (53, 60, 51, 11)
+            difference = np.abs(python_memberships - java_memberships)
+            diagnostic = reference["python_java_membership_diagnostics"][iteration - 1]
+            assert float(difference.mean()) == diagnostic["mean_abs"]
+            assert float(difference.max()) == diagnostic["max_abs"]
+            assert int(np.count_nonzero(difference > 1e-6)) == diagnostic["count_gt_1e6"]
+            assert int(np.count_nonzero(difference > 1e-5)) == diagnostic["count_gt_1e5"]
+            python_argmax = np.argmax(python_memberships, axis=-1)
+            java_argmax = np.argmax(java_memberships, axis=-1)
+            assert float(np.mean(python_argmax == java_argmax)) == diagnostic[
+                "argmax_agreement"
+            ]
 
     labels = np.asarray(result.native_classification, dtype=np.uint8)
     assert labels.shape == (36, 45, 34)
