@@ -180,3 +180,16 @@ skipped, and 11 expected RAS warnings in 1,309.68s**, peak sampled RSS
 report](toads-approximate-growing-2026-10-06.md) and [full-suite
 report](full-pytest-2026-10-06-approx-growing.md). This remains a method-level
 estimate, not runtime Python line coverage or whole-TOADS equivalence.
+
+
+The 2026-10-06 JAMA LU port changes the operation order of the polynomial
+normal-system solve and eliminates compact Vandy loop drift through the
+recorded 12-cycle trace. Its upstream Jama source is not in the eight-file
+VandyCRUISE denominator, so this update contributes **zero newly counted
+VandyCRUISE lines**; the estimate remains **3,511–4,911 of 13,651 (about
+26–36%)**. The full suite passed **1,218 tests, 0 failed, 0 skipped, and 11
+expected RAS warnings in 1,452.34s** on tested tree `2b1d0c5`, with **10.179
+GB** peak sampled RSS under the 24 GB watchdog. See the [JAMA loop report](toads-jama-lu-compact-vandy-iteration-trace-2026-10-06.md)
+and [full-suite report](full-pytest-2026-10-06-jama-lu.md). This estimate is
+source-operation accounting, not runtime Python line coverage or full workflow
+equivalence.
