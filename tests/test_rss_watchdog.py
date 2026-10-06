@@ -110,3 +110,40 @@ def test_child_exit_between_poll_and_rss_read_is_reported_as_normal_exit(
     output = capsys.readouterr().out
     assert "child_exit=0" in output
     assert "rss_monitor_error=" not in output
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="RSS watchdog uses macOS libproc")
+def test_transient_libproc_lookup_failure_does_not_kill_a_live_child(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    watchdog = Path(__file__).parents[1] / "scripts" / "run_with_rss_watchdog.py"
+    spec = importlib.util.spec_from_file_location("rss_watchdog_transient_test", watchdog)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    reads = 0
+
+    def transiently_missing(_pid: int) -> int:
+        nonlocal reads
+        reads += 1
+        if reads == 1:
+            raise ProcessLookupError(errno.ESRCH, "transient proc_pidinfo lookup failure")
+        return 1024 * 1024
+
+    monkeypatch.setattr(module, "_process_rss_reader", lambda: transiently_missing)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(watchdog), "--limit-gb", "16", "--interval-seconds", "0.01",
+            "--report-interval-seconds", "10", "--", sys.executable, "-c",
+            "__import__('time').sleep(1.3)",
+        ],
+    )
+
+    assert module.main() == 0
+    output = capsys.readouterr().out
+    assert reads > 1
+    assert "child_exit=0" in output
+    assert "rss_monitor_error=" not in output

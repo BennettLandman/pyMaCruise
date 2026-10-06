@@ -115,6 +115,7 @@ def main() -> int:
     limit_bytes = int(arguments.limit_gb * 1024**3)
     child = subprocess.Popen(command, start_new_session=True)
     peak_rss = 0
+    consecutive_rss_errors = 0
     exceeded = False
     next_report = time.monotonic() + arguments.report_interval_seconds
     previous_handlers = {
@@ -136,21 +137,31 @@ def main() -> int:
             try:
                 current_rss = read_rss(child.pid)
             except OSError as rss_error:
-                # proc_pidinfo can report ESRCH if the child exits after the
-                # loop poll above. Briefly wait so waitpid can surface the
-                # exit code before treating a transient lookup failure as a
-                # monitor error.
+                # libproc can transiently fail to resolve a live child while
+                # the system is under memory pressure. First give waitpid a
+                # chance to report an exit, then distinguish a vanished PID
+                # from a live process whose RSS could not be sampled.
                 try:
-                    # A slow process can disappear between poll() and
-                    # proc_pidinfo() before waitpid surfaces its exit. Leave a
-                    # full second for that child-reaping race; short sampling
-                    # intervals must not turn a normal run exit into a monitor
-                    # failure.
                     child.wait(timeout=max(arguments.interval_seconds * 2, 1.0))
                 except subprocess.TimeoutExpired:
-                    raise rss_error
+                    try:
+                        os.kill(child.pid, 0)
+                    except ProcessLookupError:
+                        child.wait()
+                        break
+                    consecutive_rss_errors += 1
+                    # One missed libproc sample should not kill a long run.
+                    # Reuse the last sample briefly, but fail closed if RSS
+                    # cannot be read repeatedly or the observed peak is
+                    # already close to the configured ceiling.
+                    near_limit = peak_rss >= int(limit_bytes * 0.9)
+                    if consecutive_rss_errors >= 3 or near_limit:
+                        raise rss_error
+                    time.sleep(arguments.interval_seconds)
+                    continue
                 else:
                     break
+            consecutive_rss_errors = 0
             peak_rss = max(peak_rss, current_rss)
             now = time.monotonic()
             if now >= next_report:
