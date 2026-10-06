@@ -325,7 +325,12 @@ def stream_toads_registration_energy(
                         m = mem[x, y, z, class_index]
                         m2 = np.float32(m * m)
                         p2 = np.float32(p * p)
-                        cost = np.float32(cost + np.float32(m2 * p2))
+                        # Java registrationCost evaluates m*m*p*p from left
+                        # to right in float32. Grouping the prior square first
+                        # can shift the line-search energy by one ULP and
+                        # accept a pose the source rejects.
+                        contribution = np.float32(np.float32(m2 * p) * p)
+                        cost = np.float32(cost + contribution)
                         norm = np.float32(norm + p2)
     with np.errstate(divide="ignore", invalid="ignore"):
         return np.float32(cost / norm)
@@ -520,7 +525,12 @@ def vectorized_toads_registration_energy(
             membership = mem[x, y_grid, z_grid, k]
             membership_square = np.float32(membership * membership)
             prior_square = np.float32(prior * prior)
-            cost_terms[..., k] = np.float32(membership_square * prior_square)
+            # Preserve the source's left-associated Java expression
+            # `membership * membership * prior * prior` rather than grouping
+            # the prior square before multiplying it by membership squared.
+            cost_terms[..., k] = np.float32(
+                np.float32(membership_square * prior) * prior
+            )
             norm_terms[..., k] = prior_square
         cost = _accumulate_ordered(cost, cost_terms)
         norm = _accumulate_ordered(norm, norm_terms)

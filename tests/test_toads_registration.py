@@ -51,6 +51,24 @@ def test_exact_membership_energy_matches_source_formula_harness() -> None:
         assert energy == np.float32(expected[name]["energy"]), name
 
 
+def test_registration_energy_preserves_java_left_associative_float32_products() -> None:
+    memberships = np.zeros((2, 1, 1, 2), dtype=np.float32)
+    memberships[:, 0, 0, 1] = np.asarray(
+        [0.2679423689842224, 0.8105563521385193], dtype=np.float32
+    )
+    priors = np.zeros_like(memberships)
+    priors[:, 0, 0, 1] = np.asarray(
+        [0.5790576934814453, 0.9043689966201782], dtype=np.float32
+    )
+
+    actual = exact_membership_registration_energy(memberships, priors)
+    expected_source_order = np.float32(0.4868433475494385)
+    grouped_prior_squares = np.float32(0.4868433177471161)
+
+    assert actual == expected_source_order
+    assert actual != grouped_prior_squares
+
+
 def test_exact_membership_energy_preserves_source_empty_norm_nan() -> None:
     memberships = np.ones((3, 3, 3, 2), dtype=np.float32)
     priors = np.zeros_like(memberships)

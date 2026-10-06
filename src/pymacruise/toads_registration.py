@@ -317,7 +317,12 @@ def exact_membership_registration_energy(
                         membership = mem[x, y, z, k]
                         membership_square = np.float32(membership * membership)
                         prior_square = np.float32(prior_value * prior_value)
-                        contribution = np.float32(membership_square * prior_square)
+                        # The selected Java source evaluates
+                        # `membership * membership * prior * prior`
+                        # left-to-right; keep each float32 rounding point.
+                        contribution = np.float32(
+                            np.float32(membership_square * prior_value) * prior_value
+                        )
                         cost = np.float32(cost + contribution)
                         norm = np.float32(norm + prior_square)
     with np.errstate(divide="ignore", invalid="ignore"):

@@ -374,9 +374,8 @@ def test_vandy_iteration_growth_and_next_thinning_match_java_reference() -> None
 def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate() -> None:
     """Check corrected source coefficients and per-label output acceptance.
 
-    Python now reaches its configured energy threshold before the selected
-    Java iteration cap. Compare final labels by the agreed per-label Dice
-    metric; do not require matching iteration counts or hashes.
+    Registration transforms are compared against a source trace at each
+    iteration boundary. The final labels use the agreed per-label Dice gate.
     """
     reference = TWELVE_ITERATION_PROVENANCE
     assert reference["source_sha256"]["AlgorithmMultipleToads.java"] == (
@@ -389,15 +388,17 @@ def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate(
 
     atlas, result = _registered_two_iteration_run(maximum_iterations=12)
     assert len(atlas.structures) == 11
-    python_run = reference["python_run_after_float32_coefficient_fix"]
+    python_run = reference["python_run_after_source_faithful_registration_energy_fix"]
     assert reference["iterations"] == 12
-    assert result.iteration_count == python_run["iterations"] == 11
-    assert result.iteration_limit_reached is False
-    assert result.energy_threshold_reached is True
+    assert result.iteration_count == python_run["iterations"] == 12
+    assert result.iteration_limit_reached is True
+    assert result.energy_threshold_reached is False
     assert float(result.terminal_energy_ratio) == python_run["terminal_energy_ratio"]
 
     with np.load(TWELVE_ITERATION_MEMBERSHIPS, allow_pickle=False) as java:
-        for iteration, exact in enumerate(result.exact_iterations, start=1):
+        for iteration, (exact, cycle) in enumerate(
+            zip(result.exact_iterations, result.registered_cycles, strict=True), start=1
+        ):
             python_memberships = np.asarray(
                 exact.membership_pass.memberships, dtype=np.float32
             )
@@ -414,6 +415,24 @@ def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate(
             assert float(np.mean(python_argmax == java_argmax)) == diagnostic[
                 "argmax_agreement"
             ]
+            python_transform = np.asarray(
+                cycle.registration_control.handoff.transform, dtype=np.float32
+            )
+            java_transform_bits = np.asarray(
+                reference["java_post_registration_transform_uint32"][iteration - 1],
+                dtype=np.uint32,
+            )
+            if iteration <= 11:
+                np.testing.assert_array_equal(
+                    python_transform.view(np.uint32), java_transform_bits
+                )
+            else:
+                java_transform = java_transform_bits.view(np.float32)
+                assert float(np.max(np.abs(python_transform - java_transform))) == (
+                    reference["python_java_post_registration_transform_diagnostics"][
+                        iteration - 1
+                    ]["max_abs"]
+                )
 
     labels = np.asarray(result.native_classification, dtype=np.uint8)
     assert labels.shape == (36, 45, 34)
@@ -441,10 +460,12 @@ def test_vandy_source_faithful_coefficients_track_java_and_meet_label_dice_gate(
             if denominator == 0
             else 2.0 * np.count_nonzero(python_class & java_class) / denominator
         )
-    java_python = reference["java_python_final_label_dice_after_float32_coefficient_fix"]
+    java_python = reference[
+        "java_python_final_label_dice_after_source_faithful_registration_energy_fix"
+    ]
     assert dice_by_label == {
         int(key): value for key, value in java_python["per_label"].items()
     }
     assert min(dice_by_label.values()) == java_python["minimum_dice"]
     assert min(dice_by_label.values()) >= 0.97
-    assert int(np.count_nonzero(labels != java_labels)) == java_python["changed_voxels"] == 4
+    assert int(np.count_nonzero(labels != java_labels)) == java_python["changed_voxels"] == 0

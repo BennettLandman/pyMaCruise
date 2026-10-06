@@ -59,7 +59,9 @@ public final class ToadsRigidRegistrationPyramidReferenceHarness {
             float p=ImageFunctions.linearClosestInterpolation(shapes[k],pxyz[0],pxyz[1],pxyz[2],shapes[k].length,shapes[k][0].length,shapes[k][0][0].length);
             if(p<=0)continue;
             float m=mem[x][y][z][k]; float m2=m*m; float p2=p*p;
-            cost+=m2*p2; norm+=p2;
+            // Match MultipleToadDeformableAtlas.registrationCost: Java
+            // evaluates m*m*p*p left-to-right, rounding at each float step.
+            cost+=m*m*p*p; norm+=p2;
             if(derivatives) {
                 float px=ImageFunctions.linearInterpolationXderivative(shapes[k],pxyz[0],pxyz[1],pxyz[2],shapes[k].length,shapes[k][0].length,shapes[k][0][0].length);
                 float py=ImageFunctions.linearInterpolationYderivative(shapes[k],pxyz[0],pxyz[1],pxyz[2],shapes[k].length,shapes[k][0].length,shapes[k][0][0].length);
