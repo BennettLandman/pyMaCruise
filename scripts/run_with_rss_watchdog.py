@@ -155,7 +155,7 @@ def main() -> int:
                     # cannot be read repeatedly or the observed peak is
                     # already close to the configured ceiling.
                     near_limit = peak_rss >= int(limit_bytes * 0.9)
-                    if consecutive_rss_errors >= 3 or near_limit:
+                    if consecutive_rss_errors >= 10 or near_limit:
                         raise rss_error
                     time.sleep(arguments.interval_seconds)
                     continue

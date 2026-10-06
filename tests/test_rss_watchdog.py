@@ -123,11 +123,12 @@ def test_transient_libproc_lookup_failure_does_not_kill_a_live_child(
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     reads = 0
+    transient_failures = 5
 
     def transiently_missing(_pid: int) -> int:
         nonlocal reads
         reads += 1
-        if reads == 1:
+        if reads <= transient_failures:
             raise ProcessLookupError(errno.ESRCH, "transient proc_pidinfo lookup failure")
         return 1024 * 1024
 
@@ -138,7 +139,7 @@ def test_transient_libproc_lookup_failure_does_not_kill_a_live_child(
         [
             str(watchdog), "--limit-gb", "16", "--interval-seconds", "0.01",
             "--report-interval-seconds", "10", "--", sys.executable, "-c",
-            "__import__('time').sleep(1.3)",
+            "__import__('time').sleep(6.3)",
         ],
     )
 

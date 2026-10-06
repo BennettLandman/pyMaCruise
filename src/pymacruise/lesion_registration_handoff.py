@@ -9,7 +9,7 @@ registration equivalence.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -104,6 +104,7 @@ def register_lesion_membership_handoff(
     template_resolutions_mm: tuple[float, float, float],
     align_shapes: bool = True,
     init_align_iter: int = 10,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionRegistrationHandoff:
     """Apply the active single-rigid LesionTOADS wrapper alignment branch.
 
@@ -131,9 +132,13 @@ def register_lesion_membership_handoff(
         or init_align_iter < 0
     ):
         raise ValueError("init_align_iter must be a nonnegative integer")
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable or None")
 
     optimization = None
     if align_shapes:
+        if progress_callback is not None:
+            progress_callback("shape_optimizer:running")
         optimization = optimize_lesion_shapes_scaled(
             shape_priors,
             memberships,
@@ -152,20 +157,26 @@ def register_lesion_membership_handoff(
             max_rejections=10,
         )
         transform = optimization.transform.copy()
+        if progress_callback is not None:
+            progress_callback("shape_optimizer:complete")
 
     rotation = _rotation_matrix(
         transform[:3], java_float32_norm=True
     ).astype(np.float32, copy=True)
-    bounds = tuple(
-        _bounds_for_transform(
+    bounds_list = []
+    for index, shape in enumerate(shape_priors):
+        if progress_callback is not None:
+            progress_callback(f"shape_bounds:{index}:running")
+        bounds_list.append(_bounds_for_transform(
             shape,
             image_dimensions_xyz=tuple(int(size) for size in memberships.shape[:3]),
             image_resolutions_mm=image_resolutions_mm,
             template_resolutions_mm=template_resolutions_mm,
             transform=tuple(float(value) for value in transform),
-        )
-        for shape in shape_priors
-    )
+        ))
+        if progress_callback is not None:
+            progress_callback(f"shape_bounds:{index}:complete")
+    bounds = tuple(bounds_list)
     return LesionRegistrationHandoff(
         memberships.copy(), optimization, transform.copy(), rotation, bounds
     )

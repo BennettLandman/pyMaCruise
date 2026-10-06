@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -33,6 +33,7 @@ def register_after_next_gm_membership_update(
     template_resolutions_mm: tuple[float, float, float],
     align_shapes: bool = True,
     init_align_iter: int = 10,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionNextIterationRegistration:
     """Call selected ``registerShapes()`` immediately after membership energy.
 
@@ -56,6 +57,7 @@ def register_after_next_gm_membership_update(
         template_resolutions_mm=template_resolutions_mm,
         align_shapes=align_shapes,
         init_align_iter=init_align_iter,
+        progress_callback=progress_callback,
     )
     return LesionNextIterationRegistration(
         membership_update,

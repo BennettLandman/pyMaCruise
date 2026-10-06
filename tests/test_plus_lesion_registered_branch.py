@@ -110,6 +110,7 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         "statistics_refresh:complete",
         "distance_map_refresh:complete",
         "gm_membership_update:complete",
+        "shape_optimizer:complete",
         "shape_registration:complete",
         "growth:complete",
         "relation_refresh:complete",
@@ -119,6 +120,9 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     assert operations.index("gm_membership_update:complete") < operations.index(
         "shape_registration:running"
     ) < operations.index("convergence_growth_relations:running")
+    assert operations.index("shape_optimizer:complete") < operations.index(
+        "shape_bounds:0:running"
+    ) < operations.index("shape_bounds:12:complete") < operations.index("growth:running")
     assert summary["spatial_convention"] == "RAS"
     assert summary["stop"] is False
     assert summary["growing_events"] > 0

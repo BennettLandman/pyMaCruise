@@ -78,6 +78,7 @@ def run_lesion_toads_registered_first_iteration_branch(
         template_resolutions_mm=template_resolutions_mm,
         align_shapes=align_shapes,
         init_align_iter=init_align_iter,
+        progress_callback=progress_callback,
     )
     if progress_callback is not None:
         progress_callback("shape_registration:complete")
