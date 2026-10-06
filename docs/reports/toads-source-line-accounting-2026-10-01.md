@@ -1,11 +1,11 @@
-# TOADS source-line accounting (started 2026-10-01; refreshed 2026-10-05)
+# TOADS source-line accounting (started 2026-10-01; refreshed 2026-10-06)
 
 ## Current planning estimate
 
-Most recently refreshed on 2026-10-04 against tested commit
-`3aadd8b18e3d80fdb90a5f5fe2ed9a9faa0bf78d`, the estimate is
-**about 3,464–4,864 source lines represented by Python
-operations, out of 13,651 selected Java source lines (about 25–36%)**. Treat the
+Most recently refreshed on 2026-10-06 against tested implementation commit
+`9c7a800bbb7b33b774a3a75fdf6e8fb74e48a350`, the estimate is
+**about 3,511–4,911 source lines represented by Python
+operations, out of 13,651 selected Java source lines (about 26–36%)**. Treat the
 numerator as a coarse method-level estimate, not a measured line-coverage
 result. The detailed acceptance rows and synthetic evidence define what is
 represented; a bounded method or operation does not count its whole enclosing
@@ -161,5 +161,22 @@ checks now occur once before the queue loop; direct event APIs retain their
 full validation defaults. The complete suite on implementation commit
 `9f44477` passed **1,207 tests, 0 failed, 0 skipped, and 11 expected RAS
 warnings in 1,217.29s**, with **14.615 GB** peak sampled RSS under the 24 GB
-watchdog. The source estimate remains **3,504–4,904 of 13,651**; see the
-[validation-boundary full-suite report](full-pytest-2026-10-06-approx-thinning-validation-boundary.md).
+watchdog. The source estimate at that point was **3,504–4,904 of 13,651**; see
+the [validation-boundary full-suite report](full-pytest-2026-10-06-approx-thinning-validation-boundary.md).
+
+On 2026-10-06, P18cycaal implements and compares the sparse `useApprox`
+branches of `initGrowingLabels` and `propagateGrowing`. The newly represented
+source behavior is approximately **7 selected Java lines**: sparse approximate
+priority selection in the growing initializer, sparse membership accumulation
+after accepted growth, and approximate priority selection for newly exposed
+face neighbors. Shared exact-path queue, topology, availability, and ordering
+operations were already represented and are not recounted. The coarse
+estimate therefore advances to **3,511–4,911 of 13,651 (about 26–36%)**. On a
+folded 9×9×9 phantom, all 480 Java/Python event records and terminal state
+match, including 293 accepted and 29 rejected topology decisions. Full suite
+on `9c7a800bbb7b33b774a3a75fdf6e8fb74e48a350`: **1,209 passed, 0 failed, 0
+skipped, and 11 expected RAS warnings in 1,309.68s**, peak sampled RSS
+**13.363 GB** under the 24 GB watchdog. See the [approximate growing
+report](toads-approximate-growing-2026-10-06.md) and [full-suite
+report](full-pytest-2026-10-06-approx-growing.md). This remains a method-level
+estimate, not runtime Python line coverage or whole-TOADS equivalence.
