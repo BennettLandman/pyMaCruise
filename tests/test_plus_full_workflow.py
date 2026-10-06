@@ -137,7 +137,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         np.testing.assert_allclose(image.affine, reference.affine, rtol=0, atol=1e-5)
         np.testing.assert_array_equal(np.asarray(image.dataobj), expected)
 
-    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
+    assert main([*command, "--resume"]) == 0
     resumed = json.loads(manifest_path.read_text())
     assert resumed["status"] == "complete"
     assert all(stage["resumed"] for stage in resumed["stages"].values())
@@ -294,12 +294,31 @@ def test_plus_full_run_completes_on_larger_asymmetric_folded_ras_grid(tmp_path: 
         assert nib.aff2axcodes(image.affine) == tuple(record["axis_codes"]) == ("R", "A", "S")
     output = tmp_path / "plus-larger-grid"
     command = _command(t1, flair, mask, maseg, output)
+    # Exercise the complete-run defaults: a 99-pass ceiling and 1e-4
+    # convergence tolerance, rather than the helper's bounded two-pass setup.
+    threshold_index = command.index("--loop-convergence-threshold")
+    del command[threshold_index:threshold_index + 2]
+    command[command.index("--n-iter-max") + 1] = "50"
     assert main(command) == 0
 
     manifest_path = output / "plus-full-workflow.json"
     manifest = json.loads(manifest_path.read_text())
     assert manifest["status"] == "complete"
     assert manifest["terminal"] is True
+    assert manifest["settings"]["max_passes"] == 99
+    assert manifest["settings"]["max_distance"] == pytest.approx(1e-4)
+    lesion_workflow = json.loads(
+        Path(manifest["stages"]["lesion_workflow"]["manifest"]["path"]).read_text()
+    )
+    registered_loop = json.loads(
+        Path(lesion_workflow["stages"]["registered_loop"]["manifest"]["path"]).read_text()
+    )
+    loop_summary = json.loads(
+        Path(registered_loop["outputs"]["summary"]["path"]).read_text()
+    )
+    assert loop_summary["stop_reason"] == "convergence"
+    assert loop_summary["completed_iteration"] == 5
+    assert loop_summary["energy_ratio"] < 1e-4
     assert manifest["stage_order"][-1] == "plus_surface_workflow"
     for stage in manifest["stages"].values():
         child = Path(stage["manifest"]["path"])
@@ -326,7 +345,7 @@ def test_plus_full_run_completes_on_larger_asymmetric_folded_ras_grid(tmp_path: 
         image = nib.load(final_outputs[name]["path"])
         assert image.shape == shape
         assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
-    assert main(_command(t1, flair, mask, maseg, output, "--resume")) == 0
+    assert main([*command, "--resume"]) == 0
     resumed = json.loads(manifest_path.read_text())
     assert resumed["status"] == "complete"
     assert all(stage["resumed"] for stage in resumed["stages"].values())

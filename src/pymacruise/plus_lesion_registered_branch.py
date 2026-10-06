@@ -118,7 +118,7 @@ def run_plus_lesion_registered_branch_checkpoint(
     first_thinning_limit: float = 3.0,
     first_thinning_volume_ratio: float = 0.5,
     source_zero_variance_nan: bool = True,
-    max_distance: float = 0.0,
+    max_distance: float = 1e-4,
     first_iteration_manifest_path: str | Path | None = None,
     resume: bool = False,
 ) -> PlusLesionRegisteredBranchResult:

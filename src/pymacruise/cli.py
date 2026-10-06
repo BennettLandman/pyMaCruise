@@ -425,7 +425,7 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_branch.add_argument("--iterations", type=int, default=99)
     plus_lesion_branch.add_argument("--first-thinning-limit", type=float, default=3.0)
     plus_lesion_branch.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
-    plus_lesion_branch.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_branch.add_argument("--max-distance", type=float, default=1e-4)
     plus_lesion_branch.add_argument("--first-iteration-manifest", type=Path)
     plus_lesion_branch.add_argument("--finite-zero-variance", action="store_true")
     plus_lesion_branch.add_argument("--resume", action="store_true")
@@ -462,14 +462,14 @@ def build_parser() -> argparse.ArgumentParser:
     plus_lesion_workflow.add_argument("--iterations", type=int, default=99)
     plus_lesion_workflow.add_argument("--first-thinning-limit", type=float, default=3.0)
     plus_lesion_workflow.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
-    plus_lesion_workflow.add_argument("--max-distance", type=float, default=0.0)
+    plus_lesion_workflow.add_argument("--max-distance", type=float, default=1e-4)
     plus_lesion_workflow.add_argument(
         "--loop-convergence-threshold", type=float,
         help="optional P41m convergence threshold, separate from P41k max-distance",
     )
     plus_lesion_workflow.add_argument("--n-iter-max", type=int, default=99)
     plus_lesion_workflow.add_argument("--thinning-limit", type=float, default=3.0)
-    plus_lesion_workflow.add_argument("--max-passes", type=int, default=1)
+    plus_lesion_workflow.add_argument("--max-passes", type=int, default=99)
     plus_lesion_workflow.add_argument("--correction-fields", type=Path)
     plus_lesion_workflow.add_argument(
         "--correction-polynomial-degree", type=int, choices=(1, 2, 3),
@@ -505,11 +505,11 @@ def build_parser() -> argparse.ArgumentParser:
     plus_full.add_argument("--lesion-iterations", type=int, default=99)
     plus_full.add_argument("--first-thinning-limit", type=float, default=3.0)
     plus_full.add_argument("--first-thinning-volume-ratio", type=float, default=0.5)
-    plus_full.add_argument("--max-distance", type=float, default=0.0)
+    plus_full.add_argument("--max-distance", type=float, default=1e-4)
     plus_full.add_argument("--loop-convergence-threshold", type=float)
     plus_full.add_argument("--n-iter-max", type=int, default=99)
     plus_full.add_argument("--loop-thinning-limit", type=float, default=3.0)
-    plus_full.add_argument("--max-passes", type=int, default=1)
+    plus_full.add_argument("--max-passes", type=int, default=99)
     plus_full.add_argument("--finite-zero-variance", action="store_true")
     plus_full.add_argument("--resume", action="store_true")
 

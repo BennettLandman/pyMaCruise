@@ -99,11 +99,11 @@ def run_plus_full_workflow(
     first_thinning_limit: float = 3.0,
     first_thinning_volume_ratio: float = 0.5,
     source_zero_variance_nan: bool = True,
-    max_distance: float = 0.0,
+    max_distance: float = 1e-4,
     loop_convergence_threshold: float | None = None,
     n_iter_max: int = 99,
     loop_thinning_limit: float = 3.0,
-    max_passes: int = 1,
+    max_passes: int = 99,
     pipeline_options: PlusPipelineOptions = PlusPipelineOptions(),
     resume: bool = False,
 ) -> PlusFullWorkflowResult:
