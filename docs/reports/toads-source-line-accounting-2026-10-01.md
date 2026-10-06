@@ -123,3 +123,19 @@ of 13,651 lines (about 25–36%)**. The full suite passed **1,202 tests, 0 faile
 This is not runtime Python line coverage or whole-workflow equivalence; see the
 [ordering-carry report](toads-ordering-carry-2026-10-05.md) and [full-suite
 report](full-pytest-2026-10-05-toads-ordering-carry.md).
+
+On 2026-10-06, P18cycaaj adds approximately **25 selected Java source lines**
+for the `useApprox` post-removal six-face neighbor loop in
+`MultipleToadSegmentation.propagateThinning` (source lines 1985–2011). The
+synthetic Java excerpt comparison checks event order, payloads, float32
+priorities, availability updates, and source class-volume/order gates. The
+method is represented only at this bounded event boundary; no full approximate
+queue pass or convergence is claimed. The coarse estimate advances from
+**3,467–4,867** to **3,492–4,892 of 13,651 lines (about 26–36%)**. The full
+suite on implementation commit `3f37a7e` passed **1,204 tests, 0 failed, 0
+skipped, and 11 expected RAS warnings in 1,214.15s**, with **14.419 GB** peak
+sampled RSS under the 24 GB watchdog. See the [neighbor-schedule
+report](toads-approximate-neighbor-schedule-2026-10-06.md) and [full-suite
+evidence](full-pytest-2026-10-06-approx-neighbor-schedule.md). This remains a
+planning estimate, not measured Python runtime line coverage or whole-workflow
+equivalence.
