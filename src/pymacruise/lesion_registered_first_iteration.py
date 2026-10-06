@@ -9,7 +9,7 @@ field correction, convergence branching, growth, or a complete run.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -61,6 +61,7 @@ def run_lesion_toads_registered_first_iteration(
     maximum_gm_distance: int = 3,
     maximum_brainstem_distance: int = 25,
     has_lesion: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionRegisteredFirstIteration:
     """Run initial thinning → refreshed statistics → next memberships/ratio.
 
@@ -78,8 +79,12 @@ def run_lesion_toads_registered_first_iteration(
         raise TypeError("centroid_options must be a mapping")
     if not isinstance(channel_weight_options, Mapping):
         raise TypeError("channel_weight_options must be a mapping")
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable or None")
 
     previous = initial.membership
+    if progress_callback is not None:
+        progress_callback("statistics_refresh:running")
     statistics = refresh_statistics_after_next_iteration_thinning(
         initial.first_thinning.thinning,
         images,
@@ -96,6 +101,8 @@ def run_lesion_toads_registered_first_iteration(
         use_lesion_weight=True,
         flair_channel=1,
     )
+    if progress_callback is not None:
+        progress_callback("statistics_refresh:complete")
     direct_relations = initial.relations.relation_membership[
         initial.relations.relation_map
     ]
@@ -111,6 +118,8 @@ def run_lesion_toads_registered_first_iteration(
         raise TypeError("source_zero_variance_nan must be boolean or None")
     if not isinstance(has_lesion, (bool, np.bool_)):
         raise TypeError("has_lesion must be boolean")
+    if atlas_names is not None and has_lesion and progress_callback is not None:
+        progress_callback("distance_map_refresh:running")
     refreshed = (
         refresh_lesion_toads_distance_maps(
             initial.first_thinning.thinning.run.segmentation,
@@ -122,7 +131,11 @@ def run_lesion_toads_registered_first_iteration(
         )
         if atlas_names is not None and has_lesion else None
     )
+    if refreshed is not None and progress_callback is not None:
+        progress_callback("distance_map_refresh:complete")
     distance_maps = initial.distance_maps if refreshed is None else refreshed.maps
+    if progress_callback is not None:
+        progress_callback("gm_membership_update:running")
     next_membership = run_lesion_toads_next_gm_membership_update(
         statistics,
         images,
@@ -144,6 +157,8 @@ def run_lesion_toads_registered_first_iteration(
         spread=spread,
         source_zero_variance_nan=source_zero_variance_nan,
     )
+    if progress_callback is not None:
+        progress_callback("gm_membership_update:complete")
     return LesionRegisteredFirstIteration(
         statistics,
         next_membership,

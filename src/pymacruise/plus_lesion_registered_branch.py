@@ -285,8 +285,16 @@ def run_plus_lesion_registered_branch_checkpoint(
         ),
     }
     _json(manifest_path, manifest)
+
+    def record_progress(operation: str) -> None:
+        manifest["active_operation"] = operation
+        history = manifest.setdefault("operation_history", [])
+        history.append(operation)
+        _json(manifest_path, manifest)
+
     try:
         if first_manifest_path is None:
+            record_progress("hydrate_or_compute_initial_state:running")
             initial = run_lesion_toads_registered_initial_membership(
                 images, constructor.segmentation, centers, lesion_centroid, black_centroid,
                 shapes, constructor.skeleton, constructor.available, constructor.ordering,
@@ -296,7 +304,10 @@ def run_plus_lesion_registered_branch_checkpoint(
                 source_zero_variance_nan=source_zero_variance_nan,
             )
         else:
+            record_progress("hydrate_initial_state:running")
             initial = hydrate_plus_lesion_first_iteration_state(first_manifest_path)
+            record_progress("hydrate_initial_state:complete")
+        record_progress("post_thinning_update:running")
         transition = run_lesion_toads_registered_first_iteration(
             initial,
             images,
@@ -317,9 +328,11 @@ def run_plus_lesion_registered_branch_checkpoint(
             lesion_power_exponent=1.2,
             source_zero_variance_nan=source_zero_variance_nan,
             atlas_names=tuple(item.name for item in priors.structures),
+            progress_callback=record_progress,
         )
         if not np.isfinite(transition.membership.membership.objective):
             raise ValueError("post-thinning membership objective is nonfinite; source-faithful zero-variance behavior recorded")
+        record_progress("post_thinning_update:complete")
         template_topology = load_lesion_atlas_topology(descriptor)
         image_spacing = tuple(float(v) for v in np.linalg.norm(modalities_image.affine[:3, :3], axis=0))
         template_spacing = tuple(float(v) for v in np.linalg.norm(template_topology.image.affine[:3, :3], axis=0))
@@ -341,10 +354,12 @@ def run_plus_lesion_registered_branch_checkpoint(
             relation_limit=3,
             align_shapes=True,
             init_align_iter=1,
+            progress_callback=record_progress,
         )
         branch = branch_result.branch.branch
         if branch.growing is None or branch.relations is None:
             raise RuntimeError("first branch did not produce the expected continuing growth/relation state")
+        record_progress("materialize_branch_outputs:running")
         reference = nib.Nifti1Image(images[..., 0], modalities_image.affine, header=modalities_image.header)
         membership_values = np.concatenate((
             transition.membership.membership.class_memberships,
@@ -428,6 +443,7 @@ def run_plus_lesion_registered_branch_checkpoint(
         _json(summary_path, summary_output)
         outputs["summary"] = summary_path
         manifest["outputs"] = {key: {"path": str(path), "sha256": _sha256(path)} for key, path in outputs.items()}
+        record_progress("materialize_branch_outputs:complete")
         manifest["status"] = "complete"
         _json(manifest_path, manifest)
     except LesionInitialMembershipNonfiniteError as error:

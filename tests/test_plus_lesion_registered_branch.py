@@ -105,6 +105,19 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
     assert manifest["status"] == "complete"
     assert manifest["stage"] == "plus-lesion-registered-branch"
     assert "reuses persisted initial-membership/thinning state" in manifest["equivalence_note"]
+    operations = manifest["operation_history"]
+    for operation in (
+        "statistics_refresh:complete",
+        "distance_map_refresh:complete",
+        "gm_membership_update:complete",
+        "shape_registration:complete",
+        "convergence_growth_relations:complete",
+        "materialize_branch_outputs:complete",
+    ):
+        assert operation in operations
+    assert operations.index("gm_membership_update:complete") < operations.index(
+        "shape_registration:running"
+    ) < operations.index("convergence_growth_relations:running")
     assert summary["spatial_convention"] == "RAS"
     assert summary["stop"] is False
     assert summary["growing_events"] > 0

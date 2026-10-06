@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
 from numpy.typing import ArrayLike
 
@@ -50,6 +50,7 @@ def run_lesion_toads_registered_first_iteration_branch(
     init_align_iter: int = 10,
     has_lesion: bool = True,
     use_lesion_max: bool = False,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionRegisteredFirstIterationBranch:
     """Run first-loop membership → atlas registration → source branch.
 
@@ -65,6 +66,10 @@ def run_lesion_toads_registered_first_iteration_branch(
         raise TypeError("initial must be a registered initial-membership result")
     if not isinstance(transition, LesionRegisteredFirstIteration):
         raise TypeError("transition must be a registered first-iteration result")
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable or None")
+    if progress_callback is not None:
+        progress_callback("shape_registration:running")
     registration = register_after_next_gm_membership_update(
         transition.membership,
         atlas_shape_priors,
@@ -74,7 +79,11 @@ def run_lesion_toads_registered_first_iteration_branch(
         align_shapes=align_shapes,
         init_align_iter=init_align_iter,
     )
+    if progress_callback is not None:
+        progress_callback("shape_registration:complete")
     thinning = initial.first_thinning.thinning.run
+    if progress_callback is not None:
+        progress_callback("convergence_growth_relations:running")
     branch = continue_after_next_iteration_registration(
         registration,
         segmentation=thinning.segmentation,
@@ -93,6 +102,8 @@ def run_lesion_toads_registered_first_iteration_branch(
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
     )
+    if progress_callback is not None:
+        progress_callback("convergence_growth_relations:complete")
     distance_refresh_count = sum(
         stage in {"computeVentirclsDistance", "computeBstemDistance", "computeGMDistance"}
         for stage in transition.stage_order
