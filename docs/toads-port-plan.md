@@ -1,7 +1,9 @@
 # TOADS, SPECTRE, and BET implementation plan
 
-**Status:** P18 is in progress. P34 base orchestration is blocked until the
-TOADS route below is implemented and validated. The user-supplied brain mask
+**Status as of 2026-10-06:** P18 remains in progress. P34's six-stage base
+workflow now runs and converges on the synthetic brain-resolution case, but
+P34 remains Started pending source-output comparison and the agreed numerical
+acceptance. The user-supplied brain mask
 decision removes BET/SPECTRE skull stripping from the runtime contract; it does
 not establish algorithmic equivalence to either tool. The owner has selected
 native T1 RAS space for the Python TOADS path. This is a deliberate working-
@@ -505,19 +507,27 @@ phantom, and regeneration details.
    correctly labeled, aligned to the declared RAS reference grid, and meet the
    project Dice/surface tolerances or carry an explicitly accepted deviation.
 
-## Blocker for P34
+## Remaining P34 acceptance gaps
 
-The Python repository now contains selected TOADS preprocessing, atlas
-sampling/registration kernels, optimized CSF/GM/WM per-voxel intensity
-likelihood and membership-update terms, selected mixed OBJECT/MASK/OUTLIER
-membership passes, and the selected damped centroid update. The selected
-Dura removal stages are also composed in a callable RAS-grid adapter and
-validated on synthetic inputs. Full TOADS segmentation and accepted
-end-to-end Dura equivalence remain incomplete. P34 requires the base workflow
-to run and meet its output criteria; selected-method synthetic slices alone
-do not unblock it.
-Therefore P34 remains **Blocked** until the selected source algorithms are
-ported and their reference comparison passes. The P18ae data-term slice is
+The repository contains source-checked preprocessing, atlas registration,
+membership, topology, thinning/growing, Dura, and selected iteration-control
+operations. It also composes these stages into a restartable six-stage base
+workflow at a 172×216×164 input grid. Both TOADS passes converge (iterations
+39 and 25); all 30 image outputs are finite and RAS, and resume verifies all
+six stages. A compact synthetic Vandy comparison matches 19 memberships,
+registration transforms, and final labels exactly through natural
+convergence. This does not establish source equivalence for the full base
+workflow: selected atlas-registration and wrapper behavior, Dura-stage
+outputs, and downstream CRUISE/refinement products still need same-input
+reference comparison against the agreed metrics.
+
+P34 is **Started**, not blocked at execution. Its remaining blocker is
+acceptance evidence: matched selected-source references and per-stage
+numerical comparisons, with deviations evaluated against P08. See the
+[brain-resolution workflow report](reports/toads-compiled-queue-base-run-2026-10-06.md),
+[compact Java comparison](reports/toads-jama-lu-compact-vandy-iteration-trace-2026-10-06.md),
+and [P34 row in the main plan](../plan.md#step-by-step-acceptance-table).
+The P18ae data-term slice is
 described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md),
 and P18af validates its PSF-bias input primitive in
 [a separate source-formula comparison](reports/toads-psf-ridge-bias-2026-09-28.md).

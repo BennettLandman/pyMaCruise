@@ -25,6 +25,19 @@ PowerTable factor source.
 P39zzy combines the validated categories in one selected `computeCentroids()`
 pass and validates cross-category linked updates.
 
+**Integrated workflow status as of 2026-10-06:** P41's `plus-full-run` now
+executes all nine raw-input stages on committed 25³ and 36×45×34 folded RAS
+fixtures. P41v reaches natural LesionTOADS convergence at iteration 5 with
+energy ratio `8.241410796472337e-06` under the default `1e-4` threshold; P42a5
+repeats the run from an isolated installed wheel and verifies restart. The
+wheel and checkout produce identical terminal synthetic segmentations,
+level sets, thickness volumes, meshes, and thickness summaries. Small
+upstream floating-point differences remain between separate runs, and the
+cause is not yet isolated. These results prove restartable synthetic
+composition and convergence, not whole-source LesionTOADS equivalence,
+brain-resolution plus robustness, or real-MRI acceptance. P39 remains Started
+while selected-source behavior and its comparison gates are completed.
+
 ## Selected workflow and source
 
 The selected contract is the MaSeg-informed `maCRUISEplus_v1` path. MATLAB
