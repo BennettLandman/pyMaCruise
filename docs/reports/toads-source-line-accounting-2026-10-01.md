@@ -183,8 +183,8 @@ estimate, not runtime Python line coverage or whole-TOADS equivalence.
 
 
 The 2026-10-06 JAMA LU port changes the operation order of the polynomial
-normal-system solve and eliminates compact Vandy loop drift through the
-recorded 12-cycle trace. Its upstream Jama source is not in the eight-file
+normal-system solve and eliminates compact Vandy loop drift through
+natural convergence at iteration 19. Its upstream Jama source is not in the eight-file
 VandyCRUISE denominator, so this update contributes **zero newly counted
 VandyCRUISE lines**; the estimate remains **3,511–4,911 of 13,651 (about
 26–36%)**. The full suite passed **1,218 tests, 0 failed, 0 skipped, and 11
