@@ -30,6 +30,25 @@ This is installed-wheel synthetic execution and convergence evidence. It is
 not Java/MATLAB whole-workflow equivalence, source numerical acceptance,
 brain-resolution plus validation, or real-MRI validation.
 
+## Comparison with the source-checkout run
+
+I compared the installed-wheel outputs with the P41v source-checkout test on
+the same committed synthetic inputs. The checkout test used an iteration
+ceiling of 50; the wheel used the default ceiling of 99. Both stopped at
+iteration 5 with the same energy ratio. Discrete LesionTOADS segmentation,
+classification, and subtype arrays matched exactly. All three CRUISE level
+sets, the volume-thickness array, the extracted surface meshes, and the
+thickness summary also matched exactly.
+
+Some earlier float products were not byte-identical across these separate
+runs: maximum absolute differences were `1.52587890625e-05` in the
+preprocessed modality volume, `1.7881393432617188e-07` in recropped
+modalities, and `1.9073486328125e-06` in initialized LesionTOADS memberships.
+The cause of this small upstream variation has not been isolated. This
+comparison therefore supports exact final synthetic segmentation/surface
+agreement for these two runs, but does not establish bitwise equality of all
+intermediate files or source-algorithm equivalence.
+
 ## Reproduction
 
 Build and install (the wheel was built from `981e708`; the implementation is
