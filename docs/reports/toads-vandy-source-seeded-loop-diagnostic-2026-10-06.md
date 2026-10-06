@@ -64,7 +64,9 @@ Focused validation: `./.venv/bin/pytest -q
 tests/test_toads_effective_coefficients.py tests/test_toads_vandy_iteration_boundary.py`
 passed **10 tests in 42.96s**. Base restart regression:
 `./.venv/bin/pytest -q tests/test_base_workflow_restartable.py` passed **2 tests
-in 37.02s**. No full suite was run; the TOADS selected-source line estimate is
+in 37.02s**. The focused suite was rerun after cleanup and passed **10 tests in
+41.32s**. Both validation commands exercised implementation commit
+`9fe2ac6dd4c5adc173bda528b190f3be5df69b9f`. No full suite was run; the TOADS selected-source line estimate is
 unchanged. Java reference-source files were not modified. Temporary raw trace
 arrays and instrumentation remain under ignored `build/java-reference/`.
 
