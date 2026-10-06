@@ -1,5 +1,17 @@
 # Brain-resolution synthetic base workflow integration — 2026-10-04
 
+## Follow-up after ordering-state correction — 2026-10-05
+
+The previous run below was made before Python preserved Java's persistent
+voxelwise `ordering` array from thinning into growth. After that correction,
+the brain-resolution synthetic run converged in both TOADS passes: pass one
+stopped at iteration 39 (ratio `6.00817439e-05`) and pass two at iteration 25
+(ratio `8.62507077e-05`). All six stages and final output checks completed, and
+a resume invocation verified/skipped all six stages. See the [updated base
+workflow report](base-workflow-ordering-carry-2026-10-05.md). The old run's
+results and trajectory below are retained as historical evidence for the
+pre-correction implementation.
+
 ## Result
 
 The restartable six-stage `base-run` completed on a generated brain-resolution
