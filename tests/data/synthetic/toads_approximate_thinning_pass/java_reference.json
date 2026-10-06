@@ -1,0 +1,13 @@
+{
+  "source_file": "VandyCRUISE/src/edu/jhmi/rad/medic/methods/MultipleToadSegmentation.java",
+  "source_sha256": "63e135f36dd9117a4f6dda2ec78990230e5e44ad91234ce3745d20e5976cd884",
+  "harness_sha256": "e15f0898cffb762632ce162b6a2bb1230deff8a5dea9018afac0556aa5536ec6",
+  "fixture": "tests/test_toads_approximate_thinning_pass.py::_folded_case (9x9x9; sparse slot 0 equals current class)",
+  "scope": "source-ordered selected useApprox initialization, queue drain, removal, and neighbor scheduling with explicit zero class-volume minima",
+  "processed_count": 343,
+  "remaining_queue": 0,
+  "event_trace_sha256": "7e6a953041c012a4a128b14d4f2fa3d84552c55c6c1688ec163547ebd096fadb",
+  "class_volume_bits": [-1245970432, 886833152, -1246887936],
+  "skeleton_voxels_remaining": 0,
+  "stop_reason": "queue_empty"
+}

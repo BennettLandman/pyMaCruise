@@ -42,6 +42,8 @@ def process_next_approximate_thinning_item(
     minimum_class_volumes: ArrayLike,
     *,
     empty_label: int = -1,
+    copy_state: bool = True,
+    validate_full_arrays: bool = True,
 ) -> ToadsApproximateThinningStep:
     """Pop and apply one approximate-path ``propagateThinning`` event.
 
@@ -80,15 +82,15 @@ def process_next_approximate_thinning_item(
         raise ValueError("transformed_shape_values must be finite on the segmentation grid")
     if minima.shape != (classes,) or not np.isfinite(minima).all():
         raise ValueError("minimum_class_volumes must be finite and match classes")
-    if not np.isfinite(mems).all():
+    if validate_full_arrays and not np.isfinite(mems).all():
         raise ValueError("sparse memberships must be finite")
     if not startup.queue:
         raise ValueError("cannot process an empty approximate thinning queue")
 
-    updated_segmentation = labels_in.astype(np.int16, copy=True)
-    updated_skeleton = startup.skeleton.copy()
-    updated_available = startup.available.copy()
-    updated_volumes = startup.class_volumes.copy()
+    updated_segmentation = labels_in.astype(np.int16, copy=copy_state)
+    updated_skeleton = startup.skeleton.copy() if copy_state else startup.skeleton
+    updated_available = startup.available.copy() if copy_state else startup.available
+    updated_volumes = startup.class_volumes.copy() if copy_state else startup.class_volumes
     popped = startup.queue.pop_first()
     x, y, z, processing_label = popped.x, popped.y, popped.z, popped.label
     transition: ToadsThinningTransition | None = None
