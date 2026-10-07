@@ -87,47 +87,71 @@ numerical outputs. The acceptance target is a complete,
 naturally converged run, finite RAS outputs, verified hashes and resume, plus a
 sampled RSS peak below a conservative 24 GB ceiling.
 
-## Follow-up on 2026-10-06: compact growth traces and restart
+## Follow-up — compact growth traces and 64-grid completion
 
-A source-checkout run at `build/plus-scaled-grid-current/natural-run-64/`
-completed the initial first-iteration checkpoint, shape registration, and all
-13 shape-bound calculations. It entered `growth:running`, sampled a **20.221 GB
-peak RSS** under a 24 GB watchdog, then exited `-9` with
-`terminated_for_rss_limit=false`. The exact external kill trigger remains
-unconfirmed.
+### Memory cause and correction
 
-Code inspection found that `propagate_lesion_toads_growing` retained a full
-copy of segmentation, skeleton, availability, ordering, and class-volume
-arrays in every per-pop event. This made trace storage scale as queue length
-times volume size. Commit `2e0c39f` adds compact event records for integrated
-volume runs while keeping full event snapshots as the default for source
-comparison callers. The compact mode preserves popped queue items, topology
-decisions, and inserted neighbors, and final image arrays are unchanged.
-Focused checks on commit `2e0c39f`:
+A source-checkout run entered registered LesionTOADS growth at 64×80×64,
+sampled a **20.221 GB peak RSS** under a 24 GB watchdog, then exited `-9`
+without the watchdog terminating it. Inspection found that
+`propagate_lesion_toads_growing` retained full copies of segmentation,
+skeleton, availability, ordering, and class-volume arrays for every queue
+pop. The trace therefore grew with queue length times image size.
+
+Commit `2e0c39f` added a compact event record for integrated volume runs,
+retaining each popped item, topology decision, and inserted neighbors while
+discarding prior full-volume states. Full snapshots remain the default for
+source-comparison callers. The Java-reference folded-growth fixture confirms
+identical event traces and final arrays in both modes. The checkpoint resume
+path was also repaired so a parent workflow can reuse existing child
+manifests and start a downstream stage whose manifest does not exist yet;
+commit `1de2109` contains that change.
+
+Focused validation on `2e0c39f`:
 
 ```text
 ./.venv/bin/python -m pytest -q tests/test_lesion_growing_pass.py tests/test_plus_lesion_registered_branch.py tests/test_rss_watchdog.py
 ```
 
 Result: **13 passed in 142.10s**, peak sampled RSS **0.439 GB** under an 8 GB
-watchdog. A focused checkpoint/resume rerun after allowing a missing downstream
-registered-loop manifest to be created on parent resume passed **2 tests in
-26.67s**, peak sampled RSS **0.441 GB**. In the 64-grid workflow, resumed first
-iteration and registered-branch checkpoints were hash-verified and reused. The
-registered branch then completed growth, relation refresh, and output
-materialization at **0.523 GB peak RSS** under the 24 GB ceiling.
+watchdog. The focused registered-loop restart check passed **2 tests in
+26.67s**, peak sampled RSS **0.441 GB**. No full repository suite was run for
+these changes.
 
-The top-level workflow next failed because its not-yet-created registered-loop
-child manifest was rejected when resuming the parent. That restart edge is now
-fixed: a missing downstream child starts from its completed upstream manifest.
-A second `--resume` invocation is currently running the registered-loop stage
-with compact growth traces. Its latest sampled peak is **0.574 GB**; it has not
-yet produced the loop manifest or final Dura/CRUISE outputs. P41w remains **not
-validated** until natural convergence, terminal RAS outputs, hashes, resume,
-and the remaining plus stages all complete on the 64 grid.
+### 64×80×64 result
 
-The full raw-input command writes only inside the ignored `build/` tree. The
-latest retry uses the existing `natural-run-64` directory and `--resume`; see
-`run-resume2.log` for RSS samples. Keep the 24 GB watchdog ceiling for this
-test. Do not count the nine-stage plus workflow as complete on the 64 grid or
-infer brain-resolution capacity before terminal outputs are validated.
+The committed folded synthetic inputs completed all nine raw-input plus
+stages and naturally converged at LesionTOADS iteration 6. The energy ratio
+was **7.722568398094154e-07**, below the selected `1e-4` tolerance. The
+registered branch reached growth, relation refresh, and output materialization
+at **0.523 GB peak RSS** after reusing validated first-iteration files. The
+registered-loop process peaked at **0.582 GB**. The final downstream Dura,
+native transfer, MaSeg, and surface stages completed at **0.389 GB**. The
+maximum sampled RSS across the post-fix processes was **0.582 GB**, down from
+the preceding 20.221 GB failed attempt.
+
+The final top-level manifest is `complete` and `terminal=true`. All nine stage
+manifests completed. Validation checked **71 manifest output hashes**, **61
+finite RAS `.nii.gz` images**, and **3 VTK surfaces** declaring RAS coordinates
+in millimeters. The final surface thickness summary reports mean **0.0624097
+mm** over **3,724 vertices**; volume thickness is available with seven
+crossing voxels. A same-settings invocation of
+`./scripts/run_plus_scaled_grid_64_synthetic.sh --resume` verified and reused
+the completed outputs.
+
+The compact 36×45×34 natural-convergence fixture stops at iteration 5 with
+energy ratio `8.241410796472337e-06` and reports mean surface thickness
+`0.11254296722799782 mm` over 998 vertices. The 64-grid summary is lower by
+about **0.05013 mm** and uses a different voxel grid and mesh tessellation;
+these means are not a pointwise or symmetric nearest-surface comparison and
+do not establish the agreed 0.01 mm positional acceptance. Composite
+Java/MATLAB equivalence and real-MRI validation remain separate.
+
+Summed process time across the four 64-grid invocations was about **2 h 2 min**
+(13 min 51 s before the memory fix; 10 min 17 s completing the registered
+branch; 1 h 36 min 21 s completing the registered loop; and 1 min 33 s
+finishing downstream stages). This is the sum of active command intervals,
+not one uninterrupted run; gaps between retries are excluded. The reproducible
+command is `./scripts/run_plus_scaled_grid_64_synthetic.sh`; add `--resume` to
+reuse completed checkpoints. Outputs stay under the ignored `build/` tree.
+No human MRI was used.
