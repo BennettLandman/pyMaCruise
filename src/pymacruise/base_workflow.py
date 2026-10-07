@@ -70,6 +70,18 @@ def _json_hash(value: Any) -> str:
     ).hexdigest()
 
 
+def _find_atlas_conversion_audit(atlas_root: Path) -> Path | None:
+    """Find the conversion audit using the same nearest-ancestor rule as TOADS."""
+    return next(
+        (
+            parent / "CONVERSION_AUDIT.json"
+            for parent in (atlas_root, *atlas_root.parents)
+            if (parent / "CONVERSION_AUDIT.json").is_file()
+        ),
+        None,
+    )
+
+
 def _implementation_signature(source_root: Path | None = None) -> str:
     """Fingerprint packaged Python code so resume never trusts stale stages.
 
@@ -203,6 +215,32 @@ def _materialize_dura_atlas(source_descriptor: Path, destination: Path) -> Path:
                 raise ValueError(f"Existing run atlas resource differs from input: {target}")
         else:
             shutil.copy2(source, target)
+    audit_source = _find_atlas_conversion_audit(source_root)
+    if audit_source is not None:
+        try:
+            audit = json.loads(audit_source.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Cannot read atlas conversion audit {audit_source}: {exc}") from exc
+        audit_root = audit_source.parent.resolve()
+        prefix = source_root.relative_to(audit_root)
+        if prefix.parts:
+            for row in audit.get("images", []):
+                relative = Path(str(row.get("nifti_output", "")))
+                try:
+                    row["nifti_output"] = relative.relative_to(prefix).as_posix()
+                except ValueError:
+                    # The audit can cover sibling atlases. Only paths under
+                    # the copied descriptor root are used by this run.
+                    continue
+        audit_target = destination / "CONVERSION_AUDIT.json"
+        audit_bytes = (json.dumps(audit, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        if audit_target.exists():
+            if audit_target.read_bytes() != audit_bytes:
+                raise ValueError(f"Existing run atlas audit differs from source: {audit_target}")
+        else:
+            tmp = audit_target.with_suffix(".json.tmp")
+            tmp.write_bytes(audit_bytes)
+            tmp.replace(audit_target)
     target_descriptor = destination / source_descriptor.name
     desired_bytes = text.encode("utf-8")
     if target_descriptor.exists():
@@ -271,6 +309,7 @@ def run_base_workflow(
             atlas_assets.append(asset)
     if not atlas_assets:
         raise ValueError("Atlas descriptor does not reference any asset files")
+    atlas_conversion_audit = _find_atlas_conversion_audit(atlas_root)
 
     settings = asdict(options)
     if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in settings.values()):
@@ -280,19 +319,50 @@ def run_base_workflow(
         "spatial_convention": "RAS",
         "inputs": {name: {"path": str(path), "sha256": _sha256(path)} for name, path in inputs.items()},
         "atlas_assets": [{"path": str(path), "sha256": _sha256(path)} for path in atlas_assets],
+        "atlas_conversion_audit": (
+            None
+            if atlas_conversion_audit is None
+            else {
+                "path": str(atlas_conversion_audit),
+                "sha256": _sha256(atlas_conversion_audit),
+            }
+        ),
         "options": settings,
     }
     signature = _json_hash(signature_payload)
     implementation_signature = _implementation_signature()
     output_dir.mkdir(parents=True, exist_ok=True)
     run_atlas = _materialize_dura_atlas(atlas_descriptor, output_dir / "resources" / "dura-atlas")
+    materialized_audit = run_atlas.parent / "CONVERSION_AUDIT.json"
     manifest_path = output_dir / "run.json"
     if manifest_path.exists():
         if not resume:
             raise FileExistsError(f"Run manifest exists; use --resume to continue: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest.get("run_signature") != signature:
-            raise ValueError("Cannot resume: inputs or run settings differ from recorded manifest")
+            legacy_keys = (
+                "schema_version",
+                "spatial_convention",
+                "inputs",
+                "atlas_assets",
+                "options",
+            )
+            audit_signature_migration = (
+                "atlas_conversion_audit" not in manifest
+                and all(manifest.get(key) == signature_payload.get(key) for key in legacy_keys)
+            )
+            if not audit_signature_migration:
+                raise ValueError("Cannot resume: inputs or run settings differ from recorded manifest")
+            manifest["previous_run_signature"] = manifest["run_signature"]
+            manifest.update(signature_payload)
+            manifest["run_signature"] = signature
+            manifest.setdefault("history", []).append(
+                {
+                    "stage": "run-signature-migration",
+                    "status": "invalidated",
+                    "reason": "TOADS atlas conversion audit is now tracked as an input",
+                }
+            )
     else:
         if resume:
             raise FileNotFoundError(f"Cannot resume; no run manifest exists: {manifest_path}")
@@ -304,9 +374,24 @@ def run_base_workflow(
             "stages": {},
             "history": [],
             "workflow_scope": "synthetic/native-grid base route; not a full Java-equivalence claim",
-            "derived_resources": [{"path": str(run_atlas), "sha256": _sha256(run_atlas)}],
+            "derived_resources": [
+                {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
+                *(
+                    [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
+                    if materialized_audit.is_file()
+                    else []
+                ),
+            ],
         }
         _write_manifest(manifest_path, manifest)
+    manifest["derived_resources"] = [
+        {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
+        *(
+            [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
+            if materialized_audit.is_file()
+            else []
+        ),
+    ]
     if manifest.get("implementation_signature") != implementation_signature:
         previous_signature = manifest.get("implementation_signature")
         if previous_signature is not None:
@@ -448,7 +533,12 @@ def run_base_workflow(
         "--registration-max-iterations", str(options.registration_max_iterations),
         "--maximum-iterations", str(options.toads_iterations),
     ]
-    atlas_dependencies = [run_atlas, *(run_atlas.parent / asset.relative_to(atlas_root) for asset in atlas_assets)]
+    materialized_assets = [
+        run_atlas.parent / asset.relative_to(atlas_root) for asset in atlas_assets
+    ]
+    atlas_dependencies = [run_atlas, *materialized_assets]
+    if materialized_audit.is_file():
+        atlas_dependencies.append(materialized_audit)
     first_dependencies = [n4, brain_mask_path, *atlas_dependencies]
     first_dura_files = [
         active_output("toads-first", "classification.nii.gz", first_dependencies),

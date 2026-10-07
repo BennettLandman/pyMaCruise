@@ -175,8 +175,37 @@ whole MaCRUISE equivalence.
 This trace does not match the first two energy ratios in the earlier full base
 workflow log above (`0.161843792`, `1.09157264`). The two-iteration Java and
 Python CLI runs used the same N4 file and explicit alignment settings, so the
-earlier full-workflow trace is now **unreconciled and must not be used as
-current source-fidelity evidence**. The next integration action is to rerun
-the complete base workflow after source-checkpoint invalidation, then compare
-its `toads-first` trace with this direct Java/Python reference. Full 50-cycle
-convergence remains open until that replay is resolved.
+earlier full-workflow trace initially appeared unreconciled. The root cause
+and repair are described below.
+
+## Root cause: materialized atlas lost its conversion audit
+
+The base workflow copies atlas files into the run directory so the run is
+self-contained. That copy included the descriptor and NIfTI assets but omitted
+`data/atlases/CONVERSION_AUDIT.json`. `load_toads_atlas_data` searches for this
+audit near the descriptor; when it was missing, the loader treated the
+materialized RAS NIfTI arrays as if their native array order were the original
+Java voxel order. The standalone CLI used the repository descriptor and found
+the audit, which explains why the same full-grid input matched Java when run
+directly and differed when run through the base workflow.
+
+`base_workflow.py` now copies the audit alongside the materialized descriptor,
+tracks the source and copied audit hashes in the run manifest and stage
+dependencies, and migrates older manifests so their stages are invalidated
+and recomputed. A direct loader comparison confirmed that the materialized
+atlas topology and all 11 shape arrays now match the source descriptor's
+restored arrays exactly. The focused restartable-workflow suite passed:
+
+```text
+./.venv/bin/pytest -q tests/test_base_workflow_restartable.py
+3 passed in 25.22s
+```
+
+The audit-aware standalone `toads-loop` run reproduced the full-grid Java
+two-iteration ratios and classification exactly (see above), including when
+using the materialized descriptor and writing Dura outputs. A complete
+six-stage base workflow replay with the audit-aware materialization and
+checkpoint migration is now running. Until that replay completes, the earlier
+50-iteration convergence and 29/30 image-hash comparison are superseded and
+must not be used to assess source fidelity. This comparison does not establish
+50-iteration convergence or whole-workflow equivalence.
