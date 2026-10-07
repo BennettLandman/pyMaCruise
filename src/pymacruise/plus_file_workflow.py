@@ -377,7 +377,13 @@ def run_plus_file_workflow(
         _write_json(manifest_path, manifest)
 
     # Stage 3: restore full grid, extract meshes, and calculate thickness.
-    tail_dependency = _json_hash({"tgdm": _json_hash(tgdm_record["outputs"]), "crop": crop_sig})
+    tail_dependency = _json_hash({
+        "tgdm": _json_hash(tgdm_record["outputs"]),
+        "crop": crop_sig,
+        # MaTGDMcrop uses a 20-valued exterior when restoring level sets.
+        # Include this contract so old zero-background meshes are regenerated.
+        "uncrop_background": 20.0,
+    })
     tail_record = stages.get("surfaces_thickness")
     if _record_valid(tail_record, tail_dependency, root):
         resumed.append("surfaces_thickness")

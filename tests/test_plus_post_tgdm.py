@@ -128,9 +128,10 @@ def test_plus_post_tgdm_composes_public_stages_in_source_order(monkeypatch) -> N
 
 def test_plus_post_tgdm_keeps_selected_uncrop_boundary_and_mesh_risk_visible() -> None:
     actual = run_plus_post_tgdm_stages(_cropped_tgdm(), _crop_parameters())
-    # JIST's selected exclusive maximum leaves the final source plane at
-    # background. This fixture explicitly pins that behavior at the crop edge.
-    assert np.all(np.asarray(actual.level_sets.outer.dataobj)[14, :, :] == 0)
+    # JIST's selected exclusive maximum leaves the final source plane at the
+    # 20-valued MaTGDMcrop exterior. This fixture pins that behavior at the
+    # crop edge; zero would be changed to -0.1 by the selected surface adapter.
+    assert np.all(np.asarray(actual.level_sets.outer.dataobj)[14, :, :] == 20.0)
     assert all(
         nib.aff2axcodes(getattr(actual.level_sets, name).affine) == ("R", "A", "S")
         for name in FIELDS

@@ -6,7 +6,7 @@ It does not implement ACE, topology correction, CRUISE, or LesionTOADS stages.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 import nibabel as nib
@@ -364,7 +364,12 @@ def uncrop_plus_tgdm_outputs(
     ``MaTGDMcrop`` uncrops inner, central, outer, and tissue-sign volumes to
     the original GM reference grid. The Python adapter also restores the
     computed initial level set for consistent intermediate provenance. The
-    crop helper preserves the selected compiled-JIST exclusive-maximum behavior.
+    source MaTGDMcrop adapter constructs its inverse-crop parameters with a
+    20-valued exterior. Keep that level-set background separate from the
+    zero-valued crop background used for tissue and label inputs: surface
+    extraction intentionally maps exact zero to -0.1, so uncrop zeros would
+    otherwise create false surfaces outside a partial crop. The crop helper
+    preserves the selected compiled-JIST exclusive-maximum behavior.
     """
     if not isinstance(result, TGDMMaCRUISEImageResult):
         raise ValueError("result must be TGDMMaCRUISEImageResult")
@@ -377,6 +382,10 @@ def uncrop_plus_tgdm_outputs(
     translation = np.eye(4)
     translation[:3, 3] = crop_parameters.offset
     expected_crop_affine = expected_crop_affine @ translation
+    # MaTGDMcrop.java constructs CropParameters(..., 20) for all four
+    # uncropped outputs. Cropping inputs still uses its independent background
+    # (normally zero); only restored level-set products need this exterior.
+    levelset_uncrop_parameters = replace(crop_parameters, background=20.0)
     restored = {}
     for name in (
         "initial_level_set",
@@ -395,7 +404,7 @@ def uncrop_plus_tgdm_outputs(
             )
         restored[name] = uncrop_image(
             image,
-            crop_parameters,
+            levelset_uncrop_parameters,
             legacy_exclusive_max=True,
         )
     return PlusUncroppedTGDMResult(**restored)

@@ -56,6 +56,7 @@ def _result_and_crop():
 def test_plus_tgdm_outputs_uncrop_to_full_ras_grid_with_source_max_rule() -> None:
     result, parameters = _result_and_crop()
     actual = uncrop_plus_tgdm_outputs(result, parameters)
+    source_uncrop_parameters = replace(parameters, background=20.0)
 
     for name in (
         "initial_level_set",
@@ -67,7 +68,9 @@ def test_plus_tgdm_outputs_uncrop_to_full_ras_grid_with_source_max_rule() -> Non
     ):
         image = getattr(actual, name)
         expected = uncrop_image(
-            getattr(result, name), parameters, legacy_exclusive_max=True
+            getattr(result, name),
+            source_uncrop_parameters,
+            legacy_exclusive_max=True,
         )
         np.testing.assert_array_equal(image.dataobj, expected.dataobj)
         np.testing.assert_array_equal(image.affine, parameters.original_affine)
@@ -77,7 +80,7 @@ def test_plus_tgdm_outputs_uncrop_to_full_ras_grid_with_source_max_rule() -> Non
     cropped = np.asarray(result.inner.dataobj)
     uncropped = np.asarray(actual.inner.dataobj)
     assert uncropped[6, 6, 6] == cropped[5, 5, 5]
-    assert uncropped[7, 7, 7] == parameters.background
+    assert uncropped[7, 7, 7] == 20.0
 
 
 def test_plus_tgdm_uncrop_rejects_a_product_on_another_crop_grid() -> None:

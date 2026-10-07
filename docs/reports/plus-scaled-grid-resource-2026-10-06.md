@@ -144,8 +144,13 @@ energy ratio `8.241410796472337e-06` and reports mean surface thickness
 `0.11254296722799782 mm` over 998 vertices. The 64-grid summary is lower by
 about **0.05013 mm** and uses a different voxel grid and mesh tessellation;
 these means are not a pointwise or symmetric nearest-surface comparison and
-do not establish the agreed 0.01 mm positional acceptance. Composite
-Java/MATLAB equivalence and real-MRI validation remain separate.
+do not establish the agreed 0.01 mm positional acceptance. A direct symmetric
+nearest-surface comparison is now recorded in
+[the grid surface scaling report](plus-grid-surface-scaling-2026-10-06.md).
+It finds large displacements between the two grid outputs, so successful
+64-grid resource/workflow validation must not be read as numerical stability
+across resolutions. Composite Java/MATLAB equivalence and real-MRI validation
+remain separate.
 
 Summed process time across the four 64-grid invocations was about **2 h 2 min**
 (13 min 51 s before the memory fix; 10 min 17 s completing the registered
