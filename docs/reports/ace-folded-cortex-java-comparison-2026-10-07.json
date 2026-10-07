@@ -1,9 +1,17 @@
 {
   "synthetic_only": true,
   "fixture": "folded_cortex",
-  "shape": [41, 41, 41],
+  "shape": [
+    41,
+    41,
+    41
+  ],
   "frame": "RAS",
-  "voxel_spacing_mm": [1.0, 1.0, 1.0],
+  "voxel_spacing_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
   "profile": "selected MaCRUISE ACE wrapper; multi-atlas CSF merged after diffusion",
   "java_heap_limit_gib": 2,
   "focused_pytest": {
@@ -12,7 +20,8 @@
     "failed": 0,
     "elapsed_seconds": 10.19,
     "peak_sampled_rss_gib": 0.155,
-    "watchdog_limit_gib": 4
+    "watchdog_limit_gib": 4,
+    "commit": "f00117f"
   },
   "stages": {
     "gaussian_diffusion_guide": {
@@ -49,5 +58,6 @@
     "MaAnatomicallyConsistentEnhance.java": "f3cd1c9f4e90cd58ae5cdf37237d90f5a57c59f1a6d6870c9106f4850174cffb",
     "AnatomicallyConsistentEnhancement.java": "706e20dba6eb58584d0026b34f2cf4965fde532fc88f5304488dd0d8baee5f46",
     "ThinACE.java": "87c4c99ae01e2e3fb2ab744b71c1dc9367e6c625969badf3ab51158fe5b78203"
-  }
+  },
+  "tested_implementation_commit": "f00117f"
 }

@@ -111,6 +111,7 @@
     }
   },
   "synthetic_only": true,
+  "tested_implementation_commit": "89e7c71",
   "voxel_spacing_mm": [
     1.0,
     1.0,

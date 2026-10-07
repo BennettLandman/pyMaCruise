@@ -28,7 +28,7 @@ scripts/generate_java_tgdm_folded_reference.sh
 ```
 
 The Java harness completed all stages and wrote checksummed `.nii.gz` references. The Python comparison completed with
-exit 0; sampled peak RSS was **0.168 GB** under the 8 GB watchdog. The harness's original 25³ sphere mode was also rerun to a temporary directory and passed
+exit 0 on committed implementation `89e7c71`; sampled peak RSS was **0.168 GB** under the 8 GB watchdog. The harness's original 25³ sphere mode was also rerun to a temporary directory and passed
 the existing Java comparison thresholds, preserving backward compatibility. Inputs and
 outputs are RAS on a 1 mm identity grid. The tissue-sign field was bit-exact.
 Every evolved level set had mask Dice 1.0, symmetric mean surface distance at

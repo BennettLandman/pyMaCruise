@@ -32,8 +32,9 @@ The generated NIfTI references and per-file SHA-256 manifest are in
 ```
 
 The Java process is configured with a 2 GiB maximum heap. The focused Python
-ACE reference suite passed **3 tests in 10.19 s**, with sampled peak RSS
-**0.155 GB** under the 4 GB watchdog. This is focused evidence only; no full
+ACE reference suite passed **3 tests in 10.04 s** on committed implementation
+`f00117f`, with sampled peak RSS
+**0.156 GB** under the 4 GB watchdog. This is focused evidence only; no full
 repository suite was run for this slice.
 
 ## Findings
