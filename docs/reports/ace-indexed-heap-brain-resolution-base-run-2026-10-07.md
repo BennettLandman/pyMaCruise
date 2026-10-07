@@ -64,6 +64,8 @@ Compared with the earlier run recorded in
 [`toads-compiled-queue-base-run-2026-10-06.md`](toads-compiled-queue-base-run-2026-10-06.md),
 29 of the 30 common NIfTI file hashes differ. The earlier run converged in both
 passes (iterations 39 and 25); this run did not converge in the first pass.
+The N4 output hash is unchanged, making the first TOADS pass the earliest
+observed image-output divergence; the remaining 28 differences are downstream.
 The current source tree contains subsequent source-order updates to TOADS
 float32 arithmetic, registration energy, JAMA solving, approximate thinning
 and growing, in addition to the ACE changes. This comparison therefore does
