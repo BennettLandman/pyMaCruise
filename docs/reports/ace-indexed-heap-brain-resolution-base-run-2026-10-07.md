@@ -83,6 +83,19 @@ first-pass logs, iteration 1 energy differs by about `1.05e-7`; by iteration 5,
 the values are `0.192783281` versus `0.230697453`. This shows early trajectory
 drift, but does not identify which source-order change is responsible.
 
+| Iteration | Prior run energy ratio | Current run energy ratio |
+|---:|---:|---:|
+| 1 | 0.161843687 | 0.161843792 |
+| 2 | 1.09107924 | 1.09157264 |
+| 3 | 0.774802864 | 0.772367716 |
+| 4 | 1.09418404 | 1.09190392 |
+| 5 | 0.192783281 | 0.230697453 |
+| 6 | 0.105536781 | 0.0854224488 |
+| 7 | 0.0742151216 | 0.0651180595 |
+| 8 | 0.0348341092 | 0.0317154676 |
+| 9 | 0.0233107414 | 0.0190226417 |
+| 10 | 0.00618879683 | 0.00255699526 |
+
 ## Evidence boundaries
 
 - Focused ACE plus integration suite on implementation commit `999744c`:
