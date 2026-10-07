@@ -76,17 +76,21 @@ code. A follow-up now fingerprints sorted Python package sources in the
 manifest and each stage dependency signature, so a changed implementation
 invalidates old checkpoints instead of silently reusing them. This source
 fingerprint was exercised by the focused restartable-workflow suite; details
-are recorded after the implementation commit.
+are recorded after the implementation commit. Comparing the old and current
+first-pass logs, iteration 1 energy differs by about `1.05e-7`; by iteration 5,
+the values are `0.192783281` versus `0.230697453`. This shows early trajectory
+drift, but does not identify which source-order change is responsible.
 
 ## Evidence boundaries
 
 - Focused ACE plus integration suite on implementation commit `999744c`:
   **25 passed in 40.15 s**. The docs/report commit is `638d781`; no full suite
   was run for this base workflow check.
-- After adding source fingerprinting, focused restartable workflow tests:
-  **3 passed in 10.17 s** on commit `63c89af`. This verifies manifest
-  fingerprinting, unchanged resume, and selective downstream rerun after
-  output corruption; it is not a full suite.
+- After adding source-change invalidation, focused restartable workflow tests:
+  **3 passed in 15.66 s** on commit `cce9f59`. The test simulates a changed
+  implementation fingerprint, verifies all six stages rerun once, verifies a
+  same-version resume skips all six, and checks selective downstream rerun
+  after output corruption. It is not a full suite.
 - Latest full repository suite remains **1,220 passed, 0 failed, 0 skipped,
   11 expected RAS warnings in 1,463.83 s** on `7ae1dee`, peak sampled RSS
   **12.448 GB** under a 24 GB watchdog. That result predates the current ACE
