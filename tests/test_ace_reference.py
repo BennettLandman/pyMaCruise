@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.ace import (
+    _ace_initial_levelset,
     _central_gradient_mirror,
     _distance_and_characteristic_fmm,
     _principal_tensor_vector,
@@ -40,6 +41,14 @@ def _compare_float_stage(
     assert float(error.max()) <= maximum
 
 
+def test_ace_initial_levelset_uses_java_double_threshold_arithmetic() -> None:
+    white = np.asarray([0.0, 1.0, 37.125, 126.9000015, 200.75], dtype=np.float32)
+    expected = np.asarray(126.9 - white.astype(np.float64), dtype=np.float32)
+
+    np.testing.assert_array_equal(_ace_initial_levelset(white, 126.9), expected)
+    assert not np.array_equal(np.float32(126.9) - white, expected)
+
+
 def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) -> None:
     def reference(name: str) -> np.ndarray:
         return np.asarray(nib.load(java_root / "stages" / f"{name}_java.nii.gz").dataobj)
@@ -53,7 +62,7 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
 
     # Independent Java stage fixtures make each mismatch attributable to one
     # operation rather than to accumulated end-to-end numerical drift.
-    initial_levelset = np.float32(126.9) - white
+    initial_levelset = _ace_initial_levelset(white, 126.9)
     initial_phi = _signed_distance_fmm(initial_levelset, 1000.0)
     seed = ace_seed_fields(gray, white, initial_phi, intensity_threshold=126.9)
     guide = ace_gaussian_blur(initial_phi, 1.8)

@@ -1,0 +1,178 @@
+{
+  "title": "Brain-resolution synthetic MaACE selected-wrapper Java comparison",
+  "provenance": "Synthetic analytic MaCRUISE base-workflow crop; no human imaging data.",
+  "coordinate_system": "RAS",
+  "units": "mm",
+  "shape": [
+    166,
+    208,
+    156
+  ],
+  "affine_ras_mm": [
+    [
+      0.9375,
+      0.0,
+      0.0,
+      -73.59375
+    ],
+    [
+      0.0,
+      0.9375,
+      0.0,
+      -96.09375
+    ],
+    [
+      0.0,
+      0.0,
+      0.9375,
+      -78.28125
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "voxel_sizes_mm": [
+    0.9375,
+    0.9375,
+    0.9375
+  ],
+  "source_reference": "tests/java_reference/ACEReferenceHarness.java and copied selected ACE Java source under tests/java_reference/upstream/",
+  "source_hashes_sha256": {
+    "tests/java_reference/ACEReferenceHarness.java": "053b478cc2759089167c29e57229bfff1f3dd450ff113e3e53d15c31ca623422",
+    "tests/java_reference/upstream/Jama/SingularValueDecomposition.java": "d21d446914dd815c14250037bda2bb9558195cc7e27b08b28007e818609a9dec",
+    "tests/java_reference/upstream/Jama/Matrix.java": "76ab1241a91518c3b71db14d19a2a3d6c35376f65fdc9804fe26fa79e964ff9c",
+    "tests/java_reference/upstream/Jama/EigenvalueDecomposition.java": "555138478dec17a54579c36dfe9d7de0be99b49684e920e3cedfdeccfacc9599",
+    "tests/java_reference/upstream/Jama/LUDecomposition.java": "9b41fefaef78fdc95a2c8fdfebb1aaee8375dcaf6c7b8eddb30acdf7f5a077a6",
+    "tests/java_reference/upstream/Jama/CholeskyDecomposition.java": "d4c8f93cd541278ffe38253691eab621f047c6966268869f3b1097242663300c",
+    "tests/java_reference/upstream/Jama/QRDecomposition.java": "450fd06e58eb8eb9dae019a676444f8484b738c0dbfd36b901a868805aa4c801",
+    "tests/java_reference/upstream/gov/nih/mipav/model/structures/jama/JamaMatrix.java": "efd52d4a8f86984c1dc52d13e01175e07120ccc1e9867283846a0b17f1025526",
+    "tests/java_reference/upstream/Jama/util/Maths.java": "34ce86567be220d61c2879b147d6c9972dedb0a0826696b25f404d672fa73130",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/image/MaskVolume.java": "6f6448b815efe617134bcd80193bc65ae81c32a0a9f251405f0b5bb90a4b62da",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/image/MaskVolume26.java": "276852fa833b9a9456c0a5a2f9ee08331a0c5435cca21c0387b7c4d1c764fc16",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/image/MaskVolume18.java": "0bb0e00e64cfdbe19bf65669d515230bb8873629160254912efe757b702e421c",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/data/Indexable.java": "5fecd21c23d477fafec9c8fba9082fbe2eb892833fa236b5faa21fe364ffbbe7",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/data/BinaryMinHeap.java": "5142fbe986301bfbd752c399b98f1997e96e6ec3b1bdbfcc0d0dca14ec472bb5",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/topology/SixConnected.java": "c7a720d6a85a1dba00af0c9dbb54f51d923b303ef0428fff90d6b65514405e18",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/topology/TwentySixConnected.java": "f756eaa7fdc4168cfc5e9289a92c9351a11b545132ca8759c11223efa86c24f5",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/topology/ConnectivityRule.java": "01cda2fb2a421b9c009cd55a6f586fadc84b2deb631def0a94fa07ea430bbcf4",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/topology/EighteenConnected.java": "731716be374d9e439f66d4d08bf1bfd626ebb9cdbe61d240b3f66484b5614b37",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/OuterCortexProfile.java": "a8c70aa69a79971e32e9aef11023ef3894da79cb77257b32f9c94a0f2d4c46dd",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/InnerCortexProfile.java": "2f1111907b6e7225e2206a9dc18f6a9510292bc9bc37d24275e04c9a6c125273",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/ProfileTGDM.java": "7469b0080307f75eb1de48c1724aee7b148e1cdca7ec65778e6dceabd0122520",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/CentralCortexProfile.java": "56c999adeac803e71899534feb4209e5b3299df14171c4af24570be5fde93364",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/DynamicPressureCortexProfile.java": "f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/DynamicPressureTGDM.java": "53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/SmoothCortexProfile.java": "0a737b92f427836078de48ca7032e4bcef1ac94b1c20c15aea4497247529455b",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/tgdm/GenericTGDM.java": "70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/Gradient3d.java": "25a9a761ca907e2a69c8a8e3d1ecbc0b6cebc5d46594078dc34eb11f33d6a763",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/DownSample3d.java": "8272df88fd3a7242acfa2f60fbb5a62c892817bb4dddbd19a482dd037d7416b4",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/GradVecFlowGeneralized.java": "90a52c6eeb090cc564cee1b221b0733bb3576b91a663279bcd838a3392b5235f",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/GVFSolveGaussSeidel.java": "a9b427e50c1ccbedb5318c8ca61d523f0079377128c5b5b0b1b3742d8800c4f5",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/Interpolate3d.java": "3692bd2caf2bf9576c85eb53e47abb4980b05bf114040fb20270a2aa3d323d63",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/FastMarchingGradient.java": "cf857c0c62e2c7a219e9e530c863b4e40ae594b55e90a355cd7fdf6e0709d3a3",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/GradVecFlow.java": "3616ad06a3da60175e924db53587b54756e8e36217dde71afb6aaa742322a782",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/Poisson3d.java": "d25b82ad033ad12852b8158c60f0e89d488861953383335dac8d1ebae3933699",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/GVFSolve.java": "7739a1790feaf12f1f56d5060598c0fb4984157e2b7298ff277858b0ad46ed0b",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/DownSample3dByHalf.java": "e8bfe6b2a9801ac25408ceb7ca4194c9cfcdfd684abcfb312d8d84ca9d739fb5",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/Interpolate3dNearest.java": "dd38184c2d0c20792236b995642321a5beb2fdf0cc81cc6dbcf364d9aed05422",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/volume/DistanceFieldAndSkeleton.java": "33836010ab90a0c54135c7d988db2cce415ba500eae22dae9913a2e364dad063",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/AnatomicallyConsistentEnhancement.java": "706e20dba6eb58584d0026b34f2cf4965fde532fc88f5304488dd0d8baee5f46",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/AnisotropicDiffusion.java": "c69e44b85815f1b90e3f532edb02d0876f50ede2f2ed131113876a7d39fc1ae6",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/Morphology.java": "014918ac3753990ef219187d77a6c27e1f0b0fe91c5cbfadfa4f46d7043e8013",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/CleanACE.java": "9447a61de6b03b1033f372a6b8df5d5013fb804cd65f930492c8baa35bf782e8",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/ThinACE.java": "87c4c99ae01e2e3fb2ab744b71c1dc9367e6c625969badf3ab51158fe5b78203",
+    "tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/ace/NarrowBandACE.java": "79e9340327565e8114ff68b231eacb043f01e967a2a43749793aec006d24bfb4",
+    "tests/java_reference/upstream/edu/vanderbilt/masi/algorithms/CRUISE/ace/DistanceFieldyh.java": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811",
+    "tests/java_reference/upstream/edu/vanderbilt/masi/algorithms/CRUISE/ace/MaAnatomicallyConsistentEnhance.java": "f3cd1c9f4e90cd58ae5cdf37237d90f5a57c59f1a6d6870c9106f4850174cffb",
+    "tests/java_reference/upstream/edu/vanderbilt/masi/plugins/CRUISE/tgdm/MaGenericTGDM.java": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/methods/ParametricTransform.java": "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/CriticalPointLUT.java": "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/RotationMatrix.java": "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/BinaryHeap4D.java": "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/libraries/ImageFunctions.java": "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/PowerTable.java": "2c75d78ff33efd11531a3227399acc6fb2a421e2b4205ad6c77e6533eadd50ae",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java": "9fbaa181ce6ea7a1658df41785b79a7561ae615c79a201fcb81bb9494ec760a5"
+  },
+  "reference_generation_command": "./.venv/bin/python scripts/generate_java_ace_reference.py --input-root tests/data/synthetic/base_workflow_brain_resolution/ace_maace/inputs --output-dir tests/data/synthetic/base_workflow_brain_resolution/ace_maace/java_reference --place-to-add-csf 0",
+  "parameters": {
+    "intensity_threshold": 126.9,
+    "gaussian_alpha": 1.8,
+    "tensor_alpha": 1.6,
+    "diffusion_iterations": 25,
+    "place_to_add_csf": 0,
+    "narrow_band": {
+      "delta_t": 0.1,
+      "outer_iterations": 1,
+      "inner_updates": 10,
+      "curvature_threshold": 5.0
+    }
+  },
+  "nonfinite_evidence": {
+    "compared_stage": "25-iteration anisotropic diffusion stage",
+    "java_nan_voxels": 0,
+    "python_source_faithful_nan_voxels": 0,
+    "nan_mask_disagreements": 0,
+    "excluded_voxels": 0,
+    "note": "No zero-tensor divide-by-zero NaNs occurred on this fixture. Therefore the normal Python path\u2019s zero replacement caused no exclusions or observed difference."
+  },
+  "output_comparisons": {
+    "enhanced_gm_java.nii.gz": {
+      "shape": [
+        166,
+        208,
+        156
+      ],
+      "dtype_java": "float32",
+      "dtype_python": "float32",
+      "nan_count_java": 0,
+      "nan_count_python": 0,
+      "changed_voxels": 0,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "foreground_java": null,
+      "foreground_python": null,
+      "sha256_java_file": "27a3aa96ba085e2874ee6acf2a3538f540bf9329549e8a7023a7c88b6d70dff9",
+      "sha256_python_file": "27a3aa96ba085e2874ee6acf2a3538f540bf9329549e8a7023a7c88b6d70dff9"
+    },
+    "csf_skeleton_java.nii.gz": {
+      "shape": [
+        166,
+        208,
+        156
+      ],
+      "dtype_java": "int32",
+      "dtype_python": "int32",
+      "nan_count_java": 0,
+      "nan_count_python": 0,
+      "changed_voxels": 0,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "foreground_java": 74734,
+      "foreground_python": 74734,
+      "sha256_java_file": "277ed87bcd19f7d9003a3d2282df24bf81980d97042e697bfcb263dbf96cf6fb",
+      "sha256_python_file": "277ed87bcd19f7d9003a3d2282df24bf81980d97042e697bfcb263dbf96cf6fb"
+    },
+    "thinned_skeleton_java.nii.gz": {
+      "shape": [
+        166,
+        208,
+        156
+      ],
+      "dtype_java": "int32",
+      "dtype_python": "int32",
+      "nan_count_java": 0,
+      "nan_count_python": 0,
+      "changed_voxels": 0,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "foreground_java": 49378,
+      "foreground_python": 49378,
+      "sha256_java_file": "e14ced55f37b134cd6193ce24e621a9c2d0d36696d7ee769ba9973a7d78bbb4a",
+      "sha256_python_file": "e14ced55f37b134cd6193ce24e621a9c2d0d36696d7ee769ba9973a7d78bbb4a"
+    }
+  }
+}

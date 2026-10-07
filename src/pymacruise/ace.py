@@ -385,7 +385,8 @@ def ace_enhance_arrays(
     # is a wrapper-specific approximation to the paper's stated 0.5 WM-
     # membership interface because this API receives source gray/white
     # channels rather than a normalized WM membership map.
-    initial_phi = _signed_distance_fmm(intensity_threshold - white, 1000.0)
+    initial_levelset = _ace_initial_levelset(white, intensity_threshold)
+    initial_phi = _signed_distance_fmm(initial_levelset, 1000.0)
     seeds = ace_seed_fields(gray, white, initial_phi, intensity_threshold=intensity_threshold)
     guide = ace_gaussian_blur(initial_phi, gaussian_alpha)
     initial_csf = seeds.initial_csf_speed
@@ -561,6 +562,19 @@ def _principal_tensor_vector(
             py = np.divide(ny, magnitude, out=py.copy(), where=nonzero)
             pz = np.divide(nz, magnitude, out=pz.copy(), where=nonzero)
     return px, py, pz
+
+
+def _ace_initial_levelset(white_matter: np.ndarray, threshold: float) -> np.ndarray:
+    """Build the Java wrapper's float level-set input without early rounding.
+
+    `MaAnatomicallyConsistentEnhance.solve` stores ``threshold`` as a Java
+    double, subtracts each float WM sample in double precision, then casts the
+    difference to the float image. Casting the threshold to float32 before
+    subtraction changes hundreds of thousands of voxels on a full-resolution
+    membership map and can move later skeleton candidates across a cutoff.
+    """
+    white = np.asarray(white_matter, dtype=np.float32)
+    return np.asarray(float(threshold) - white.astype(np.float64), dtype=np.float32)
 
 
 def _signed_distance_fmm(
