@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.cli import main
+from pymacruise import base_workflow as base_workflow_module
 from pymacruise.base_workflow import _implementation_signature, _materialize_dura_atlas
 from pymacruise import workflow
 
@@ -160,6 +161,28 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         if Path(record["path"]).name.endswith(".nii.gz")
     } == hashes_before
 
+    # A new package fingerprint invalidates every checkpoint once, then the
+    # upgraded manifest resumes normally under that implementation identity.
+    monkeypatch.setattr(base_workflow_module, "_implementation_signature", lambda: "f" * 64)
+    assert main([*arguments, "--resume"]) == 0
+    code_change_summary = capsys.readouterr().out
+    assert "Resume: verified" not in code_change_summary
+    assert code_change_summary.count("Stage check passed:") == 6
+    code_changed = json.loads(manifest_path.read_text())
+    assert code_changed["implementation_signature"] == "f" * 64
+    assert code_changed["previous_implementation_signature"] == manifest["implementation_signature"]
+    assert code_changed["stages"]["n4"]["attempt"] == 2
+    assert code_changed["stages"]["toads-first"]["attempt"] == 3
+    assert all(
+        code_changed["stages"][name]["attempt"] == 2
+        for name in ("dura", "toads-second", "cruise-core", "maseg-refinement")
+    )
+
+    assert main([*arguments, "--resume"]) == 0
+    code_resume_summary = capsys.readouterr().out
+    assert code_resume_summary.count("Resume: verified") == 6
+    updated = json.loads(manifest_path.read_text())
+
     # Simulate interruption/corruption at a checkpoint: a damaged CRUISE output
     # forces that stage and its dependent MaSeg refinement into fresh attempts,
     # while all verified upstream stages are reused.
@@ -174,8 +197,8 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert "Stage check passed: cruise-core" in restart_summary
     assert "Stage check passed: maseg-refinement" in restart_summary
     restarted = json.loads(manifest_path.read_text())
-    assert restarted["stages"]["cruise-core"]["attempt"] == 2
-    assert restarted["stages"]["maseg-refinement"]["attempt"] == 2
+    assert restarted["stages"]["cruise-core"]["attempt"] == 3
+    assert restarted["stages"]["maseg-refinement"]["attempt"] == 3
     assert {
         Path(record["path"]).name: record["sha256"]
         for record in restarted["final_outputs"]

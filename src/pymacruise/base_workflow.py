@@ -307,6 +307,12 @@ def run_base_workflow(
             "derived_resources": [{"path": str(run_atlas), "sha256": _sha256(run_atlas)}],
         }
         _write_manifest(manifest_path, manifest)
+    if manifest.get("implementation_signature") != implementation_signature:
+        previous_signature = manifest.get("implementation_signature")
+        if previous_signature is not None:
+            manifest["previous_implementation_signature"] = previous_signature
+        manifest["implementation_signature"] = implementation_signature
+        _write_manifest(manifest_path, manifest)
 
     # Use a new immutable attempt directory whenever a prior attempt did not
     # finish cleanly. This preserves partial products for diagnosis.
