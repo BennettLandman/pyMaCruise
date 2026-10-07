@@ -1,0 +1,22 @@
+{
+  "classification_changed_voxels": 0,
+  "classification_dice": 1.0,
+  "exact": true,
+  "iterations": 34,
+  "java_classification_raw_sha256": "da1499f1edda0db12d7a5b8f3535a6f3583b4560b622f528db0854c29b6d049d",
+  "java_input_nii_sha256": "4f54b67a5d90a5ee3b82e0ba3d56d218459d090f45768fc45045337c13347911",
+  "java_input_x_fastest_f32le_sha256": "e7be4af2d0023ee0d22487dedeba4e9258b20e0a97e7f0a308756c50902dc2a9",
+  "java_nifti_sha256": "bfb9848dd13e7f1c4e8cd9a1af08ffa045cf4abd0e6a717b459baaa041245d13",
+  "note": "The Java energy trace and Python stage log match in reported float32 values through iteration 34; classification payloads are compared byte-for-byte after x-fastest serialization.",
+  "orientation": "RAS",
+  "python_classification_payload_sha256": "da1499f1edda0db12d7a5b8f3535a6f3583b4560b622f528db0854c29b6d049d",
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "source": "selected VandyCRUISE AlgorithmMultipleToads with same Dura outputs as current Python base run",
+  "stop_threshold": 0.0001,
+  "synthetic_only": true,
+  "terminal_energy_ratio": 5.54052858e-05
+}

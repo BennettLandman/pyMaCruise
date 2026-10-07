@@ -1,0 +1,563 @@
+{
+  "all_six_stage_checks_passed": true,
+  "base_run_peak_sampled_rss_gb": 8.106,
+  "base_run_rss_limit_gb": 16.0,
+  "dura_java_comparison": {
+    "brain_mask_surface_metrics": {
+      "candidate_to_reference_mean_mm": 0.0001865412478254138,
+      "candidate_vertices": 147936,
+      "hausdorff_mm": 0.9375,
+      "mean_absolute_distance_mm": 0.000205366350230705,
+      "reference_to_candidate_mean_mm": 0.00022419145263599617,
+      "reference_vertices": 147948
+    },
+    "input_sha256": {
+      "gray_matter": "1e2b62b7794116b36e85d63327252d2f4861b130519321b232595343789c6cdf",
+      "t1_n4": "0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a",
+      "white_matter": "6a4475e1b6eb64ecb76ce88d47c8172e5c1324df6508eddeb758d690f4ea107c",
+      "white_matter_mask": "5ff316d17be1506b21a863963322126c922a7f5e75cb047364707763d19d4656"
+    },
+    "inputs_same_as_committed_java_fixture": true,
+    "outputs": {
+      "brain_mask": {
+        "changed_voxels": 22,
+        "dice_foreground": 0.9999900124027798,
+        "exact": false,
+        "max_absolute_error": 1.0,
+        "mean_absolute_error": 3.6107434717758032e-06,
+        "regenerated_python_matches_base_run": true
+      },
+      "brain_mask_level_set": {
+        "changed_voxels": 316916,
+        "exact": false,
+        "max_absolute_error": 0.039222896099090576,
+        "mean_absolute_error": 4.190641895608767e-05,
+        "regenerated_python_matches_base_run": true,
+        "sign_changed_voxels": 0
+      },
+      "corrected_gm": {
+        "changed_voxels": 22,
+        "exact": false,
+        "max_absolute_error": 254.9944610595703,
+        "mean_absolute_error": 0.0006715271067308534,
+        "regenerated_python_matches_base_run": true
+      },
+      "corrected_wm": {
+        "changed_voxels": 22,
+        "exact": false,
+        "max_absolute_error": 1.2987594604492188,
+        "mean_absolute_error": 1.2605256631726737e-06,
+        "regenerated_python_matches_base_run": true
+      },
+      "gm_tc": {
+        "changed_voxels": 0,
+        "dice_at_zero": 1.0,
+        "exact": true,
+        "max_absolute_error": 0.0,
+        "mean_absolute_error": 0.0,
+        "regenerated_python_matches_base_run": true
+      },
+      "inner_distance": {
+        "changed_voxels": 387,
+        "exact": false,
+        "max_absolute_error": 0.013943195343017578,
+        "mean_absolute_error": 1.2240588930469032e-08,
+        "sign_changed_voxels": 0
+      },
+      "level_set": {
+        "changed_voxels": 316916,
+        "dice_at_zero": 1.0,
+        "exact": false,
+        "max_absolute_error": 0.039222896099090576,
+        "mean_absolute_error": 4.190641895608767e-05,
+        "regenerated_python_matches_base_run": true,
+        "sign_changed_voxels": 0
+      },
+      "outer_distance": {
+        "changed_voxels": 736,
+        "exact": false,
+        "max_absolute_error": 0.011215567588806152,
+        "mean_absolute_error": 1.8378883369835315e-08,
+        "sign_changed_voxels": 0
+      },
+      "stripped_t1": {
+        "changed_voxels": 22,
+        "exact": false,
+        "max_absolute_error": 377.02410888671875,
+        "mean_absolute_error": 0.0010813086995186743,
+        "regenerated_python_matches_base_run": true
+      },
+      "tgdm_pass_01": {
+        "changed_voxels": 316916,
+        "dice_at_zero": 1.0,
+        "exact": false,
+        "max_absolute_error": 0.039222896099090576,
+        "mean_absolute_error": 4.190641895608767e-05,
+        "sign_changed_voxels": 0
+      },
+      "union": {
+        "changed_voxels": 0,
+        "exact": true,
+        "max_absolute_error": 0.0,
+        "mean_absolute_error": 0.0
+      },
+      "wm_tc": {
+        "changed_voxels": 0,
+        "dice_at_zero": 1.0,
+        "exact": true,
+        "max_absolute_error": 0.0,
+        "mean_absolute_error": 0.0,
+        "regenerated_python_matches_base_run": true
+      }
+    }
+  },
+  "first_toads": {
+    "changed_voxels": 0,
+    "converged": true,
+    "iterations": 12,
+    "matches_committed_java_classification_exactly": true,
+    "terminal_energy_ratio": 6.96809075e-05
+  },
+  "focused_validation": {
+    "base_workflow_restartable": "3 passed in 41.13s",
+    "base_workflow_restartable_peak_sampled_rss_gb": 0.658,
+    "tgdm_module": "24 passed in 14.85s"
+  },
+  "full_suite": "Not run for this integration cycle; the documented 1,220-pass suite predates this implementation commit.",
+  "implementation_commit": "9eb84bc",
+  "orientation": "RAS",
+  "real_mri_used": false,
+  "resume_peak_sampled_rss_gb": 0.127,
+  "resume_rss_limit_gb": 4.0,
+  "resume_verified_all_six_stages": true,
+  "run_manifest": {
+    "all_nifti_outputs_finite_ras": true,
+    "all_output_hashes_valid": true,
+    "converged": true,
+    "final_output_count": 16,
+    "nifti_output_count": 30,
+    "sha256": "8433b51c5172c1368bd7d357ea34b4889972fc05232dd9ed6a61659ddfca4ddd",
+    "source_equivalence_claim": false,
+    "stage_attempts": {
+      "cruise-core": 3,
+      "dura": 3,
+      "maseg-refinement": 3,
+      "n4": 4,
+      "toads-first": 4,
+      "toads-second": 3
+    },
+    "stage_count": 6,
+    "stage_output_count": 38,
+    "status": "complete"
+  },
+  "run_status": "complete",
+  "second_toads": {
+    "classification": {
+      "changed_voxels": 0,
+      "exact": true,
+      "java_x_fastest_sha256": "da1499f1edda0db12d7a5b8f3535a6f3583b4560b622f528db0854c29b6d049d",
+      "per_label": {
+        "1": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 4645040,
+          "python_voxels": 4645040
+        },
+        "14": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 45578,
+          "python_voxels": 45578
+        },
+        "15": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 529767,
+          "python_voxels": 529767
+        },
+        "16": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 7674,
+          "python_voxels": 7674
+        },
+        "17": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 16597,
+          "python_voxels": 16597
+        },
+        "18": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 11449,
+          "python_voxels": 11449
+        },
+        "22": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 25253,
+          "python_voxels": 25253
+        },
+        "24": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 20845,
+          "python_voxels": 20845
+        },
+        "25": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 378638,
+          "python_voxels": 378638
+        },
+        "5": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 388019,
+          "python_voxels": 388019
+        },
+        "6": {
+          "dice": 1.0,
+          "exact": true,
+          "java_voxels": 24068,
+          "python_voxels": 24068
+        }
+      },
+      "python_x_fastest_sha256": "da1499f1edda0db12d7a5b8f3535a6f3583b4560b622f528db0854c29b6d049d"
+    },
+    "converged": true,
+    "energy_ratio_trace": [
+      {
+        "iteration": 1,
+        "java_float32_bits": "43280f3f",
+        "java_membership_sha256": "eeec27050b1bb1d542a08d477148ec7694afefaf5ee81ef8b94d1adc660da660",
+        "java_ratio": 0.5592081,
+        "matches": true,
+        "python_float32_bits": "43280f3f",
+        "python_ratio": 0.559208095
+      },
+      {
+        "iteration": 2,
+        "java_float32_bits": "5e964d3d",
+        "java_membership_sha256": "1d48224aa805b8aebb8b4a56ec54d5a6fb6c05ab671dc26e5e294a0946b80b48",
+        "java_ratio": 0.05019223,
+        "matches": true,
+        "python_float32_bits": "5e964d3d",
+        "python_ratio": 0.0501922294
+      },
+      {
+        "iteration": 3,
+        "java_float32_bits": "0ba4b93d",
+        "java_membership_sha256": "8b3183cfd56bc16cecc95cf4beefd79d6c47fc284d48fdd659f5b070cc2571f1",
+        "java_ratio": 0.09064492,
+        "matches": true,
+        "python_float32_bits": "0ba4b93d",
+        "python_ratio": 0.0906449184
+      },
+      {
+        "iteration": 4,
+        "java_float32_bits": "f036823d",
+        "java_membership_sha256": "0f4656a95cbd263e89b62a6ad84685ec05b739f0c995a54b71cfaa3859b84980",
+        "java_ratio": 0.06358135,
+        "matches": true,
+        "python_float32_bits": "f036823d",
+        "python_ratio": 0.0635813475
+      },
+      {
+        "iteration": 5,
+        "java_float32_bits": "08acda3c",
+        "java_membership_sha256": "b25d1544289f993c03e746ad0686d0e9156cff36159f270f2bce26888fc49ee3",
+        "java_ratio": 0.026693359,
+        "matches": true,
+        "python_float32_bits": "08acda3c",
+        "python_ratio": 0.026693359
+      },
+      {
+        "iteration": 6,
+        "java_float32_bits": "5a4adf3b",
+        "java_membership_sha256": "0c85045815280aaac3db6e282190cd654b0398d8c5247e73eb76387b9e66886e",
+        "java_ratio": 0.0068142833,
+        "matches": true,
+        "python_float32_bits": "5a4adf3b",
+        "python_ratio": 0.00681428332
+      },
+      {
+        "iteration": 7,
+        "java_float32_bits": "3b5c083b",
+        "java_membership_sha256": "f3f2690b1e2ee348a4a0d5e1479a874de8ceed6fd04cfaac1d836bdb85916ec2",
+        "java_ratio": 0.0020806927,
+        "matches": true,
+        "python_float32_bits": "3b5c083b",
+        "python_ratio": 0.00208069268
+      },
+      {
+        "iteration": 8,
+        "java_float32_bits": "56a6d13b",
+        "java_membership_sha256": "aa31e4550368cbeca3ade10aaced055ae8fcc5b97be5b037991bd8a5cc9e6976",
+        "java_ratio": 0.0063980026,
+        "matches": true,
+        "python_float32_bits": "56a6d13b",
+        "python_ratio": 0.00639800262
+      },
+      {
+        "iteration": 9,
+        "java_float32_bits": "1d7f103c",
+        "java_membership_sha256": "983fd5148d277d67618fb9bb7defef0fc4c320f3994c5ceb184400138824b7fd",
+        "java_ratio": 0.008819369,
+        "matches": true,
+        "python_float32_bits": "1d7f103c",
+        "python_ratio": 0.00881936867
+      },
+      {
+        "iteration": 10,
+        "java_float32_bits": "0c3aed3b",
+        "java_membership_sha256": "c8c2016ab2f35e323417f8e059bd382ad188d00837339e8bb240ab1f0f8e34cc",
+        "java_ratio": 0.0072395857,
+        "matches": true,
+        "python_float32_bits": "0c3aed3b",
+        "python_ratio": 0.00723958574
+      },
+      {
+        "iteration": 11,
+        "java_float32_bits": "c38e003c",
+        "java_membership_sha256": "8dc2c2c7fe4a5fd6ddf171b4fe5b6241def4e5708a0090ff74ec00010b010827",
+        "java_ratio": 0.007846537,
+        "matches": true,
+        "python_float32_bits": "c38e003c",
+        "python_ratio": 0.00784653705
+      },
+      {
+        "iteration": 12,
+        "java_float32_bits": "09e1ab3b",
+        "java_membership_sha256": "7fe89d245a77ee812872ae3f18a6583ffed2c0f52a25134ffd3d9f977f0905f2",
+        "java_ratio": 0.005245332,
+        "matches": true,
+        "python_float32_bits": "09e1ab3b",
+        "python_ratio": 0.00524533214
+      },
+      {
+        "iteration": 13,
+        "java_float32_bits": "7263003c",
+        "java_membership_sha256": "05c778a8d09481c9f319c0dbc88c0d9fcc3e6bb694ae3113cec0298086ffed15",
+        "java_ratio": 0.00783621,
+        "matches": true,
+        "python_float32_bits": "7263003c",
+        "python_ratio": 0.00783620961
+      },
+      {
+        "iteration": 14,
+        "java_float32_bits": "75572a3c",
+        "java_membership_sha256": "bf861952c1b3e2326a0efd9eb28a440a4782f05ee5a926ac4eab692413c45e2e",
+        "java_ratio": 0.010396828,
+        "matches": true,
+        "python_float32_bits": "75572a3c",
+        "python_ratio": 0.0103968279
+      },
+      {
+        "iteration": 15,
+        "java_float32_bits": "fa3e573c",
+        "java_membership_sha256": "afdd3859658556c54190aa2708066dd63c1b42c8a13ce0df90a16720595be33a",
+        "java_ratio": 0.013137573,
+        "matches": true,
+        "python_float32_bits": "fa3e573c",
+        "python_ratio": 0.0131375734
+      },
+      {
+        "iteration": 16,
+        "java_float32_bits": "4eae0e3c",
+        "java_membership_sha256": "9547775ab16af0a43a6655eff4933b938b9d2f8f1c6fc371745019b604aeb8c7",
+        "java_ratio": 0.00870855,
+        "matches": true,
+        "python_float32_bits": "4eae0e3c",
+        "python_ratio": 0.00870854966
+      },
+      {
+        "iteration": 17,
+        "java_float32_bits": "ef88213c",
+        "java_membership_sha256": "42ca7d8a7ab3e11ff11f79ad0aaaa3ae4efec0adbfc706ce9808d4c16610d5e6",
+        "java_ratio": 0.009859308,
+        "matches": true,
+        "python_float32_bits": "ef88213c",
+        "python_ratio": 0.00985930767
+      },
+      {
+        "iteration": 18,
+        "java_float32_bits": "84bc113c",
+        "java_membership_sha256": "7fb5a728c433ab7b636dab0636601f69ced4d03fc4938949bf0cca2d89effe61",
+        "java_ratio": 0.008895043,
+        "matches": true,
+        "python_float32_bits": "84bc113c",
+        "python_ratio": 0.00889504328
+      },
+      {
+        "iteration": 19,
+        "java_float32_bits": "2d37b23b",
+        "java_membership_sha256": "bdaed3d8d6176945a3e2a382740f9a5a312ffbd37e87f506180d2d879bedb6c3",
+        "java_ratio": 0.0054387064,
+        "matches": true,
+        "python_float32_bits": "2d37b23b",
+        "python_ratio": 0.00543870637
+      },
+      {
+        "iteration": 20,
+        "java_float32_bits": "877fcb3b",
+        "java_membership_sha256": "65e35865eb9e794d52a3b6d37ff06420081982c9bcccf427c2ee73c32a6375bd",
+        "java_ratio": 0.006210271,
+        "matches": true,
+        "python_float32_bits": "877fcb3b",
+        "python_ratio": 0.0062102708
+      },
+      {
+        "iteration": 21,
+        "java_float32_bits": "b35ae63b",
+        "java_membership_sha256": "319392d80e1d3b50e0d24c6aeaca1d733933f693e5abdf0e0fedd793191e4066",
+        "java_ratio": 0.007029855,
+        "matches": true,
+        "python_float32_bits": "b35ae63b",
+        "python_ratio": 0.00702985516
+      },
+      {
+        "iteration": 22,
+        "java_float32_bits": "b1af9d3b",
+        "java_membership_sha256": "b7959f5d4656903cabab55f92106b2ba5799dbcaa4f8db063d711313543ec27d",
+        "java_ratio": 0.004812204,
+        "matches": true,
+        "python_float32_bits": "b1af9d3b",
+        "python_ratio": 0.00481220381
+      },
+      {
+        "iteration": 23,
+        "java_float32_bits": "a006203b",
+        "java_membership_sha256": "3adeb7d4be0718f8e9b1a1d36fbdf90538fccc6ba35e0dd382b9bd560f32a17c",
+        "java_ratio": 0.0024418011,
+        "matches": true,
+        "python_float32_bits": "a006203b",
+        "python_ratio": 0.00244180113
+      },
+      {
+        "iteration": 24,
+        "java_float32_bits": "74e5423b",
+        "java_membership_sha256": "70c61104bf9eb4af3a25e1d444a97cc263d4393a251bd2210ebdab99b4b28b44",
+        "java_ratio": 0.0029738816,
+        "matches": true,
+        "python_float32_bits": "74e5423b",
+        "python_ratio": 0.00297388155
+      },
+      {
+        "iteration": 25,
+        "java_float32_bits": "2f63963b",
+        "java_membership_sha256": "1d0ebc2a50451cb7d2b73b6e1658f7c2ae2c38378eef2077fca551df9930f196",
+        "java_ratio": 0.0045894603,
+        "matches": true,
+        "python_float32_bits": "2f63963b",
+        "python_ratio": 0.00458946032
+      },
+      {
+        "iteration": 26,
+        "java_float32_bits": "194bbc39",
+        "java_membership_sha256": "b08975075b65cfe4c5cb63db30d8018bd945a074275ca89062a683ed35830e50",
+        "java_ratio": 0.00035914106,
+        "matches": true,
+        "python_float32_bits": "194bbc39",
+        "python_ratio": 0.000359141064
+      },
+      {
+        "iteration": 27,
+        "java_float32_bits": "f06daf3a",
+        "java_membership_sha256": "d3f28ba6e2b068cd23f5088b91cab678e34cd380fe522ff42b6f0786750fe549",
+        "java_ratio": 0.0013384204,
+        "matches": true,
+        "python_float32_bits": "f06daf3a",
+        "python_ratio": 0.00133842044
+      },
+      {
+        "iteration": 28,
+        "java_float32_bits": "cc40f73a",
+        "java_membership_sha256": "d5331ea43f7e9bdb8069cabe8b35ff868124d392dc822919db751779eac7322c",
+        "java_ratio": 0.0018863915,
+        "matches": true,
+        "python_float32_bits": "cc40f73a",
+        "python_ratio": 0.00188639155
+      },
+      {
+        "iteration": 29,
+        "java_float32_bits": "f9cbb23a",
+        "java_membership_sha256": "43639dd71c6b60ce446c12fa615940e05a4192e9f53ed04a2396a0297e557afe",
+        "java_ratio": 0.0013641111,
+        "matches": true,
+        "python_float32_bits": "f9cbb23a",
+        "python_ratio": 0.00136411109
+      },
+      {
+        "iteration": 30,
+        "java_float32_bits": "58b1b83a",
+        "java_membership_sha256": "bfe7c14d7c3ad9ea677b38951042b9e013b2f9b5158cbb10170f7be0fd062db5",
+        "java_ratio": 0.0014090938,
+        "matches": true,
+        "python_float32_bits": "58b1b83a",
+        "python_ratio": 0.00140909385
+      },
+      {
+        "iteration": 31,
+        "java_float32_bits": "ee2d363a",
+        "java_membership_sha256": "26287eba3ed42fe387c67a76ea1e1071aa1fc81813a51c3c4b3ad43bdca79536",
+        "java_ratio": 0.0006949593,
+        "matches": true,
+        "python_float32_bits": "ee2d363a",
+        "python_ratio": 0.000694959308
+      },
+      {
+        "iteration": 32,
+        "java_float32_bits": "6a2c773a",
+        "java_membership_sha256": "86b25dc862fb906d16ddfa40c7f70e7761b4c3f9bb2c4ae5706219cea9890242",
+        "java_ratio": 0.00094289205,
+        "matches": true,
+        "python_float32_bits": "6a2c773a",
+        "python_ratio": 0.000942892046
+      },
+      {
+        "iteration": 33,
+        "java_float32_bits": "63130e3a",
+        "java_membership_sha256": "88d05edf6b7a207e510534a95b92f7b497b995e2735916c53ef970c2ee74abd8",
+        "java_ratio": 0.0005419759,
+        "matches": true,
+        "python_float32_bits": "63130e3a",
+        "python_ratio": 0.000541975896
+      },
+      {
+        "iteration": 34,
+        "java_float32_bits": "f9626838",
+        "java_membership_sha256": "b860a26d48a1a00814dda9f206f191b159ed5fe3bab6412dfef85c4321b6e182",
+        "java_ratio": 5.5405286e-05,
+        "matches": true,
+        "python_float32_bits": "f9626838",
+        "python_ratio": 5.54052858e-05
+      }
+    ],
+    "iterations": 34,
+    "java_classification_nifti": "tests/data/synthetic/base_workflow_brain_resolution/toads-second-java-34iter-after-tgdm-topology-fix.nii.gz",
+    "java_classification_provenance": "tests/data/synthetic/base_workflow_brain_resolution/toads-second-java-34iter-after-tgdm-topology-fix.json",
+    "java_input_t1_sha256": "4f54b67a5d90a5ee3b82e0ba3d56d218459d090f45768fc45045337c13347911",
+    "java_input_x_fastest_f32le_sha256": "e7be4af2d0023ee0d22487dedeba4e9258b20e0a97e7f0a308756c50902dc2a9",
+    "java_python_energy_ratios_match_float32": true,
+    "java_source_harness": "VandyCoreSyntheticRunExport, selected VandyCRUISE AlgorithmMultipleToads; Java maximum heap 6 GB",
+    "java_trace_log": "build/java-reference/current-second-pass-java-watchdog.log",
+    "maximum_iterations": 50,
+    "terminal_energy_ratio": 5.54052858e-05
+  },
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "source_equivalence_claim": false,
+  "spacing_mm": [
+    0.9375,
+    0.9375,
+    0.9375
+  ],
+  "synthetic_only": true,
+  "whole_workflow_source_equivalence_claim": false,
+  "workflow_command": "./.venv/bin/pymacruise base-run ... --resume"
+}

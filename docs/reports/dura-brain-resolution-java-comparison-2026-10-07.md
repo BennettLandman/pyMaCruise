@@ -83,3 +83,10 @@ is within 1 mm but relatively close to that limit, so retain it as a regression
 metric. Next compare the complete base chain at the CRUISE core and final
 refinement outputs, then use the approved real-data run only after the
 synthetic chain is source-consistent.
+
+
+## Rerun after TGDM topology correction — 2026-10-07
+
+The subsequent base-workflow integration rerun used the same committed Java-stage inputs (their hashes match the fixture). With source-seeded 6/18-connected component counting and float32 threshold arithmetic corrected, the final mask now differs at **22** boundary voxels rather than 23. Foreground Dice is **0.9999900124**, symmetric mean surface distance **0.000205366 mm**, and Hausdorff **0.9375 mm**. The TGDM level-set has zero sign disagreements. Python's comparison outputs reproduce the saved current base-run Dura outputs. This meets the agreed gates and supersedes the earlier metrics above for the corrected implementation.
+
+The end-to-end rerun and full stage context are recorded in [the corrected base workflow report](base-workflow-after-tgdm-topology-fix-2026-10-07.md), with exact metrics and input hashes in its [JSON evidence](base-workflow-after-tgdm-topology-fix-2026-10-07.json). This is still a selected synthetic stage comparison, not complete MaCRUISE equivalence.

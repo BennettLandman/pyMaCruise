@@ -2,33 +2,33 @@
   "coordinate_system": "RAS",
   "outputs": {
     "brain_mask": {
-      "changed_voxels": 23,
-      "dice_foreground": 0.9999895584258283,
+      "changed_voxels": 22,
+      "dice_foreground": 0.9999900124027798,
       "exact": false,
       "max_absolute_error": 1.0,
-      "mean_absolute_error": 3.7748681750383396e-06,
+      "mean_absolute_error": 3.6107434717758032e-06,
       "regenerated_python_matches_base_run": true
     },
     "brain_mask_level_set": {
-      "changed_voxels": 323396,
+      "changed_voxels": 316916,
       "exact": false,
-      "max_absolute_error": 0.5556392669677734,
-      "mean_absolute_error": 4.629548254120554e-05,
+      "max_absolute_error": 0.039222896099090576,
+      "mean_absolute_error": 4.190641895608767e-05,
       "regenerated_python_matches_base_run": true,
-      "sign_changed_voxels": 18
+      "sign_changed_voxels": 0
     },
     "corrected_gm": {
-      "changed_voxels": 23,
+      "changed_voxels": 22,
       "exact": false,
       "max_absolute_error": 254.9944610595703,
-      "mean_absolute_error": 0.0006721793211978868,
+      "mean_absolute_error": 0.0006715271067308534,
       "regenerated_python_matches_base_run": true
     },
     "corrected_wm": {
-      "changed_voxels": 23,
+      "changed_voxels": 22,
       "exact": false,
       "max_absolute_error": 1.2987594604492188,
-      "mean_absolute_error": 1.3130269996781532e-06,
+      "mean_absolute_error": 1.2605256631726737e-06,
       "regenerated_python_matches_base_run": true
     },
     "gm_tc": {
@@ -47,13 +47,13 @@
       "sign_changed_voxels": 0
     },
     "level_set": {
-      "changed_voxels": 323396,
-      "dice_at_zero": 0.9999901454099509,
+      "changed_voxels": 316916,
+      "dice_at_zero": 1.0,
       "exact": false,
-      "max_absolute_error": 0.5556392669677734,
-      "mean_absolute_error": 4.629548254120554e-05,
+      "max_absolute_error": 0.039222896099090576,
+      "mean_absolute_error": 4.190641895608767e-05,
       "regenerated_python_matches_base_run": true,
-      "sign_changed_voxels": 18
+      "sign_changed_voxels": 0
     },
     "outer_distance": {
       "changed_voxels": 736,
@@ -63,19 +63,19 @@
       "sign_changed_voxels": 0
     },
     "stripped_t1": {
-      "changed_voxels": 23,
+      "changed_voxels": 22,
       "exact": false,
       "max_absolute_error": 377.02410888671875,
-      "mean_absolute_error": 0.0011022245442425763,
+      "mean_absolute_error": 0.0010813086995186743,
       "regenerated_python_matches_base_run": true
     },
     "tgdm_pass_01": {
-      "changed_voxels": 323396,
-      "dice_at_zero": 0.9999901454099509,
+      "changed_voxels": 316916,
+      "dice_at_zero": 1.0,
       "exact": false,
-      "max_absolute_error": 0.5556392669677734,
-      "mean_absolute_error": 4.629548254120554e-05,
-      "sign_changed_voxels": 18
+      "max_absolute_error": 0.039222896099090576,
+      "mean_absolute_error": 4.190641895608767e-05,
+      "sign_changed_voxels": 0
     },
     "union": {
       "changed_voxels": 0,
