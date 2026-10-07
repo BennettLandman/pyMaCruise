@@ -22,7 +22,10 @@ import java.util.List;
  * calls use the selected AlgorithmTopologyCorrection implementation.
  */
 public final class DuraAttachedNoDuraReferenceHarness {
-    private static final int NX = 17, NY = 17, NZ = 17;
+    private static final int NX = Integer.getInteger("dura.nx", 17);
+    private static final int NY = Integer.getInteger("dura.ny", 17);
+    private static final int NZ = Integer.getInteger("dura.nz", 17);
+    private static final double SCALE = Math.min(NX, Math.min(NY, NZ)) / 17.0;
     private static final float MEMBERSHIP = 0.4f;
     private static final float MASK_TRANSLATION = 2.0f;
     private static final float LEVEL_SET_TRANSLATION = 0.0f;
@@ -70,7 +73,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
             out.write("\"dynamic_pressure_tgdm_sha256\":\"53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc\",");
             out.write("\"cortex_profile_sha256\":\"f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505\",");
             out.write("\"distance_field_sha256\":\"92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7\",");
-            out.write("\"dimensions_xyz\":["+NX+","+NY+","+NZ+"],\"membership_level\":"+MEMBERSHIP+",");
+            out.write("\"dimensions_xyz\":["+NX+","+NY+","+NZ+"],\"scale\":"+SCALE+",\"membership_level\":"+MEMBERSHIP+",");
             out.write("\"mask_translation\":"+MASK_TRANSLATION+",\"level_set_translation\":"+LEVEL_SET_TRANSLATION+",");
             out.write("\"cases\":[");
             emitCase(out, attached); out.write(','); emitCase(out, clean);
@@ -87,16 +90,19 @@ public final class DuraAttachedNoDuraReferenceHarness {
         result.paint = new float[NX][NY][NZ];
         BitSet paintBits = new BitSet(NX * NY * NZ);
         for (int x=0;x<NX;x++) for(int y=0;y<NY;y++) for(int z=0;z<NZ;z++) {
-            double dx=x-8.0, dy=y-8.0, dz=z-8.0;
+            double cx=(NX-1.0)/2.0, cy=(NY-1.0)/2.0, cz=(NZ-1.0)/2.0;
+            double dx=x-cx, dy=y-cy, dz=z-cz;
             double radius=Math.sqrt(dx*dx+dy*dy+dz*dz);
-            float wmValue=(float)(255.0*Math.max(0.0, Math.min(1.0, (4.4-radius)/1.7)));
-            float gmValue=(float)(255.0*Math.max(0.0, Math.min(1.0, (1.0-Math.abs(radius-4.25)/1.8))));
-            if (attachedDura && y==8 && z==8 && x>=12 && x<=15) gmValue=190.0f;
-            if (attachedDura && x>=14 && x<=15 && y>=7 && y<=9 && z>=7 && z<=9) gmValue=230.0f;
+            float wmValue=(float)(255.0*Math.max(0.0, Math.min(1.0, (4.4*SCALE-radius)/(1.7*SCALE))));
+            float gmValue=(float)(255.0*Math.max(0.0, Math.min(1.0, 1.0-Math.abs(radius-4.25*SCALE)/(1.8*SCALE))));
+            if (attachedDura && Math.round(y)==Math.round(cy) && Math.round(z)==Math.round(cz)
+                    && x>=cx+4.0*SCALE && x<=cx+7.0*SCALE) gmValue=190.0f;
+            if (attachedDura && x>=cx+6.0*SCALE && x<=cx+7.0*SCALE
+                    && y>=cy-SCALE && y<=cy+SCALE && z>=cz-SCALE && z<=cz+SCALE) gmValue=230.0f;
             result.wm[x][y][z]=wmValue;
             result.gm[x][y][z]=gmValue;
             result.t1[x][y][z]=(float)(80.0+2.0*x+3.0*y+5.0*z);
-            if (radius<=2.9) {
+            if (radius<=2.9*SCALE) {
                 result.paint[x][y][z]=1.0f;
                 paintBits.set(flat(x,y,z));
             }

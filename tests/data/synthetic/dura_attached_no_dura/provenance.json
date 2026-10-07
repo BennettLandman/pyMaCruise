@@ -37,7 +37,7 @@
   ],
   "input_generator": "make_inputs.py",
   "reference_harness_path": "tests/java_reference/DuraAttachedNoDuraReferenceHarness.java",
-  "harness_sha256": "c0cf8dd04bf481d106d5e9acbbbac131e6c7f6d534fd08f1e873bd8b671809c3",
+  "harness_sha256": "1b39ae928b2aba192e955573db785c283e0af6ea0f7d5b312174ed3656b7ad29",
   "source_sha256": {
     "MedicAlgorithmRemoveDura09": "1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4",
     "AlgorithmTopologyCorrection": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",

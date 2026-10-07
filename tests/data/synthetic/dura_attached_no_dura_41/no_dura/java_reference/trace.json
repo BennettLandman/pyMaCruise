@@ -1,0 +1,30 @@
+{
+  "trace_steps": [
+    30,
+    30,
+    30,
+    30,
+    30
+  ],
+  "trace_levelset_sha256": [
+    "20cda92c255b5a982aed2e8ed0e3dc164cf0ba1c19d152476330bdad6bac9372",
+    "cbf6b3ee7e14cecb2f0975e0d271b7b9e2efb70ea2df09cc9fb47752c449ed5d",
+    "fd7a0773d2873d8c296976c4060037d91fc732c930e20ebfce044799a8b17fca",
+    "745130468695688993ccf1a6f7a83e9438702d547878f884e690f11208bc5e9a",
+    "703b43322289c86d90eb323e9c005b5670c1c7306095b1a2f2ccb567df774299"
+  ],
+  "source_sha256": {
+    "MedicAlgorithmRemoveDura09": "1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4",
+    "AlgorithmTopologyCorrection": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",
+    "GenericTGDM": "70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1",
+    "DynamicPressureTGDM": "53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc",
+    "DynamicPressureCortexProfile": "f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505",
+    "DistanceField": "92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7"
+  },
+  "case": "no_dura",
+  "dimensions_xyz": [
+    41,
+    41,
+    41
+  ]
+}
