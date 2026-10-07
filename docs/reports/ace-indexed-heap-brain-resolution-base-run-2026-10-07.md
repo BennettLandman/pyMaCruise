@@ -84,9 +84,9 @@ are recorded after the implementation commit.
   **25 passed in 40.15 s**. The docs/report commit is `638d781`; no full suite
   was run for this base workflow check.
 - After adding source fingerprinting, focused restartable workflow tests:
-  **3 passed in 24.97 s** on the implementation tree immediately before its
-  local commit. This verifies manifest fingerprinting, unchanged resume, and
-  selective downstream rerun after output corruption; it is not a full suite.
+  **3 passed in 10.17 s** on commit `63c89af`. This verifies manifest
+  fingerprinting, unchanged resume, and selective downstream rerun after
+  output corruption; it is not a full suite.
 - Latest full repository suite remains **1,220 passed, 0 failed, 0 skipped,
   11 expected RAS warnings in 1,463.83 s** on `7ae1dee`, peak sampled RSS
   **12.448 GB** under a 24 GB watchdog. That result predates the current ACE
