@@ -15,6 +15,7 @@
     164
   ],
   "source_harness": "TGDMCoreReferenceHarness; same RAS crop inputs and one-iteration wrapper profile",
+  "tested_commit": "6e2e748",
   "stages": {
     "central": {
       "candidate_to_reference_mean_mm": 6.7419437137790495e-06,

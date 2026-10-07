@@ -11,6 +11,9 @@ workflow's `toads-cruise-core` stage. Java crop outputs are transferred back to
 the native RAS grid with the selected JIST-style legacy uncrop rule before
 comparing the three delivered cortical surfaces.
 
+The comparator was rerun on committed code `6e2e748`; its full JSON metrics are
+in [the machine-readable report](tgdm-core-saved-base-run-java-comparison-2026-10-07.json).
+
 Fixture and Java reference regeneration:
 
 ```bash
