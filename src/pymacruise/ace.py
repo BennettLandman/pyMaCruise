@@ -692,21 +692,101 @@ def _source_crossing_offsets(values: np.ndarray, point: tuple[int, int, int]) ->
     """Return one source-compatible subvoxel crossing per coordinate axis."""
     center = float(values[point])
     offsets = []
-    for axis in range(3):
-        opposite = []
-        for delta in (-1, 1):
+    # DistanceFieldAndSkeleton accumulates N/S, E/W, then F/B. The original
+    # two-sided selection keeps S and B on ties, but keeps W for E/W ties.
+    for axis, deltas, tie_to_second in (
+        (1, (-1, 1), True),
+        (0, (-1, 1), False),
+        (2, (1, -1), True),
+    ):
+        opposite: list[tuple[int, float]] = []
+        for delta in deltas:
             neighbor = list(point)
             neighbor[axis] += delta
             if 0 <= neighbor[axis] < values.shape[axis]:
                 adjacent = float(values[tuple(neighbor)])
                 if center * adjacent < 0:
-                    opposite.append(adjacent)
+                    opposite.append((delta, adjacent))
         if opposite:
-            # The Java code resolves a two-sided crossing to the neighbor with
-            # the greater absolute level-set value (ties choose +axis).
-            adjacent = opposite[0] if len(opposite) == 1 or abs(opposite[0]) > abs(opposite[1]) else opposite[1]
+            # Preserve the axis-specific `>` selection in the Java source.
+            adjacent = opposite[0][1]
+            if len(opposite) > 1:
+                first_abs, second_abs = abs(adjacent), abs(opposite[1][1])
+                if second_abs > first_abs or (tie_to_second and second_abs == first_abs):
+                    adjacent = opposite[1][1]
             offsets.append(abs(center / (center - adjacent)))
     return offsets
+
+
+class _IndexedFloatHeap:
+    """Port the selected JIST BinaryMinHeap ordering for float priorities.
+
+    Equal priorities keep insertion/heap-array order. Each voxel has at most
+    one live entry, and a changed value moves that entry up or down in place.
+    """
+
+    def __init__(self) -> None:
+        self._items: list[tuple[np.float32, tuple[int, int, int]]] = []
+        self._positions: dict[tuple[int, int, int], int] = {}
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+    def set(self, point: tuple[int, int, int], value: float) -> None:
+        priority = np.float32(value)
+        index = self._positions.get(point)
+        if index is None:
+            index = len(self._items)
+            self._items.append((priority, point))
+            self._positions[point] = index
+            self._up(index)
+            return
+
+        previous = self._items[index][0]
+        self._items[index] = (priority, point)
+        if priority < previous:
+            self._up(index)
+        else:
+            self._down(index)
+
+    def pop(self) -> tuple[float, tuple[int, int, int]]:
+        priority, point = self._items[0]
+        last = self._items.pop()
+        del self._positions[point]
+        if self._items:
+            self._items[0] = last
+            self._positions[last[1]] = 0
+            self._down(0)
+        return float(priority), point
+
+    def _up(self, index: int) -> None:
+        item = self._items[index]
+        while index > 0:
+            parent = (index - 1) // 2
+            if not item[0] < self._items[parent][0]:
+                break
+            self._items[index] = self._items[parent]
+            self._positions[self._items[index][1]] = index
+            index = parent
+        self._items[index] = item
+        self._positions[item[1]] = index
+
+    def _down(self, index: int) -> None:
+        size = len(self._items)
+        item = self._items[index]
+        while 2 * index + 1 < size:
+            child = 2 * index + 1
+            right = child + 1
+            # JIST chooses the left child on equal priorities.
+            if right < size and self._items[right][0] < self._items[child][0]:
+                child = right
+            if not self._items[child][0] < item[0]:
+                break
+            self._items[index] = self._items[child]
+            self._positions[self._items[index][1]] = index
+            index = child
+        self._items[index] = item
+        self._positions[item[1]] = index
 
 
 def narrow_band_ace(
@@ -813,21 +893,24 @@ def _distance_and_characteristic_fmm(
         raise ValueError("weighted fast marching requires dimensions >= 2")
 
     shape = phi.shape
-    time = np.full(shape, np.inf, dtype=np.float64)
-    characteristic = np.zeros(shape, dtype=np.float64)
+    time = np.full(shape, np.inf, dtype=np.float32)
+    characteristic = np.zeros(shape, dtype=np.float32)
     state = np.zeros(shape, dtype=np.uint8)  # far, narrow band, accepted
-    for point in np.ndindex(shape):
-        value = float(phi[point])
-        if value == 0:
-            time[point] = 0.0
-            state[point] = 2
-            continue
-        offsets = _source_crossing_offsets(phi, point)
-        if offsets:
-            char = 1.0 / np.sqrt(sum(1.0 / (offset * offset) for offset in offsets))
-            characteristic[point] = char
-            time[point] = char / velocity[point] if velocity[point] > 0 else 10000.0
-            state[point] = 2
+    for k in range(shape[2]):
+        for j in range(shape[1]):
+            for i in range(shape[0]):
+                point = (i, j, k)
+                value = float(phi[point])
+                if value == 0:
+                    time[point] = 0.0
+                    state[point] = 2
+                    continue
+                offsets = _source_crossing_offsets(phi, point)
+                if offsets:
+                    char = 1.0 / np.sqrt(sum(1.0 / (offset * offset) for offset in offsets))
+                    characteristic[point] = char
+                    time[point] = char / velocity[point] if velocity[point] > 0 else 10000.0
+                    state[point] = 2
 
     if not np.any(state == 2):
         # The Java routine leaves the default all-zero distance and
@@ -836,26 +919,24 @@ def _distance_and_characteristic_fmm(
         return zeros, zeros.copy()
 
     def march(point: tuple[int, int, int]) -> tuple[float, float]:
-        directions: list[tuple[tuple[float, float], ...]] = []
+        groups = (
+            ((0, -1, 0), (0, 1, 0)),  # source north/south order
+            ((1, 0, 0), (-1, 0, 0)),  # source east/west order
+            ((0, 0, 1), (0, 0, -1)),  # source front/back order
+        )
         min_time = float("inf")
         min_char = 0.0
-        for axis in range(3):
-            pair = []
-            for delta in (-1, 1):
-                neighbor = list(point)
-                neighbor[axis] += delta
-                if 0 <= neighbor[axis] < shape[axis]:
-                    ni = tuple(neighbor)
-                    if state[ni] == 2:
-                        pair.append((time[ni], characteristic[ni]))
-                else:
-                    pair.append((float("inf"), 0.0))
-            finite_alive = [item for item in pair if np.isfinite(item[0]) or item[0] == 10000.0]
-            if finite_alive:
-                selected = min(finite_alive, key=lambda item: item[0])
-                if selected[0] < min_time:
-                    min_time, min_char = selected
-            directions.append(tuple(pair))
+        source_order = (
+            (0, -1, 0), (0, 1, 0), (0, 0, 1),
+            (0, 0, -1), (1, 0, 0), (-1, 0, 0),
+        )
+        for offset in source_order:
+            neighbor = tuple(point[axis] + offset[axis] for axis in range(3))
+            if all(0 <= neighbor[axis] < shape[axis] for axis in range(3)) and state[neighbor] == 2:
+                neighbor_time = float(time[neighbor])
+                if neighbor_time < min_time:
+                    min_time = neighbor_time
+                    min_char = float(characteristic[neighbor])
 
         local_speed = float(velocity[point])
         if local_speed > 0:
@@ -865,11 +946,17 @@ def _distance_and_characteristic_fmm(
         char_sum = 0.0
         char_time_sum = 0.0
         count = 0
-        for pair in directions:
-            finite_alive = [item for item in pair if np.isfinite(item[0]) or item[0] == 10000.0]
-            if not finite_alive:
+        for pair in groups:
+            alive: list[tuple[float, float]] = []
+            for offset in pair:
+                neighbor = tuple(point[axis] + offset[axis] for axis in range(3))
+                if all(0 <= neighbor[axis] < shape[axis] for axis in range(3)) and state[neighbor] == 2:
+                    alive.append((float(time[neighbor]), float(characteristic[neighbor])))
+            if not alive:
                 continue
-            chosen = min(finite_alive, key=lambda item: item[0])
+            chosen = alive[0]
+            if len(alive) > 1 and alive[1][0] < chosen[0]:
+                chosen = alive[1]
             if chosen[0] <= min_time:
                 summation += chosen[0]
                 squares += chosen[0] * chosen[0]
@@ -889,43 +976,46 @@ def _distance_and_characteristic_fmm(
         char = (inverse_speed + char_sum * result - char_time_sum) / denominator
         return float(result), float(char)
 
-    heap: list[tuple[float, tuple[int, int, int]]] = []
-    for point in np.argwhere(state == 2):
-        accepted = tuple(int(value) for value in point)
-        for axis in range(3):
-            for delta in (-1, 1):
-                neighbor = list(accepted)
-                neighbor[axis] += delta
-                if not 0 <= neighbor[axis] < shape[axis]:
+    neighbors = ((1, 0, 0), (0, 1, 0), (-1, 0, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
+    heap = _IndexedFloatHeap()
+    # JIST scans the volume in z/y/x order and inserts each first-arriving
+    # narrow-band voxel once, in MaskVolume6 neighbor order.
+    for k in range(shape[2]):
+        for j in range(shape[1]):
+            for i in range(shape[0]):
+                accepted = (i, j, k)
+                if state[accepted] != 2:
                     continue
-                candidate = tuple(neighbor)
-                if state[candidate] == 2:
-                    continue
-                value, char = march(candidate)
-                if value < time[candidate]:
-                    time[candidate], characteristic[candidate] = value, char
+                for offset in neighbors:
+                    candidate = tuple(accepted[axis] + offset[axis] for axis in range(3))
+                    if not all(0 <= candidate[axis] < shape[axis] for axis in range(3)):
+                        continue
+                    if state[candidate] != 0:
+                        continue
                     state[candidate] = 1
-                    heapq.heappush(heap, (value, candidate))
+                    value, char = march(candidate)
+                    time[candidate] = value
+                    characteristic[candidate] = char
+                    heap.set(candidate, value)
 
     while heap:
-        value, point = heapq.heappop(heap)
-        if state[point] == 2 or value != time[point]:
-            continue
+        value, point = heap.pop()
+        time[point] = value
         state[point] = 2
-        for axis in range(3):
-            for delta in (-1, 1):
-                neighbor = list(point)
-                neighbor[axis] += delta
-                if not 0 <= neighbor[axis] < shape[axis]:
-                    continue
-                candidate = tuple(neighbor)
-                if state[candidate] == 2:
-                    continue
-                tentative, char = march(candidate)
-                if tentative < time[candidate]:
-                    time[candidate], characteristic[candidate] = tentative, char
-                    state[candidate] = 1
-                    heapq.heappush(heap, (tentative, candidate))
+        for offset in neighbors:
+            candidate = tuple(point[axis] + offset[axis] for axis in range(3))
+            if not all(0 <= candidate[axis] < shape[axis] for axis in range(3)):
+                continue
+            if state[candidate] == 2:
+                continue
+            tentative, char = march(candidate)
+            time[candidate] = tentative
+            characteristic[candidate] = char
+            if state[candidate] == 1:
+                heap.set(candidate, tentative)
+            else:
+                state[candidate] = 1
+                heap.set(candidate, tentative)
 
     time[phi < 0] *= -1
     return np.asarray(time, dtype=np.float32), np.asarray(characteristic, dtype=np.float32)

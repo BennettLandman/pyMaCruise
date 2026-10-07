@@ -122,7 +122,7 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
     _compare_float_stage(
         weighted_distance,
         reference("14_tmpVol_narrowBand"),
-        maximum=0.021 if fixture_root.name == "folded_cortex" else 2.5e-5,
+        maximum=1e-5 if fixture_root.name == "folded_cortex" else 2.5e-5,
         mean=5e-6 if fixture_root.name == "folded_cortex" else 1e-5,
     )
 
@@ -134,7 +134,7 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
     memberships[selected] = np.trunc(254.0 * (magnitude[selected] + 0.05)).astype(np.int32)
     java_memberships = reference("15_csf_beforeclean")
     if fixture_root.name == "folded_cortex":
-        assert np.count_nonzero(memberships != java_memberships) == 3
+        assert np.count_nonzero(memberships != java_memberships) == 2
         assert np.max(np.abs(memberships - java_memberships)) == 1
         assert dice_coefficient(memberships > 0, java_memberships > 0) == 1.0
     else:
@@ -142,7 +142,7 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
     cleaned = clean_ace_components(memberships, minimum_size_exclusive=60)
     java_cleaned = reference("16_csf_afterclean")
     if fixture_root.name == "folded_cortex":
-        assert np.count_nonzero(cleaned != java_cleaned) == 3
+        assert np.count_nonzero(cleaned != java_cleaned) == 2
         assert np.max(np.abs(cleaned - java_cleaned)) == 1
         assert dice_coefficient(cleaned > 0, java_cleaned > 0) == 1.0
     else:
