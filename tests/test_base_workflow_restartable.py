@@ -7,7 +7,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.cli import main
-from pymacruise.base_workflow import _materialize_dura_atlas
+from pymacruise.base_workflow import _implementation_signature, _materialize_dura_atlas
 from pymacruise import workflow
 
 
@@ -16,6 +16,22 @@ FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 MASEG = ROOT / "data" / "synthetic" / "base_workflow" / "maseg.nii.gz"
 VANDY_ATLAS = ROOT / "data" / "synthetic" / "toads_downsampled_vandy_atlas" / "atlas.txt"
+
+
+def test_base_implementation_signature_tracks_python_source_not_notes(tmp_path) -> None:
+    source_root = tmp_path / "package"
+    source_root.mkdir()
+    module = source_root / "module.py"
+    notes = source_root / "notes.md"
+    module.write_text("VALUE = 1\n", encoding="utf-8")
+    notes.write_text("first note\n", encoding="utf-8")
+    first = _implementation_signature(source_root)
+    assert _implementation_signature(source_root) == first
+
+    notes.write_text("changed note\n", encoding="utf-8")
+    assert _implementation_signature(source_root) == first
+    module.write_text("VALUE = 2\n", encoding="utf-8")
+    assert _implementation_signature(source_root) != first
 
 
 def test_base_atlas_materializer_accepts_selected_vandy_structure_names(tmp_path) -> None:
@@ -77,6 +93,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     manifest_path = output / "run.json"
     manifest = json.loads(manifest_path.read_text())
     assert manifest["status"] == "complete"
+    assert len(manifest["implementation_signature"]) == 64
     assert manifest["spatial_convention"] == "RAS"
     assert manifest["converged"] is False
     assert manifest["result_interpretation"] == "stage-run-complete-but-toads-did-not-meet-energy-threshold"

@@ -70,6 +70,23 @@ def _json_hash(value: Any) -> str:
     ).hexdigest()
 
 
+def _implementation_signature(source_root: Path | None = None) -> str:
+    """Fingerprint packaged Python code so resume never trusts stale stages.
+
+    Stage inputs and options alone cannot distinguish outputs made before a
+    source change. Hash sorted module paths and contents; this also works from
+    an installed wheel where the package lives outside the project checkout.
+    """
+    root = Path(source_root) if source_root is not None else Path(__file__).resolve().parent
+    sources = sorted(root.rglob("*.py"))
+    if not sources:
+        raise RuntimeError(f"No Python implementation files found beneath {root}")
+    return _json_hash([
+        {"path": path.relative_to(root).as_posix(), "sha256": _sha256(path)}
+        for path in sources
+    ])
+
+
 def _write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n")
@@ -266,6 +283,7 @@ def run_base_workflow(
         "options": settings,
     }
     signature = _json_hash(signature_payload)
+    implementation_signature = _implementation_signature()
     output_dir.mkdir(parents=True, exist_ok=True)
     run_atlas = _materialize_dura_atlas(atlas_descriptor, output_dir / "resources" / "dura-atlas")
     manifest_path = output_dir / "run.json"
@@ -281,6 +299,7 @@ def run_base_workflow(
         manifest = {
             **signature_payload,
             "run_signature": signature,
+            "implementation_signature": implementation_signature,
             "status": "running",
             "stages": {},
             "history": [],
@@ -297,9 +316,13 @@ def run_base_workflow(
         command: list[str],
         dependencies: list[Path],
     ) -> None:
-        dependency_signature = _json_hash(
-            [{"path": str(path.resolve()), "sha256": _sha256(path)} for path in dependencies]
-        )
+        dependency_signature = _json_hash({
+            "implementation_signature": implementation_signature,
+            "dependencies": [
+                {"path": str(path.resolve()), "sha256": _sha256(path)}
+                for path in dependencies
+            ],
+        })
         previous = manifest["stages"].get(name)
         if _stage_is_valid(previous, dependency_signature):
             print(f"Resume: verified {name}; skipping")
@@ -392,9 +415,13 @@ def run_base_workflow(
         record = manifest["stages"].get(stage_name)
         expected = None
         if dependencies is not None:
-            expected = _json_hash(
-                [{"path": str(path.resolve()), "sha256": _sha256(path)} for path in dependencies]
-            )
+            expected = _json_hash({
+                "implementation_signature": implementation_signature,
+                "dependencies": [
+                    {"path": str(path.resolve()), "sha256": _sha256(path)}
+                    for path in dependencies
+                ],
+            })
         if _stage_is_valid(record, expected):
             match = next((Path(item["path"]) for item in record["outputs"] if Path(item["path"]).name == Path(relative).name), None)
             if match is not None:
