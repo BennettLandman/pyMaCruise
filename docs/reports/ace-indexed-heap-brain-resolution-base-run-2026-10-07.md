@@ -2,32 +2,34 @@
 
 ## Result
 
-The restartable six-stage synthetic base workflow completed on the current
-source tree (`638d781`) at native RAS grid `(172, 216, 164)`. All six stages
-passed their output checks, and the manifest contains 30 NIfTI outputs. A
-sequential scan confirmed all 30 outputs are finite, retain the expected RAS
-axis codes, and match the manifest shapes. `--resume` verified and skipped all
-six completed stages.
+The initial run on `638d781` is retained below as historical evidence. The
+corrected replay on implementation commit `9986ac0` completed the restartable
+six-stage synthetic base workflow at native RAS grid `(172, 216, 164)`. All
+six stages passed their output checks; all 30 manifest NIfTI outputs are finite
+and RAS; and the manifest records `status=complete`, `converged=true`, and
+`source_equivalence_claim=false`. A second `--resume` verified and skipped all
+six stages.
 
 This is synthetic integration evidence only. It is not whole-workflow Java or
 MATLAB equivalence and does not validate the supplied human MRI.
 
 ## TOADS stopping behavior
 
-The first TOADS pass completed its configured 50 iterations but did not reach
-the energy threshold: terminal energy ratio `0.0316733867`. The second pass
-converged at iteration 37 with energy ratio `1.19687047e-05`. Therefore, the
-workflow status is `complete`, but the manifest correctly records
-`converged=false` and
-`result_interpretation=stage-run-complete-but-toads-did-not-meet-energy-threshold`.
-The first-pass nonconvergence is an open integration blocker; successful stage
-checks do not imply a converged base result.
+With the copied atlas conversion audit restored, the first TOADS pass
+converged at iteration 12 with terminal ratio `6.96809075e-05`; the second
+converged at iteration 33 with ratio `8.35972751e-05`. Both are below the
+configured `1e-4` threshold and stopped before the 50-iteration cap. The old
+first-pass ratio and hashes in the historical sections below are superseded:
+the former materialized atlas had been interpreted in the wrong voxel order.
+Convergence is synthetic integration evidence, not whole-workflow Java or
+MATLAB equivalence.
 
 ## Memory and restart evidence
 
-The full command ran under a 16 GB RSS watchdog and peaked at **7.977 GB**;
-the watchdog did not terminate it. The second command below reported all six
-stages as verified and skipped, then returned a completed run manifest.
+The corrected full command ran under a 16 GB RSS watchdog and peaked at
+**8.526 GB**; the watchdog did not terminate it. The resume command reported
+all six stages as verified and skipped and peaked at **0.127 GB**. The original
+attempt peaked at 7.977 GB and is preserved in its history.
 
 Full run:
 
@@ -43,7 +45,8 @@ Full run:
   --registration-levels 1 --registration-iterations 1 \
   --post-refresh-registration-iterations 1 --registration-max-iterations 1 \
   --toads-iterations 50 --dura-iterations 1 --crop-edge-width 2 \
-  --ace-diffusion-iterations 1 --gvf-iterations 200 --tgdm-iterations 1
+  --ace-diffusion-iterations 1 --gvf-iterations 200 --tgdm-iterations 1 \
+  --resume
 ```
 
 Resume check: rerun the same command with `--resume`; observed output:
@@ -59,6 +62,12 @@ Base run complete: .../run.json
 ```
 
 ## Reproducibility finding
+
+The measurements in this section describe the **pre-audit** run on `638d781`
+and are retained for the investigation history. The follow-up below identifies
+the missing atlas conversion audit as the cause of this workflow-path
+discrepancy; these measurements must not be used to characterize the corrected
+run.
 
 Compared with the earlier run recorded in
 [`toads-compiled-queue-base-run-2026-10-06.md`](toads-compiled-queue-base-run-2026-10-06.md),
@@ -105,7 +114,7 @@ label 14. These are old-Python versus new-Python regression measurements
 only. Neither run is the Java/MATLAB reference, so they are not source-
 equivalence scores or acceptance decisions.
 
-The complete current first-pass trace took **8,313.4 seconds (2 h 18 min)**.
+The complete `638d781` first-pass trace took **8,313.4 seconds (2 h 18 min)**.
 It shows recurring decreases followed by energy rebounds; selected adjacent
 low/rebound pairs are:
 
@@ -119,16 +128,12 @@ low/rebound pairs are:
 | 40 / `0.00205375929` | 41 / `0.231708989` |
 | 46 / `0.000686858548` | 47 / `0.231917679` |
 
-The prior trajectory showed a similar rebound pattern but crossed the stop
-threshold at iteration 39 (`6.00817439e-05`). The current trajectory did not
-cross it by iteration 50. This is evidence that the change is not explained
-only by a slightly larger iteration cap; it does **not** establish whether the
-current trajectory is a remaining implementation defect or a consequence of
-the source-order corrections. Increasing the cap would require another
-multi-hour run and is not yet a justified convergence fix. The next useful
-comparison is to capture the corresponding cycle-boundary state from the
-selected Java implementation on this same synthetic fixture, or isolate the
-first brain-fixture state difference with a cheaper reduced-grid trace.
+The prior pre-audit trajectory crossed the stop threshold at iteration 39
+(`6.00817439e-05`), while the `638d781` run did not cross it by iteration 50.
+That apparent convergence regression resulted from the missing conversion
+audit in workflow atlas staging. The audit-aware run converged in both passes;
+however, source comparison beyond the first two iterations and end-to-end
+Java/MATLAB equivalence remain open.
 
 ## Evidence boundaries
 
@@ -203,9 +208,36 @@ restored arrays exactly. The focused restartable-workflow suite passed:
 
 The audit-aware standalone `toads-loop` run reproduced the full-grid Java
 two-iteration ratios and classification exactly (see above), including when
-using the materialized descriptor and writing Dura outputs. A complete
-six-stage base workflow replay with the audit-aware materialization and
-checkpoint migration is now running. Until that replay completes, the earlier
-50-iteration convergence and 29/30 image-hash comparison are superseded and
-must not be used to assess source fidelity. This comparison does not establish
-50-iteration convergence or whole-workflow equivalence.
+using the materialized descriptor and writing Dura outputs. The complete
+six-stage replay with audit-aware materialization and checkpoint migration has
+now completed. It produced 30 finite RAS NIfTIs and passed all stage output
+checks. The first and second TOADS passes converged at iterations 12 and 33;
+rerunning with `--resume` verified and skipped all six stages. The earlier
+50-iteration nonconvergence and output-hash comparison describe the incorrect
+pre-audit materialization and are superseded for current workflow assessment.
+The corrected run still does not establish whole MaCRUISE equivalence.
+
+## Corrected full replay evidence — 2026-10-07
+
+Implementation commit: `9986ac0`. The command above was run with `--resume`
+after manifest migration invalidated all affected checkpoints. The manifest
+records six complete stages with attempts N4=3, first TOADS=3, Dura=2, second
+TOADS=2, CRUISE core=2, and MaSeg refinement=2. Stage checks passed for 38
+recorded products (30 NIfTIs, two JSON sidecars, and six stage logs). A
+sequential scan loaded all 30 manifest NIfTIs and verified finite values and
+RAS axis codes. The final output list contains 16 products: 12 NIfTIs, two
+JSON sidecars, and two stage logs.
+
+The final resume invocation reported `Resume: verified ...; skipping` for
+`n4`, `toads-first`, `dura`, `toads-second`, `cruise-core`, and
+`maseg-refinement`, then exited 0. Its peak sampled RSS was 0.127 GB. Focused
+restart regression after the code fix:
+
+```text
+./.venv/bin/pytest -q tests/test_base_workflow_restartable.py
+3 passed in 25.22s
+```
+
+The selected Java comparison is limited to two full-grid TOADS iterations,
+where ratios and classification are exact. The complete six-stage run has not
+been compared end to end against Java/MATLAB. No human MRI was used.
