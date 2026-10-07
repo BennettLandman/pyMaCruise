@@ -1,0 +1,172 @@
+{
+  "reference": "Selected VandyCRUISE Java AlgorithmMultipleToads output; raw Java labels wrapped with the matching Python NIfTI RAS geometry.",
+  "comparison": "Synthetic full brain-resolution second TOADS pass after Dura removal. Java and Python both converged naturally after 33 iterations.",
+  "source_harness": "build/java-reference/VandyCoreSyntheticRunExport.java (ignored build artifact); Java heap capped at 6 GB; diagnostic full-volume dumps disabled to prevent disk exhaustion.",
+  "input_files": {
+    "t1_n4_stripped": "brain-resolution base workflow Dura attempt-02 stripped_t1.nii.gz",
+    "brain_mask": "brain-resolution base workflow Dura attempt-02 brain_mask.nii.gz",
+    "java_source_atlas_descriptor_sha256": "d43efa5a002b0c1a838449ba7ca1d3bf35fab5e3b575474a71aadfe475dcc257",
+    "python_audited_atlas_descriptor_sha256": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939",
+    "java_t1_x_fastest_f32le_sha256": "33b43cd7583080faa20c9d342df0ef885afbd9762d5538816b6b8660337a6e13"
+  },
+  "parameters": {
+    "shape": [
+      172,
+      216,
+      164
+    ],
+    "voxel_size_mm": [
+      0.9375,
+      0.9375,
+      0.9375
+    ],
+    "modality": "T1_MPRAGE",
+    "registration_levels": 1,
+    "registration_iterations": 1,
+    "post_refresh_registration_iterations": 1,
+    "maximum_iterations": 33,
+    "convergence_threshold": 0.0001,
+    "atlas_coefficient": 2.0,
+    "atlas_scale": 0.2,
+    "smoothing": 0.2,
+    "connectivity": "18/6",
+    "source_faithful": true
+  },
+  "iterations": 33,
+  "java_energy_ratios": [
+    0.55921155,
+    0.050367113,
+    0.09037805,
+    0.06370069,
+    0.026589138,
+    0.0066712564,
+    0.0019709794,
+    0.0063308454,
+    0.0090437075,
+    0.007371022,
+    0.0076013017,
+    0.005956981,
+    0.007843109,
+    0.011103654,
+    0.012672974,
+    0.009928998,
+    0.007628008,
+    0.007457276,
+    0.00448313,
+    0.005107686,
+    0.0074348385,
+    0.0058335043,
+    0.0048457794,
+    0.0028443993,
+    0.0028866357,
+    0.0015331173,
+    0.00093698537,
+    0.00021373917,
+    0.0006168019,
+    0.0007654224,
+    0.0013008404,
+    0.00026988387,
+    8.3597275e-05
+  ],
+  "python_energy_ratios": [
+    0.559211552,
+    0.0503671132,
+    0.0903780535,
+    0.0637006909,
+    0.0265891384,
+    0.00667125639,
+    0.00197097939,
+    0.00633084541,
+    0.00904370751,
+    0.0073710219,
+    0.00760130165,
+    0.00595698087,
+    0.00784310885,
+    0.0111036543,
+    0.0126729738,
+    0.00992899761,
+    0.00762800779,
+    0.00745727587,
+    0.00448312983,
+    0.00510768592,
+    0.00743483845,
+    0.00583350426,
+    0.00484577939,
+    0.00284439931,
+    0.00288663572,
+    0.00153311726,
+    0.000936985365,
+    0.000213739171,
+    0.000616801903,
+    0.000765422417,
+    0.00130084041,
+    0.000269883865,
+    8.35972751e-05
+  ],
+  "all_energy_ratios_equal_after_float32_rounding": true,
+  "natural_convergence": {
+    "java_terminal_ratio": 8.3597275e-05,
+    "python_terminal_ratio": 8.35972751e-05,
+    "threshold": 0.0001
+  },
+  "classification_comparison": {
+    "changed_voxels": 0,
+    "voxel_count": 6092928,
+    "labels": [
+      1,
+      5,
+      6,
+      14,
+      15,
+      16,
+      17,
+      18,
+      22,
+      24,
+      25
+    ],
+    "dice_by_label": {
+      "1": 1.0,
+      "5": 1.0,
+      "6": 1.0,
+      "14": 1.0,
+      "15": 1.0,
+      "16": 1.0,
+      "17": 1.0,
+      "18": 1.0,
+      "22": 1.0,
+      "24": 1.0,
+      "25": 1.0
+    },
+    "java_raw_payload_sha256": "9db0db03df770a613c875865295ef56272874043643cefabeb2ee3d5245f35fe",
+    "python_payload_x_fastest_sha256": "9db0db03df770a613c875865295ef56272874043643cefabeb2ee3d5245f35fe"
+  },
+  "spatial_convention": "RAS",
+  "affine": [
+    [
+      0.9375,
+      0.0,
+      0.0,
+      -80.15625
+    ],
+    [
+      0.0,
+      0.9375,
+      0.0,
+      -100.78125
+    ],
+    [
+      0.0,
+      0.0,
+      0.9375,
+      -76.40625
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "output_sha256": "6b981ae87908ffe2e78671b693fd123a821124a623b0c925335757dc88a01db7"
+}

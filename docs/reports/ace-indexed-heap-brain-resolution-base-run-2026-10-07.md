@@ -197,27 +197,73 @@ The 12-ratio Java trace also matches the corrected workflow log. The earlier
 pre-audit ratios (`0.161843792`, `1.09157264`) came from the missing atlas
 conversion audit described below, not from the selected loop implementation.
 
-## Second-pass TOADS comparison — 2026-10-07
+## Second-pass TOADS comparison through convergence — 2026-10-07
 
-The Python base workflow's second TOADS pass consumes the Dura-stripped T1,
-matching brain mask, and the same audited source-order atlas. On this exact
-full brain-resolution case, the Java source harness and Python `toads-loop`
-were both capped at two iterations to compare the initial transitions before
-running the complete Java convergence path. Both reported energy ratios
-`0.559211552` and `0.050367113` (Java's trace prints seven significant
-digits). The native-grid output classifications are voxel-exact: **0 changed
-voxels of 6,092,928**, Dice **1.0** for each of labels 1, 5, 6, 14, 15, 16,
-17, 18, 22, 24, and 25. The Java raw classification payload and Python
-classification serialized in x-fastest order share SHA-256
-`ea9753f9db604667c3ddac9660995f2325530618be82451991ed9b73ab8c8351`.
+The full-grid second TOADS pass consumes the Dura-stripped T1, matching brain
+mask, and audited source-order atlas from the corrected six-stage workflow.
+The first Java attempt stopped at iteration 18 because custom diagnostic
+instrumentation wrote about 10.1 GB of full-volume snapshots and exhausted
+available disk space. This was a harness I/O failure, not a Python/Java
+algorithm difference. I removed those disposable generated snapshots and
+recompiled the ignored comparison harness with full-array snapshot writes
+disabled while retaining its per-iteration Java energy and membership-hash
+trace. The selected segmentation, parameter values, and registration behavior
+were preserved; Java heap remained capped at 6 GB.
 
-Python stopped at the explicit two-iteration test cap, so this comparison
-does not establish second-pass convergence. A selected Java source run capped
-at 33 iterations is now checking the full trajectory against the workflow's
-convergence at iteration 33. The Java harness uses `-Xmx6g`; the Python
-comparison peaked at **6.275 GB** sampled RSS under the 16 GB watchdog. This
-remains synthetic selected-source evidence, not whole-workflow or real-MRI
-validation.
+The complete selected Java run and Python workflow both naturally converged at
+iteration 33 (threshold `1e-4`). All 33 energy ratios have identical float32
+representations:
+
+| Iteration | Java ratio | Python ratio |
+|---:|---:|---:|
+| 1 | `0.55921155` | `0.559211552` |
+| 2 | `0.050367113` | `0.0503671132` |
+| 3 | `0.09037805` | `0.0903780535` |
+| 4 | `0.06370069` | `0.0637006909` |
+| 5 | `0.026589138` | `0.0265891384` |
+| 6 | `0.0066712564` | `0.00667125639` |
+| 7 | `0.0019709794` | `0.00197097939` |
+| 8 | `0.0063308454` | `0.00633084541` |
+| 9 | `0.0090437075` | `0.00904370751` |
+| 10 | `0.007371022` | `0.0073710219` |
+| 11 | `0.0076013017` | `0.00760130165` |
+| 12 | `0.005956981` | `0.00595698087` |
+| 13 | `0.007843109` | `0.00784310885` |
+| 14 | `0.011103654` | `0.0111036543` |
+| 15 | `0.012672974` | `0.0126729738` |
+| 16 | `0.009928998` | `0.00992899761` |
+| 17 | `0.007628008` | `0.00762800779` |
+| 18 | `0.007457276` | `0.00745727587` |
+| 19 | `0.00448313` | `0.00448312983` |
+| 20 | `0.005107686` | `0.00510768592` |
+| 21 | `0.0074348385` | `0.00743483845` |
+| 22 | `0.0058335043` | `0.00583350426` |
+| 23 | `0.0048457794` | `0.00484577939` |
+| 24 | `0.0028443993` | `0.00284439931` |
+| 25 | `0.0028866357` | `0.00288663572` |
+| 26 | `0.0015331173` | `0.00153311726` |
+| 27 | `0.00093698537` | `0.000936985365` |
+| 28 | `0.00021373917` | `0.000213739171` |
+| 29 | `0.0006168019` | `0.000616801903` |
+| 30 | `0.0007654224` | `0.000765422417` |
+| 31 | `0.0013008404` | `0.00130084041` |
+| 32 | `0.00026988387` | `0.000269883865` |
+| 33 | `8.3597275e-05` | `8.35972751e-05` |
+
+The native-grid classifications are voxel-exact: **0 changed voxels of
+6,092,928**, Dice **1.0** for each of labels 1, 5, 6, 14, 15, 16, 17, 18, 22,
+24, and 25. Both x-fastest classification payloads have SHA-256
+`9db0db03df770a613c875865295ef56272874043643cefabeb2ee3d5245f35fe`. The compressed Java
+reference and provenance are committed as
+[`toads-second-java-33iter.nii.gz`](../../tests/data/synthetic/base_workflow_brain_resolution/toads-second-java-33iter.nii.gz)
+and
+[`toads-second-java-33iter.json`](../../tests/data/synthetic/base_workflow_brain_resolution/toads-second-java-33iter.json).
+The reference uses the matching Python NIfTI header to preserve RAS geometry;
+its voxel payload is the Java result. Together with the first-pass comparison
+above, both TOADS passes in the synthetic base workflow now match selected
+VandyCRUISE Java through convergence. This still does not establish Java
+equivalence for Dura, MaACE, GVF, TGDM, refinement, or the complete workflow,
+and no real MRI was used.
 
 ## Root cause: materialized atlas lost its conversion audit
 
