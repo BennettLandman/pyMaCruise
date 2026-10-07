@@ -1,0 +1,108 @@
+{
+  "coordinate_system": "RAS",
+  "outputs": {
+    "brain_mask": {
+      "changed_voxels": 23,
+      "dice_foreground": 0.9999895584258283,
+      "exact": false,
+      "max_absolute_error": 1.0,
+      "mean_absolute_error": 3.7748681750383396e-06,
+      "regenerated_python_matches_base_run": true
+    },
+    "brain_mask_level_set": {
+      "changed_voxels": 323396,
+      "exact": false,
+      "max_absolute_error": 0.5556392669677734,
+      "mean_absolute_error": 4.629548254120554e-05,
+      "regenerated_python_matches_base_run": true,
+      "sign_changed_voxels": 18
+    },
+    "corrected_gm": {
+      "changed_voxels": 23,
+      "exact": false,
+      "max_absolute_error": 254.9944610595703,
+      "mean_absolute_error": 0.0006721793211978868,
+      "regenerated_python_matches_base_run": true
+    },
+    "corrected_wm": {
+      "changed_voxels": 23,
+      "exact": false,
+      "max_absolute_error": 1.2987594604492188,
+      "mean_absolute_error": 1.3130269996781532e-06,
+      "regenerated_python_matches_base_run": true
+    },
+    "gm_tc": {
+      "changed_voxels": 0,
+      "dice_at_zero": 1.0,
+      "exact": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "regenerated_python_matches_base_run": true
+    },
+    "inner_distance": {
+      "changed_voxels": 387,
+      "exact": false,
+      "max_absolute_error": 0.013943195343017578,
+      "mean_absolute_error": 1.2240588930469032e-08,
+      "sign_changed_voxels": 0
+    },
+    "level_set": {
+      "changed_voxels": 323396,
+      "dice_at_zero": 0.9999901454099509,
+      "exact": false,
+      "max_absolute_error": 0.5556392669677734,
+      "mean_absolute_error": 4.629548254120554e-05,
+      "regenerated_python_matches_base_run": true,
+      "sign_changed_voxels": 18
+    },
+    "outer_distance": {
+      "changed_voxels": 736,
+      "exact": false,
+      "max_absolute_error": 0.011215567588806152,
+      "mean_absolute_error": 1.8378883369835315e-08,
+      "sign_changed_voxels": 0
+    },
+    "stripped_t1": {
+      "changed_voxels": 23,
+      "exact": false,
+      "max_absolute_error": 377.02410888671875,
+      "mean_absolute_error": 0.0011022245442425763,
+      "regenerated_python_matches_base_run": true
+    },
+    "tgdm_pass_01": {
+      "changed_voxels": 323396,
+      "dice_at_zero": 0.9999901454099509,
+      "exact": false,
+      "max_absolute_error": 0.5556392669677734,
+      "mean_absolute_error": 4.629548254120554e-05,
+      "sign_changed_voxels": 18
+    },
+    "union": {
+      "changed_voxels": 0,
+      "exact": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0
+    },
+    "wm_tc": {
+      "changed_voxels": 0,
+      "dice_at_zero": 1.0,
+      "exact": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "regenerated_python_matches_base_run": true
+    }
+  },
+  "parameters": {
+    "level_set_translation": 0.0,
+    "mask_translation": 2.0,
+    "membership_level": 0.4,
+    "tgdm_outer_iterations": 1
+  },
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "synthetic_only": true,
+  "workflow_stage": "first TOADS outputs -> selected Dura wrapper -> second TOADS input"
+}

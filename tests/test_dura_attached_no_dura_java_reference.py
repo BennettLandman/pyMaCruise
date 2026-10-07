@@ -12,7 +12,7 @@ from pymacruise.toads_dura import dura_initial_level_sets, run_dura_removal
 
 FIXTURE = Path(__file__).parent / "data" / "synthetic" / "dura_attached_no_dura"
 HARNESS = Path(__file__).parent / "java_reference" / "DuraAttachedNoDuraReferenceHarness.java"
-EXPECTED_HARNESS_SHA256 = "1b39ae928b2aba192e955573db785c283e0af6ea0f7d5b312174ed3656b7ad29"
+EXPECTED_HARNESS_SHA256 = "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa"
 EXPECTED_SOURCE_HASHES = {
     "MedicAlgorithmRemoveDura09": "1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4",
     "AlgorithmTopologyCorrection": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",

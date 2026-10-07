@@ -41,7 +41,7 @@
     "DynamicPressureCortexProfile": "f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505",
     "DistanceField": "92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7"
   },
-  "harness_sha256": "1b39ae928b2aba192e955573db785c283e0af6ea0f7d5b312174ed3656b7ad29",
+  "harness_sha256": "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa",
   "cases": [
     "attached_dura",
     "no_dura"

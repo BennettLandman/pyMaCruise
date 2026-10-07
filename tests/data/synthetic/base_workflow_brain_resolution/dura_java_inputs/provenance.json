@@ -1,0 +1,36 @@
+{
+  "provenance": "synthetic audited brain-resolution base-run N4 and first TOADS outputs; no subject data",
+  "grid_shape": [
+    172,
+    216,
+    164
+  ],
+  "coordinate_system": "RAS",
+  "units": "mm",
+  "input_stage_order": "N4 T1 + first TOADS WM-fill/GM/WM mask, held fixed for the selected Dura Java comparison",
+  "source_run": "build/ace-indexed-heap-2026-10-07/base-run (corrected audit-aware synthetic run)",
+  "sha256": {
+    "t1.nii.gz": "0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a",
+    "white_matter.nii.gz": "6a4475e1b6eb64ecb76ce88d47c8172e5c1324df6508eddeb758d690f4ea107c",
+    "gray_matter.nii.gz": "1e2b62b7794116b36e85d63327252d2f4861b130519321b232595343789c6cdf",
+    "white_matter_mask.nii.gz": "5ff316d17be1506b21a863963322126c922a7f5e75cb047364707763d19d4656"
+  },
+  "comparison_scope": "selected Java MedicAlgorithmRemoveDura09 wrapper sequence on held-fixed first-TOADS maps",
+  "selected_source_sha256": {
+    "MedicAlgorithmRemoveDura09": "1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4",
+    "AlgorithmTopologyCorrection": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",
+    "GenericTGDM": "70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1",
+    "DynamicPressureTGDM": "53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc",
+    "DynamicPressureCortexProfile": "f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505",
+    "DistanceField": "92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7"
+  },
+  "java_harness_sha256": "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa",
+  "java_parameters": {
+    "membership_level": 0.4,
+    "mask_translation": 2.0,
+    "level_set_translation": 0.0,
+    "tgdm_outer_iterations": 1,
+    "maximum_java_heap": "8 GB"
+  },
+  "java_outputs": "java_reference/*.nii.gz"
+}

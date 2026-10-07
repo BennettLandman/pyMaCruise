@@ -29,8 +29,9 @@ public final class DuraAttachedNoDuraReferenceHarness {
     private static final float MEMBERSHIP = 0.4f;
     private static final float MASK_TRANSLATION = 2.0f;
     private static final float LEVEL_SET_TRANSLATION = 0.0f;
+    private static final int ITERATIONS = Integer.getInteger("dura.iterations", 5);
 
-    private static final class Probe extends DynamicPressureTGDM {
+    static final class Probe extends DynamicPressureTGDM {
         final List<Integer> steps = new ArrayList<>();
         final List<String> passHashes = new ArrayList<>();
         final List<float[][][]> passLevelSets = new ArrayList<>();
@@ -52,7 +53,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
         }
     }
 
-    private static final class CaseResult {
+    static final class CaseResult {
         String name;
         float[][][] t1, wm, gm, paint, wmTc, union, gmTc;
         float[][][] inner, outer, innerDistance, outerDistance, levelSet;
@@ -74,7 +75,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
             out.write("\"cortex_profile_sha256\":\"f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505\",");
             out.write("\"distance_field_sha256\":\"92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7\",");
             out.write("\"dimensions_xyz\":["+NX+","+NY+","+NZ+"],\"scale\":"+SCALE+",\"membership_level\":"+MEMBERSHIP+",");
-            out.write("\"mask_translation\":"+MASK_TRANSLATION+",\"level_set_translation\":"+LEVEL_SET_TRANSLATION+",");
+            out.write("\"mask_translation\":"+MASK_TRANSLATION+",\"level_set_translation\":"+LEVEL_SET_TRANSLATION+",\"outer_iterations\":"+ITERATIONS+",");
             out.write("\"cases\":[");
             emitCase(out, attached); out.write(','); emitCase(out, clean);
             out.write("]}");
@@ -108,6 +109,19 @@ public final class DuraAttachedNoDuraReferenceHarness {
             }
         }
 
+        return execute(result, paintBits);
+    }
+
+    static CaseResult runFromInputs(String name, float[][][] t1, float[][][] wm, float[][][] gm, float[][][] paint) {
+        CaseResult result = new CaseResult();
+        result.name = name; result.t1 = t1; result.wm = wm; result.gm = gm; result.paint = paint;
+        BitSet paintBits = new BitSet(NX * NY * NZ);
+        for(int x=0;x<NX;x++) for(int y=0;y<NY;y++) for(int z=0;z<NZ;z++)
+            if(paint[x][y][z] > 0.0f) paintBits.set(flat(x,y,z));
+        return execute(result, paintBits);
+    }
+
+    private static CaseResult execute(CaseResult result, BitSet paintBits) {
         result.wmTc=topology(result.wm, paintBits, "wm");
         result.union=new float[NX][NY][NZ];
         for(int x=0;x<NX;x++) for(int y=0;y<NY;y++) for(int z=0;z<NZ;z++)
@@ -129,7 +143,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
         tgdm.setReferenceLevelSet(new ImageDataFloat(result.innerDistance));
         ImageDataFloat evolved=tgdm.solveBrainMaskSurface(new ImageDataFloat(result.outerDistance),null,
             new ImageDataFloat(copy(result.gmTc)),null,null,0.5f,0.0f,1.0f,0.0f,0.5f,0.5f,0.0f,
-            MEMBERSHIP,5);
+            MEMBERSHIP,ITERATIONS);
         result.levelSet=evolved.toArray3d();
         result.evolution=tgdm;
         result.stripped=copy(result.t1);
