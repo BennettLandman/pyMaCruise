@@ -96,6 +96,15 @@ drift, but does not identify which source-order change is responsible.
 | 9 | 0.0233107414 | 0.0190226417 |
 | 10 | 0.00618879683 | 0.00255699526 |
 
+The classifications were also compared directly on the shared synthetic grid.
+First-pass maps differ at **17,021 of 6,092,928 voxels**. Per-label Dice is
+below 0.97 for labels 16 (`0.956931`), 22 (`0.906954`), and 24 (`0.952799`).
+Second-pass maps differ at **48,505 of 6,092,928 voxels**; labels 5, 6, 14,
+16, 18, 22, and 24 have Dice below 0.97, with a minimum of `0.879295` for
+label 14. These are old-Python versus new-Python regression measurements
+only. Neither run is the Java/MATLAB reference, so they are not source-
+equivalence scores or acceptance decisions.
+
 The complete current first-pass trace took **8,313.4 seconds (2 h 18 min)**.
 It shows recurring decreases followed by energy rebounds; selected adjacent
 low/rebound pairs are:
