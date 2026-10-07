@@ -1,4 +1,4 @@
-# Brain-resolution synthetic base run after ACE heap correction
+# Brain-resolution synthetic base run and atlas-audit correction
 
 ## Result
 
@@ -153,35 +153,49 @@ Java/MATLAB equivalence remain open.
 - Newly mapped source-line delta for this integration rerun: **0**.
 - No real imaging data was used.
 
-## Full-grid selected Java comparison through two iterations — 2026-10-07
+## Full-grid selected Java comparison through convergence — 2026-10-07
 
 After the full-run discrepancy above was found, I ran the ignored
-`VandyCoreSyntheticRunExport` harness on the same masked N4 image used by the
-base workflow, with a two-iteration limit and a 6 GB Java heap cap. The Java
-input was serialized x-fastest (Fortran order) from
-`stages/n4/attempt-01/t1-n4.nii.gz`; its SHA-256 is
-`0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a`. Both
+`VandyCoreSyntheticRunExport` harness on the same N4 image used by the base
+workflow, with the selected `1e-4` stop threshold, a 12-iteration cap, and a
+6 GB Java heap cap. The source NIfTI SHA-256 is
+`0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a`; the
+x-fastest float32 little-endian Java input serialization SHA-256 is
+`5729e75b1002609e12f3031d0cac23054a3b25628435a229c7d47c2638c5442b`. Both
 implementations processed the internal `(167,207,160)` grid and produced the
-native `(172,216,164)` result. The Python invocation used a 16 GB RSS watchdog
-and peaked at **6.288 GB**.
+native `(172,216,164)` result. The 12-iteration cap reached the same natural
+stop condition in Java and Python.
 
 | Iteration | Java energy ratio | Python energy ratio |
 |---:|---:|---:|
 | 1 | `1.6191568` | `1.61915684` |
 | 2 | `0.27991822` | `0.279918224` |
+| 3 | `0.012432367` | `0.0124323666` |
+| 4 | `0.0014986269` | `0.00149862689` |
+| 5 | `0.0010588061` | `0.00105880608` |
+| 6 | `0.004032372` | `0.00403237203` |
+| 7 | `0.021509102` | `0.0215091016` |
+| 8 | `0.0030093095` | `0.00300930953` |
+| 9 | `4.1210206e-4` | `0.000412102061` |
+| 10 | `1.4254554e-4` | `0.000142545541` |
+| 11 | `1.0079462e-4` | `0.000100794619` |
+| 12 | `6.968091e-5` | `6.96809075e-5` |
 
-The two native-grid classifications are voxel-exact: **0 changed voxels**,
-Dice `1.0` for all 11 labels, and matching x-fastest SHA-256
-`f8d74d62ac9f285b11f102e15314a9769643322dbd17799dde45cf6d37885406`. This is
-selected VandyCRUISE source equivalence for two iterations on the
-brain-resolution synthetic fixture. It is not 50-iteration convergence or
-whole MaCRUISE equivalence.
+All 12 ratios have identical float32 bit patterns in Java and Python,
+including the iteration 6–7 rebound. The final native-grid classifications
+are voxel-exact: **0 changed voxels out of 6,092,928**, Dice `1.0` for all 11
+labels, and matching x-fastest payload SHA-256
+`a83c7e94d28825846ef0011f8bf81cd35fe4ab9d4258c40f44c0d35a3b736ebd`. The
+compressed Java-reference NIfTI and provenance are committed as
+[`toads-first-java-12iter.nii.gz`](../../tests/data/synthetic/base_workflow_brain_resolution/toads-first-java-12iter.nii.gz)
+and
+[`toads-first-java-12iter.json`](../../tests/data/synthetic/base_workflow_brain_resolution/toads-first-java-12iter.json).
+This is selected VandyCRUISE source equivalence for the first complete
+brain-grid TOADS pass; it is not whole MaCRUISE equivalence.
 
-This trace does not match the first two energy ratios in the earlier full base
-workflow log above (`0.161843792`, `1.09157264`). The two-iteration Java and
-Python CLI runs used the same N4 file and explicit alignment settings, so the
-earlier full-workflow trace initially appeared unreconciled. The root cause
-and repair are described below.
+The 12-ratio Java trace also matches the corrected workflow log. The earlier
+pre-audit ratios (`0.161843792`, `1.09157264`) came from the missing atlas
+conversion audit described below, not from the selected loop implementation.
 
 ## Root cause: materialized atlas lost its conversion audit
 
@@ -207,7 +221,7 @@ restored arrays exactly. The focused restartable-workflow suite passed:
 ```
 
 The audit-aware standalone `toads-loop` run reproduced the full-grid Java
-two-iteration ratios and classification exactly (see above), including when
+12-iteration ratios and classification exactly (see above), including when
 using the materialized descriptor and writing Dura outputs. The complete
 six-stage replay with audit-aware materialization and checkpoint migration has
 now completed. It produced 30 finite RAS NIfTIs and passed all stage output
@@ -238,6 +252,7 @@ restart regression after the code fix:
 3 passed in 25.22s
 ```
 
-The selected Java comparison is limited to two full-grid TOADS iterations,
-where ratios and classification are exact. The complete six-stage run has not
-been compared end to end against Java/MATLAB. No human MRI was used.
+The selected Java comparison covers one complete first-pass TOADS trajectory
+through its natural stop, where all 12 ratios and the final classification
+match exactly. The complete six-stage run has not been compared end to end
+against Java/MATLAB. No human MRI was used.
