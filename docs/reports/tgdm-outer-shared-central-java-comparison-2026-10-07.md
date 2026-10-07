@@ -18,6 +18,11 @@ sh scripts/generate_java_tgdm_outer_stage_reference.sh
 
 The command exits nonzero because the Hausdorff gate is exceeded.
 
+The recorded comparison was rerun on commit `ffb30e7`. On that commit the
+focused TGDM tests passed **2/2 in 12.50s**, and the direct Java topology
+decision harness returned false for the tested initial neighborhood, matching
+Python's simple-point result there.
+
 ## Results
 
 The pre-reinitialization fields have MAE `4.14e-6` and RMSE `9.10e-4`, but
