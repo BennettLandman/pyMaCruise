@@ -65,5 +65,7 @@ Focused TGDM module: **24 passed** (see the validated commit below). These are
 synthetic selected-source comparisons and focused Python regression tests;
 they do not establish full base-workflow equivalence or real-MRI behavior.
 
-**Tested implementation commit:** recorded in the following documentation
-update after committing the code and reference trace.
+**Tested implementation commit:** `9eb84bc` (`Match TGDM topology
+connectivity source semantics`). The focused module and Java comparisons were
+run against the code represented by this commit. The JSON reports record full
+stage metrics; the source TSV plus SHA256SUMS pins the Java update trace.
