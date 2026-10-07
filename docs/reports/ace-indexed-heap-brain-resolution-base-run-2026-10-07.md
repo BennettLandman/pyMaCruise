@@ -197,6 +197,28 @@ The 12-ratio Java trace also matches the corrected workflow log. The earlier
 pre-audit ratios (`0.161843792`, `1.09157264`) came from the missing atlas
 conversion audit described below, not from the selected loop implementation.
 
+## Second-pass TOADS comparison — 2026-10-07
+
+The Python base workflow's second TOADS pass consumes the Dura-stripped T1,
+matching brain mask, and the same audited source-order atlas. On this exact
+full brain-resolution case, the Java source harness and Python `toads-loop`
+were both capped at two iterations to compare the initial transitions before
+running the complete Java convergence path. Both reported energy ratios
+`0.559211552` and `0.050367113` (Java's trace prints seven significant
+digits). The native-grid output classifications are voxel-exact: **0 changed
+voxels of 6,092,928**, Dice **1.0** for each of labels 1, 5, 6, 14, 15, 16,
+17, 18, 22, 24, and 25. The Java raw classification payload and Python
+classification serialized in x-fastest order share SHA-256
+`ea9753f9db604667c3ddac9660995f2325530618be82451991ed9b73ab8c8351`.
+
+Python stopped at the explicit two-iteration test cap, so this comparison
+does not establish second-pass convergence. A selected Java source run capped
+at 33 iterations is now checking the full trajectory against the workflow's
+convergence at iteration 33. The Java harness uses `-Xmx6g`; the Python
+comparison peaked at **6.275 GB** sampled RSS under the 16 GB watchdog. This
+remains synthetic selected-source evidence, not whole-workflow or real-MRI
+validation.
+
 ## Root cause: materialized atlas lost its conversion audit
 
 The base workflow copies atlas files into the run directory so the run is
