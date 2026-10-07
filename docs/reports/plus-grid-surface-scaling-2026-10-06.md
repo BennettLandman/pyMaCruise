@@ -32,6 +32,22 @@ same physical cortical region. This is consistent with a remaining
 resolution/discretization difference, but is not by itself proof of source
 behavior or acceptance.
 
+The independently resampled input supports already differ on the two grids.
+Using the same RAS-millimeter surface metric on 0.5-isosurfaces of the binary
+input masks gives:
+
+| Input support | Mean distance | Hausdorff distance |
+|---|---:|---:|
+| User brain mask | 0.171817 mm | 0.721856 mm |
+| MaSeg label 100 (GM) | 0.169389 mm | 0.721856 mm |
+| MaSeg label 4 (WM) | 0.160994 mm | 0.622357 mm |
+
+Both fixture generators independently apply nearest-neighbor resampling from
+the same 25³ support masks to their target grids. These values show that
+discretization is present before MaCRUISE processing and is of similar scale
+to the remaining output mean distance. They do not explain the entire output
+difference and do not substitute for a same-grid Java/MATLAB source comparison.
+
 ## Diagnosed output-background defect and correction
 
 The first comparison found 11,916 vertices on the 64 grid and large apparent
@@ -66,14 +82,12 @@ RAS cortical bounds.
 
 The 64×80×64 workflow is a successful synthetic integration and resource
 checkpoint, but these measurements do **not** establish spatial stability
-across grid resolutions. P41y in `plan.md` tracks the investigation. Check
-the generated tissue supports and affine transforms first, then compare the
-surface level sets at matched physical coordinates and trace any divergence
-through topology/ACE/GVF/TGDM and mesh extraction. Keep the thresholds fixed;
-do not characterize this as a tolerance-level result unless new measurements
-meet the agreed criteria. If the deviation arises from the source algorithm's
-discrete grid behavior or the mesh implementation, record that evidence and
-carry it into the source-comparison risk review.
+across grid resolutions. Input-support resampling already contributes
+0.161–0.172 mm mean distance; the processed meshes differ by 0.226–0.276 mm.
+This quantifies a resolution-sensitivity risk, not source equivalence. Keep the
+thresholds fixed and use same-grid Java/MATLAB comparisons for source
+acceptance; do not characterize the cross-grid means as a tolerance-level
+result.
 
 ## Reproduction
 
