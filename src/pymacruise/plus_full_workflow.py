@@ -212,9 +212,9 @@ def run_plus_full_workflow(
     stage_paths = {
         "preprocessing": root / "preprocessing" / "lesion-preprocessing.json",
         "crop": root / "crop" / "lesion-crop.json",
-        "initial_alignment": root / "initial-alignment" / "lesion-initial-atlas-alignment.json",
-        "registered_recrop": root / "registered-recrop" / "lesion-registered-recrop.json",
-        "lesion_workflow": root / "lesion-workflow" / "plus-lesion-loop-workflow.json",
+        "initial_alignment": root / "initial_alignment" / "lesion-initial-atlas-alignment.json",
+        "registered_recrop": root / "registered_recrop" / "lesion-registered-recrops.json",
+        "lesion_workflow": root / "lesion_workflow" / "plus-lesion-loop-workflow.json",
         "dura_outputs": root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
         "native_dura_transfer": root / "native-dura" / "native-dura-transfer.json",
         "maseg_cortical_separation": root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
@@ -233,6 +233,9 @@ def run_plus_full_workflow(
     )
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
+        # Resume completed child manifests, but let a downstream stage that
+        # never started run fresh after an interruption in its parent.
+        child_resume = bool(resume and stage_paths[name].is_file())
         manifest["status"] = "running"
         manifest["active_stage"] = name
         manifest["stages"][name] = {"status": "running"}
@@ -243,13 +246,13 @@ def run_plus_full_workflow(
                     t1, flair, mask, root / name,
                     registration_config=registration_config,
                     n4_config=n4_config,
-                    resume=resume,
+                    resume=child_resume,
                 )
             elif name == "crop":
                 prior = results["preprocessing"]
                 result = run_plus_lesion_crop_checkpoint(
                     prior.modalities_path, topology.path, root / name,
-                    padding=crop_padding, resume=resume,
+                    padding=crop_padding, resume=child_resume,
                 )
             elif name == "initial_alignment":
                 prior = results["crop"]
@@ -257,14 +260,14 @@ def run_plus_full_workflow(
                     prior.cropped_path, prior.manifest_path, descriptor, root / name,
                     init_align_iterations=init_align_iterations,
                     pyramid_levels=pyramid_levels,
-                    resume=resume,
+                    resume=child_resume,
                 )
             elif name == "registered_recrop":
                 crop = results["crop"]
                 alignment = results["initial_alignment"]
                 result = run_plus_lesion_registered_recrop_checkpoint(
                     crop.normalized_path, crop.manifest_path, alignment.manifest_path,
-                    descriptor, root / name, resume=resume,
+                    descriptor, root / name, resume=child_resume,
                 )
             elif name == "lesion_workflow":
                 recrop = results["registered_recrop"]
@@ -279,7 +282,7 @@ def run_plus_full_workflow(
                     n_iter_max=n_iter_max,
                     thinning_limit=loop_thinning_limit,
                     max_passes=max_passes,
-                    resume=resume,
+                    resume=child_resume,
                 )
             elif name == "dura_outputs":
                 recrop = results["registered_recrop"]
@@ -288,16 +291,16 @@ def run_plus_full_workflow(
                     recrop.manifest_path,
                     loop.registered_loop_manifest,
                     root / "dura-outputs",
-                    resume=resume,
+                    resume=child_resume,
                 )
             elif name == "native_dura_transfer":
                 dura = results["dura_outputs"]
                 result = run_plus_lesion_native_dura_transfer(
-                    dura.manifest_path, t1, root / "native-dura", resume=resume
+                    dura.manifest_path, t1, root / "native-dura", resume=child_resume
                 )
             elif name == "maseg_cortical_separation":
                 result = run_plus_maseg_cortical_checkpoint(
-                    maseg, root / "maseg-cortical-separation", resume=resume
+                    maseg, root / "maseg-cortical-separation", resume=child_resume
                 )
             else:
                 native = results["native_dura_transfer"]
@@ -315,7 +318,7 @@ def run_plus_full_workflow(
                     brain_mask_path=mask,
                     output_dir=root / "plus-surface",
                     options=pipeline_options,
-                    resume=resume,
+                    resume=child_resume,
                 )
                 result = plus
         except Exception as exc:

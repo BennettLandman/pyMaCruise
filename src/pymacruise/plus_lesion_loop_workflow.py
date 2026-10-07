@@ -169,6 +169,7 @@ def run_plus_lesion_loop_workflow(
         ("registered_loop", "plus-lesion-registered-loop"),
     )
     for name, stage in child_definitions:
+        child_resume = bool(resume and child_paths[name].is_file())
         manifest["status"] = "running"
         manifest["active_stage"] = name
         manifest["stages"][name] = {"status": "running"}
@@ -183,7 +184,7 @@ def run_plus_lesion_loop_workflow(
                     first_thinning_limit=first_thinning_limit,
                     first_thinning_volume_ratio=first_thinning_volume_ratio,
                     source_zero_variance_nan=source_zero_variance_nan,
-                    resume=resume,
+                    resume=child_resume,
                 )
             elif name == "registered_branch":
                 result = run_plus_lesion_registered_branch_checkpoint(
@@ -196,7 +197,7 @@ def run_plus_lesion_loop_workflow(
                     source_zero_variance_nan=source_zero_variance_nan,
                     max_distance=max_distance,
                     first_iteration_manifest_path=child_paths["first_iteration"],
-                    resume=resume,
+                    resume=child_resume,
                 )
             else:
                 result = persist_plus_lesion_registered_loop_checkpoint(
@@ -211,7 +212,7 @@ def run_plus_lesion_loop_workflow(
                     correction_fields_path=correction_fields_path,
                     correction_polynomial_degree=correction_polynomial_degree,
                     initial_correction_degree=initial_correction_degree,
-                    resume=resume,
+                    resume=child_resume,
                 )
         except Exception as exc:
             manifest["status"] = "failed"
