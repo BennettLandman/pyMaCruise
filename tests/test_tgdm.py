@@ -23,8 +23,20 @@ from pymacruise.tgdm import (
     tgdm_nested_arrays,
     tgdm_nested_images,
     _ras_vector_components,
+    _PROFILE_SETTINGS,
+    _SMOOTHING_PROFILE_SETTINGS,
+    _INNER_FROM_CENTRAL_PROFILE_SETTINGS,
 )
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
+
+
+def test_tgdm_final_distance_cap_matches_selected_java_constructor_behavior() -> None:
+    # Inner/Central/Outer/Smooth Java subclasses pass different caps, but the
+    # shared ProfileTGDM constructor omits assigning finalMaxSignDist. The
+    # initialized value 20 is what the selected Java runtime actually uses.
+    assert {profile.final_max_signed_distance for profile in _PROFILE_SETTINGS.values()} == {20.0}
+    assert _SMOOTHING_PROFILE_SETTINGS.final_max_signed_distance == 20.0
+    assert _INNER_FROM_CENTRAL_PROFILE_SETTINGS.final_max_signed_distance == 20.0
 
 
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:

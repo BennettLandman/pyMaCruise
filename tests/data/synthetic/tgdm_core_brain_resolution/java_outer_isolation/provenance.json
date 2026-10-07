@@ -1,0 +1,20 @@
+{
+  "synthetic_only": true,
+  "description": "Selected Java MaGenericTGDM outer stage using the Java core central level set and the same synthetic gray-matter and ACE skeleton inputs as the core reference.",
+  "orientation": "RAS",
+  "source_harness": "tests/java_reference/TGDMOuterStageReferenceHarness.java",
+  "source_profile": {
+    "curvature_force": 1.0,
+    "external_force": 0.0,
+    "pressure_force": 1.0,
+    "gray_matter_iso": 0.4,
+    "outer_iterations": 1,
+    "active_final_signed_distance_cap": 20.0,
+    "note": "OuterCortexProfile passes 15f, but ProfileTGDM does not assign the argument; active field remains 20."
+  },
+  "inputs": [
+    "tests/data/synthetic/tgdm_core_brain_resolution/java_reference/central.nii.gz",
+    "tests/data/synthetic/tgdm_core_brain_resolution/java_inputs/gray_matter.nii.gz",
+    "tests/data/synthetic/tgdm_core_brain_resolution/java_inputs/ace_skeleton.nii.gz"
+  ]
+}

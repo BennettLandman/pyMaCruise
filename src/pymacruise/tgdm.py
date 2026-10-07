@@ -121,10 +121,17 @@ class TGDMMaCRUISEImageResult:
 
 
 _PROFILE_SETTINGS = {
+    # The Java subclasses pass different final caps, but the selected
+    # ProfileTGDM constructor never assigns its finalMaxSignDist argument.
+    # Its field initializer therefore remains 20 for all these source calls.
     "inner": TGDMProfileSettings(4.8, 3.6, 6.0, 20.0, 30, 10, 0.1, 0.045),
     "central": TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 30, 10, 0.1, 0.02),
     "outer": TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 30, 30, 0.1, 0.045),
 }
+_SMOOTHING_PROFILE_SETTINGS = TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 30, 30, 0.1, 0.01)
+_INNER_FROM_CENTRAL_PROFILE_SETTINGS = TGDMProfileSettings(
+    4.8, 3.6, 6.0, 20.0, 30, 10, 0.1, 0.045
+)
 
 
 def tgdm_evolve(
@@ -480,14 +487,14 @@ def tgdm_nested_arrays(
     from pymacruise.ace import _signed_distance_fmm
 
     smoothing_input = _signed_distance_fmm(initial, max_distance=8.0)
-    smoothing_settings = TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 30, 30, 0.1, 0.01)
+    # SmoothCortexProfile passes 5f, but ProfileTGDM never stores that argument.
     smoothed = tgdm_evolve(
         smoothing_input,
         profile="central",
         curvature_force=-parameters.initial_curvature,
         pressure_force=0.0,
         outer_iterations=parameters.initial_iterations,
-        settings=smoothing_settings,
+        settings=_SMOOTHING_PROFILE_SETTINGS,
     )
     sign = tgdm_tissue_sign_field(
         wm,
@@ -525,14 +532,15 @@ def tgdm_nested_arrays(
     # The selected MaTGDMcrop adapter first pushes the central surface inward
     # by one iteration, then recomputes the delivered WM-constrained inner
     # surface from that shrunken central level set.
-    central_shrink_settings = TGDMProfileSettings(4.8, 3.6, 6.0, 20.0, 30, 10, 0.1, 0.045)
+    # solveInnerSurfaceFromCentral uses InnerCortexProfile; its 1000f argument
+    # is likewise ignored by ProfileTGDM, leaving the active value at 20.
     central_shrink = tgdm_evolve(
         central.level_set,
         profile="inner",
         curvature_force=-parameters.central_curvature,
         pressure_force=-1.0,
         outer_iterations=parameters.central_shrink_iterations,
-        settings=central_shrink_settings,
+        settings=_INNER_FROM_CENTRAL_PROFILE_SETTINGS,
     )
     inner = tgdm_evolve(
         central_shrink.level_set,

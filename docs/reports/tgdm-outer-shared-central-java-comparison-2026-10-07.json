@@ -1,0 +1,44 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "comparison": "isolated selected outer solver; identical Java central level set, GM, skeleton and source profile",
+  "java_profile_note": "OuterCortexProfile passes 15f, but selected ProfileTGDM constructor does not assign finalMaxSignDist; the active field remains 20, confirmed by DistanceField runtime output",
+  "metrics": {
+    "candidate_to_reference_mean_mm": 0.0002305828108228823,
+    "dice": 0.9999734472045941,
+    "hausdorff_mm": 1.2572264865279474,
+    "mae": 3.817246383389237e-05,
+    "max_abs": 1.4306460320949554,
+    "mean_absolute_distance_mm": 0.0003815649452141565,
+    "n_candidate_vertices": 123797,
+    "n_reference_vertices": 123832,
+    "n_values": 5386368,
+    "reference_to_candidate_mean_mm": 0.0005325470796054307,
+    "rmse": 0.0019309244827157169
+  },
+  "orientation": "RAS",
+  "passed": false,
+  "pre_reinitialization_java_value": -0.7795042991638184,
+  "pre_reinitialization_max_difference_voxel": [
+    73,
+    76,
+    73
+  ],
+  "pre_reinitialization_metrics": {
+    "mae": 4.142846429869455e-06,
+    "max_abs": 0.8795043006539345,
+    "n_values": 5386368,
+    "rmse": 0.0009101960195289107
+  },
+  "pre_reinitialization_python_value": 0.10000000149011612,
+  "pre_reinitialization_sign_disagreements": 33,
+  "shape": [
+    166,
+    208,
+    156
+  ],
+  "synthetic_only": true
+}
