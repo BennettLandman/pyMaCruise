@@ -95,6 +95,13 @@ original code comments and author/version metadata retained:
 - JIST `BinaryMinHeap` and `Indexable`, including their original attribution
   comments, from the supplied JIST source tree.
 
+The same harness also accepts `OUTPUT_DIR INPUT_DIR` to run the exact committed
+folded-cortex NIfTIs through the selected Java stages. Regenerate that 41³
+reference with `scripts/generate_java_tgdm_folded_reference.sh`; the matching
+Python comparison and stage metrics are documented in
+`docs/reports/tgdm-folded-cortex-java-comparison-2026-10-07.md`. Its original
+single-argument mode and 25³ sphere reference remain supported.
+
 The test-only `stubs/` provide the numerical subset of JIST image storage,
 progress reporting, mesh return types, and unused framework methods needed to
 compile those sources without bringing in the GUI/application dependency tree.

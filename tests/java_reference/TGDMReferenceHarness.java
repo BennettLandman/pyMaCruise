@@ -1,9 +1,12 @@
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.GZIPInputStream;
 
 import edu.jhu.ece.iacl.algorithms.topology.ConnectivityRule;
 import edu.jhu.ece.iacl.algorithms.volume.DistanceField;
@@ -16,22 +19,46 @@ public final class TGDMReferenceHarness {
     private static final float CENTER = 12.0f;
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("usage: TGDMReferenceHarness OUTPUT_DIR");
+        if (args.length < 1 || args.length > 2) {
+            throw new IllegalArgumentException("usage: TGDMReferenceHarness OUTPUT_DIR [INPUT_DIR]");
         }
         File output = new File(args[0]);
         if (!output.isDirectory() && !output.mkdirs()) {
             throw new IOException("cannot create output directory: " + output);
         }
 
-        float[][][] membership = new float[SIZE][SIZE][SIZE];
-        float[][][] wm = new float[SIZE][SIZE][SIZE];
-        float[][][] gm = new float[SIZE][SIZE][SIZE];
-        float[][][] aceGm = new float[SIZE][SIZE][SIZE];
-        float[][][] skeleton = new float[SIZE][SIZE][SIZE];
-        for (int x = 0; x < SIZE; x++) {
-            for (int y = 0; y < SIZE; y++) {
-                for (int z = 0; z < SIZE; z++) {
+        float[][][] membership;
+        float[][][] wm;
+        float[][][] gm;
+        float[][][] aceGm;
+        float[][][] skeleton;
+        int nx = SIZE, ny = SIZE, nz = SIZE;
+        if (args.length == 2) {
+            File input = new File(args[1]);
+            membership = readNifti(new File(input, "initial_membership.nii.gz"));
+            wm = readNifti(new File(input, "white_matter.nii.gz"));
+            gm = readNifti(new File(input, "gray_matter.nii.gz"));
+            aceGm = readNifti(new File(input, "ace_gray_matter.nii.gz"));
+            skeleton = readNifti(new File(input, "ace_skeleton.nii.gz"));
+            nx = membership.length;
+            ny = membership[0].length;
+            nz = membership[0][0].length;
+            for (float[][][] values : new float[][][][] {wm, gm, aceGm, skeleton}) {
+                if (values.length != nx || values[0].length != ny || values[0][0].length != nz) {
+                    throw new IllegalArgumentException("input NIfTIs must have identical dimensions");
+                }
+            }
+        } else {
+            membership = new float[SIZE][SIZE][SIZE];
+            wm = new float[SIZE][SIZE][SIZE];
+            gm = new float[SIZE][SIZE][SIZE];
+            aceGm = new float[SIZE][SIZE][SIZE];
+            skeleton = new float[SIZE][SIZE][SIZE];
+        }
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                for (int z = 0; z < nz; z++) {
+                    if (args.length == 2) continue;
                     double dx = x - CENTER;
                     double dy = y - CENTER;
                     double dz = z - CENTER;
@@ -47,9 +74,9 @@ public final class TGDMReferenceHarness {
 
         ImageDataFloat initMembership = new ImageDataFloat(membership);
         float[][][] initial = initMembership.toArray3d();
-        for (int x = 0; x < SIZE; x++) {
-            for (int y = 0; y < SIZE; y++) {
-                for (int z = 0; z < SIZE; z++) {
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                for (int z = 0; z < nz; z++) {
                     initial[x][y][z] = 126.9f - initial[x][y][z];
                 }
             }
@@ -66,16 +93,16 @@ public final class TGDMReferenceHarness {
         ImageDataFloat gray = new ImageDataFloat(gm);
         ImageDataFloat aceGray = new ImageDataFloat(aceGm);
         ImageDataFloat thinSkeleton = new ImageDataFloat(skeleton);
-        ImageDataFloat gvf = new ImageDataFloat(new float[SIZE][SIZE][SIZE][3]);
+        ImageDataFloat gvf = new ImageDataFloat(new float[nx][ny][nz][3]);
         ImageDataFloat firstInner = tgdm.solveInnerSurfaceFromOuter(
                 smoothed, null, white, null, 0.2f, 0.0f, 1.0f, 126.9f, 0.5f, 4);
 
-        float[][][] sign = new float[SIZE][SIZE][SIZE];
+        float[][][] sign = new float[nx][ny][nz];
         float[][][] wmValues = white.toArray3d();
         float[][][] aceValues = aceGray.toArray3d();
-        for (int x = 0; x < SIZE; x++) {
-            for (int y = 0; y < SIZE; y++) {
-                for (int z = 0; z < SIZE; z++) {
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                for (int z = 0; z < nz; z++) {
                     float wmP = wmValues[x][y][z] / 255.0f;
                     float gmP = aceValues[x][y][z] / 255.0f;
                     float csfP = 1.0f - wmP - gmP;
@@ -116,12 +143,13 @@ public final class TGDMReferenceHarness {
     }
 
     static void writeNifti(File file, float[][][] values) throws IOException {
+        int nx = values.length, ny = values[0].length, nz = values[0][0].length;
         ByteBuffer header = ByteBuffer.allocate(352).order(ByteOrder.LITTLE_ENDIAN);
         header.putInt(0, 348);
         header.putShort(40, (short) 3);
-        header.putShort(42, (short) SIZE);
-        header.putShort(44, (short) SIZE);
-        header.putShort(46, (short) SIZE);
+        header.putShort(42, (short) nx);
+        header.putShort(44, (short) ny);
+        header.putShort(46, (short) nz);
         for (int index = 4; index < 8; index++) header.putShort(40 + 2 * index, (short) 1);
         header.putShort(70, (short) 16); // NIFTI_TYPE_FLOAT32
         header.putShort(72, (short) 32);
@@ -144,9 +172,9 @@ public final class TGDMReferenceHarness {
         try (GZIPOutputStream gzip = new GZIPOutputStream(new FileOutputStream(file))) {
             gzip.write(header.array());
             byte[] floatBytes = new byte[4];
-            for (int z = 0; z < SIZE; z++) {
-                for (int y = 0; y < SIZE; y++) {
-                    for (int x = 0; x < SIZE; x++) {
+            for (int z = 0; z < nz; z++) {
+                for (int y = 0; y < ny; y++) {
+                    for (int x = 0; x < nx; x++) {
                         int bits = Float.floatToIntBits(values[x][y][z]);
                         floatBytes[0] = (byte) (bits & 0xff);
                         floatBytes[1] = (byte) ((bits >>> 8) & 0xff);
@@ -156,6 +184,35 @@ public final class TGDMReferenceHarness {
                     }
                 }
             }
+        }
+    }
+
+    /** Read little-endian 3D uint8/float32 RAS NIfTIs used by synthetic fixtures. */
+    static float[][][] readNifti(File file) throws IOException {
+        try (InputStream input = new GZIPInputStream(new FileInputStream(file))) {
+            byte[] headerBytes = input.readNBytes(352);
+            if (headerBytes.length != 352) throw new IOException("short NIfTI header: " + file);
+            ByteBuffer header = ByteBuffer.wrap(headerBytes).order(ByteOrder.LITTLE_ENDIAN);
+            if (header.getInt(0) != 348 || header.getShort(40) != 3) {
+                throw new IOException("expected little-endian 3D NIfTI: " + file);
+            }
+            int nx = header.getShort(42), ny = header.getShort(44), nz = header.getShort(46);
+            int datatype = header.getShort(70);
+            if (datatype != 2 && datatype != 16) throw new IOException("unsupported NIfTI datatype " + datatype);
+            float[][][] values = new float[nx][ny][nz];
+            byte[] voxel = new byte[datatype == 2 ? 1 : 4];
+            for (int z = 0; z < nz; z++) {
+                for (int y = 0; y < ny; y++) {
+                    for (int x = 0; x < nx; x++) {
+                        int count = input.readNBytes(voxel, 0, voxel.length);
+                        if (count != voxel.length) throw new IOException("short NIfTI data: " + file);
+                        values[x][y][z] = datatype == 2
+                            ? (voxel[0] & 0xff)
+                            : ByteBuffer.wrap(voxel).order(ByteOrder.LITTLE_ENDIAN).getFloat();
+                    }
+                }
+            }
+            return values;
         }
     }
 }

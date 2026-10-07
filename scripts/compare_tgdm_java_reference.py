@@ -38,11 +38,15 @@ LEVEL_SET_FIELDS = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input-root", type=Path, default=DATA_ROOT,
+                        help="directory containing the five input NIfTIs")
+    parser.add_argument("--reference-root", type=Path, default=REFERENCE_ROOT,
+                        help="directory containing Java stage-reference NIfTIs")
     parser.add_argument("--report", type=Path, help="also write this JSON report")
     args = parser.parse_args()
 
     inputs = {
-        name: nib.load(str(DATA_ROOT / f"{name}.nii.gz"))
+        name: nib.load(str(args.input_root / f"{name}.nii.gz"))
         for name in (
             "initial_membership",
             "white_matter",
@@ -66,7 +70,7 @@ def main() -> None:
 
     stages: dict[str, object] = {}
     for reference_name, result_name in LEVEL_SET_FIELDS.items():
-        reference_image = nib.load(str(REFERENCE_ROOT / f"{reference_name}.nii.gz"))
+        reference_image = nib.load(str(args.reference_root / f"{reference_name}.nii.gz"))
         result_value = getattr(result.execution, result_name)
         candidate_volume = (
             result_value if result_name == "initial_level_set" else result_value.level_set
@@ -87,7 +91,7 @@ def main() -> None:
             ),
         }
 
-    tissue_reference = nib.load(str(REFERENCE_ROOT / "tissue_sign.nii.gz"))
+    tissue_reference = nib.load(str(args.reference_root / "tissue_sign.nii.gz"))
     assert_ras_identity(tissue_reference)
     tissue_candidate = np.asarray(result.tissue_sign.dataobj)
     tissue_expected = np.asarray(tissue_reference.dataobj)
