@@ -147,3 +147,36 @@ first brain-fixture state difference with a cheaper reduced-grid trace.
   workflow rerun.
 - Newly mapped source-line delta for this integration rerun: **0**.
 - No real imaging data was used.
+
+## Full-grid selected Java comparison through two iterations — 2026-10-07
+
+After the full-run discrepancy above was found, I ran the ignored
+`VandyCoreSyntheticRunExport` harness on the same masked N4 image used by the
+base workflow, with a two-iteration limit and a 6 GB Java heap cap. The Java
+input was serialized x-fastest (Fortran order) from
+`stages/n4/attempt-01/t1-n4.nii.gz`; its SHA-256 is
+`0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a`. Both
+implementations processed the internal `(167,207,160)` grid and produced the
+native `(172,216,164)` result. The Python invocation used a 16 GB RSS watchdog
+and peaked at **6.288 GB**.
+
+| Iteration | Java energy ratio | Python energy ratio |
+|---:|---:|---:|
+| 1 | `1.6191568` | `1.61915684` |
+| 2 | `0.27991822` | `0.279918224` |
+
+The two native-grid classifications are voxel-exact: **0 changed voxels**,
+Dice `1.0` for all 11 labels, and matching x-fastest SHA-256
+`f8d74d62ac9f285b11f102e15314a9769643322dbd17799dde45cf6d37885406`. This is
+selected VandyCRUISE source equivalence for two iterations on the
+brain-resolution synthetic fixture. It is not 50-iteration convergence or
+whole MaCRUISE equivalence.
+
+This trace does not match the first two energy ratios in the earlier full base
+workflow log above (`0.161843792`, `1.09157264`). The two-iteration Java and
+Python CLI runs used the same N4 file and explicit alignment settings, so the
+earlier full-workflow trace is now **unreconciled and must not be used as
+current source-fidelity evidence**. The next integration action is to rerun
+the complete base workflow after source-checkpoint invalidation, then compare
+its `toads-first` trace with this direct Java/Python reference. Full 50-cycle
+convergence remains open until that replay is resolved.
