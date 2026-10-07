@@ -92,7 +92,7 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
         # The folded fixture accumulates a few more float32 ulps in the
         # Gaussian and narrow-band stages than the concentric sphere. Retain
         # explicit per-stage limits and apply the project surface gates to
-        # the evolved zero set; later integer label products remain exact.
+        # the evolved zero set; downstream label support and wrapper outputs are checked separately.
         limits = {
             "07_tmpVol_diffusion": {"maximum": 1e-5, "mean": 1e-6},
             "13_PHI_narrowBand": {"maximum": 0.012, "mean": 2e-5},
@@ -116,9 +116,9 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
     assert phi_surface_metrics["hausdorff_mm"] <= 1.0
     assert phi_surface_metrics["mean_absolute_distance_mm"] <= 0.01
 
-    # Fast-marching tie order accumulates more float32 error on the folded
-    # fixture than on the 25^3 sphere; the final label supports and wrapper
-    # products are checked independently below.
+    # The indexed float32 heap follows JIST insertion, update, and tie order.
+    # The folded fixture retains two one-unit scalar membership differences;
+    # their support and final wrapper products are checked below.
     _compare_float_stage(
         weighted_distance,
         reference("14_tmpVol_narrowBand"),

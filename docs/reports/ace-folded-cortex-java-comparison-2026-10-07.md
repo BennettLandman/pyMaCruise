@@ -31,10 +31,16 @@ The generated NIfTI references and per-file SHA-256 manifest are in
   .venv/bin/pytest -q tests/test_ace_reference.py
 ```
 
-The Java process is configured with a 2 GiB maximum heap. The focused Python
-ACE reference suite passed **3 tests in 10.04 s** on committed implementation
-`f00117f`, with sampled peak RSS
-**0.156 GB** under the 4 GB watchdog. This is focused evidence only; no full
+The Java process is configured with a 2 GiB maximum heap. The selected JIST
+`BinaryMinHeap` behavior is represented by a Python indexed float32 heap: each
+voxel has one narrow-band entry, updates move that entry in place, equal-priority
+ties follow the Java heap-array order, and source scan/neighbor order is kept.
+This corrected the earlier duplicate-entry/coordinate-tie behavior.
+
+The final focused regression command passed **25 tests in 40.15 s** on
+implementation commit `999744c`, with sampled peak RSS **0.650 GB** under the
+8 GB watchdog. It includes ACE stage and Java reference checks, the plus ACE
+adapter, CRUISE-core integration, and the restartable base workflow. No full
 repository suite was run for this slice.
 
 ## Findings
@@ -46,16 +52,16 @@ repository suite was run for this slice.
 - The narrow-band evolved level set differs by at most `0.011816` intensity
   units (mean `1.244×10⁻⁵`). Its thresholded mask Dice is **1.0**; symmetric
   mean surface distance is **1.15×10⁻⁸ mm** and Hausdorff is **1.88×10⁻⁶ mm**.
-- Fast-marching weighted distance differs by at most `0.020771` (mean
-  `4.03×10⁻⁶`). The pre-cleaned and cleaned scalar CSF membership arrays differ
-  at **3 of 68,921 voxels**, by one intensity unit; their nonzero supports are
+- After matching the selected JIST indexed-heap and source scan behavior,
+  fast-marching weighted distance differs by at most `7.63×10⁻⁶` (mean
+  `2.73×10⁻⁶`). The pre-cleaned and cleaned scalar CSF membership arrays differ
+  at **2 of 68,921 voxels**, by one intensity unit; their nonzero supports are
   identical (Dice **1.0**).
 - The selected wrapper's enhanced-GM, CSF-skeleton, and thinned-skeleton NIfTI
   outputs match Java voxel-for-voxel. Both skeleton masks have Dice **1.0** and
   identical measured surfaces (zero symmetric mean and Hausdorff distance).
 
 These results meet the project's segmentation and surface tolerances on this
-folded fixture. They also preserve the small scalar-membership deviation in
-the evidence instead of treating the intermediate floating-point outputs as
-bit-identical. The 25³ concentric reference remains covered by the same focused
-suite.
+folded fixture. The intermediate scalar-membership deviation remains explicit
+rather than being described as bit-identical. The 25³ concentric reference
+remains covered by the same focused suite.
