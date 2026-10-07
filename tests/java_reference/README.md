@@ -70,6 +70,10 @@ queue exhaustion. Its output is the synthetic fixture under
 `tests/data/synthetic/toads_thinning_queue_run/`.
 
 
+## Folded-cortex ACE reference
+
+`scripts/generate_java_ace_reference.py --input-root tests/data/synthetic/folded_cortex --output-dir tests/data/synthetic/folded_cortex/ace_java_reference` runs the selected MaCRUISE ACE Java wrapper against the committed 41³ folded-cortex NIfTIs. Java is capped at a 2 GiB heap; output stages are compressed NIfTI with a SHA-256 manifest. The Python source comparison is in `tests/test_ace_reference.py`, and the numerical findings are in `docs/reports/ace-folded-cortex-java-comparison-2026-10-07.md`.
+
 ## Initialized TOADS thinning pass
 
 `ToadsInitializedThinningPassReferenceHarness.java` composes source queue

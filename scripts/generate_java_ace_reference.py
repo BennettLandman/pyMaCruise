@@ -66,7 +66,10 @@ def read_intermediate(path: Path, shape: tuple[int, int, int]) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--place-to-add-csf", type=int, choices=(0, 1, 2, 3), default=2)
-    parser.add_argument("--output-dir", type=Path, default=OUTPUT)
+    parser.add_argument("--input-root", type=Path, default=INPUTS,
+                        help="directory containing gray_matter, white_matter, and multi_atlas_csf NIfTIs")
+    parser.add_argument("--output-dir", type=Path,
+                        help="reference output directory (defaults to INPUT_ROOT/java_reference)")
     args = parser.parse_args()
     javac, java = shutil.which("javac"), shutil.which("java")
     if not javac or not java:
@@ -74,7 +77,8 @@ def main() -> None:
     build = BUILD / f"place-{args.place_to_add_csf}"
     classes = build / "classes"
     intermediate = build / "intermediate"
-    output = args.output_dir.resolve()
+    input_root = args.input_root.resolve()
+    output = (args.output_dir or (input_root / "java_reference")).resolve()
     build.mkdir(parents=True, exist_ok=True)
     classes.mkdir(parents=True, exist_ok=True)
     intermediate.mkdir(parents=True, exist_ok=True)
@@ -92,11 +96,12 @@ def main() -> None:
         cwd=ROOT,
     )
     names = ("gray_matter.nii.gz", "white_matter.nii.gz", "multi_atlas_csf.nii.gz")
-    images = [nib.load(INPUTS / name) for name in names]
+    images = [nib.load(input_root / name) for name in names]
     shape = write_inputs(build / "ace_input.bin", images)
     subprocess.run(
         [
             java,
+            "-Xmx2g",
             "-cp",
             str(classes),
             "ACEReferenceHarness",
@@ -135,7 +140,7 @@ def main() -> None:
             if args.place_to_add_csf == 3
             else "selected MaCRUISE ACE wrapper Java synthetic reference"
         ),
-        "provenance": "synthetic; committed concentric tissue phantom",
+        "provenance": "synthetic; committed analytic fixture; no subject data",
         "frame": "RAS",
         "units": "mm",
         "shape": list(shape),

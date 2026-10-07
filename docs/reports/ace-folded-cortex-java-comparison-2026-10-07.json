@@ -1,0 +1,53 @@
+{
+  "synthetic_only": true,
+  "fixture": "folded_cortex",
+  "shape": [41, 41, 41],
+  "frame": "RAS",
+  "voxel_spacing_mm": [1.0, 1.0, 1.0],
+  "profile": "selected MaCRUISE ACE wrapper; multi-atlas CSF merged after diffusion",
+  "java_heap_limit_gib": 2,
+  "focused_pytest": {
+    "command": ".venv/bin/pytest -q tests/test_ace_reference.py",
+    "passed": 3,
+    "failed": 0,
+    "elapsed_seconds": 10.19,
+    "peak_sampled_rss_gib": 0.155,
+    "watchdog_limit_gib": 4
+  },
+  "stages": {
+    "gaussian_diffusion_guide": {
+      "mean_absolute_error": 7.213246249193617e-07,
+      "maximum_absolute_error": 5.7220458984375e-06
+    },
+    "evolved_level_set": {
+      "mean_absolute_error": 1.2443344530765899e-05,
+      "maximum_absolute_error": 0.011815130710601807,
+      "mask_dice": 1.0,
+      "symmetric_mean_surface_distance_mm": 1.1464927729706162e-08,
+      "symmetric_hausdorff_mm": 1.8724244103584962e-06
+    },
+    "weighted_distance": {
+      "mean_absolute_error": 4.0291679397341795e-06,
+      "maximum_absolute_error": 0.020770549774169922
+    },
+    "csf_membership_before_and_after_cleaning": {
+      "different_voxels": 3,
+      "voxel_count": 68921,
+      "maximum_absolute_error": 1,
+      "support_dice": 1.0
+    },
+    "final_wrapper_outputs": {
+      "enhanced_gray_matter_voxel_exact": true,
+      "csf_skeleton_voxel_exact": true,
+      "thinned_skeleton_voxel_exact": true,
+      "skeleton_and_thinned_skeleton_dice": 1.0,
+      "skeleton_and_thinned_skeleton_surface_mean_distance_mm": 0.0,
+      "skeleton_and_thinned_skeleton_surface_hausdorff_mm": 0.0
+    }
+  },
+  "source_sha256": {
+    "MaAnatomicallyConsistentEnhance.java": "f3cd1c9f4e90cd58ae5cdf37237d90f5a57c59f1a6d6870c9106f4850174cffb",
+    "AnatomicallyConsistentEnhancement.java": "706e20dba6eb58584d0026b34f2cf4965fde532fc88f5304488dd0d8baee5f46",
+    "ThinACE.java": "87c4c99ae01e2e3fb2ab744b71c1dc9367e6c625969badf3ab51158fe5b78203"
+  }
+}

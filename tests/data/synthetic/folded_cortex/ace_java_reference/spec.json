@@ -1,0 +1,54 @@
+{
+  "purpose": "selected MaCRUISE ACE wrapper Java synthetic reference",
+  "provenance": "synthetic; committed analytic fixture; no subject data",
+  "frame": "RAS",
+  "units": "mm",
+  "shape": [
+    41,
+    41,
+    41
+  ],
+  "input_files": [
+    "gray_matter.nii.gz",
+    "white_matter.nii.gz",
+    "multi_atlas_csf.nii.gz"
+  ],
+  "parameters": {
+    "intensity_threshold": 126.9,
+    "gaussian_alpha": 1.8,
+    "tensor_alpha": 1.6,
+    "diffusion_iterations": 25,
+    "multi_atlas_csf_place": "AfterDiffuse",
+    "multi_atlas_csf_merge": "Merge",
+    "narrow_band": {
+      "delta_t": 0.1,
+      "outer_iterations": 1,
+      "inner_updates": 10,
+      "curvature_threshold": 5.0
+    }
+  },
+  "outputs": {
+    "enhanced_gray_matter": "enhanced_gm_java.nii.gz",
+    "cleaned_skeleton": "csf_skeleton_java.nii.gz",
+    "thinned_skeleton": "thinned_skeleton_java.nii.gz"
+  },
+  "java_intermediate_stages": [
+    "stages/01_tmpVolfirst_java.nii.gz",
+    "stages/02_PHIinit_java.nii.gz",
+    "stages/03_csf_naive_java.nii.gz",
+    "stages/04_wm_morph_java.nii.gz",
+    "stages/05_closedGM_morph_java.nii.gz",
+    "stages/06_PHI_beforeGaussianBlur_java.nii.gz",
+    "stages/07_tmpVol_diffusion_java.nii.gz",
+    "stages/08_initcsf_beforediffusion_java.nii.gz",
+    "stages/09_5_initcsf_afterdiffusion_mAcsf_java.nii.gz",
+    "stages/09_initcsf_diffusion_java.nii.gz",
+    "stages/10_initcsf_speedfunction_beforeGuassianBlur_java.nii.gz",
+    "stages/11_initcsf_GuassianBlur_java.nii.gz",
+    "stages/12_PHI_beforenarrowBand_java.nii.gz",
+    "stages/13_PHI_narrowBand_java.nii.gz",
+    "stages/14_tmpVol_narrowBand_java.nii.gz",
+    "stages/15_csf_beforeclean_java.nii.gz",
+    "stages/16_csf_afterclean_java.nii.gz"
+  ]
+}
