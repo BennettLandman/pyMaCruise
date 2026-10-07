@@ -72,11 +72,20 @@ Generate the selected Java output from committed inputs with a JDK:
   --place-to-add-csf 0
 ```
 
-Run the matching Python operation with `ace_enhance_arrays` using the same
-three inputs and parameters recorded in `provenance.json`; compare against the
-three Java output files at voxel precision. Java intermediate stage products
-are available in the ignored local build directory from this run, but are not
-committed; this corpus keeps only reusable inputs and final goldens.
+Run the matching Python operation and exact comparison with the same three
+inputs and parameters using this command:
+
+```sh
+./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --interval-seconds 0.1 --report-interval-seconds 30 -- \
+  ./.venv/bin/python scripts/compare_brain_resolution_ace_java.py
+```
+
+The command passed: all three final outputs matched voxel-for-voxel, sampled
+peak RSS was **1.450 GB**, and the watchdog did not terminate the process. The
+script reports hashes and error metrics. Java intermediate stage products are
+available in the ignored local build directory from the earlier run, but are
+not committed; this corpus keeps only reusable inputs and final goldens.
 
 ## Remaining boundary
 
