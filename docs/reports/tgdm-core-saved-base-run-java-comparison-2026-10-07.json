@@ -1,0 +1,65 @@
+{
+  "acceptance": {
+    "mask_dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "comparison": "saved Python synthetic base-run core outputs vs selected MaGenericTGDM Java outputs",
+  "orientation": "RAS",
+  "passed": false,
+  "python_source": "/Users/landmaba/dev/mipav/pymacruise/build/ace-indexed-heap-2026-10-07/base-run/stages/cruise-core/attempt-02",
+  "scope_note": "source comparison covers delivered inner, central and outer masks on native RAS grid; intermediate evolution fields are retained in the Java fixture but not re-run here",
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "source_harness": "TGDMCoreReferenceHarness; same RAS crop inputs and one-iteration wrapper profile",
+  "stages": {
+    "central": {
+      "candidate_to_reference_mean_mm": 6.7419437137790495e-06,
+      "dice": 0.9999979889068099,
+      "hausdorff_mm": 0.30024558680855207,
+      "mae": 5.937833988365126e-06,
+      "max_abs": 0.24539393186569214,
+      "mean_absolute_distance_mm": 1.0271281331287971e-05,
+      "n_candidate_vertices": 121025,
+      "n_reference_vertices": 121025,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 1.3800618948796894e-05,
+      "rmse": 0.00032304440630355886
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 0.00019404433205389256,
+      "dice": 0.999963431924348,
+      "hausdorff_mm": 0.7639789581298828,
+      "mae": 5.2752272813658524e-05,
+      "max_abs": 0.6430729553103447,
+      "mean_absolute_distance_mm": 0.00031495192345981605,
+      "n_candidate_vertices": 116127,
+      "n_reference_vertices": 116154,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 0.0004358595148657396,
+      "rmse": 0.0022046362451060538
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.00031336651046921825,
+      "dice": 0.9999654009586348,
+      "hausdorff_mm": 1.562442798467959,
+      "mae": 0.0001066474980056438,
+      "max_abs": 1.705191969871521,
+      "mean_absolute_distance_mm": 0.0005204603632244791,
+      "n_candidate_vertices": 123797,
+      "n_reference_vertices": 123852,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 0.00072755421597974,
+      "rmse": 0.002566320497920464
+    }
+  },
+  "synthetic_only": true,
+  "voxel_spacing_mm": [
+    0.9375,
+    0.9375,
+    0.9375
+  ]
+}

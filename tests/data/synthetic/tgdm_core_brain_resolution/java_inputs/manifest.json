@@ -1,0 +1,83 @@
+{
+  "affine": [
+    [
+      0.9375,
+      0.0,
+      0.0,
+      -73.59375
+    ],
+    [
+      0.0,
+      0.9375,
+      0.0,
+      -96.09375
+    ],
+    [
+      0.0,
+      0.0,
+      0.9375,
+      -78.28125
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "inputs": {
+    "ace_gray_matter": {
+      "file": "ace_gray_matter.nii.gz",
+      "sha256": "b69e086f323d983647e6cb1fdb9fda3412180462f3e5a5b606d2b22164055ef3"
+    },
+    "ace_skeleton": {
+      "file": "ace_skeleton.nii.gz",
+      "sha256": "8ba0d290ff722b2ee47fd713ab34fb2af857dcf0b909db32b5ca7de05be7c93e"
+    },
+    "gray_matter": {
+      "file": "gray_matter.nii.gz",
+      "sha256": "425f026b54cd266dfbd38606ae38c0f74ccf1d1352c5130db1c7fe61ad30504f"
+    },
+    "gvf": {
+      "file": "gvf.nii.gz",
+      "sha256": "d6f8046ac335e1670738bd51c12884e6234b8a3487f041cbfc08ee7b0b7e4ca9"
+    },
+    "initial_membership": {
+      "file": "initial_membership.nii.gz",
+      "sha256": "b2b831d841e905dbbd858bef456acf0bcf690f2c53f27c9af54197d20bf92000"
+    },
+    "white_matter": {
+      "file": "white_matter.nii.gz",
+      "sha256": "32ac4aad8716f64e2c699b6893cc6b82f16a9a80a7aa3352c915c19a92a74f17"
+    }
+  },
+  "orientation": "RAS",
+  "selected_wrapper_parameters": {
+    "central_curvature": 0.15,
+    "central_external": 1.0,
+    "central_iterations": 1,
+    "central_pressure": 1.5,
+    "central_shrink_iterations": 1,
+    "gray_matter_iso": 0.4,
+    "initial_curvature": 1.0,
+    "initial_iso_level": 126.9,
+    "initial_iterations": 1,
+    "inner_curvature": 0.2,
+    "inner_external": 0.0,
+    "inner_iterations": 1,
+    "inner_pressure": 1.0,
+    "outer_curvature": 1.0,
+    "outer_external": 0.0,
+    "outer_iterations": 1,
+    "outer_pressure": 1.0,
+    "white_matter_iso": 0.6
+  },
+  "shape": [
+    166,
+    208,
+    156
+  ],
+  "source": "repository-generated synthetic atlas-derived base workflow; no human scan",
+  "source_stage": "build/ace-indexed-heap-2026-10-07/base-run/stages/cruise-core/attempt-02",
+  "synthetic_only": true
+}
