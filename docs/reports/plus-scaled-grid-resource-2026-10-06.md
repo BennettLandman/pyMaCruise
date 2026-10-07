@@ -86,3 +86,48 @@ branch stages under bounded RSS while preserving selected source order and
 numerical outputs. The acceptance target is a complete,
 naturally converged run, finite RAS outputs, verified hashes and resume, plus a
 sampled RSS peak below a conservative 24 GB ceiling.
+
+## Follow-up on 2026-10-06: compact growth traces and restart
+
+A source-checkout run at `build/plus-scaled-grid-current/natural-run-64/`
+completed the initial first-iteration checkpoint, shape registration, and all
+13 shape-bound calculations. It entered `growth:running`, sampled a **20.221 GB
+peak RSS** under a 24 GB watchdog, then exited `-9` with
+`terminated_for_rss_limit=false`. The exact external kill trigger remains
+unconfirmed.
+
+Code inspection found that `propagate_lesion_toads_growing` retained a full
+copy of segmentation, skeleton, availability, ordering, and class-volume
+arrays in every per-pop event. This made trace storage scale as queue length
+times volume size. Commit `2e0c39f` adds compact event records for integrated
+volume runs while keeping full event snapshots as the default for source
+comparison callers. The compact mode preserves popped queue items, topology
+decisions, and inserted neighbors, and final image arrays are unchanged.
+Focused checks on commit `2e0c39f`:
+
+```text
+./.venv/bin/python -m pytest -q tests/test_lesion_growing_pass.py tests/test_plus_lesion_registered_branch.py tests/test_rss_watchdog.py
+```
+
+Result: **13 passed in 142.10s**, peak sampled RSS **0.439 GB** under an 8 GB
+watchdog. A focused checkpoint/resume rerun after allowing a missing downstream
+registered-loop manifest to be created on parent resume passed **2 tests in
+26.67s**, peak sampled RSS **0.441 GB**. In the 64-grid workflow, resumed first
+iteration and registered-branch checkpoints were hash-verified and reused. The
+registered branch then completed growth, relation refresh, and output
+materialization at **0.523 GB peak RSS** under the 24 GB ceiling.
+
+The top-level workflow next failed because its not-yet-created registered-loop
+child manifest was rejected when resuming the parent. That restart edge is now
+fixed: a missing downstream child starts from its completed upstream manifest.
+A second `--resume` invocation is currently running the registered-loop stage
+with compact growth traces. Its latest sampled peak is **0.574 GB**; it has not
+yet produced the loop manifest or final Dura/CRUISE outputs. P41w remains **not
+validated** until natural convergence, terminal RAS outputs, hashes, resume,
+and the remaining plus stages all complete on the 64 grid.
+
+The full raw-input command writes only inside the ignored `build/` tree. The
+latest retry uses the existing `natural-run-64` directory and `--resume`; see
+`run-resume2.log` for RSS samples. Keep the 24 GB watchdog ceiling for this
+test. Do not count the nine-stage plus workflow as complete on the 64 grid or
+infer brain-resolution capacity before terminal outputs are validated.
