@@ -1,0 +1,106 @@
+{
+  "acceptance": {
+    "mask_dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "comparison": "Python selected TGDM core vs supplied MaGenericTGDM/DistanceField Java calls",
+  "orientation": "RAS",
+  "parameters": {
+    "central_iterations": 1,
+    "gray_matter_iso": 0.4,
+    "initial_iterations": 1,
+    "inner_iterations": 1,
+    "nonzero_gvf": true,
+    "outer_wrapper_iterations": 1,
+    "white_matter_iso": 0.6
+  },
+  "passed": true,
+  "shape": [
+    166,
+    208,
+    156
+  ],
+  "stages": {
+    "central": {
+      "candidate_to_reference_mean_mm": 1.5039903258270354e-06,
+      "dice": 1.0,
+      "hausdorff_mm": 0.0032859145884869623,
+      "mae": 3.065640471450399e-06,
+      "max_abs": 0.031930506229400635,
+      "mean_absolute_distance_mm": 1.367135984733262e-06,
+      "n_candidate_vertices": 121025,
+      "n_reference_vertices": 121025,
+      "n_values": 5386368,
+      "reference_to_candidate_mean_mm": 1.2302816436394884e-06,
+      "rmse": 7.153651429419283e-05
+    },
+    "central_shrink": {
+      "dice": 1.0,
+      "mae": 1.40913271720842e-05,
+      "max_abs": 0.03690558671951294,
+      "n_values": 5386368,
+      "rmse": 0.00019461220916615143
+    },
+    "initial_inner": {
+      "dice": 0.9999989871786951,
+      "mae": 5.746510721330048e-06,
+      "max_abs": 0.11316591501235962,
+      "n_values": 5386368,
+      "rmse": 0.0002382295018723099
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 3.68664643071005e-06,
+      "dice": 1.0,
+      "hausdorff_mm": 0.0024318695068359375,
+      "mae": 1.535466185758578e-05,
+      "max_abs": 0.03691816329956055,
+      "mean_absolute_distance_mm": 3.604977179273184e-06,
+      "n_candidate_vertices": 116127,
+      "n_reference_vertices": 116127,
+      "n_values": 5386368,
+      "reference_to_candidate_mean_mm": 3.5233079278363174e-06,
+      "rmse": 0.00015923702734519434
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.00014896227729339955,
+      "dice": 0.9999887354405569,
+      "hausdorff_mm": 0.1949787139892578,
+      "mae": 9.89299395074121e-05,
+      "max_abs": 0.29759740829467773,
+      "mean_absolute_distance_mm": 0.00014843560004042299,
+      "n_candidate_vertices": 123797,
+      "n_reference_vertices": 123797,
+      "n_values": 5386368,
+      "reference_to_candidate_mean_mm": 0.00014790892278744643,
+      "rmse": 0.0011586693404924714
+    },
+    "signed_seed": {
+      "dice": 1.0,
+      "mae": 1.7652027501043735e-08,
+      "max_abs": 0.001963973045349121,
+      "n_values": 5386368,
+      "rmse": 1.7518760779287907e-06
+    },
+    "smoothed_initial": {
+      "dice": 1.0,
+      "mae": 8.284674237527101e-06,
+      "max_abs": 0.010140061378479004,
+      "n_values": 5386368,
+      "rmse": 0.00010401052605138744
+    },
+    "tissue_sign": {
+      "exact": true,
+      "mae": 0.0,
+      "max_abs": 0.0,
+      "n_values": 5386368,
+      "rmse": 0.0
+    }
+  },
+  "synthetic_only": true,
+  "voxel_spacing_mm": [
+    0.9375,
+    0.9375,
+    0.9375
+  ]
+}

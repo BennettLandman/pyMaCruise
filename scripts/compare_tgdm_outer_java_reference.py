@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 import sys
@@ -127,6 +128,36 @@ def main() -> None:
         }
     else:
         first_trace_difference = None
+    python_event = next(
+        event for event in python_evolution.point_event_trace
+        if event.iteration == 1 and event.point == (73, 76, 73)
+    )
+    with (args.java_outer_root / "outer_event_trace.tsv").open(newline="") as stream:
+        java_events = list(csv.DictReader(stream, delimiter="\t"))
+    java_event = next(event for event in java_events if event["iteration"] == "1")
+    first_target_event = {
+        "iteration": 1,
+        "python": {
+            "old_value": python_event.old_value,
+            "proposed_value": python_event.proposed_value,
+            "accepted_value": python_event.accepted_value,
+            "reason": python_event.reason,
+            "simple_point": python_event.simple_point,
+            "status_neighborhood": list(python_event.status_neighborhood),
+            "topology_cube": list(python_event.topology_cube),
+        },
+        "java": {
+            "old_value": float(java_event["old_value"]),
+            "proposed_value": float(java_event["proposed_value"]),
+            "accepted_value": float(java_event["accepted_value"]),
+            "reason": java_event["reason"],
+            "simple_point": java_event["simple_point"] or None,
+            "foreground_components": java_event["foreground_components"] or None,
+            "background_components": java_event["background_components"] or None,
+            "status_neighborhood": [int(value) for value in java_event["status_neighborhood"].split(",") if value],
+            "topology_cube": [int(value) for value in java_event["topology_cube"].split(",") if value],
+        },
+    }
     report = {
         "synthetic_only": True,
         "comparison": "isolated selected outer solver; identical Java central level set, GM, skeleton and source profile",
@@ -142,6 +173,7 @@ def main() -> None:
         "first_trace_difference": first_trace_difference,
         "trace_centers": [list(point) for point in TRACE_CENTERS],
         "trace_point_count": len(TRACE_POINTS),
+        "first_target_event": first_target_event,
         "acceptance": {"dice_minimum": 0.97, "symmetric_mean_surface_distance_mm_maximum": 0.01,
                        "symmetric_hausdorff_mm_maximum": 1.0},
         "passed": bool(metrics["dice"] >= 0.97

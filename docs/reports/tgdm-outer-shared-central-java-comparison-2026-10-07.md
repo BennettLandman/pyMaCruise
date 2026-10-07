@@ -1,56 +1,69 @@
-# Isolated outer TGDM source comparison — 2026-10-07
+# Brain-resolution TGDM Java source comparison — 2026-10-07
 
-## Scope and command
+## Scope and commands
 
-This synthetic comparison feeds the exact Java central level set from the
-brain-resolution fixture, plus the same GM and ACE skeleton images, into the
-selected Java and Python outer-surface calls. It isolates the outer update
-from upstream central-field differences. The fixture is atlas-derived and
-synthetic; no human MRI is included.
-
-Regenerate the Java isolated output and run the Python comparison:
+This comparison uses committed synthetic atlas-derived RAS `.nii.gz` inputs
+on a `(166,208,156)` grid at 0.9375 mm spacing. No human MRI is included. It
+compares the isolated outer solver with an identical Java central field and
+then reruns the eight-stage TGDM core against the selected Java
+`MaGenericTGDM`/`DistanceField` references.
 
 ```bash
 sh scripts/generate_java_tgdm_outer_stage_reference.sh
 ./.venv/bin/python scripts/compare_tgdm_outer_java_reference.py \
   --report docs/reports/tgdm-outer-shared-central-java-comparison-2026-10-07.json
+./.venv/bin/python scripts/compare_tgdm_core_java_reference.py \
+  --report docs/reports/tgdm-core-brain-resolution-java-comparison-2026-10-07.json
+./.venv/bin/pytest -q tests/test_tgdm.py
 ```
 
-The command exits nonzero because the Hausdorff gate is exceeded.
+The harness records the source-ordered point value, proposed update, accepted
+update, raw neighborhood and geodesic topology cube before Java's connectivity
+checks mutate their input cube. Python records the same data for selected
+points.
 
-The recorded comparison was rerun on code based on `ffb30e7`; after adding the
-per-voxel iteration trace, the first difference appears in iteration 1 at crop
-voxel `(73,76,73)`: Python clamps the crossing to `+0.1`, while Java accepts
-`−0.01752247`. The direct Java topology harness and Python both reject the
-initial neighborhood as a simple point. Earlier voxel updates in the same pass
-may change that neighborhood before this point is visited; the current trace
-does not yet capture the in-pass neighborhood or force at the exact update.
-The focused TGDM tests passed **2/2 in 12.50s** before the trace hook was
-expanded; the new per-iteration trace unit test passed **1/1 in 0.76s**.
+## Findings and correction
+
+The first isolated update discrepancy was iteration 1 at crop voxel
+`(73,76,73)`. Force values differed only by float precision, and both
+implementations constructed the same topology cube. The Java connectivity
+classes seed component searches from the center's 6- or 18-adjacent voxels.
+They ignore components made only of unseeded corners. SciPy's full-cube label
+count included such a corner component and rejected the update. The Python
+simple-point check now counts only components reached from the source seed
+neighbors, matching `SixConnected` and `EighteenConnected`.
+
+The core comparison also exposed two tissue-sign voxels quantized one unit
+below the Java result. Java evaluates `(1.0f - whiteMatterIso)` in float32;
+Python had subtracted in double precision and cast afterward. The denominator
+now follows the Java float32 operation order. A focused regression pins both
+boundary values.
 
 ## Results
 
-The pre-reinitialization fields have MAE `4.14e-6` and RMSE `9.10e-4`, but
-contain 33 sign disagreements. The largest difference is at crop voxel
-`(73,76,73)`: Python is `+0.1`, Java is `−0.779504`. The final output has Dice
-`0.9999734`, symmetric mean surface distance `0.0003816 mm`, and Hausdorff
-`1.257226 mm`; it misses the agreed `1 mm` Hausdorff limit. The JSON report
-contains the voxelwise error counts and source profile details.
+The isolated outer-surface comparison **passes**. Dice is `0.9999968`,
+symmetric mean surface distance is `0.0000297 mm`, and Hausdorff distance is
+`0.05685 mm`. The first traced update is accepted by both implementations;
+the selected point neighborhood and topology cube match exactly. The
+pre-reinitialization fields differ at four sign voxels, with MAE
+`1.02e-6`; maximum absolute field difference is `0.05966`. After
+reinitialization, the largest absolute field difference is `0.20266` while
+surface distances remain inside the agreed limits. Full measurements and
+point traces are in the linked JSON report.
 
-The selected Java subclasses pass distinct final distance caps to
-`ProfileTGDM`, but that constructor does not assign the argument; the field
-initializer remains 20. The Java run logs a 20 mm distance cap. The Python
-profile retains this observed runtime behavior. A local experiment that used
-the apparently intended 15 mm outer cap produced broad distance-field errors,
-so that interpretation was discarded.
+The complete selected TGDM core comparison **passes** on the same crop. The
+tissue-sign map is voxel-exact. Inner, central and outer masks have Dice
+`1.0`, `1.0` and `0.9999887`; their symmetric mean surface distances are
+`0.00000360`, `0.00000137` and `0.00014844 mm`; Hausdorff distances are
+`0.00243`, `0.00329` and `0.19498 mm`. All are within the agreed thresholds
+(Dice ≥0.97, mean surface distance ≤0.01 mm, Hausdorff ≤1 mm). The comparison
+also reports all intermediate-field errors. The isolated outer comparison's
+first update values differ by about `4e-10` from float arithmetic, but its
+topology decision and accepted sign update match.
 
-## Next work
+Focused TGDM module: **24 passed** (see the validated commit below). These are
+synthetic selected-source comparisons and focused Python regression tests;
+they do not establish full base-workflow equivalence or real-MRI behavior.
 
-The shared-central experiment localizes the remaining difference to outer
-evolution before signed-distance reinitialization. The initial Python and Java
-simple-point checks agree, but the iteration trace finds a first-pass crossing
-difference at `(73,76,73)`. Next, record the in-pass neighborhood, raw update
-value, and topology result at that exact update, then compare the 33 final sign
-disagreements. This remains
-a synthetic source-comparison blocker; it does not establish workflow
-equivalence or real-data behavior.
+**Tested implementation commit:** recorded in the following documentation
+update after committing the code and reference trace.

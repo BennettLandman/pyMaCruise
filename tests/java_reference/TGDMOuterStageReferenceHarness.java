@@ -52,6 +52,10 @@ public final class TGDMOuterStageReferenceHarness {
                 trace.println();
             }
         }
+        try (PrintWriter trace = new PrintWriter(new FileWriter(new File(output, "outer_event_trace.tsv")))) {
+            trace.println("iteration\told_value\tproposed_value\taccepted_value\treason\tsimple_point\tforeground_components\tbackground_components\tstatus_neighborhood\ttopology_cube");
+            for (String event : tgdm.eventTrace) trace.println(event);
+        }
         System.out.println("Wrote isolated Java outer-surface output to " + output.getAbsolutePath());
     }
 
@@ -59,6 +63,8 @@ public final class TGDMOuterStageReferenceHarness {
         float[][][] beforeReinitialization;
         final int[][] tracePoints;
         final List<float[]> trace = new ArrayList<>();
+        final List<String> eventTrace = new ArrayList<>();
+        int currentIteration = 0;
 
         CapturingTGDM(int[][] points) {
             super(ConnectivityRule.CONNECT_18_6);
@@ -84,6 +90,57 @@ public final class TGDMOuterStageReferenceHarness {
                 values[i] = implicitLevelSet[p[0]][p[1]][p[2]];
             }
             trace.add(values);
+            currentIteration++;
+        }
+
+        @Override
+        protected void validateUpdatePoint(NBPoint point, ProfileTGDM profile, double updateValue) {
+            if (point.x == 73 && point.y == 76 && point.z == 73) {
+                double oldValue = implicitLevelSet[point.x][point.y][point.z];
+                boolean crossing = (oldValue > 0 && updateValue <= 0)
+                        || (oldValue <= 0 && updateValue > 0);
+                String reason = crossing ? "topology" : "no_sign_change";
+                String simple = "";
+                String foreground = "";
+                String background = "";
+                StringBuilder neighborhood = new StringBuilder();
+                StringBuilder topologyCube = new StringBuilder();
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dz = -1; dz <= 1; dz++)
+                            neighborhood.append(levelSetSign[point.x + dx][point.y + dy][point.z + dz]).append(',');
+                if (crossing) {
+                    if (skeletalBound != null && oldValue > 0 && skeletalBound[point.x][point.y][point.z] > 0)
+                        reason = "skeleton_bound";
+                    else if (outerBound != null && oldValue > 0 && outerBound[point.x][point.y][point.z] >= 0)
+                        reason = "outer_bound";
+                    else if (innerBound != null && oldValue <= 0 && innerBound[point.x][point.y][point.z] <= 0)
+                        reason = "inner_bound";
+                    else {
+                        int[][][] cube = new int[3][3][3];
+                        smpTest.test(point.x, point.y, point.z, cube, levelSetSign);
+                        // ConnectivityRule.check labels visited voxels as 0, so
+                        // capture the unmodified geodesic cube before counting.
+                        for (int dx = 0; dx < 3; dx++)
+                            for (int dy = 0; dy < 3; dy++)
+                                for (int dz = 0; dz < 3; dz++)
+                                    topologyCube.append(cube[dx][dy][dz]).append(',');
+                        int fcon = fgRule.check(cube, 1);
+                        int bcon = bgRule.check(cube, -1);
+                        foreground = Integer.toString(fcon);
+                        background = Integer.toString(bcon);
+                        boolean accepted = fcon == 1 && bcon == 1;
+                        simple = Boolean.toString(accepted);
+                        reason = accepted ? "topology_accepted" : "topology_rejected";
+                    }
+                }
+                super.validateUpdatePoint(point, profile, updateValue);
+                eventTrace.add((currentIteration + 1) + "\t" + oldValue + "\t" + updateValue + "\t"
+                        + point.w + "\t" + reason + "\t" + simple + "\t" + foreground + "\t" + background
+                        + "\t" + neighborhood + "\t" + topologyCube);
+                return;
+            }
+            super.validateUpdatePoint(point, profile, updateValue);
         }
     }
 }

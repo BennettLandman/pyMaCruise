@@ -11,6 +11,29 @@ workflow's `toads-cruise-core` stage. Java crop outputs are transferred back to
 the native RAS grid with the selected JIST-style legacy uncrop rule before
 comparing the three delivered cortical surfaces.
 
+## Current selected-core rerun
+
+The earlier saved base-run comparison below recorded an outer Hausdorff failure
+from the then-current Python implementation. That saved output predates the
+source-semantics fix and is retained as historical evidence. The selected-core
+comparison has now been rerun on the committed synthetic inputs by
+`scripts/compare_tgdm_core_java_reference.py`; its current measurements are in
+[the current stage JSON](tgdm-core-brain-resolution-java-comparison-2026-10-07.json).
+The rerun passes: tissue-sign output is voxel-exact; inner/central/outer Dice
+are `1.0/1.0/0.9999887`, symmetric mean surface distances are
+`0.00000360/0.00000137/0.00014844 mm`, and Hausdorff distances are
+`0.00243/0.00329/0.19498 mm`. The prior isolated outer discrepancy was due to
+counting components not seeded from the center's 6/18-neighbor set. Java's
+float32 subtraction order for the tissue-sign denominator also matters at two
+quantization boundaries; Python now matches both behaviors. The isolated
+point-level trace and focused TGDM tests are documented in
+[the outer comparison report](tgdm-outer-shared-central-java-comparison-2026-10-07.md).
+
+This direct selected-core result does not retroactively validate the old saved
+base-run outputs or the full six-stage wrapper. The restartable base workflow
+must be rerun with the correction before claiming updated end-to-end workflow
+evidence.
+
 The comparator was rerun on committed code `6e2e748`; its full JSON metrics are
 in [the machine-readable report](tgdm-core-saved-base-run-java-comparison-2026-10-07.json).
 

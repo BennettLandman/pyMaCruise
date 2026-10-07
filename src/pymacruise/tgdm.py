@@ -49,6 +49,22 @@ class TGDMEvolutionResult:
     pass_level_sets: tuple[np.ndarray, ...] = ()
     pre_reinitialization_level_sets: tuple[np.ndarray, ...] = ()
     point_trace: tuple[tuple[float, ...], ...] = ()
+    point_event_trace: tuple["TGDMPointUpdateTrace", ...] = ()
+
+
+@dataclass(frozen=True)
+class TGDMPointUpdateTrace:
+    """Opt-in decision details for a selected narrow-band point update."""
+
+    iteration: int
+    point: tuple[int, int, int]
+    old_value: float
+    proposed_value: float
+    accepted_value: float
+    reason: str
+    simple_point: bool | None
+    status_neighborhood: tuple[int, ...]
+    topology_cube: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -218,6 +234,8 @@ def tgdm_evolve(
     pass_level_sets: list[np.ndarray] = []
     pre_reinitialization_level_sets: list[np.ndarray] = []
     point_trace: list[tuple[float, ...]] = []
+    point_event_trace: list[TGDMPointUpdateTrace] = []
+    trace_point_set = set(trace_points)
 
     for pass_index in range(outer_iterations):
         final_pass = pass_index == outer_iterations - 1
@@ -269,18 +287,56 @@ def tgdm_evolve(
                 local_point = tuple(int(v - start) for v, start in zip(point, lower))
                 proposed = float(old_value - time_step * float(force[local_point]))
                 flips = (old_value > 0 and proposed <= 0) or (old_value <= 0 and proposed > 0)
+                event_reason = "no_sign_change"
+                event_simple: bool | None = None
+                event_neighborhood: tuple[int, ...] = ()
+                event_topology_cube: tuple[int, ...] = ()
                 if flips:
                     if skeleton is not None and old_value > 0 and skeleton[point] > 0:
                         proposed = 0.1
+                        event_reason = "skeleton_bound"
                     elif outer is not None and old_value > 0 and outer[point] >= 0:
                         proposed = 0.1
+                        event_reason = "outer_bound"
                     elif inner is not None and old_value <= 0 and inner[point] <= 0:
                         proposed = -0.1
-                    elif not tgdm_simple_point_618(_status_neighborhood(signs, point)):
-                        proposed = 0.1 if old_value > 0 else -0.1
+                        event_reason = "inner_bound"
                     else:
-                        signs[point] = -signs[point]
+                        neighborhood = _status_neighborhood(signs, point)
+                        topology_cube = _tgdm_simple_point_cube_618(neighborhood)
+                        simple_point = (
+                            _source_component_count(topology_cube == 1, _FACE) == 1
+                            and _source_component_count(topology_cube == -1, _EDGE) == 1
+                        )
+                        event_simple = simple_point
+                        if point in trace_point_set:
+                            event_neighborhood = tuple(int(value) for value in signs[
+                                point[0] - 1 : point[0] + 2,
+                                point[1] - 1 : point[1] + 2,
+                                point[2] - 1 : point[2] + 2,
+                            ].ravel())
+                            event_topology_cube = tuple(int(value) for value in topology_cube.ravel())
+                        if not simple_point:
+                            proposed = 0.1 if old_value > 0 else -0.1
+                            event_reason = "topology_rejected"
+                        else:
+                            signs[point] = -signs[point]
+                            event_reason = "topology_accepted"
                 next_phi[point] = np.float32(proposed)
+                if point in trace_point_set:
+                    point_event_trace.append(
+                        TGDMPointUpdateTrace(
+                            iteration=completed_steps + 1,
+                            point=point,
+                            old_value=old_value,
+                            proposed_value=float(old_value - time_step * float(force[local_point])),
+                            accepted_value=float(next_phi[point]),
+                            reason=event_reason,
+                            simple_point=event_simple,
+                            status_neighborhood=event_neighborhood,
+                            topology_cube=event_topology_cube,
+                        )
+                    )
 
             # GenericTGDM applies bound clamps after all candidate updates.
             next_phi = _apply_level_set_bounds(next_phi, inner, outer)
@@ -314,6 +370,7 @@ def tgdm_evolve(
         tuple(pass_level_sets),
         tuple(pre_reinitialization_level_sets),
         tuple(point_trace),
+        tuple(point_event_trace),
     )
 
 
@@ -358,9 +415,10 @@ def tgdm_tissue_sign_field(
     csf_probability = np.float32(1.0) - wm_probability - gm_probability
     wm_dominant = wm_probability > csf_probability
     sign = np.empty(wm.shape, dtype=np.float32)
+    wm_denominator = np.float32(np.float32(1.0) - np.float32(white_matter_iso))
     sign[wm_dominant] = (
         wm_probability[wm_dominant] - np.float32(white_matter_iso)
-    ) / np.float32(1.0 - white_matter_iso)
+    ) / wm_denominator
     sign[~wm_dominant] = (
         np.float32(1.0)
         - csf_probability[~wm_dominant]
@@ -866,16 +924,8 @@ def tgdm_force(
     return np.asarray(curvature_term + region_term + advection_term, dtype=np.float64)
 
 
-def tgdm_simple_point_618(neighborhood: np.ndarray) -> bool:
-    """Apply GenericTGDM's geodesic 18-neighborhood simple-point check.
-
-    ``neighborhood`` is a 3x3x3 boolean array: True is the source status +1
-    (the interior for the selected `(18,6)` wrapper setting). This reproduces
-    the source `SimplePointTest18` geodesic coding followed by its
-    `SixConnected` + `EighteenConnected` component checks. The apparent
-    constructor/connectivity naming mismatch is documented in the TGDM source
-    map and intentionally represented here as source behavior.
-    """
+def _tgdm_simple_point_cube_618(neighborhood: np.ndarray) -> np.ndarray:
+    """Build MaGenericTGDM.SimplePointTest18's geodesic 3x3x3 coding."""
     raw_status = np.asarray(neighborhood)
     if raw_status.dtype == np.bool_:
         status = np.where(raw_status, 1, -1).astype(np.int8)
@@ -924,13 +974,24 @@ def tgdm_simple_point_618(neighborhood: np.ndarray) -> bool:
                 ):
                     cube[index] = 1
 
+    return cube
+
+
+def tgdm_simple_point_618(neighborhood: np.ndarray) -> bool:
+    """Apply the selected `(18,6)` source simple-point check to a 3x3x3 field.
+
+    The geodesic cube follows `MaGenericTGDM.SimplePointTest18`; source
+    `SixConnected` and `EighteenConnected` component rules then test interior
+    and exterior connectivity, respectively.
+    """
+    cube = _tgdm_simple_point_cube_618(neighborhood)
     interior = cube == 1
     exterior = cube == -1
     interior[1, 1, 1] = False
     exterior[1, 1, 1] = False
     return (
-        _component_count(interior, _FACE) == 1
-        and _component_count(exterior, _EDGE) == 1
+        _source_component_count(interior, _FACE) == 1
+        and _source_component_count(exterior, _EDGE) == 1
     )
 
 
@@ -953,8 +1014,18 @@ def _adjacent_faces(point: tuple[int, int, int] | list[int]) -> tuple[tuple[int,
     )
 
 
-def _component_count(mask: np.ndarray, structure: np.ndarray) -> int:
-    return int(ndimage.label(mask, structure=structure)[1])
+def _source_component_count(mask: np.ndarray, structure: np.ndarray) -> int:
+    """Count components reached from the center's neighbors as Java does.
+
+    The Java connectivity classes seed their flood fill from 6- or 18-adjacent
+    voxels around the center. Components consisting only of unseeded corners
+    are therefore ignored, while SciPy's full-volume label count includes them.
+    """
+    labels, _ = ndimage.label(mask, structure=structure)
+    seeds = np.asarray(structure, dtype=bool).copy()
+    seeds[tuple(size // 2 for size in seeds.shape)] = False
+    neighbor_labels = labels[seeds]
+    return int(np.unique(neighbor_labels[neighbor_labels > 0]).size)
 
 
 def _require_nifti(

@@ -60,6 +60,26 @@ def test_tgdm_evolution_can_record_selected_voxel_values_per_iteration() -> None
     assert len(result.point_trace[0]) == 2
     assert result.point_trace[0][0] == result.pre_reinitialization_level_sets[0][4, 4, 4]
     assert result.point_trace[0][1] == result.pre_reinitialization_level_sets[0][4, 4, 7]
+    event = next(event for event in result.point_event_trace if event.point == (4, 4, 4))
+    assert event.iteration == 1
+    assert event.accepted_value == result.point_trace[0][0]
+
+
+def test_tgdm_618_ignores_unseeded_corner_components_like_java() -> None:
+    # The 18-connected background has one component reached from a neighbor
+    # of the center and a second component consisting only of an opposite
+    # corner. Java's EighteenConnected check seeds only from center neighbors,
+    # so that corner component does not make this topology change non-simple.
+    neighborhood = np.array(
+        [
+            1, 1, -1, 1, -1, -1, 1, -1, -1,
+            1, 1, 1, 1, -1, -1, 1, -1, -1,
+            -1, 1, 1, 1, 1, 1, 1, 1, 1,
+        ],
+        dtype=np.int8,
+    ).reshape((3, 3, 3))
+
+    assert tgdm_simple_point_618(neighborhood)
 
 
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:
@@ -263,6 +283,18 @@ def test_tgdm_tissue_sign_field_matches_source_quantization_and_branches() -> No
     result = tgdm_tissue_sign_field(wm, gm, white_matter_iso=0.1, gray_matter_iso=0.4)
 
     np.testing.assert_array_equal(result, np.array([[[254, 127, 0, 183]]], dtype=np.uint8))
+
+
+def test_tgdm_tissue_sign_wm_denominator_uses_java_float_subtraction() -> None:
+    # These brain-resolution fixture values land on quantization boundaries.
+    # Java evaluates (1.0f - 0.6f) in float32 before division; computing 1-.6
+    # in Python double and casting afterward changes each result by one.
+    wm = np.array([254.19684, 247.77165], dtype=np.float32).reshape(1, 1, 2)
+    gm = np.array([0.66011727, 6.873619], dtype=np.float32).reshape(1, 1, 2)
+
+    result = tgdm_tissue_sign_field(wm, gm, white_matter_iso=0.6, gray_matter_iso=0.4)
+
+    np.testing.assert_array_equal(result, np.array([[[253, 245]]], dtype=np.uint8))
 
 
 def test_tgdm_surface_pressure_maps_match_source_scaling_and_skeleton_rule() -> None:
