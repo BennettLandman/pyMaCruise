@@ -96,6 +96,31 @@ drift, but does not identify which source-order change is responsible.
 | 9 | 0.0233107414 | 0.0190226417 |
 | 10 | 0.00618879683 | 0.00255699526 |
 
+The complete current first-pass trace took **8,313.4 seconds (2 h 18 min)**.
+It shows recurring decreases followed by energy rebounds; selected adjacent
+low/rebound pairs are:
+
+| Low iteration / ratio | Next iteration / ratio |
+|---|---|
+| 10 / `0.00255699526` | 11 / `0.21966733` |
+| 16 / `0.00219647912` | 17 / `0.235409945` |
+| 22 / `0.00119246391` | 23 / `0.230245948` |
+| 28 / `0.00097300089` | 29 / `0.23061122` |
+| 34 / `0.000317806494` | 35 / `0.230662525` |
+| 40 / `0.00205375929` | 41 / `0.231708989` |
+| 46 / `0.000686858548` | 47 / `0.231917679` |
+
+The prior trajectory showed a similar rebound pattern but crossed the stop
+threshold at iteration 39 (`6.00817439e-05`). The current trajectory did not
+cross it by iteration 50. This is evidence that the change is not explained
+only by a slightly larger iteration cap; it does **not** establish whether the
+current trajectory is a remaining implementation defect or a consequence of
+the source-order corrections. Increasing the cap would require another
+multi-hour run and is not yet a justified convergence fix. The next useful
+comparison is to capture the corresponding cycle-boundary state from the
+selected Java implementation on this same synthetic fixture, or isolate the
+first brain-fixture state difference with a cheaper reduced-grid trace.
+
 ## Evidence boundaries
 
 - Focused ACE plus integration suite on implementation commit `999744c`:
