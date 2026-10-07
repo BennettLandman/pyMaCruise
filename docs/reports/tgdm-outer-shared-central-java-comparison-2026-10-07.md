@@ -18,10 +18,15 @@ sh scripts/generate_java_tgdm_outer_stage_reference.sh
 
 The command exits nonzero because the Hausdorff gate is exceeded.
 
-The recorded comparison was rerun on commit `ffb30e7`. On that commit the
-focused TGDM tests passed **2/2 in 12.50s**, and the direct Java topology
-decision harness returned false for the tested initial neighborhood, matching
-Python's simple-point result there.
+The recorded comparison was rerun on code based on `ffb30e7`; after adding the
+per-voxel iteration trace, the first difference appears in iteration 1 at crop
+voxel `(73,76,73)`: Python clamps the crossing to `+0.1`, while Java accepts
+`−0.01752247`. The direct Java topology harness and Python both reject the
+initial neighborhood as a simple point. Earlier voxel updates in the same pass
+may change that neighborhood before this point is visited; the current trace
+does not yet capture the in-pass neighborhood or force at the exact update.
+The focused TGDM tests passed **2/2 in 12.50s** before the trace hook was
+expanded; the new per-iteration trace unit test passed **1/1 in 0.76s**.
 
 ## Results
 
@@ -43,9 +48,9 @@ so that interpretation was discarded.
 
 The shared-central experiment localizes the remaining difference to outer
 evolution before signed-distance reinitialization. The initial Python and Java
-simple-point checks agree at the largest pre-reinitialization outlier, which
-means later in-pass updates or update arithmetic change the neighborhood
-before the crossing. Next, record the per-iteration Java/Python state around
-the 33 differing sign voxels and match the first differing update. This remains
+simple-point checks agree, but the iteration trace finds a first-pass crossing
+difference at `(73,76,73)`. Next, record the in-pass neighborhood, raw update
+value, and topology result at that exact update, then compare the 33 final sign
+disagreements. This remains
 a synthetic source-comparison blocker; it does not establish workflow
 equivalence or real-data behavior.

@@ -39,6 +39,29 @@ def test_tgdm_final_distance_cap_matches_selected_java_constructor_behavior() ->
     assert _INNER_FROM_CENTRAL_PROFILE_SETTINGS.final_max_signed_distance == 20.0
 
 
+def test_tgdm_evolution_can_record_selected_voxel_values_per_iteration() -> None:
+    x, y, z = np.indices((9, 9, 9), dtype=np.float32)
+    level_set = np.sqrt((x - 4) ** 2 + (y - 4) ** 2 + (z - 4) ** 2) - 2.5
+    settings = TGDMProfileSettings(4.7, 3.6, 6.2, 20.0, 2, 1, 0.1, 0.045)
+
+    result = tgdm_evolve(
+        level_set,
+        profile="outer",
+        curvature_force=-1.0,
+        pressure_force=1.0,
+        region_force=np.zeros(level_set.shape, dtype=np.float32),
+        outer_iterations=1,
+        settings=settings,
+        record_passes=True,
+        trace_points=((4, 4, 4), (4, 4, 7)),
+    )
+
+    assert len(result.point_trace) == 1
+    assert len(result.point_trace[0]) == 2
+    assert result.point_trace[0][0] == result.pre_reinitialization_level_sets[0][4, 4, 4]
+    assert result.point_trace[0][1] == result.pre_reinitialization_level_sets[0][4, 4, 7]
+
+
 def test_tgdm_geometry_matches_quadratic_derivatives_and_curvature_numerators() -> None:
     i, j, k = np.indices((8, 8, 8), dtype=np.float32)
     field = i * i + 2 * j * j + 3 * k * k

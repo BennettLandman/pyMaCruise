@@ -48,6 +48,7 @@ class TGDMEvolutionResult:
     landmine_restarts: int
     pass_level_sets: tuple[np.ndarray, ...] = ()
     pre_reinitialization_level_sets: tuple[np.ndarray, ...] = ()
+    point_trace: tuple[tuple[float, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -152,6 +153,7 @@ def tgdm_evolve(
     | None = None,
     round_reinitialization_updates_to_float32: bool = False,
     record_passes: bool = False,
+    trace_points: tuple[tuple[int, int, int], ...] = (),
 ) -> TGDMEvolutionResult:
     """Evolve one source-style TGDM surface from an already signed level set.
 
@@ -174,6 +176,10 @@ def tgdm_evolve(
         raise ValueError("TGDM evolution requires a 3D level set with dimensions >= 2")
     if not np.isfinite(phi).all():
         raise ValueError("TGDM level set must be finite")
+    for point in trace_points:
+        if len(point) != 3 or any(index < 0 or index >= phi.shape[axis]
+                                   for axis, index in enumerate(point)):
+            raise ValueError("trace_points must contain in-bounds (x, y, z) indices")
     if profile not in _PROFILE_SETTINGS:
         raise ValueError("profile must be 'inner', 'central', or 'outer'")
     if outer_iterations < 0:
@@ -211,6 +217,7 @@ def tgdm_evolve(
     completed_steps = completed_passes = restarts = 0
     pass_level_sets: list[np.ndarray] = []
     pre_reinitialization_level_sets: list[np.ndarray] = []
+    point_trace: list[tuple[float, ...]] = []
 
     for pass_index in range(outer_iterations):
         final_pass = pass_index == outer_iterations - 1
@@ -279,6 +286,8 @@ def tgdm_evolve(
             next_phi = _apply_level_set_bounds(next_phi, inner, outer)
             phi = next_phi
             completed_steps += 1
+            if trace_points:
+                point_trace.append(tuple(float(phi[point]) for point in trace_points))
             if landmine_points.size:
                 current_signs = np.asarray([_level_sign(phi[tuple(p)]) for p in landmine_points])
                 mine_hit = bool(np.any(current_signs != landmine_signs))
@@ -304,6 +313,7 @@ def tgdm_evolve(
         restarts,
         tuple(pass_level_sets),
         tuple(pre_reinitialization_level_sets),
+        tuple(point_trace),
     )
 
 

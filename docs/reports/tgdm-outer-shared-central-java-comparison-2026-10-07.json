@@ -5,6 +5,16 @@
     "symmetric_mean_surface_distance_mm_maximum": 0.01
   },
   "comparison": "isolated selected outer solver; identical Java central level set, GM, skeleton and source profile",
+  "first_trace_difference": {
+    "iteration": 1,
+    "java_value": -0.017522472888231277,
+    "python_value": 0.10000000149011612,
+    "voxel": [
+      73,
+      76,
+      73
+    ]
+  },
   "java_profile_note": "OuterCortexProfile passes 15f, but selected ProfileTGDM constructor does not assign finalMaxSignDist; the active field remains 20, confirmed by DistanceField runtime output",
   "metrics": {
     "candidate_to_reference_mean_mm": 0.0002305828108228823,
@@ -40,6 +50,18 @@
     208,
     156
   ],
-  "tested_commit": "ffb30e7",
-  "synthetic_only": true
+  "synthetic_only": true,
+  "trace_centers": [
+    [
+      73,
+      76,
+      73
+    ],
+    [
+      88,
+      82,
+      68
+    ]
+  ],
+  "trace_point_count": 54
 }

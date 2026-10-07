@@ -17,4 +17,4 @@ java -Xms512m -Xmx4g -cp "$classes" TGDMOuterStageReferenceHarness \
   "$input_root" "$core_root" "$output_root"
 "$repo_root/.venv/bin/python" "$repo_root/scripts/convert_tgdm_core_java_reference.py" \
   --input-root "$input_root" --reference-root "$output_root"
-(cd "$output_root" && shasum -a 256 *.nii.gz > SHA256SUMS)
+(cd "$output_root" && shasum -a 256 *.nii.gz *.tsv > SHA256SUMS)

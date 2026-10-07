@@ -28,6 +28,14 @@ from pymacruise.validation import (  # noqa: E402
 )
 
 DATA_ROOT = REPO_ROOT / "tests/data/synthetic/tgdm_core_brain_resolution"
+TRACE_CENTERS = ((73, 76, 73), (88, 82, 68))
+TRACE_POINTS = tuple(
+    (center[0] + dx, center[1] + dy, center[2] + dz)
+    for center in TRACE_CENTERS
+    for dx in (-1, 0, 1)
+    for dy in (-1, 0, 1)
+    for dz in (-1, 0, 1)
+)
 
 
 def main() -> None:
@@ -76,6 +84,7 @@ def main() -> None:
         outer_iterations=1,
         settings=outer_profile,
         record_passes=True,
+        trace_points=TRACE_POINTS,
     )
     python = python_evolution.level_set
     reference = np.asarray(java_output.dataobj, dtype=np.float32)
@@ -101,6 +110,23 @@ def main() -> None:
     pre_difference = np.abs(python_pre - java_pre)
     pre_outlier = tuple(int(value) for value in np.unravel_index(np.argmax(pre_difference), pre_difference.shape))
     pre_sign_disagreements = int(np.count_nonzero((python_pre <= 0) != (java_pre <= 0)))
+    java_trace = np.loadtxt(args.java_outer_root / "outer_update_trace.tsv", delimiter="\t", skiprows=1)
+    python_trace = np.asarray(python_evolution.point_trace, dtype=np.float64)
+    if java_trace.ndim == 1:
+        java_trace = java_trace[None, :]
+    if python_trace.shape != java_trace[:, 1:].shape:
+        raise ValueError("Java/Python per-iteration trace lengths do not match")
+    trace_difference = np.argwhere(python_trace != java_trace[:, 1:])
+    if trace_difference.size:
+        trace_iteration, trace_point = (int(value) for value in trace_difference[0])
+        first_trace_difference = {
+            "iteration": trace_iteration + 1,
+            "voxel": list(TRACE_POINTS[trace_point]),
+            "python_value": float(python_trace[trace_iteration, trace_point]),
+            "java_value": float(java_trace[trace_iteration, trace_point + 1]),
+        }
+    else:
+        first_trace_difference = None
     report = {
         "synthetic_only": True,
         "comparison": "isolated selected outer solver; identical Java central level set, GM, skeleton and source profile",
@@ -113,6 +139,9 @@ def main() -> None:
         "pre_reinitialization_python_value": float(python_pre[pre_outlier]),
         "pre_reinitialization_java_value": float(java_pre[pre_outlier]),
         "pre_reinitialization_sign_disagreements": pre_sign_disagreements,
+        "first_trace_difference": first_trace_difference,
+        "trace_centers": [list(point) for point in TRACE_CENTERS],
+        "trace_point_count": len(TRACE_POINTS),
         "acceptance": {"dice_minimum": 0.97, "symmetric_mean_surface_distance_mm_maximum": 0.01,
                        "symmetric_hausdorff_mm_maximum": 1.0},
         "passed": bool(metrics["dice"] >= 0.97
