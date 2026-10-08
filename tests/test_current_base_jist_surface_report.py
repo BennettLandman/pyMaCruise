@@ -33,5 +33,26 @@ def test_brain_resolution_jist_surface_report_passes_p08_and_retains_topology_ga
             < 0.70
         )
 
+        lorensen = report["metrics"]["lorensen_per_surface"][surface]
+        lorensen_position = lorensen["vertex_to_triangle_surface_distance_mm"]
+        assert lorensen_position["symmetric_mean"] <= 0.01
+        assert lorensen_position["symmetric_max"] <= 1.0
+        assert lorensen["jist_topology"]["connected_components"] == 1
+        assert lorensen["lewiner_topology"]["connected_components"] > 1
+        assert (
+            lorensen["triangle_connectivity_after_nearest_vertex_mapping"][
+                "matching_fraction_of_jist_faces"
+            ]
+            < 0.70
+        )
+
+    assert [
+        report["metrics"]["lorensen_per_surface"][name]["lewiner_topology"][
+            "connected_components"
+        ]
+        for name in ("inner", "central", "outer")
+    ] == [2, 2, 28]
+
     thickness = report["metrics"]["thickness"]
     assert abs(thickness["mean_delta_mm"] - (-0.00008807700348656411)) < 1e-12
+    assert abs(thickness["lorensen_mean_delta_mm"] - 0.0000124834290862) < 1e-12

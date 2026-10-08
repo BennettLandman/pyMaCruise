@@ -15,11 +15,17 @@ import sys
 
 import nibabel as nib
 import numpy as np
+from skimage.measure import marching_cubes
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import compare_jist_surface_geometry as reference  # noqa: E402
-from pymacruise.surfaces import SurfaceMesh, extract_levelset_surface  # noqa: E402
+from pymacruise.image_io import normalize_image_to_ras  # noqa: E402
+from pymacruise.surfaces import (  # noqa: E402
+    SurfaceMesh,
+    _signed_mesh_volume,
+    extract_levelset_surface,
+)
 from pymacruise.thickness import closest_point_thickness  # noqa: E402
 
 FIXTURE = ROOT / "tests/data/synthetic/base_core_source_match/java_reference"
@@ -29,6 +35,28 @@ RAW = WORK / "raw"
 MESHES = WORK / "meshes"
 REPORT_JSON = ROOT / "docs/reports/current-base-jist-surface-comparison-2026-10-07.json"
 REPORT_MD = ROOT / "docs/reports/current-base-jist-surface-comparison-2026-10-07.md"
+
+
+def extract_lorensen_surface(image: nib.spatialimages.SpatialImage) -> SurfaceMesh:
+    """Apply the selected JIST near-zero rule before classic Lorensen MC."""
+    ras_image = normalize_image_to_ras(image, source_name="level-set image")
+    values = np.asarray(ras_image.dataobj, dtype=np.float32)
+    shifted = values - np.float32(0.0)
+    shifted = shifted.copy()
+    shifted[(shifted > np.float32(-0.1)) & (shifted <= 0)] = np.float32(-0.1)
+    shifted[(shifted < np.float32(0.1)) & (shifted > 0)] = np.float32(0.1)
+    index_vertices, faces, _normals, _values = marching_cubes(
+        shifted,
+        level=0.0,
+        gradient_direction="ascent",
+        allow_degenerate=False,
+        method="lorensen",
+    )
+    vertices = nib.affines.apply_affine(ras_image.affine, index_vertices)
+    faces = np.asarray(faces, dtype=np.int64)
+    if _signed_mesh_volume(vertices, faces) < 0:
+        faces = faces[:, ::-1]
+    return SurfaceMesh(vertices, faces)
 
 
 def sha256(data: bytes) -> str:
@@ -48,7 +76,9 @@ def run() -> dict[str, object]:
 
     java_meshes: dict[str, SurfaceMesh] = {}
     python_meshes: dict[str, SurfaceMesh] = {}
+    lorensen_meshes: dict[str, SurfaceMesh] = {}
     comparisons: dict[str, object] = {}
+    lorensen_comparisons: dict[str, object] = {}
     source_inputs: dict[str, str] = {}
     spacing: list[float] | None = None
     shape: list[int] | None = None
@@ -82,13 +112,19 @@ def run() -> dict[str, object]:
         python_mesh = extract_levelset_surface(image, level=0.0)
         java_meshes[name] = jist_mesh
         python_meshes[name] = python_mesh
+        lorensen_mesh = extract_lorensen_surface(image)
+        lorensen_meshes[name] = lorensen_mesh
         comparisons[name] = reference.compare_pair(jist_mesh, python_mesh)
+        lorensen_comparisons[name] = reference.compare_pair(jist_mesh, lorensen_mesh)
 
     jist_thickness = closest_point_thickness(
         java_meshes["inner"], java_meshes["outer"], central=java_meshes["central"]
     )
     python_thickness = closest_point_thickness(
         python_meshes["inner"], python_meshes["outer"], central=python_meshes["central"]
+    )
+    lorensen_thickness = closest_point_thickness(
+        lorensen_meshes["inner"], lorensen_meshes["outer"], central=lorensen_meshes["central"]
     )
     summary: dict[str, object] = {
         "title": "Selected JIST IsoSurfaceOnGrid versus Lewiner on current synthetic base-core outputs",
@@ -113,6 +149,7 @@ def run() -> dict[str, object]:
         },
         "metrics": {
             "per_surface": comparisons,
+            "lorensen_per_surface": lorensen_comparisons,
             "thickness": {
                 "operator": "same Python closest_point_thickness on each triangulator's nested meshes",
                 "jist_mean_mm": jist_thickness.mean_mm,
@@ -122,6 +159,8 @@ def run() -> dict[str, object]:
                 "lewiner_sd_mm": python_thickness.standard_deviation_mm,
                 "jist_nonzero_inner_vertices": jist_thickness.nonzero_vertex_count,
                 "lewiner_nonzero_inner_vertices": python_thickness.nonzero_vertex_count,
+                "lorensen_mean_mm": lorensen_thickness.mean_mm,
+                "lorensen_mean_delta_mm": lorensen_thickness.mean_mm - jist_thickness.mean_mm,
             },
         },
         "limitations": [
@@ -145,6 +184,19 @@ def run() -> dict[str, object]:
             f"{distance['symmetric_mean']:.8f} | {distance['symmetric_max']:.6f} | "
             f"{connect['matching_fraction_of_jist_faces']:.2%} |"
         )
+    lorensen_rows = []
+    for name, result in lorensen_comparisons.items():
+        result = result  # type: ignore[assignment]
+        jt = result["jist_topology"]  # type: ignore[index]
+        pt = result["lewiner_topology"]  # type: ignore[index]
+        connect = result["triangle_connectivity_after_nearest_vertex_mapping"]  # type: ignore[index]
+        distance = result["vertex_to_triangle_surface_distance_mm"]  # type: ignore[index]
+        lorensen_rows.append(
+            f"| {name} | {jt['connected_components']}/{jt['euler_characteristic']} | "
+            f"{pt['connected_components']}/{pt['euler_characteristic']} | "
+            f"{distance['symmetric_mean']:.8f} | {distance['symmetric_max']:.8f} | "
+            f"{connect['matching_fraction_of_jist_faces']:.2%} |"
+        )
     thickness = summary["metrics"]["thickness"]  # type: ignore[index]
     REPORT_MD.write_text(
         "\n".join(
@@ -160,6 +212,16 @@ def run() -> dict[str, object]:
                 *rows,
                 "",
                 "The symmetric sampled means are below 0.01 mm and sampled maxima are below 1 mm for all three surfaces, meeting the owner-provided P08 thresholds on these fixtures. The Lewiner topology counts differ: its mesh has multiple connected components and nonmatching Euler characteristics where JIST produces one connected genus-zero surface. Only about 63.8–67.9% of JIST triangles map after nearest-vertex matching. These remain material connectivity differences under P37 even though the sampled geometric position metrics pass.",
+                "",
+                "## Classic Lorensen alternative",
+                "",
+                "The same source perturbation and input values were also passed to scikit-image's classic Lorensen table:",
+                "",
+                "| Surface | JIST components/χ | Lorensen components/χ | Symmetric mean distance (mm) | Sampled max (mm) | Matched JIST faces |",
+                "|---|---:|---:|---:|---:|---:|",
+                *lorensen_rows,
+                "",
+                f"Lorensen preserves vertex counts and has near-coincident sampled geometry, but it does not repair the topology mismatch: component counts are 2/2/28 versus one JIST component. Its mean thickness is `{lorensen_thickness.mean_mm:.9f} mm` (delta `{lorensen_thickness.mean_mm - jist_thickness.mean_mm:+.9f} mm` from JIST). Thus the already-tested Lorensen alternative is not a topology-matching replacement for Lewiner on this brain-resolution fixture.",
                 "",
                 f"Applying the same Python closest-point thickness operator to each nested mesh set gives JIST mean `{thickness['jist_mean_mm']:.9f} mm` and Lewiner mean `{thickness['lewiner_mean_mm']:.9f} mm`, a delta of `{thickness['mean_delta_mm']:+.9f} mm`. P08 has no thickness-specific tolerance. This is a geometry-impact measurement, not Java thickness equivalence.",
                 "",
