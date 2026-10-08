@@ -216,7 +216,7 @@ limitations.
 `ToadsRigidRegistrationPyramidReferenceHarness.java` reads the committed odd-
 sized RAS NIfTI membership and atlas-prior fixtures, downsamples them with the
 preserved Java `ImageFunctions.subsample`, and transcribes the selected TOADS
-registration objective, source-faithful coefficient normalization, line
+`MultipleToadAtlas` helper objective, its coefficient normalization, line
 search, and coarse-to-fine transform handoff at scales 4 and 2. Its sampler
 matches `MultipleToadAtlas`'s rigid-transform path: `precompute` is true for
 linear transforms, and each coefficient call builds the scale-specific
@@ -227,7 +227,13 @@ committed JSON reference with
 `scripts/generate_java_toads_registration_pyramid_reference.sh`. The Python
 test compares each scale's initialization and each iteration's transform,
 energy, lambda, accepted/rejected result, and stopping state. This comparison
-does not establish complete TOADS or atlas-alignment equivalence.
+does not call or validate `MultipleToadDeformableAtlas.registerShapesPyramid()`
+and does not establish complete TOADS or atlas-alignment equivalence. The
+actual VandyCRUISE method is exercised by
+`ToadsPyramidActualRegistrationHarness.java` and
+`run_toads_pyramid_actual_registration_reference.sh`; it uses a step-two voxel
+scan and the deformation-atlas gradient path. Its direct comparison is
+`test_pyramid_registration_matches_actual_vandycruise_entry_point`.
 
 ## TOADS boundary-distance update
 

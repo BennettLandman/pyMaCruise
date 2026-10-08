@@ -39,11 +39,10 @@ MaCRUISE workflow equivalence.
 
 - Direct production-method comparison:
   `pytest -q tests/test_toads_registration_sampling.py::test_pyramid_registration_matches_actual_vandycruise_entry_point` —
-  **1 passed**.
-- Focused registration module:
+  **1 passed** (included in the combined run below).
 - Combined registration and alignment-startup modules:
   `pytest -q tests/test_toads_registration_sampling.py tests/test_toads_alignment_startup.py` —
-  **28 passed**.
+  **28 passed** on code commit `eddeacb06cadfa5b1ed827167c66986b4e5a3b4b`.
 - No full-suite claim is made yet for the latest source-semantics change.
 - These focused checks are synthetic source comparisons. They do not validate
   full TOADS segmentation, the full MaCRUISE workflow, or real MRI data.
