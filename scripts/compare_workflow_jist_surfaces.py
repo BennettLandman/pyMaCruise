@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare selected JIST meshes with Python meshes from a saved base run.
+"""Compare selected JIST meshes with Python meshes from a saved workflow.
 
 This operates on the exact saved inner/central/outer scalar fields in
 ``--core-dir``. It compiles the selected Java IsoSurfaceOnGrid source harness,
@@ -81,7 +81,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--core-dir", type=Path, required=True,
-        help="saved base-run CRUISE core stage containing inner/central/outer NIfTIs",
+        help="saved workflow CRUISE core stage containing inner/central/outer NIfTIs",
     )
     parser.add_argument(
         "--work-dir", type=Path, required=True,

@@ -53,7 +53,7 @@ ignored `build/`:
 ```sh
 ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
-  ./.venv/bin/python scripts/compare_base_run_jist_surfaces.py \
+  ./.venv/bin/python scripts/compare_workflow_jist_surfaces.py \
   --core-dir build/ace-indexed-heap-2026-10-08/base-seven-stage-run/stages/cruise-core/attempt-01 \
   --work-dir build/base-seven-stage-jist-surface-compare-2026-10-08
 ```
