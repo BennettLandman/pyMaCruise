@@ -15,10 +15,12 @@ The Java excerpt harness pins selected
 records bitwise results for the supported membership maps and shared
 denominator. The test checks those maps, the input-data digest, and that all
 six boundary faces are unchanged. The harness energy/objective arrays are not
-source-equivalence evidence: the harness resets per-voxel energy, while the
-selected Java method uses method-local accumulators across its full x/y/z scan.
-The source-faithful Python option and zero-shape regression now preserve that
-behavior, but a direct Java composite reference for its objective remains open.
+source-equivalence evidence: the selected Java method assigns active-class
+energy from each voxel's data term and then adds that voxel's smoothing/prior
+terms; its method-local value is retained only when a zero-shape class skips
+the assignment. The source-faithful Python option and zero-shape regression
+preserve the skip behavior, but a direct Java composite reference for its
+objective remains open.
 
 All spatial and data-energy arrays are fixed inputs; the harness compares the
 supported interior membership, smoothing, prior, and normalization maps.

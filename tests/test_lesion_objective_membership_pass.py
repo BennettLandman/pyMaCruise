@@ -110,7 +110,7 @@ def test_objective_membership_pass_rejects_shape_skipped_interior_classes() -> N
         )
 
 
-def test_source_faithful_mode_preserves_stale_energy_after_zero_shape_skip() -> None:
+def test_source_faithful_mode_retains_last_energy_after_zero_shape_skip() -> None:
     inputs = np.asarray(nib.load(str(ROOT / "inputs_ras.nii.gz")).dataobj, dtype=np.float32)
     shapes = inputs[..., 14:18].copy()
     coordinate = (2, 1, 2)
@@ -140,8 +140,8 @@ def test_source_faithful_mode_preserves_stale_energy_after_zero_shape_skip() -> 
     assert skipped_result.class_energy[coordinate + (class_index,)] == (
         skipped_result.class_energy[previous_coordinate + (class_index,)]
     )
-    # Skipping the class leaves its accumulator untouched, unlike evaluating
-    # the positive-shape class at that same voxel.
+    # Skipping the class leaves the method-local energy value untouched,
+    # unlike evaluating the positive-shape class at that same voxel.
     assert skipped_result.class_energy[coordinate + (class_index,)] != (
         active_result.class_energy[coordinate + (class_index,)]
     )
