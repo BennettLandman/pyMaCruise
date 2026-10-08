@@ -70,6 +70,35 @@ before execution begins. `--resume` verifies existing checkpoints and resumes
 the configured workflow. Non-RAS inputs are normalized by the runners with
 visible warnings; persisted image outputs are RAS `.nii.gz`.
 
+The base profile executes seven checked stages: N4, first TOADS, Dura removal,
+second TOADS, CRUISE/ACE/GVF/TGDM core, MaSeg refinement, and scientific
+surface/thickness products. The last stage writes inner, central, and outer
+RAS-mm VTK meshes, a measured inner VTK mesh, a level-set-subtraction
+thickness NIfTI, a thickness summary JSON, and provenance. Its use of
+scikit-image Lewiner marching cubes is an explicit substitute for JIST
+`IsoSurfaceOnGrid`; mesh-connectivity equivalence remains open. The selected
+surface closest-point and level-set thickness operations are described in
+[`thickness-port.md`](thickness-port.md).
+
+## `pymacruise base-surface-thickness`
+
+```text
+pymacruise base-surface-thickness --inner-levelset INNER.nii.gz \
+  --central-levelset CENTRAL.nii.gz --outer-levelset OUTER.nii.gz \
+  --output-dir OUTPUT_DIR [--provenance RUN.json]
+```
+
+This stage adapter accepts finite 3D `.nii.gz` level sets, reorients non-RAS
+inputs to RAS with visible warnings, and requires all three images to share
+one physical grid. It extracts all three scientific meshes, computes the
+selected absolute level-set subtraction thickness volume, and writes the
+selected closest-point thickness values on the inner surface. VTK point
+coordinates are RAS+ millimetres; the thickness volume is RAS `.nii.gz`.
+`thickness_summary.json` records means, sample standard
+deviations, crossing/nonzero counts, and the marching-cubes connectivity
+deviation. Undefined summary values are represented as JSON `null`. This
+command does not render surfaces or create viewer-specific files.
+
 ## `pymacruise topology-correct`
 
 ```text
@@ -158,8 +187,9 @@ P34/P42a workflow orchestration is implemented.
   `.nii.gz`. Optional `--provenance RUN.json` records the effective operation,
   paths, software version, and RAS convention.
 
-The full-pipeline configuration file, restart behavior, and final output
-manifest will be specified when P34 and P42a are implemented. See
+The base profile's restart behavior and final-output manifest are exercised by
+the synthetic workflow tests; plus-profile source equivalence remains open.
+See
 [`io-contract.md`](io-contract.md) for profile-level input/output semantics and
 [`toads-port-plan.md`](toads-port-plan.md) for the TOADS blocker plan.
 

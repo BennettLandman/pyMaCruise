@@ -619,6 +619,32 @@ def run_base_workflow(
         "--output", "{STAGE}/SEG_refine.nii.gz",
         "--summary", "{STAGE}/SEG_refine-summary.json",
     ], [maseg_path, core_files["inner.nii.gz"], core_files["outer.nii.gz"]])
+    surface_dependencies = [
+        core_files["inner.nii.gz"],
+        core_files["central.nii.gz"],
+        core_files["outer.nii.gz"],
+    ]
+    surface_output_names = (
+        "inner_surface.vtk",
+        "central_surface.vtk",
+        "outer_surface.vtk",
+        "inner_surface_thickness.vtk",
+        "thickness_levelset.nii.gz",
+        "thickness_summary.json",
+        "provenance.json",
+    )
+    surface_outputs = [
+        active_output("surface-thickness", name, surface_dependencies)
+        for name in surface_output_names
+    ]
+    run_stage("surface-thickness", surface_outputs, [
+        "base-surface-thickness",
+        "--inner-levelset", str(core_files["inner.nii.gz"]),
+        "--central-levelset", str(core_files["central.nii.gz"]),
+        "--outer-levelset", str(core_files["outer.nii.gz"]),
+        "--output-dir", "{STAGE}",
+        "--provenance", "{STAGE}/provenance.json",
+    ], surface_dependencies)
     manifest["status"] = "complete"
     manifest["converged"] = all(
         manifest["stages"][stage]["toads_stop"]["energy_threshold_reached"]
@@ -633,6 +659,7 @@ def run_base_workflow(
     manifest["final_outputs"] = (
         manifest["stages"]["cruise-core"]["outputs"]
         + manifest["stages"]["maseg-refinement"]["outputs"]
+        + manifest["stages"]["surface-thickness"]["outputs"]
     )
     _write_manifest(manifest_path, manifest)
     return manifest_path

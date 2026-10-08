@@ -294,6 +294,16 @@ def build_parser() -> argparse.ArgumentParser:
     surface_thickness.add_argument("--central-output", type=Path)
     _add_provenance_option(surface_thickness)
 
+    base_surface_thickness = commands.add_parser(
+        "base-surface-thickness",
+        help="extract base-workflow scientific surfaces and compute selected thickness products",
+    )
+    base_surface_thickness.add_argument("--inner-levelset", required=True, type=Path)
+    base_surface_thickness.add_argument("--central-levelset", required=True, type=Path)
+    base_surface_thickness.add_argument("--outer-levelset", required=True, type=Path)
+    base_surface_thickness.add_argument("--output-dir", required=True, type=Path)
+    _add_provenance_option(base_surface_thickness)
+
     workflow_preflight = commands.add_parser(
         "workflow-preflight",
         help="validate a workflow config and write a dry-run manifest; no workflow stages execute",
@@ -1603,6 +1613,91 @@ def main(argv: list[str] | None = None) -> int:
             inputs={"inner_surface": args.inner, "outer_surface": args.outer, "central_surface": args.central},
             parameters={"central_surface_enabled": central is not None},
             outputs=surface_outputs,
+        )
+    elif args.command == "base-surface-thickness":
+        levelset_paths = {
+            "inner": args.inner_levelset,
+            "central": args.central_levelset,
+            "outer": args.outer_levelset,
+        }
+        levelsets = {
+            name: normalize_image_to_ras(
+                _load_nifti_gz(path), source_name=f"{name} level set"
+            )
+            for name, path in levelset_paths.items()
+        }
+        reference = levelsets["inner"]
+        for name, image in levelsets.items():
+            if image.shape != reference.shape or not np.allclose(
+                image.affine, reference.affine, rtol=0, atol=1e-4
+            ):
+                raise ValueError(f"{name} level set must share the inner RAS grid")
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        outputs = {
+            "inner_surface": args.output_dir / "inner_surface.vtk",
+            "central_surface": args.output_dir / "central_surface.vtk",
+            "outer_surface": args.output_dir / "outer_surface.vtk",
+            "inner_surface_with_thickness": args.output_dir / "inner_surface_thickness.vtk",
+            "levelset_thickness": args.output_dir / "thickness_levelset.nii.gz",
+            "summary": args.output_dir / "thickness_summary.json",
+        }
+        collision_paths = list(outputs.values())
+        if args.provenance is not None:
+            collision_paths.append(args.provenance)
+        if any(path.exists() for path in collision_paths):
+            raise FileExistsError("Refusing to overwrite base surface/thickness product(s)")
+        meshes = {
+            name: extract_levelset_surface(image, level=0.0)
+            for name, image in levelsets.items()
+        }
+        surface_result = closest_point_thickness(meshes["inner"], meshes["outer"])
+        volume_result = levelset_subtraction_thickness(
+            levelsets["inner"], levelsets["outer"], iso_level=0.0
+        )
+
+        def finite_or_none(value: float) -> float | None:
+            return float(value) if np.isfinite(value) else None
+        for name in ("inner", "central", "outer"):
+            write_legacy_vtk(meshes[name], outputs[f"{name}_surface"])
+        write_legacy_vtk(surface_result.inner_surface, outputs["inner_surface_with_thickness"])
+        _save_nifti_gz(volume_result.image, outputs["levelset_thickness"])
+        summary = {
+            "schema_version": 1,
+            "coordinate_frame": "RAS",
+            "surface_units": "mm",
+            "mesh_method": "scikit-image Lewiner marching cubes",
+            "mesh_connectivity_deviation": "JIST IsoSurfaceOnGrid connectivity 18 is not reproduced by scikit-image",
+            "levelset_thickness": {
+                "method": "absolute inner/outer level-set subtraction",
+                "iso_level": 0.0,
+                "mean_mm": finite_or_none(volume_result.mean_mm),
+                "standard_deviation_mm": finite_or_none(volume_result.standard_deviation_mm),
+                "minimum_mm": finite_or_none(volume_result.minimum_mm),
+                "maximum_mm": finite_or_none(volume_result.maximum_mm),
+                "crossing_voxel_count": volume_result.crossing_voxel_count,
+            },
+            "surface_thickness": {
+                "method": "symmetric closest-point distance from inner to outer surface",
+                "mean_mm": finite_or_none(surface_result.mean_mm),
+                "standard_deviation_mm": finite_or_none(surface_result.standard_deviation_mm),
+                "nonzero_vertex_count": surface_result.nonzero_vertex_count,
+            },
+        }
+        summary_path = outputs["summary"]
+        summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True, allow_nan=False) + "\n")
+        for name, path in outputs.items():
+            print(f"Wrote {name}: {path}")
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={f"{name}_levelset": path for name, path in levelset_paths.items()},
+            parameters={
+                "iso_level": 0.0,
+                "coordinate_frame": "RAS",
+                "surface_units": "mm",
+                "mesh_method": "scikit-image Lewiner marching cubes",
+            },
+            outputs={**outputs, "provenance": args.provenance},
         )
     return 0
 

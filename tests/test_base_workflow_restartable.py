@@ -10,6 +10,7 @@ from pymacruise.cli import main
 from pymacruise import base_workflow as base_workflow_module
 from pymacruise.base_workflow import _implementation_signature, _materialize_dura_atlas
 from pymacruise import workflow
+from pymacruise.surfaces import read_legacy_vtk
 
 
 ROOT = Path(__file__).parent
@@ -90,6 +91,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert "Stage check passed: toads-second" in first_summary
     assert "Stage check passed: cruise-core" in first_summary
     assert "Stage check passed: maseg-refinement" in first_summary
+    assert "Stage check passed: surface-thickness" in first_summary
 
     manifest_path = output / "run.json"
     manifest = json.loads(manifest_path.read_text())
@@ -101,7 +103,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert manifest["source_equivalence_claim"] is False
     assert set(manifest["stages"]) == {
         "n4", "toads-first", "dura", "toads-second", "cruise-core",
-        "maseg-refinement",
+        "maseg-refinement", "surface-thickness",
     }
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
     assert manifest["stages"]["toads-first"]["attempt"] == 2
@@ -146,6 +148,28 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert core_details["parameters"]["remove_cerebellum"] is True
     assert core_details["parameters"]["removed_voxel_counts"] == [8, 8, 8]
 
+    surface_stage = manifest["stages"]["surface-thickness"]
+    surface_files = {Path(item["path"]).name: Path(item["path"]) for item in surface_stage["outputs"]}
+    assert set(surface_files) == {
+        "inner_surface.vtk", "central_surface.vtk", "outer_surface.vtk",
+        "inner_surface_thickness.vtk", "thickness_levelset.nii.gz",
+        "thickness_summary.json", "provenance.json", "stage.log",
+    }
+    for name in ("inner_surface.vtk", "central_surface.vtk", "outer_surface.vtk"):
+        mesh = read_legacy_vtk(surface_files[name])
+        assert mesh.coordinate_frame == "RAS"
+        assert mesh.units == "mm"
+    measured_inner = read_legacy_vtk(surface_files["inner_surface_thickness.vtk"])
+    assert "mean_thickness_mm" in measured_inner.point_data
+    thickness_image = nib.load(str(surface_files["thickness_levelset.nii.gz"]))
+    assert thickness_image.shape == reference.shape
+    assert nib.aff2axcodes(thickness_image.affine) == ("R", "A", "S")
+    assert np.isfinite(np.asanyarray(thickness_image.dataobj)).all()
+    thickness_summary = json.loads(surface_files["thickness_summary.json"].read_text())
+    assert thickness_summary["coordinate_frame"] == "RAS"
+    assert thickness_summary["levelset_thickness"]["crossing_voxel_count"] > 0
+    assert thickness_summary["surface_thickness"]["nonzero_vertex_count"] > 0
+
     hashes_before = {
         Path(record["path"]).name: record["sha256"]
         for record in manifest["final_outputs"]
@@ -153,7 +177,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     }
     assert main([*arguments, "--resume"]) == 0
     resumed_summary = capsys.readouterr().out
-    assert resumed_summary.count("Resume: verified") == 6
+    assert resumed_summary.count("Resume: verified") == 7
     updated = json.loads(manifest_path.read_text())
     assert {
         Path(record["path"]).name: record["sha256"]
@@ -167,7 +191,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert main([*arguments, "--resume"]) == 0
     code_change_summary = capsys.readouterr().out
     assert "Resume: verified" not in code_change_summary
-    assert code_change_summary.count("Stage check passed:") == 6
+    assert code_change_summary.count("Stage check passed:") == 7
     code_changed = json.loads(manifest_path.read_text())
     assert code_changed["implementation_signature"] == "f" * 64
     assert code_changed["previous_implementation_signature"] == manifest["implementation_signature"]
@@ -180,7 +204,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
 
     assert main([*arguments, "--resume"]) == 0
     code_resume_summary = capsys.readouterr().out
-    assert code_resume_summary.count("Resume: verified") == 6
+    assert code_resume_summary.count("Resume: verified") == 7
     updated = json.loads(manifest_path.read_text())
 
     # Simulate interruption/corruption at a checkpoint: a damaged CRUISE output
@@ -196,9 +220,11 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert restart_summary.count("Resume: verified") == 4
     assert "Stage check passed: cruise-core" in restart_summary
     assert "Stage check passed: maseg-refinement" in restart_summary
+    assert "Stage check passed: surface-thickness" in restart_summary
     restarted = json.loads(manifest_path.read_text())
     assert restarted["stages"]["cruise-core"]["attempt"] == 3
     assert restarted["stages"]["maseg-refinement"]["attempt"] == 3
+    assert restarted["stages"]["surface-thickness"]["attempt"] == 3
     assert {
         Path(record["path"]).name: record["sha256"]
         for record in restarted["final_outputs"]
