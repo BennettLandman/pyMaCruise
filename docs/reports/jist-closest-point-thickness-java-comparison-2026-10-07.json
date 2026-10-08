@@ -1,4 +1,22 @@
 {
+  "face_order_diagnostics": {
+    "central": {
+      "central_nearest_vertex_index_mismatches": 11,
+      "java_python_selected_face_mismatches": 932,
+      "maximum_distance_difference_mm": 2.4620326599666953e-07,
+      "mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie": 507,
+      "query_count": 3062,
+      "tie_policy_sample_size": 932
+    },
+    "inner": {
+      "central_nearest_vertex_index_mismatches": null,
+      "java_python_selected_face_mismatches": 569,
+      "maximum_distance_difference_mm": 3.626764657482795e-07,
+      "mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie": 282,
+      "query_count": 2194,
+      "tie_policy_sample_size": 569
+    }
+  },
   "fixture": {
     "coordinate_storage": "RAS millimetres stored as Java Point3f float32",
     "mesh_counts": {
@@ -27,7 +45,7 @@
   "limitations": [
     "This validates the selected mesh overload on committed Java IsoSurfaceOnGrid output meshes; it holds mesh extraction fixed and does not validate the complete workflow.",
     "The selected wrapper's serialized VTK/NIfTI output adapters are not exercised.",
-    "The overall comparison fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. The central projection has 11 selected nearest-vertex differences and up to 0.1227 mm projected-thickness difference. Java uses float32 triangle arithmetic plus source KD traversal ordering; Python uses float64 geometry and centroid-tree ordering. This report records the unresolved source-ordering deviation; it is not hidden by the looser surface-position tolerances."
+    "The overall comparison fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. The central projection has 11 selected nearest-vertex differences and up to 0.1227 mm projected-thickness difference. Java uses float32 triangle arithmetic plus source KD traversal ordering; Python uses float64 geometry and centroid-tree ordering. A simple highest-face-index tie rule matches Java for only about half of selected-face mismatches and is rejected as a general fix."
   ],
   "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner.java mesh overload and its selected SurfaceIntersector/KdTree sources. Minimal EmbeddedSurface, ThicknessSolver, JIST progress, image-only overload, and unused Jama import stubs support compilation; source thickness methods are compiled unchanged.",
   "metrics": {

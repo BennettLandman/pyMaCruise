@@ -20,3 +20,11 @@ def test_selected_closest_point_thickness_report_keeps_tie_deviation_visible():
     assert abs(
         tie["java_return_distance_mm"] - tie["python_return_distance_from_java_hit_mm"]
     ) < 1e-6
+    faces = report["face_order_diagnostics"]
+    assert faces["inner"]["query_count"] == 2194
+    assert faces["inner"]["java_python_selected_face_mismatches"] == 569
+    assert faces["central"]["query_count"] == 3062
+    assert faces["central"]["java_python_selected_face_mismatches"] == 932
+    assert faces["inner"]["mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie"] < (
+        faces["inner"]["tie_policy_sample_size"] * 0.6
+    )
