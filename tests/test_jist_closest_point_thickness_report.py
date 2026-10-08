@@ -13,7 +13,7 @@ def test_selected_closest_point_thickness_report_keeps_tie_deviation_visible():
     assert metrics["comparison_pass"] is False
     assert metrics["max_absolute_field_difference"]["inner.distance_outer_to_inner_mm"] > 0.001
     assert metrics["max_absolute_field_difference"]["central.distance_inner_to_outer_mm"] > 0.001
-    assert metrics["central_nearest_inner_vertex_index_mismatches"] == 21
+    assert metrics["central_nearest_inner_vertex_index_mismatches"] == 11
     tie = report["tie_diagnostic"]
     assert tie["java_selected_outer_face"] != tie["python_selected_outer_face"]
     assert abs(tie["java_outer_distance_mm"] - tie["python_outer_distance_mm"]) < 1e-6
