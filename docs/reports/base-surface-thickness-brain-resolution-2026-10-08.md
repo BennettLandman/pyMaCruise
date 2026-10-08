@@ -37,6 +37,6 @@ The measurements are synthetic algorithm outputs; no thickness-specific owner ac
 ./.venv/bin/python -m pytest -q tests/test_base_workflow_restartable.py
 ```
 
-Result: **3 passed, 0 failed, 0 skipped in 34.48s**. The test runs the seven-stage workflow on a smaller synthetic fixture, checks RAS/finite volume outputs and RAS-mm meshes with thickness point data, verifies all stage checkpoints, confirms same-settings resume, and checks downstream invalidation after core-output corruption. No full pytest suite was run in this cycle.
+Result on implementation commit `1b01838`: **3 passed, 0 failed, 0 skipped in 32.43s**. The test runs the seven-stage workflow on a smaller synthetic fixture, checks RAS/finite volume outputs and RAS-mm meshes with thickness point data, verifies all stage checkpoints, confirms same-settings resume, and checks downstream invalidation after core-output corruption. No full pytest suite was run in this cycle.
 
 The previous brain-resolution six-stage run and its resume evidence are recorded in [the 2026-10-08 restart audit](base-workflow-restart-after-thickness-change-2026-10-08.md). Full-size seven-stage manifest validation, JIST mesh extraction equivalence, whole-workflow source parity, plus parity, and real-MRI validation remain open.
