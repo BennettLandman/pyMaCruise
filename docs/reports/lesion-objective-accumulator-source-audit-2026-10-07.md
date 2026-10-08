@@ -16,41 +16,43 @@ assign their auxiliary data energies, then add same-voxel spatial terms.
 
 The earlier harness instead stored per-voxel energy arrays and reduced those
 arrays into its objective. Its membership and denominator values remain
-useful fixed-input comparisons for the all-positive-shape case. Its class
-energy maps, auxiliary energy maps, running objective, and total objective do
-not establish selected-source equivalence. The focused test and fixture README
-now say so explicitly; plan row P39zzzzzzah is reopened.
+useful fixed-input comparisons, but its class/auxiliary energies and objective
+did not establish selected-source equivalence. The fixture now includes
+zero-shape skips for all four supported class types. The corrected Java
+excerpt harness retains the prior method-local energy value on a skip, resets
+active-class energy from the voxel's data term, adds same-voxel spatial terms,
+and compares every returned map and objective bit against Python.
 
 ## Python change
 
-`run_lesion_toads_objective_membership_pass(..., source_faithful=True)` now
-preserves the source's per-class and auxiliary energy values for active
-classes and carries them through a zero-shape skip, which sets that class
-membership to zero. The existing safer positive-shape
-behavior remains available as the default. The current synthetic regression
-checks current-versus-stale energy values and membership clearing, but it
-is a source-contract regression, **not** a direct Java composite comparison.
+`run_lesion_toads_objective_membership_pass(..., source_faithful=True)` is now
+the default and preserves the source's per-class and auxiliary energy values
+for active classes and carries them through a zero-shape skip, which sets that
+class membership to zero. The opt-out mode requires strictly positive interior
+shapes. The current synthetic regression
+is a direct selected-Java-excerpt composite comparison for the declared
+four-class fixed-input slice.
 
 Focused command:
 
 ```sh
 ./.venv/bin/python -m pytest -q \
   tests/test_lesion_objective_membership_pass.py \
-  tests/test_lesion_descriptor_membership.py
+  tests/test_lesion_descriptor_membership.py \
+  tests/test_lesion_descriptor_iteration_slice.py \
+  tests/test_lesion_continuing_iteration.py
 ```
 
-Result on implementation commit `1843e87`: **6 passed in 4.63s**. No full
-suite was run for this localized option. The Java method's complete
-accumulator behavior remains unverified by a standalone composite harness;
-that harness, source-faithful objective comparison, and selected production
-integration remain open.
+Focused result on implementation commit `e774747`: **10 passed in 6.10s**. The pinned Java harness SHA-256 is `bbf086b2d69dc22d95454f43e4fd73d549538f6d8b081ceaa4910ae9794240ab`.
+The full suite on the same commit passed **1,234 tests, 0 failed, 0 skipped,
+11 expected RAS warnings in 1,675.72s**, with **10.831 GB** peak sampled RSS
+under a 16 GB watchdog; see the [full-suite report](full-pytest-2026-10-07-lesion-objective-source-match.md).
+Plan row P39zzzzzzah is closed for this bounded fixed-input slice. Full
+LesionTOADS workflow integration and equivalence remain open.
 
 ## Next validation
 
-Build a small Java reference that preserves the original method-local energy
-values and zero-shape branch, then compare every membership map, effective
-energy used by the objective, denominator, running objective, and final total
-against the Python source-faithful option. Include at least two dependent
-interior voxels so both active reassignment and stale-value behavior are
-observable. Do not reuse the previous per-voxel-energy JSON as the objective
-golden.
+Continue P39 by composing the validated pass with active statistics, atlas
+sampling, registration, and later iterations; keep those integration claims
+separate from this fixed-input result. Do not reuse the prior harness's
+per-voxel-energy JSON as source-equivalence evidence for other profiles.
