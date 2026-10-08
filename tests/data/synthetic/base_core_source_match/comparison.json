@@ -1,0 +1,149 @@
+{
+  "crop_bounds": [
+    [
+      7,
+      172
+    ],
+    [
+      5,
+      212
+    ],
+    [
+      -2,
+      153
+    ]
+  ],
+  "files": {
+    "java_reference/central.nii.gz": "dd06b1ba10e8fd9a71f032083462d15c355f98be669e15a6c8e4cf7c8a452c22",
+    "java_reference/inner.nii.gz": "eaaf58e1f2e29f127bcaca03ceb10137d6615a47f63de698442c3c17a8970901",
+    "java_reference/outer.nii.gz": "e0995817d9a576c769832c09b2f66e062f2a6a34be1d51d8699626f3526f744b",
+    "java_reference/source_faithful_refined_labels.nii.gz": "8e666cfa9a54c8097b1c63b1d3121c24f58fe1ee614f1954f20692c7f12fcc40",
+    "python_run/central.nii.gz": "4fdaf13b1d1ffd80df8e7c0e2a6c3b2290cc761da16148987166ecfa6aa0445c",
+    "python_run/inner.nii.gz": "31233e72558c488a7e536373571c12293f9ca64d464e84f324c0f4cff056d042",
+    "python_run/outer.nii.gz": "1f88ba7b4483fa6e59af759055db54577046cefcb5516045e5b7d469a3ace6c2",
+    "python_run/refined_labels.nii.gz": "689a31da970b635699888452bff9043283c682daf580483c3662ae2a3801bbc6"
+  },
+  "metrics": {
+    "central": {
+      "candidate_to_reference_mean_mm": 1.5050133380437589e-06,
+      "dice": 1.0,
+      "hausdorff_mm": 0.003285907159652672,
+      "mae": 2.6882289155699146e-06,
+      "max_abs": 0.031933486461639404,
+      "mean_absolute_distance_mm": 1.3685691015620398e-06,
+      "n_candidate_vertices": 121098,
+      "n_reference_vertices": 121098,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 1.2321248650803204e-06,
+      "rmse": 6.609977067445674e-05
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 3.6179082452678414e-06,
+      "dice": 1.0,
+      "hausdorff_mm": 0.0024139881134033203,
+      "mae": 1.2737607476460741e-05,
+      "max_abs": 0.02972877025604248,
+      "mean_absolute_distance_mm": 3.533063867467299e-06,
+      "n_candidate_vertices": 116175,
+      "n_reference_vertices": 116175,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 3.4482194896667565e-06,
+      "rmse": 0.00012734857930553884
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.00014738580341631567,
+      "dice": 0.9999895433752859,
+      "hausdorff_mm": 0.20009279251098633,
+      "mae": 8.148747340789775e-05,
+      "max_abs": 0.2978442907333374,
+      "mean_absolute_distance_mm": 0.00014782948616118475,
+      "n_candidate_vertices": 123863,
+      "n_reference_vertices": 123863,
+      "n_values": 6092928,
+      "reference_to_candidate_mean_mm": 0.00014827316890605384,
+      "rmse": 0.0010481740567211914
+    },
+    "refined_labels": {
+      "changed_voxels": 7,
+      "labels": {
+        "1": {
+          "changed_voxels": 0,
+          "dice": 1.0
+        },
+        "100": {
+          "changed_voxels": 7,
+          "dice": 0.9999751513107683
+        },
+        "4": {
+          "changed_voxels": 0,
+          "dice": 1.0
+        }
+      }
+    }
+  },
+  "orientation": "RAS",
+  "python_source_commit": "9eb84bc (saved base-workflow run per report; algorithm code unchanged since TGDM correction)",
+  "refinement_source_faithful": true,
+  "source_harness": "tests/java_reference/TGDMCoreReferenceHarness.java",
+  "source_java_input_grid": {
+    "affine": [
+      [
+        0.9375,
+        0.0,
+        0.0,
+        -73.59375
+      ],
+      [
+        0.0,
+        0.9375,
+        0.0,
+        -96.09375
+      ],
+      [
+        0.0,
+        0.0,
+        0.9375,
+        -78.28125
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "shape": [
+      166,
+      208,
+      156
+    ]
+  },
+  "source_java_inputs": {
+    "ace_gray_matter": {
+      "file": "ace_gray_matter.nii.gz",
+      "sha256": "f8391aa1d2cfd93deb0fff2c229999b2b2bc6bbeac53e05d19dc1dcb5b35b454"
+    },
+    "ace_skeleton": {
+      "file": "ace_skeleton.nii.gz",
+      "sha256": "a7171b21c9d93665d798d4f0be15181da2e28f3c47a1ffe574c9a91b6ddbb1c0"
+    },
+    "gray_matter": {
+      "file": "gray_matter.nii.gz",
+      "sha256": "e735f90a99a8e994261232992a1483797abe9c2efc5f3d2e06daef916be0d2bc"
+    },
+    "gvf": {
+      "file": "gvf.nii.gz",
+      "sha256": "c7650c38d2011eeede3d43b81a175049088d02171f9381cc5ed42c0a1ee27df0"
+    },
+    "initial_membership": {
+      "file": "initial_membership.nii.gz",
+      "sha256": "f1214f7ceb9ebeb3785e1baca261f6bbccac53c1a9b3be96c4653737269a3381"
+    },
+    "white_matter": {
+      "file": "white_matter.nii.gz",
+      "sha256": "0f5a29e738f6ea54352fc432ae3c22889a525b0b2a3b9897fe0558b321380ced"
+    }
+  },
+  "synthetic_only": true,
+  "uncrop_background": 20.0
+}
