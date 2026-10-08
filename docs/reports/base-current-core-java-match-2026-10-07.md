@@ -62,7 +62,7 @@ javac -d build/java-reference/tgdm-current-core \
   --core-dir build/ace-indexed-heap-2026-10-07/base-run/stages/cruise-core/attempt-03 \
   --reference-root build/tgdm-current-base-run/java_reference \
   --report build/tgdm-current-base-run/saved-output-comparison.json
-pytest -q tests/test_base_core_current_java_match.py
+./.venv/bin/python -m pytest -q tests/test_base_core_current_java_match.py
 ```
 
 The source-faithful Java-surface refinement comparison used
