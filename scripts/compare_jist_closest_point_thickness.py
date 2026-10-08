@@ -11,6 +11,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from pymacruise.surfaces import SurfaceMesh
+from pymacruise.jist_intersector import JistSurfaceTree
 from pymacruise.thickness import (
     _closest_points_on_triangles,
     _nearest_surface_points,
@@ -26,6 +27,7 @@ STUB=ROOT/"tests/java_reference/thickness_comparison_stubs"
 HARNESS=ROOT/"tests/java_reference/ClosestPointThicknessForInnerHarness.java"
 DIAGNOSTIC=ROOT/"tests/java_reference/ThicknessQueryDiagnostic.java"
 FACE_HARNESS=ROOT/"tests/java_reference/SurfaceIntersectorFaceQueryHarness.java"
+TREE_HARNESS=ROOT/"tests/java_reference/KdTreeStructureHarness.java"
 VERSION=ROOT/"tests/java_reference/surface_comparison_stubs/edu/jhu/ece/iacl/algorithms/VersionUtil.java"
 ABSTRACT=ROOT/"tests/java_reference/stubs/edu/jhu/ece/iacl/jist/pipeline/AbstractCalculation.java"
 VECMATH=(ROOT.parent/"jist-scm-2026-09-26/JIST/lib/vecmath-1.3.1.jar").resolve()
@@ -40,7 +42,7 @@ def sha(path:Path)->str:return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def main()->int:
     classes=WORK/"classes"; classes.mkdir(parents=True,exist_ok=True)
-    sources=[HARNESS,DIAGNOSTIC,FACE_HARNESS,STUB/"Jama/PackageStub.java",STUB/"edu/jhu/ece/iacl/jist/structures/geom/EmbeddedSurface.java",STUB/"edu/jhu/ece/iacl/algorithms/thickness/ThicknessSolver.java",STUB/"edu/jhu/ece/iacl/jist/structures/image/ImageData.java",STUB/"edu/jhu/ece/iacl/algorithms/graphics/isosurf/IsoSurfaceOnGrid.java",STUB/"edu/jhu/ece/iacl/algorithms/topology/ConnectivityRule.java",ABSTRACT,VERSION,*[TREE/name for name in ("BBox.java","BBoxEdge.java","KdPoint3.java","KdSegment.java","KdTriangle.java","KdTree.java")],INTERSECTOR/"IntersectorTriangle.java",INTERSECTOR/"SurfaceIntersector.java",SELECTED]
+    sources=[HARNESS,DIAGNOSTIC,FACE_HARNESS,TREE_HARNESS,STUB/"Jama/PackageStub.java",STUB/"edu/jhu/ece/iacl/jist/structures/geom/EmbeddedSurface.java",STUB/"edu/jhu/ece/iacl/algorithms/thickness/ThicknessSolver.java",STUB/"edu/jhu/ece/iacl/jist/structures/image/ImageData.java",STUB/"edu/jhu/ece/iacl/algorithms/graphics/isosurf/IsoSurfaceOnGrid.java",STUB/"edu/jhu/ece/iacl/algorithms/topology/ConnectivityRule.java",ABSTRACT,VERSION,*[TREE/name for name in ("BBox.java","BBoxEdge.java","KdPoint3.java","KdSegment.java","KdTriangle.java","KdTree.java")],INTERSECTOR/"IntersectorTriangle.java",INTERSECTOR/"SurfaceIntersector.java",SELECTED]
     subprocess.run(["javac","-d",str(classes),"-cp",str(VECMATH),*[str(p) for p in sources]],check=True,cwd=ROOT)
     mesh_json={name:FIXTURE/"java_meshes"/f"{name}.json" for name in ("inner","central","outer")}
     meshes={}
@@ -106,6 +108,34 @@ def main()->int:
         tie_ids=candidates[candidate_distances<=float(candidate_distances.min())+1e-6]
         source_is_max_tied_face+=int(int(java_selected["face"][query_id])==int(tie_ids.max()))
       face_order_diagnostics[query_name]={"query_count":len(query_mesh.vertices),"java_python_selected_face_mismatches":int(len(mismatch_ids)),"maximum_distance_difference_mm":float(np.max(np.abs(java_selected["distance"]-python_distances))),"mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie":source_is_max_tied_face,"tie_policy_sample_size":int(len(mismatch_ids)),"central_nearest_vertex_index_mismatches":central_index_mismatches if query_name=="central" else None}
+    source_trees={name:JistSurfaceTree(meshes[name].vertices,meshes[name].faces) for name in ("inner","outer")}
+    tree_build_diagnostics={}
+    for target_name,tree in source_trees.items():
+      java_dump=WORK/f"java-tree-{target_name}.tsv"
+      subprocess.run(["java","-Xmx2g","-cp",f"{classes}:{VECMATH}","edu.jhu.ece.iacl.algorithms.graphics.intersector.KdTreeStructureHarness",str(paths[target_name][0]),str(paths[target_name][1]),str(java_dump)],check=True,cwd=ROOT)
+      java_signature=[]
+      for line in java_dump.read_text(encoding="utf-8").splitlines():
+        row=line.split("\t")
+        if row[1]=="T": java_signature.append((row[0],"T",int(row[2])))
+        else: java_signature.append((row[0],"B",int(row[2]),int(row[3]),tuple(float(np.float32(x)) for x in row[4].split(",")),tuple(float(np.float32(x)) for x in row[5].split(","))))
+      py_signature=tree.structure_signature()
+      tree_build_diagnostics[target_name]={"java_node_count":len(java_signature),"python_node_count":len(py_signature),"tree_structure_exact":java_signature==py_signature}
+    inner_tree=source_trees["inner"]
+    outer_points,tree_d1,tree_f1=source_trees["outer"].query_many(meshes["inner"].vertices)
+    _tree_return_points,tree_d2,tree_f2=inner_tree.query_many(outer_points)
+    tree_mean=(tree_d1+tree_d2)/2.0
+    _central_points,tree_dc,tree_fc=inner_tree.query_many(meshes["central"].vertices)
+    central_faces=meshes["inner"].faces[tree_fc]
+    central_points32=meshes["central"].vertices.astype(np.float32)
+    central_vertices32=meshes["inner"].vertices.astype(np.float32)[central_faces]
+    vertex_delta=np.subtract(central_points32[:,None,:],central_vertices32,dtype=np.float32)
+    vertex_squared=np.float32(vertex_delta[:,:,0]*vertex_delta[:,:,0]+vertex_delta[:,:,1]*vertex_delta[:,:,1])
+    vertex_squared=np.float32(vertex_squared+vertex_delta[:,:,2]*vertex_delta[:,:,2])
+    tree_vertex_distance=np.sqrt(vertex_squared,dtype=np.float32)
+    tree_corners=np.argmin(tree_vertex_distance,axis=1)
+    tree_nearest_vertices=central_faces[np.arange(len(tree_fc)),tree_corners]
+    tree_central_thickness=tree_mean[tree_nearest_vertices]
+    tree_python_prototype={"max_inner_to_outer_distance_error_mm":float(np.max(np.abs(tree_d1-java_inner[:,0]))),"max_outer_to_inner_distance_error_mm":float(np.max(np.abs(tree_d2-java_inner[:,1]))),"max_mean_inner_thickness_error_mm":float(np.max(np.abs(tree_mean-java_inner[:,2]))),"central_nearest_vertex_index_mismatches":int(np.count_nonzero(tree_nearest_vertices!=java_central[:,3])),"max_central_projected_thickness_error_mm":float(np.max(np.abs(tree_central_thickness-java_central[:,0]))),"max_central_surface_distance_error_mm":float(np.max(np.abs(tree_dc-java_central[:,1]))),"max_central_nearest_vertex_distance_error_mm":float(np.max(np.abs(tree_vertex_distance[np.arange(len(tree_fc)),tree_corners]-java_central[:,2]))),"inner_to_outer_face_mismatches":int(np.count_nonzero(tree_f1!=np.fromfile(WORK/"selected-faces-inner.raw",dtype=[("face","<i4"),("distance","<f4")])["face"])),"central_to_inner_face_mismatches":int(np.count_nonzero(tree_fc!=np.fromfile(WORK/"selected-faces-central.raw",dtype=[("face","<i4"),("distance","<f4")])["face"]))}
     report={
       "title":"Selected ClosestPointThicknessForInner versus Python thickness API",
       "synthetic_only":True,
@@ -114,14 +144,17 @@ def main()->int:
       "fixture":{"path":str(FIXTURE.relative_to(ROOT)),"synthetic_only":True,"mesh_origin":"committed outputs of selected Java IsoSurfaceOnGrid reference on the committed level-set NIfTIs; the thickness comparison holds mesh extraction fixed","mesh_json_sha256":{n:sha(p) for n,p in mesh_json.items()},"mesh_counts":{n:{"vertices":len(m.vertices),"faces":len(m.faces)} for n,m in meshes.items()},"coordinate_storage":"RAS millimetres stored as Java Point3f float32"},
       "metrics":{"max_absolute_field_difference":max_errors,"mean_absolute_field_difference":mean_errors,"maximum_physical_field_error_gate_mm":1e-3,"central_nearest_inner_vertex_index_mismatches":central_index_mismatches,"all_physical_fields_pass":bool(max(v for k,v in max_errors.items() if k.endswith("_mm"))<=1e-3),"nearest_vertex_indices_exact":central_index_mismatches==0,"comparison_pass":bool(max(v for k,v in max_errors.items() if k.endswith("_mm"))<=1e-3 and central_index_mismatches==0)},
       "face_order_diagnostics":face_order_diagnostics,
+      "python_jist_tree_port_prototype":{"tree_builds":tree_build_diagnostics,"metrics":tree_python_prototype,"status":"isolated prototype; not connected to production thickness API"},
       "tie_diagnostic":{"inner_vertex_index":diagnostic_index,"java_selected_outer_face":int(java_steps[0]["triangle_and_vertex_ids"][0]),"python_selected_outer_face":int(py_outer_face[0]),"java_outer_distance_mm":java_steps[0]["distance"],"python_outer_distance_mm":float(py_outer_distance[0]),"java_outer_hit_ras_mm":java_steps[0]["point"].tolist(),"python_outer_hit_ras_mm":py_outer_point[0].tolist(),"java_return_distance_mm":java_steps[1]["distance"],"python_return_distance_from_java_hit_mm":float(py_return_distance[0])},
-      "limitations":["This validates the selected mesh overload on committed Java IsoSurfaceOnGrid output meshes; it holds mesh extraction fixed and does not validate the complete workflow.","The selected wrapper's serialized VTK/NIfTI output adapters are not exercised.","The overall comparison fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. The central projection has 11 selected nearest-vertex differences and up to 0.1227 mm projected-thickness difference. Java uses float32 triangle arithmetic plus source KD traversal ordering; Python uses float64 geometry and centroid-tree ordering. A simple highest-face-index tie rule matches Java for only about half of selected-face mismatches and is rejected as a general fix."],
+      "limitations":["This validates the selected mesh overload on committed Java IsoSurfaceOnGrid output meshes; it holds mesh extraction fixed and does not validate the complete workflow.","The selected wrapper's serialized VTK/NIfTI output adapters are not exercised.","The production API comparison still fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. A separate Python JIST-tree prototype now reproduces the exact Java tree structure and reduces this to a 0.000533 mm return-distance error and one central nearest-vertex mismatch (0.1227 mm projected-thickness difference). The prototype remains disconnected from production pending exact queue-tie behavior and runtime validation."],
     }
     REPORT.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     lines=["# Selected JIST closest-point thickness comparison","","This runs the selected VandyCRUISE `ClosestPointThicknessForInner.java` mesh overload unchanged and compares its inner-surface bidirectional point data and central-surface projection with `pymacruise.thickness.closest_point_thickness` on the same saved Java `IsoSurfaceOnGrid` synthetic meshes. This holds mesh extraction fixed. The Java thickness class, `SurfaceIntersector`, `KdTree`, and `IntersectorTriangle` source bodies are compiled directly; minimal container/superclass stubs are used only for surrounding API state.","",f"Source hash for `ClosestPointThicknessForInner.java`: `{report['sources']['closest_point_thickness_for_inner_sha256']}`.","","| Field | Maximum absolute difference (mm, except vertex index) | Mean absolute difference (mm, except vertex index) |","|---|---:|---:|"]
     for name,error in max_errors.items(): lines.append(f"| `{name}` | {error:.9g} | {mean_errors[name]:.9g} |")
     tie=report["tie_diagnostic"]
-    lines.extend(["",f"**Result: FAIL.** The wrapper exceeds the focused `0.001 mm` maximum-error gate: the return-distance error peaks at `{max_errors['inner.distance_outer_to_inner_mm']:.6f} mm` and central projected-thickness error at `{max_errors['central.distance_inner_to_outer_mm']:.6f} mm`; {central_index_mismatches} central nearest-inner-vertex indices differ.","",f"At inner vertex {tie['inner_vertex_index']}, Java selects outer face {tie['java_selected_outer_face']} and Python face {tie['python_selected_outer_face']}. Both are equidistant (`{tie['java_outer_distance_mm']:.9f} mm` in Java; `{tie['python_outer_distance_mm']:.9f} mm` in Python), but project to opposite sides of the folded outer mesh. Returning from Java's hit gives Python `{tie['python_return_distance_from_java_hit_mm']:.9f} mm`, matching Java `{tie['java_return_distance_mm']:.9f} mm`; Python's own selected hit instead leads to the reported return-distance discrepancy. This isolates the source of the largest inner error to tie ordering, not triangle-distance arithmetic.","","The face-selection audit compares the chosen triangle for every inner-to-outer and central-to-inner vertex query. Face ids can differ even when projected geometry and distances agree, because adjacent triangles can share the same closest point. A highest-face-index tie rule matches Java on only about half of the mismatched queries, so the next correction must reproduce JIST tree construction and queue order rather than guess a tie policy. This comparison holds the committed Java meshes fixed and does not claim whole-workflow or real-MRI validation. See the [JSON report](jist-closest-point-thickness-java-comparison-2026-10-07.json) for counts and source hashes. Reproduce with `./.venv/bin/python scripts/compare_jist_closest_point_thickness.py`.",""])
+    prototype=report["python_jist_tree_port_prototype"]
+    tree_metrics=prototype["metrics"]
+    lines.extend(["",f"**Production API result: FAIL.** It exceeds the focused `0.001 mm` maximum-error gate: return-distance error peaks at `{max_errors['inner.distance_outer_to_inner_mm']:.6f} mm` and central projected-thickness error at `{max_errors['central.distance_inner_to_outer_mm']:.6f} mm`; {central_index_mismatches} central nearest-inner-vertex indices differ.","",f"A separate Python tree prototype now reproduces Java's complete SAH tree structure exactly on both meshes ({prototype['tree_builds']['inner']['java_node_count']:,} inner-tree nodes; {prototype['tree_builds']['outer']['java_node_count']:,} outer-tree nodes). This narrows the remaining discrepancy to closest-query tie ordering: the prototype has {tree_metrics['central_nearest_vertex_index_mismatches']} central nearest-vertex mismatch, maximum return-distance error `{tree_metrics['max_outer_to_inner_distance_error_mm']:.6f} mm`, and maximum projected-thickness error `{tree_metrics['max_central_projected_thickness_error_mm']:.6f} mm`. It remains an isolated prototype; production still uses the geometric centroid-tree locator.","",f"For the largest production mismatch, at inner vertex {tie['inner_vertex_index']}, Java selects outer face {tie['java_selected_outer_face']} and Python face {tie['python_selected_outer_face']}. Both are equidistant (`{tie['java_outer_distance_mm']:.9f} mm` in Java; `{tie['python_outer_distance_mm']:.9f} mm` in Python), but project to opposite sides of the folded outer mesh. This comparison holds the committed Java meshes fixed and does not claim whole-workflow or real-MRI validation. See the [JSON report](jist-closest-point-thickness-java-comparison-2026-10-07.json) for source hashes and all metrics. Reproduce with `./.venv/bin/python scripts/compare_jist_closest_point_thickness.py`.",""])
     REPORT_MD.write_text("\n".join(lines),encoding="utf-8")
     print(json.dumps({"report":str(REPORT),"markdown":str(REPORT_MD),"metrics":report["metrics"]},indent=2))
     return 0

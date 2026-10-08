@@ -28,3 +28,9 @@ def test_selected_closest_point_thickness_report_keeps_tie_deviation_visible():
     assert faces["inner"]["mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie"] < (
         faces["inner"]["tie_policy_sample_size"] * 0.6
     )
+    prototype = report["python_jist_tree_port_prototype"]
+    assert prototype["status"] == "isolated prototype; not connected to production thickness API"
+    assert all(tree["tree_structure_exact"] for tree in prototype["tree_builds"].values())
+    assert prototype["metrics"]["central_nearest_vertex_index_mismatches"] == 1
+    assert prototype["metrics"]["max_outer_to_inner_distance_error_mm"] < 0.001
+    assert prototype["metrics"]["max_central_projected_thickness_error_mm"] > 0.01

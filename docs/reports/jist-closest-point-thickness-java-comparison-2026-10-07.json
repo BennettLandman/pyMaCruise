@@ -45,7 +45,7 @@
   "limitations": [
     "This validates the selected mesh overload on committed Java IsoSurfaceOnGrid output meshes; it holds mesh extraction fixed and does not validate the complete workflow.",
     "The selected wrapper's serialized VTK/NIfTI output adapters are not exercised.",
-    "The overall comparison fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. The central projection has 11 selected nearest-vertex differences and up to 0.1227 mm projected-thickness difference. Java uses float32 triangle arithmetic plus source KD traversal ordering; Python uses float64 geometry and centroid-tree ordering. A simple highest-face-index tie rule matches Java for only about half of selected-face mismatches and is rejected as a general fix."
+    "The production API comparison still fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. A separate Python JIST-tree prototype now reproduces the exact Java tree structure and reduces this to a 0.000533 mm return-distance error and one central nearest-vertex mismatch (0.1227 mm projected-thickness difference). The prototype remains disconnected from production pending exact queue-tie behavior and runtime validation."
   ],
   "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner.java mesh overload and its selected SurfaceIntersector/KdTree sources. Minimal EmbeddedSurface, ThicknessSolver, JIST progress, image-only overload, and unused Jama import stubs support compilation; source thickness methods are compiled unchanged.",
   "metrics": {
@@ -72,6 +72,32 @@
       "inner.mean_thickness_mm": 1.0658900585468921e-05
     },
     "nearest_vertex_indices_exact": false
+  },
+  "python_jist_tree_port_prototype": {
+    "metrics": {
+      "central_nearest_vertex_index_mismatches": 1,
+      "central_to_inner_face_mismatches": 219,
+      "inner_to_outer_face_mismatches": 119,
+      "max_central_nearest_vertex_distance_error_mm": 0.008260011672973633,
+      "max_central_projected_thickness_error_mm": 0.1226841461804069,
+      "max_central_surface_distance_error_mm": 1.1820394263395428e-07,
+      "max_inner_to_outer_distance_error_mm": 2.3284663974720843e-07,
+      "max_mean_inner_thickness_error_mm": 0.0002663482583340482,
+      "max_outer_to_inner_distance_error_mm": 0.0005325912763507468
+    },
+    "status": "isolated prototype; not connected to production thickness API",
+    "tree_builds": {
+      "inner": {
+        "java_node_count": 17707,
+        "python_node_count": 17707,
+        "tree_structure_exact": true
+      },
+      "outer": {
+        "java_node_count": 32976,
+        "python_node_count": 32976,
+        "tree_structure_exact": true
+      }
+    }
   },
   "sources": {
     "closest_point_thickness_for_inner_sha256": "9fc19e8b9caf3defd8278a7dec1dfd417f37b0431f579da4cd17123d662534b6",
