@@ -10,6 +10,8 @@ The restartable synthetic base workflow completes all seven stages on the brain-
 
 An isolated installed wheel also completed all seven base stages from outside the source checkout, loaded bundled atlas assets, and passed all stage checks. Independent inspection verified 46 output hashes, 31 finite RAS NIfTIs, and four meshes; resume skipped every stage. TOADS was intentionally capped at two iterations for this packaging check, so convergence evidence remains the separate source-checkout run. See the [installed-wheel report](docs/reports/installed-wheel-seven-stage-base-workflow-capped-2026-10-08.md).
 
+The isolated wheel also completed the nine-stage synthetic plus workflow and naturally converged at LesionTOADS iteration 6; an independent audit verified 86 manifest-referenced file hashes, 62 finite RAS NIfTIs, three meshes, and a successful resume. Both wheel runs are synthetic packaging evidence, not whole-workflow Java/MATLAB equivalence or real-MRI validation. See the [plus installed-wheel report](docs/reports/installed-wheel-plus-workflow-2026-10-08.md).
+
 The full suite on code-equivalent commit `5a412b7` passed **1,243 tests, 0 failures, 0 skips, and 11 expected RAS-orientation warnings** in **1,743.86s**, peaking at **14.961 GB RSS**; see the [suite report](docs/reports/full-pytest-2026-10-08-base-surface-thickness.md). Remaining work includes source-composite comparisons and refinements, plus cross-grid surface-position differences, paper-based code annotations, and real-MRI validation. The available human T1 still needs its matching user-provided brain mask.
 ## Scope and target
 
