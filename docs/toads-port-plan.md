@@ -5,8 +5,12 @@ synthetic base workflow completes; both TOADS passes converge, and same-settings
 resume verifies every stage output. The current run's selected-Java TGDM
 comparison passes all three agreed surface gates. The actual VandyCRUISE
 coarse-to-fine registration method also matches on both an asymmetric fixture
-and a larger 48³ folded-cortex fixture; the full suite passes **1,501 tests**
-under the 16 GB watchdog. The source-faithful refinement replay localizes seven
+and a larger 48³ folded-cortex fixture. The bundled 11-class atlas on the
+synthetic brain-resolution T1/mask also converges naturally at registration
+scales 8/4/2 within the 50-iteration limit; Python/Java iteration counts,
+line-search traces, and final transform match at 1.140 GB peak RSS. The full
+suite passes **1,501 tests** under the 16 GB watchdog. The source-faithful
+refinement replay localizes seven
 label differences to upstream outer-field threshold crossings, but this is not
 an independent MATLAB refinement comparison. P34 is complete for synthetic
 orchestration/output/restart; P37 whole-workflow source parity remains open.

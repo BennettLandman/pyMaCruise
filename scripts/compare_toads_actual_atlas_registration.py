@@ -131,6 +131,52 @@ def main() -> int:
             f"python={python_bits}, java={java_result['transform_bits']}"
         )
 
+    source_level_numbers = (4, 3, 2)
+    level_reports = []
+    for python_level, source_level in zip(
+        python_result.registration.levels, source_level_numbers, strict=True
+    ):
+        start = java.stdout.index(f"level {source_level}\n")
+        end = java.stdout.find(f"level {source_level - 1}\n", start + 1)
+        section = java.stdout[start:] if end < 0 else java.stdout[start:end]
+        python_trials = sum(
+            item.rejected_trials + int(item.accepted)
+            for item in python_level.result.iterations
+        )
+        python_accepted = sum(
+            item.accepted for item in python_level.result.iterations
+        )
+        java_trials = section.count("trial transform:")
+        java_accepted = section.count(" (E:")
+        if (python_trials, python_accepted) != (java_trials, java_accepted):
+            raise AssertionError(
+                f"scale {python_level.scale} line-search trace mismatch: "
+                f"python={(python_trials, python_accepted)}, "
+                f"java={(java_trials, java_accepted)}"
+            )
+        level_reports.append(
+            {
+                "block_scale": python_level.scale,
+                "finite_transform": bool(
+                    np.isfinite(python_level.result.transform).all()
+                ),
+                "iterations": len(python_level.result.iterations),
+                "accepted_updates": python_accepted,
+                "line_search_trials": python_trials,
+                "java_accepted_updates": java_accepted,
+                "java_line_search_trials": java_trials,
+                "terminal_relative_change": (
+                    float(python_level.result.iterations[-1].relative_change)
+                    if python_level.result.iterations
+                    else None
+                ),
+                "stop_reason": python_level.result.stop_reason,
+                "iteration_cap_reached": (
+                    python_level.result.stop_reason == "iteration_limit"
+                ),
+            }
+        )
+
     report = {
         "scope": "selected actual VandyCRUISE rigid pyramid on bundled atlas assets and synthetic T1/mask",
         "source": java_result["source"],
@@ -140,18 +186,7 @@ def main() -> int:
         "membership_shape": list(startup.initial_memberships.shape),
         "shape_prior_shape": list(shapes.shape),
         "class_count": int(shapes.shape[-1]),
-        "levels": [
-            {
-                "block_scale": level.scale,
-                "finite_transform": bool(np.isfinite(level.result.transform).all()),
-                "accepted_updates": sum(item.accepted for item in level.result.iterations),
-                "line_search_trials": sum(
-                    item.rejected_trials + int(item.accepted)
-                    for item in level.result.iterations
-                ),
-            }
-            for level in python_result.registration.levels
-        ],
+        "levels": level_reports,
         "python_transform_float32_bits": python_bits,
         "java_transform_float32_bits": java_result["transform_bits"],
         "transform_bit_exact": transform_match,
