@@ -12,7 +12,7 @@ An isolated installed wheel also completed all seven base stages from outside th
 
 The isolated wheel also completed the nine-stage synthetic plus workflow and naturally converged at LesionTOADS iteration 6; an independent audit verified 86 manifest-referenced file hashes, 62 finite RAS NIfTIs, three meshes, and a successful resume. Both wheel runs are synthetic packaging evidence, not whole-workflow Java/MATLAB equivalence or real-MRI validation. See the [plus installed-wheel report](docs/reports/installed-wheel-plus-workflow-2026-10-08.md).
 
-The full suite on code-equivalent commit `5a412b7` passed **1,243 tests, 0 failures, 0 skips, and 11 expected RAS-orientation warnings** in **1,743.86s**, peaking at **14.961 GB RSS**; see the [suite report](docs/reports/full-pytest-2026-10-08-base-surface-thickness.md). Remaining work includes source-composite comparisons and refinements, plus cross-grid surface-position differences, paper-based code annotations, and real-MRI validation. The available human T1 still needs its matching user-provided brain mask.
+The full suite on tested tree `1bb0ab8` passed **1,500 tests, 0 failures, 0 skips, and 11 expected RAS-orientation warnings** in **1,815.06s**, peaking at **13.010 GB RSS** under a 16 GB watchdog; see the [suite report](docs/reports/full-pytest-2026-10-08-jist-connectivity18.md). Remaining work includes source-composite comparisons and refinements, plus cross-grid surface-position differences, paper-based code annotations, and real-MRI validation. The available human T1 still needs its matching user-provided brain mask.
 ## Scope and target
 
 - **Base workflow:** T1-weighted MRI, MaSeg labels, and a user-provided brain mask on the T1 grid.
