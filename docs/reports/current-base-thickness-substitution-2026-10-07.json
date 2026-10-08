@@ -1,0 +1,56 @@
+{
+  "comparison_scope": "The selected Java ClosestPointThicknessForInner wrapper output on Java IsoSurfaceOnGrid meshes is compared by aggregate inner mean/stdev with the production Python thickness API on Lewiner meshes extracted from the same committed level sets. Vertex correspondence is not assumed because topology and face connectivity differ.",
+  "fixture": {
+    "java_mesh_path": "build/java-reference/current-base-surface-comparison/meshes",
+    "java_mesh_sha256": {
+      "central": "650b03918acf1859ec8f52e63d1f1459868912614a4ed81e6dcbcc309c276a45",
+      "inner": "c3efd3846fa0338f495457ebbf82c71ffbd0f9b6ef2166cbbf3f329dfcf93ea7",
+      "outer": "aae30868e6305ee7811d69c1210200b992c03bc780a6329c800d35e45eb434d6"
+    },
+    "levelset_path": "tests/data/synthetic/base_core_source_match/java_reference",
+    "levelset_sha256": {
+      "central": "dd06b1ba10e8fd9a71f032083462d15c355f98be669e15a6c8e4cf7c8a452c22",
+      "inner": "eaaf58e1f2e29f127bcaca03ceb10137d6615a47f63de698442c3c17a8970901",
+      "outer": "e0995817d9a576c769832c09b2f66e062f2a6a34be1d51d8699626f3526f744b"
+    },
+    "mesh_counts": {
+      "central": {
+        "faces": 242224,
+        "vertices": 121100
+      },
+      "inner": {
+        "faces": 232368,
+        "vertices": 116178
+      },
+      "outer": {
+        "faces": 247828,
+        "vertices": 123872
+      }
+    },
+    "production_extractor": "skimage.measure.marching_cubes method=lewiner via extract_levelset_surface",
+    "selected_java_output_sha256": "5a3c11fdb068eddf3d09166f1007fbb91e6f3eaacd33cc6fafc0f4ee0651198b"
+  },
+  "limitations": [
+    "This is an aggregate measurement comparison; it does not establish per-vertex correspondence across different meshes.",
+    "The user-defined P08 tolerances cover segmentation Dice and surface position, not thickness scalar differences.",
+    "The Java wrapper result is source-equivalent on its held-fixed Java meshes; Lewiner face connectivity remains a documented substitution.",
+    "Synthetic stage evidence only; whole-workflow and real-MRI equivalence remain open."
+  ],
+  "metrics": {
+    "mean_difference_python_minus_java_mm": -0.00010458721952799621,
+    "production_python_mean_thickness_mm": 1.6490505715155648,
+    "production_python_nonzero_inner_vertices": 116178,
+    "production_python_sample_stdev_mm": 0.49803060891902967,
+    "selected_java_mean_thickness_mm": 1.6491551587350928,
+    "selected_java_nonzero_inner_vertices": 116165,
+    "selected_java_sample_stdev_mm": 0.4980318295527702,
+    "stdev_difference_python_minus_java_mm": -1.2206337405284984e-06,
+    "thickness_specific_acceptance_threshold_defined": false
+  },
+  "runtime": {
+    "production_python_api_elapsed_seconds": 463.37650704197586,
+    "python_process_peak_rss_gb": 0.631078912
+  },
+  "synthetic_only": true,
+  "title": "Brain-resolution thickness impact of selected surface-extraction substitution"
+}

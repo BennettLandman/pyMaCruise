@@ -55,3 +55,19 @@ def test_brain_resolution_selected_thickness_wrapper_matches_java_exactly():
     assert report["fixture"]["mesh_counts"]["inner"]["faces"] == 232328
     assert report["fixture"]["mesh_counts"]["central"]["vertices"] == 121074
     assert report["runtime"]["python_process_peak_rss_gb"] < 2.0
+
+
+def test_brain_resolution_production_mesh_thickness_substitution_is_reported():
+    report_path = (
+        Path(__file__).resolve().parents[1]
+        / "docs/reports/current-base-thickness-substitution-2026-10-07.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    metrics = report["metrics"]
+    assert report["synthetic_only"] is True
+    assert metrics["thickness_specific_acceptance_threshold_defined"] is False
+    assert metrics["selected_java_nonzero_inner_vertices"] == 116165
+    assert metrics["production_python_nonzero_inner_vertices"] == 116178
+    assert abs(metrics["mean_difference_python_minus_java_mm"] - (-0.000104587219528)) < 1e-12
+    assert abs(metrics["stdev_difference_python_minus_java_mm"] - (-1.220633741e-6)) < 1e-12
+    assert report["runtime"]["python_process_peak_rss_gb"] < 2.0

@@ -265,6 +265,7 @@
       }
     },
     "thickness": {
+      "historical_operator": "pre-source-faithful centroid-tree closest-point implementation",
       "jist_mean_mm": 1.6491415378102934,
       "jist_nonzero_inner_vertices": 116166,
       "jist_sd_mm": 0.4980539303326962,
@@ -274,7 +275,8 @@
       "lorensen_mean_delta_mm": 1.2483429086218578e-05,
       "lorensen_mean_mm": 1.6491540212393796,
       "mean_delta_mm": -8.807700348656411e-05,
-      "operator": "same Python closest_point_thickness on each triangulator's nested meshes"
+      "operator": "same Python closest_point_thickness on each triangulator's nested meshes",
+      "status": "historical centroid-tree baseline; current source-faithful result is recorded in current-base-thickness-substitution-2026-10-07.json"
     }
   },
   "source": {

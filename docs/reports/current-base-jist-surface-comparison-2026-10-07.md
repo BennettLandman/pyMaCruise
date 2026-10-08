@@ -22,9 +22,7 @@ The same source perturbation and input values were also passed to scikit-image's
 | central | 1/2 | 2/-18 | 0.00000097 | 0.00000713 | 63.64% |
 | outer | 1/2 | 28/-50 | 0.00000082 | 0.00000713 | 67.13% |
 
-Lorensen preserves vertex counts and has near-coincident sampled geometry, but it does not repair the topology mismatch: component counts are 2/2/28 versus one JIST component. Its mean thickness is `1.649154021 mm` (delta `+0.000012483 mm` from JIST). Thus the already-tested Lorensen alternative is not a topology-matching replacement for Lewiner on this brain-resolution fixture.
-
-Applying the same Python closest-point thickness operator to each nested mesh set gives JIST mean `1.649141538 mm` and Lewiner mean `1.649053461 mm`, a delta of `-0.000088077 mm`. P08 has no thickness-specific tolerance. This is a geometry-impact measurement, not Java thickness equivalence.
+Lorensen preserves vertex counts and has near-coincident sampled geometry, but it does not repair the topology mismatch: component counts are 2/2/28 versus one JIST component. The thickness values in this report were produced by the previous centroid-tree locator and are historical only; the production API now uses the selected JIST tree. See the [current source-wrapper thickness comparison](current-base-thickness-substitution-2026-10-07.md), which reports the current production Lewiner result against the selected Java wrapper output. P08 has no thickness-specific tolerance.
 
 The Java harness compiles the selected source body directly, with minimal image/progress and normal-generation stubs. It writes mesh arrays under ignored `build/`; this report stores only hashes and metrics. Vertex-to-triangle distances sample vertices and are not a continuous Hausdorff certificate. Reproduce with `./.venv/bin/python scripts/compare_jist_surface_current_base.py`; raw results: [JSON report](current-base-jist-surface-comparison-2026-10-07.json).
 
