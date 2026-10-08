@@ -14,6 +14,7 @@ from pymacruise.validation import (
     dice_coefficient,
     mesh_surface_distance_metrics,
 )
+from pymacruise.segmentation_refine import refine_segmentation_by_surfaces
 
 
 ROOT = Path(__file__).parent / "data/synthetic/base_core_source_match"
@@ -72,3 +73,58 @@ def test_current_run_tgdm_and_refined_label_metrics_meet_agreed_gates() -> None:
     assert refined["changed_voxels"] == 7
     for label in ("1", "4", "100"):
         assert refined["labels"][label]["dice"] >= 0.97
+
+
+def test_refinement_differences_are_exactly_outer_threshold_crossings() -> None:
+    """Attribute the 7 cross-run label differences to the outer level set.
+
+    Each saved refinement is replayed source-faithfully from the same input
+    MaSeg labels and its corresponding Java or Python TGDM surfaces. The
+    differing result voxels should be exactly those where the outer-surface
+    predicate crosses the selected V3 threshold.
+    """
+    java_outer = np.asarray(
+        nib.load(str(ROOT / "java_reference" / "outer.nii.gz")).dataobj,
+        dtype=np.float32,
+    )
+    python_outer = np.asarray(
+        nib.load(str(ROOT / "python_run" / "outer.nii.gz")).dataobj,
+        dtype=np.float32,
+    )
+    segmentation = nib.load(
+        str(Path(__file__).parent / "data/synthetic/base_workflow_brain_resolution/maseg.nii.gz")
+    )
+    labels = np.asarray(segmentation.dataobj)
+    java_refined = np.asarray(
+        nib.load(
+            str(ROOT / "java_reference" / "source_faithful_refined_labels.nii.gz")
+        ).dataobj
+    )
+    python_refined = np.asarray(
+        nib.load(str(ROOT / "python_run" / "refined_labels.nii.gz")).dataobj
+    )
+    replayed_java = refine_segmentation_by_surfaces(
+        segmentation,
+        nib.load(str(ROOT / "java_reference" / "inner.nii.gz")),
+        nib.load(str(ROOT / "java_reference" / "outer.nii.gz")),
+        source_faithful=True,
+    )
+    replayed_python = refine_segmentation_by_surfaces(
+        segmentation,
+        nib.load(str(ROOT / "python_run" / "inner.nii.gz")),
+        nib.load(str(ROOT / "python_run" / "outer.nii.gz")),
+        source_faithful=True,
+    )
+
+    threshold_voxels = 0.2 / float(np.max(nib.affines.voxel_sizes(segmentation.affine)))
+    java_candidates = (labels >= 100) & (java_outer > threshold_voxels)
+    python_candidates = (labels >= 100) & (python_outer > threshold_voxels)
+    candidate_crossings = java_candidates ^ python_candidates
+    refined_differences = java_refined != python_refined
+
+    assert MANIFEST["refinement_source_faithful"] is True
+    np.testing.assert_allclose(threshold_voxels, 0.21333333333333335, rtol=0, atol=1e-15)
+    assert np.array_equal(np.asarray(replayed_java.image.dataobj), java_refined)
+    assert np.array_equal(np.asarray(replayed_python.image.dataobj), python_refined)
+    assert int(candidate_crossings.sum()) == 7
+    assert np.array_equal(refined_differences, candidate_crossings)

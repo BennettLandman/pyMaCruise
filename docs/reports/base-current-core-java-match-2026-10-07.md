@@ -25,10 +25,21 @@ workflow's `SEG_refine.nii.gz`; this is not a direct MATLAB refinement output.
 | Outer | 0.999989543 | 0.000147829 | 0.200093 |
 
 All three outputs pass the agreed surface gates. Source-faithful refinement
-compared with the saved Python labels changed 7 voxels total: labels 1 and 4
-were exact, and label 100 had Dice 0.999975151. This passes the 0.97
-segmentation threshold. Both output sets use the same `(172, 216, 164)` RAS
-grid with 0.9375 mm spacing.
+using Java surfaces compared with the saved Python refinement differs at
+7 voxels: labels 1 and 4 are exact, and label 100 has Dice 0.999975151. These
+differences are fully localized to the outer-surface threshold. The selected
+V3 threshold is `0.2 mm / 0.9375 mm = 0.2133333333` voxels. Exactly seven
+original MaSeg label-100 voxels have Java and Python outer level-set values on
+opposite sides of `outer > 0.2133333333`, and the seven refined-label
+differences are exactly those candidate-mask crossings. The Java-derived and
+Python-derived outputs each replay exactly at the voxel-array level through
+the current source-faithful Python refinement implementation when given their
+matching input surfaces. Thus, this residual is explained by the TGDM
+outer-field difference propagating through refinement; it is not an
+unexplained Python refinement discrepancy. This remains a Python replay of
+the source rule, not an independent MATLAB refinement output comparison.
+Both output sets use the same `(172, 216, 164)` RAS grid with 0.9375 mm
+spacing.
 
 The NIfTI fixtures and their SHA-256 hashes are in
 [`tests/data/synthetic/base_core_source_match`](../../tests/data/synthetic/base_core_source_match).
@@ -67,12 +78,15 @@ javac -d build/java-reference/tgdm-current-core \
 ./.venv/bin/python -m pytest -q tests/test_base_core_current_java_match.py
 ```
 
-The focused regression command completed with **2 passed in 52.77s** after
-recomputing mesh metrics. The source-faithful Java-surface refinement comparison used
+The focused regression command completed with **3 passed in 51.16s** after
+adding exact source-faithful replay checks and the threshold-crossing
+attribution. The source-faithful Java-surface refinement comparison used
 `refine_segmentation_by_surfaces(..., source_faithful=True)` on the original
 synthetic MaSeg input and the fresh Java surfaces, then compared against the
-saved Python refinement output. The committed regression records the resulting
-label metrics and hashes.
+saved Python workflow output. The regression confirms both Java-surface and
+Python-surface refinements reproduce their respective saved outputs exactly,
+and pins all seven cross-run differences to Java/Python outer-threshold
+crossings. It does not claim MATLAB refinement equivalence.
 
 ## Real-data status and limits
 
