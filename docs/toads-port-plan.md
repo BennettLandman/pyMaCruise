@@ -9,7 +9,8 @@ and a larger 48³ folded-cortex fixture. The bundled 11-class atlas on the
 synthetic brain-resolution T1/mask also converges naturally at registration
 scales 8/4/2 within the 50-iteration limit; Python/Java iteration counts,
 line-search traces, and final transform match. The full startup through template refresh, post-refresh registration, constructor, statistics, and relation initialization peaks at 2.388 GB RSS. The full
-suite passes **1,501 tests** under the 16 GB watchdog. The source-faithful
+suite on tested tree `5a0adcf` passes **1,502 tests**, with 12.442 GB peak RSS
+under the 16 GB watchdog; see the [suite report](reports/full-pytest-2026-10-08-bundled-atlas-startup.md). The source-faithful
 refinement replay localizes seven
 label differences to upstream outer-field threshold crossings, but this is not
 an independent MATLAB refinement comparison. P34 is complete for synthetic
