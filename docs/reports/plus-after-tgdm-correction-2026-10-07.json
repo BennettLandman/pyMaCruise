@@ -1,0 +1,126 @@
+{
+  "artifact_audit": {
+    "complete_manifests": 14,
+    "finite_ras_niftis": 48,
+    "ras_vtk_surfaces": 3,
+    "unique_output_paths_hash_checked": 58
+  },
+  "date": "2026-10-07",
+  "fresh_run": true,
+  "fresh_run_peak_sampled_rss_gb": 0.81,
+  "full_pytest": "Not run for this integration cycle. Latest documented full suite predates implementation commit 9eb84bc.",
+  "implementation_commit": "9eb84bc",
+  "input_fixture": "tests/data/synthetic/plus_scaled_grid (64x80x64 folded RAS)",
+  "lesion_toads": {
+    "changed_classification_voxels": 15324,
+    "completed_iteration": 6,
+    "convergence_stop": true,
+    "iteration_limit_stop": false,
+    "lesion_voxels": 0,
+    "terminal_energy_ratio": 7.722568398094154e-07
+  },
+  "manifest": {
+    "all_nine_stages_complete": true,
+    "all_nine_stages_resumed_second_invocation": true,
+    "final_output_count": 17,
+    "source_equivalence_claim": false,
+    "stage_count": 9,
+    "status": "complete",
+    "terminal": true
+  },
+  "real_mri_used": false,
+  "resume_peak_sampled_rss_gb": 0.243,
+  "resume_rss_limit_gb": 4,
+  "resume_verified": true,
+  "rss_limit_gb": 16,
+  "same_fixture_previous_run_comparison": {
+    "exactly_matching_products": 16,
+    "products": {
+      "csf": {
+        "current_sha256": "116f7feadb175627eb32188fab921a195eec40e85884b9fd3c0b82314803bd5b",
+        "exact_match": true,
+        "previous_sha256": "116f7feadb175627eb32188fab921a195eec40e85884b9fd3c0b82314803bd5b"
+      },
+      "gm": {
+        "current_sha256": "ed45bec02ff57956ab12679ccf91a02174780968a60cc21e7087699011d78ee6",
+        "exact_match": true,
+        "previous_sha256": "ed45bec02ff57956ab12679ccf91a02174780968a60cc21e7087699011d78ee6"
+      },
+      "native_csf": {
+        "current_sha256": "ff01e37c62d7fa4ddc8d3d20dec01e965aebff77c2ea3212bb0a453517e237f1",
+        "exact_match": true,
+        "previous_sha256": "ff01e37c62d7fa4ddc8d3d20dec01e965aebff77c2ea3212bb0a453517e237f1"
+      },
+      "native_gm": {
+        "current_sha256": "90f639c1a18f980af5e6a23a7007b6cc6f2836a5ed970097bf75b033f04edd26",
+        "exact_match": true,
+        "previous_sha256": "90f639c1a18f980af5e6a23a7007b6cc6f2836a5ed970097bf75b033f04edd26"
+      },
+      "native_wm_fill": {
+        "current_sha256": "34dbfb4fef7cf1d2f70313f9bc236d61cb0ca096aa6687d09d9732d10fc4fe4f",
+        "exact_match": true,
+        "previous_sha256": "34dbfb4fef7cf1d2f70313f9bc236d61cb0ca096aa6687d09d9732d10fc4fe4f"
+      },
+      "native_wm_mask": {
+        "current_sha256": "63fcbd9fc5f2f700352cb61db4c910811c99eae23f9458c8c79c7554c502f15a",
+        "exact_match": true,
+        "previous_sha256": "63fcbd9fc5f2f700352cb61db4c910811c99eae23f9458c8c79c7554c502f15a"
+      },
+      "plus_central_level_set": {
+        "current_sha256": "441d3902e77b4c535cdf2098a720743dac2085d912f6120bc52f724789d95e5d",
+        "exact_match": true,
+        "previous_sha256": "441d3902e77b4c535cdf2098a720743dac2085d912f6120bc52f724789d95e5d"
+      },
+      "plus_central_surface": {
+        "current_sha256": "f04fbbf1e8c53551de74183a06e22c731bab5a38378e042f7a525d8f7d1c35ce",
+        "exact_match": true,
+        "previous_sha256": "f04fbbf1e8c53551de74183a06e22c731bab5a38378e042f7a525d8f7d1c35ce"
+      },
+      "plus_inner_level_set": {
+        "current_sha256": "6f0ee6713652881ccdfc4e20ca54c1c7cc079e098c83c92c8750c32b55089e3b",
+        "exact_match": true,
+        "previous_sha256": "6f0ee6713652881ccdfc4e20ca54c1c7cc079e098c83c92c8750c32b55089e3b"
+      },
+      "plus_inner_surface": {
+        "current_sha256": "50bfd34a8922e476d053fffb191523e4e2db9a70b1c9be2602dc7e8dcb941318",
+        "exact_match": true,
+        "previous_sha256": "50bfd34a8922e476d053fffb191523e4e2db9a70b1c9be2602dc7e8dcb941318"
+      },
+      "plus_outer_level_set": {
+        "current_sha256": "2c4e3f03bbe687c857428f7d503003288d0cbc4c1d2e1f09df1971765866dfef",
+        "exact_match": true,
+        "previous_sha256": "2c4e3f03bbe687c857428f7d503003288d0cbc4c1d2e1f09df1971765866dfef"
+      },
+      "plus_outer_surface": {
+        "current_sha256": "95e7dbc3e9ed79b6e43060991431ea0ace414908a959e1e8be81d5cc1a7b9684",
+        "exact_match": true,
+        "previous_sha256": "95e7dbc3e9ed79b6e43060991431ea0ace414908a959e1e8be81d5cc1a7b9684"
+      },
+      "plus_thickness_metrics": {
+        "current_sha256": "df658a07b6cffba4017383e73aa349efa80f8ff8aaa4e27171e2b4f92ae8824d",
+        "exact_match": true,
+        "previous_sha256": "df658a07b6cffba4017383e73aa349efa80f8ff8aaa4e27171e2b4f92ae8824d"
+      },
+      "plus_thickness_volume": {
+        "current_sha256": "10ce00ddec4bd8c7a04fb9e6a099927b5b1ec40d96724c862ffcf26ce13a2840",
+        "exact_match": true,
+        "previous_sha256": "10ce00ddec4bd8c7a04fb9e6a099927b5b1ec40d96724c862ffcf26ce13a2840"
+      },
+      "wm_fill": {
+        "current_sha256": "e62a5fbd21bb43788b6fc669344b90bd887686f38ce981b4978af77820fa1fb1",
+        "exact_match": true,
+        "previous_sha256": "e62a5fbd21bb43788b6fc669344b90bd887686f38ce981b4978af77820fa1fb1"
+      },
+      "wm_mask": {
+        "current_sha256": "4b57a2f5cca5ca4d9e371a60021f51f3988406714072b95da3aa6d99d1c21fe1",
+        "exact_match": true,
+        "previous_sha256": "4b57a2f5cca5ca4d9e371a60021f51f3988406714072b95da3aa6d99d1c21fe1"
+      }
+    },
+    "same_input_settings_signature": true,
+    "scientific_final_products_compared": 16
+  },
+  "synthetic_only": true,
+  "validation": "Fresh complete workflow plus same-settings resume; output hashes, NIfTI finiteness/RAS orientation, and VTK RAS tags checked. This is Python synthetic integration evidence, not selected-Java whole-workflow equivalence.",
+  "workflow": "MaCRUISEplus raw T1/FLAIR/mask/MaSeg to terminal surfaces and thickness"
+}
