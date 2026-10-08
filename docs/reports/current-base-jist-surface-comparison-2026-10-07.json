@@ -1,0 +1,171 @@
+{
+  "evidence_type": "synthetic selected-source comparison",
+  "fixture": {
+    "orientation": "RAS",
+    "path": "tests/data/synthetic/base_core_source_match/java_reference",
+    "shape": [
+      172,
+      216,
+      164
+    ],
+    "source_levelset_sha256_float32_c_order": {
+      "central": "0d5fe5634b6455be7be77ba06b56b7c2d39afd9296e75c1c568b842755e1a8dc",
+      "inner": "023048137828447fba955ec113eebe3f0de20f76650b9e43277a7acfe3bc6ecf",
+      "outer": "d688c1894ef26279a480f7462e45fcb77c2501296c2dd85f03190cc62d1c6402"
+    },
+    "spacing_mm": [
+      0.9375,
+      0.9375,
+      0.9375
+    ]
+  },
+  "limitations": [
+    "The geometry distances sample mesh vertices against opposing triangles; they do not certify the continuous Hausdorff distance.",
+    "Lewiner component counts and Euler characteristics differ from selected JIST on this case even though the sampled P08 surface-distance gates pass; connectivity remains an explicit P37 deviation.",
+    "Thickness applies one Python operator to both meshes and isolates geometric impact; it does not compare the Java thickness implementation.",
+    "This is a synthetic selected-source stage comparison, not whole-workflow or real-MRI validation."
+  ],
+  "metrics": {
+    "per_surface": {
+      "central": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 2,
+          "faces": 242144,
+          "nonmanifold_edges": 0,
+          "unique_edges": 363216,
+          "vertices": 121074
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 2,
+          "euler_characteristic": -12,
+          "faces": 242224,
+          "nonmanifold_edges": 0,
+          "unique_edges": 363336,
+          "vertices": 121100
+        },
+        "triangle_connectivity_after_nearest_vertex_mapping": {
+          "jist_face_count": 242144,
+          "lewiner_face_count": 242224,
+          "matching_fraction_of_jist_faces": 0.6379261926787366,
+          "matching_unordered_faces": 154470,
+          "vertex_mapping_is_bijective": false
+        },
+        "vertex_nearest_neighbor_mm": {
+          "jist_vertices_to_lewiner_mean": 1.2605155748814392e-06,
+          "lewiner_vertices_to_jist_mean": 0.00012543273810266867,
+          "symmetric_max": 0.6734678992661031,
+          "symmetric_mean": 6.334662683877506e-05
+        },
+        "vertex_to_triangle_surface_distance_mm": {
+          "jist_vertices_to_lewiner_mean": 9.655277046052796e-07,
+          "lewiner_vertices_to_jist_mean": 3.3004533989116e-05,
+          "symmetric_max": 0.40398793445934017,
+          "symmetric_mean": 1.69867507139054e-05
+        }
+      },
+      "inner": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 2,
+          "faces": 232328,
+          "nonmanifold_edges": 0,
+          "unique_edges": 348492,
+          "vertices": 116166
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 2,
+          "euler_characteristic": -6,
+          "faces": 232368,
+          "nonmanifold_edges": 0,
+          "unique_edges": 348552,
+          "vertices": 116178
+        },
+        "triangle_connectivity_after_nearest_vertex_mapping": {
+          "jist_face_count": 232328,
+          "lewiner_face_count": 232368,
+          "matching_fraction_of_jist_faces": 0.6794144485382735,
+          "matching_unordered_faces": 157847,
+          "vertex_mapping_is_bijective": false
+        },
+        "vertex_nearest_neighbor_mm": {
+          "jist_vertices_to_lewiner_mean": 1.2380249686660063e-06,
+          "lewiner_vertices_to_jist_mean": 5.779987464523055e-05,
+          "symmetric_max": 0.6384536460994995,
+          "symmetric_mean": 2.951894980694828e-05
+        },
+        "vertex_to_triangle_surface_distance_mm": {
+          "jist_vertices_to_lewiner_mean": 9.087789523386535e-07,
+          "lewiner_vertices_to_jist_mean": 1.5822805078664174e-05,
+          "symmetric_max": 0.4382291468096324,
+          "symmetric_mean": 8.36617715200917e-06
+        }
+      },
+      "outer": {
+        "jist_topology": {
+          "boundary_edges": 0,
+          "connected_components": 1,
+          "euler_characteristic": 2,
+          "faces": 247652,
+          "nonmanifold_edges": 0,
+          "unique_edges": 371478,
+          "vertices": 123828
+        },
+        "lewiner_topology": {
+          "boundary_edges": 0,
+          "connected_components": 4,
+          "euler_characteristic": -42,
+          "faces": 247828,
+          "nonmanifold_edges": 0,
+          "unique_edges": 371742,
+          "vertices": 123872
+        },
+        "triangle_connectivity_after_nearest_vertex_mapping": {
+          "jist_face_count": 247652,
+          "lewiner_face_count": 247828,
+          "matching_fraction_of_jist_faces": 0.675161113174939,
+          "matching_unordered_faces": 167205,
+          "vertex_mapping_is_bijective": false
+        },
+        "vertex_nearest_neighbor_mm": {
+          "jist_vertices_to_lewiner_mean": 1.2294167117325016e-06,
+          "lewiner_vertices_to_jist_mean": 0.00019453197095583522,
+          "symmetric_max": 0.7063545740598876,
+          "symmetric_mean": 9.788069383378386e-05
+        },
+        "vertex_to_triangle_surface_distance_mm": {
+          "jist_vertices_to_lewiner_mean": 8.233698038551959e-07,
+          "lewiner_vertices_to_jist_mean": 6.136443948519585e-05,
+          "symmetric_max": 0.4251853877120419,
+          "symmetric_mean": 3.1099281727823824e-05
+        }
+      }
+    },
+    "thickness": {
+      "jist_mean_mm": 1.6491415378102934,
+      "jist_nonzero_inner_vertices": 116166,
+      "jist_sd_mm": 0.4980539303326962,
+      "lewiner_mean_mm": 1.6490534608068068,
+      "lewiner_nonzero_inner_vertices": 116178,
+      "lewiner_sd_mm": 0.4980310282397868,
+      "mean_delta_mm": -8.807700348656411e-05,
+      "operator": "same Python closest_point_thickness on each triangulator's nested meshes"
+    }
+  },
+  "source": {
+    "harness": "tests/java_reference/SurfaceIsoSurfaceOnGridHarness.java",
+    "harness_stubs": "Minimal JIST image/progress and normal-generator APIs; selected Java surface body is compiled directly.",
+    "isosurface_sha256": "a323ac5eed8b66ad62a68cd93a6bc7bcf01281453fc6541ee5c4ccc529d40c38",
+    "isosurface_source": "toads-cruise-scm-2026-09-26/toads-cruise/src/edu/jhu/ece/iacl/algorithms/graphics/isosurf/IsoSurfaceOnGrid.java",
+    "method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
+    "version": "IsoSurfaceOnGrid CVS r1.7; GetMeshSurfaceFromLevelSet CVS r1.4",
+    "wrapper_sha256": "3f7b54e099f2550f42a572e96070642b8124a93ab1b45eca1aa544ecec1758b4",
+    "wrapper_source": "toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/plugins/CRUISE/utilities/GetMeshSurfaceFromLevelSet.java"
+  },
+  "synthetic_only": true,
+  "title": "Selected JIST IsoSurfaceOnGrid versus Lewiner on current synthetic base-core outputs"
+}
