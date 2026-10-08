@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.lang.reflect.Field;
 import edu.jhmi.rad.medic.methods.MultipleToadDeformableAtlas;
 import edu.jhmi.rad.medic.methods.ParametricTransform;
+import edu.jhmi.rad.medic.libraries.ImageFunctions;
 
 /** Executes the supplied VandyCRUISE pyramid registration entry point headlessly. */
 public final class ToadsPyramidActualRegistrationHarness {
@@ -76,7 +77,35 @@ public final class ToadsPyramidActualRegistrationHarness {
         atlas.updateShapeRegistration(mem, best, segmentation, new String[0], "rigid", iterations, levels, 0.0f, 1.0f);
         atlas.setTransform(initial);
         atlas.registerShapesPyramid();
+        float[][][][] coarseMem = ImageFunctions.subsample(mem, nix, niy, niz, classes, 4);
+        float[][][][] coarseShapes = new float[classes][][][];
+        int[] coarseX = new int[classes], coarseY = new int[classes], coarseZ = new int[classes];
+        for (int k = 0; k < classes; k++) {
+            coarseShapes[k] = ImageFunctions.subsample(shapes[k], ntx, nty, ntz, 4);
+            coarseX[k] = ntx / 4; coarseY[k] = nty / 4; coarseZ[k] = ntz / 4;
+        }
+        java.lang.reflect.Method energyMethod = atlas.getClass().getDeclaredMethod(
+            "computeExactScaledRegistrationEnergy", float[].class, float[][][][].class,
+            float[][][][].class, int.class, int.class, int.class, int[].class, int[].class,
+            int[].class, float.class);
+        energyMethod.setAccessible(true);
+        float[] nanTrial = new float[] { Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN };
+        float coarseInitialEnergy = (Float)energyMethod.invoke(atlas, initial, coarseMem, coarseShapes,
+            nix / 4, niy / 4, niz / 4, coarseX, coarseY, coarseZ, 4.0f);
+        float coarseNanTrialEnergy = (Float)energyMethod.invoke(atlas, nanTrial, coarseMem, coarseShapes,
+            nix / 4, niy / 4, niz / 4, coarseX, coarseY, coarseZ, 4.0f);
+        float[][][][] fineMem = ImageFunctions.subsample(mem, nix, niy, niz, classes, 2);
+        float[][][][] fineShapes = new float[classes][][][];
+        int[] fineX = new int[classes], fineY = new int[classes], fineZ = new int[classes];
+        for (int k = 0; k < classes; k++) {
+            fineShapes[k] = ImageFunctions.subsample(shapes[k], ntx, nty, ntz, 2);
+            fineX[k] = ntx / 2; fineY[k] = nty / 2; fineZ[k] = ntz / 2;
+        }
+        float finalEnergy = (Float)energyMethod.invoke(atlas, atlas.getTransform(), fineMem, fineShapes,
+            nix / 2, niy / 2, niz / 2, fineX, fineY, fineZ, 2.0f);
         System.out.println("{\"source\":\"VandyCRUISE MultipleToadDeformableAtlas.updateShapeRegistration(rigid) + registerShapesPyramid() + registerShapesExactPyramid()\","
-            + "\"transform_bits\":" + vector(atlas.getTransform()) + ",\"lambda_bits\":" + bits((Float)get(atlas, "lambda")) + "}");
+            + "\"transform_bits\":" + vector(atlas.getTransform()) + ",\"lambda_bits\":" + bits((Float)get(atlas, "lambda"))
+            + ",\"coarse_initial_energy\":" + coarseInitialEnergy + ",\"coarse_nan_trial_energy\":" + coarseNanTrialEnergy
+            + ",\"final_energy\":" + finalEnergy + "}");
     }
 }

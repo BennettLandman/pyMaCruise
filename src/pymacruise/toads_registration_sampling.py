@@ -491,13 +491,14 @@ def vectorized_toads_registration_energy(
     image_center_xyz: ArrayLike | None = None,
     template_center_xyz: ArrayLike | None = None,
     precomputed_affine: bool = False,
+    allow_nonfinite_transform: bool = False,
 ) -> np.float32:
     """NumPy-slab exact-membership energy in source x/y/z/class order."""
     context = _vector_context(
         memberships, atlas_shapes, transform, image_resolutions_mm,
         template_resolutions_mm, class_bounds_low_xyz, class_bounds_high_xyz,
         registered_classes, offset, subsample, scale, image_center_xyz,
-        template_center_xyz,
+        template_center_xyz, allow_nonfinite_transform=allow_nonfinite_transform,
     )
     (mem, shapes, params, image_res, template_res, low, high, registered,
      rotation, ys, zs, scale_value, image_center, template_center) = context
@@ -656,6 +657,8 @@ def _vector_context(
     scale: float,
     image_center_xyz: ArrayLike | None,
     template_center_xyz: ArrayLike | None,
+    *,
+    allow_nonfinite_transform: bool = False,
 ) -> tuple[
     NDArray[np.float32], NDArray[np.float32], NDArray[np.float32],
     NDArray[np.float32], NDArray[np.float32], NDArray[np.int64],
@@ -675,7 +678,9 @@ def _vector_context(
     params = np.asarray(transform, dtype=np.float32)
     image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
     template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
-    if params.shape != (6,) or not np.isfinite(params).all():
+    if params.shape != (6,) or (
+        not allow_nonfinite_transform and not np.isfinite(params).all()
+    ):
         raise ValueError("transform must contain six finite values")
     if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res == 0):
         raise ValueError("image_resolutions_mm must contain three finite nonzero signed values")
@@ -779,14 +784,26 @@ def _map_registration_slab(
 
 
 def _linear_closest_grid(values: NDArray[np.float32], coordinates: NDArray[np.float32]) -> NDArray[np.float32]:
-    indices = [
-        np.clip(np.floor(coordinates[..., axis]).astype(np.int64), 0, values.shape[axis] - 2)
-        for axis in range(3)
-    ]
-    alpha = [
-        np.clip(np.float32(coordinates[..., axis] - indices[axis].astype(np.float32)), 0.0, 1.0).astype(np.float32)
-        for axis in range(3)
-    ]
+    indices: list[NDArray[np.int64]] = []
+    alpha: list[NDArray[np.float32]] = []
+    for axis in range(3):
+        coordinate = coordinates[..., axis]
+        # java.util.Numerics.floor(NaN) narrows NaN to int zero, then takes
+        # the negative-value branch and returns -1. Numerics.bounded(float)
+        # uses comparison-based min/max, which maps a NaN interpolation
+        # fraction to its upper limit. This edge path is reached by the
+        # historical 0/0 rigid update on very coarse TOADS pyramids.
+        floored = np.zeros(coordinate.shape, dtype=np.int64)
+        finite = np.isfinite(coordinate)
+        floored[finite] = np.floor(coordinate[finite]).astype(np.int64)
+        floored[np.isnan(coordinate)] = -1
+        floored[np.isinf(coordinate)] = np.iinfo(np.int64).max
+        index = np.clip(floored, 0, values.shape[axis] - 2)
+        fraction = np.float32(coordinate - index.astype(np.float32))
+        bounded_fraction = np.clip(fraction, 0.0, 1.0).astype(np.float32)
+        bounded_fraction[np.isnan(fraction)] = 1.0
+        indices.append(index)
+        alpha.append(bounded_fraction)
     beta = [np.float32(np.float32(1.0) - value) for value in alpha]
     x, y, z = indices
     ax, ay, az = alpha
@@ -929,6 +946,7 @@ def register_toads_atlas_rigid(
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
     source_faithful: bool = True,
+    allow_nonfinite_trials: bool = False,
     scale: float = 1.0,
     image_center_xyz: ArrayLike | None = None,
     template_center_xyz: ArrayLike | None = None,
@@ -976,13 +994,10 @@ def register_toads_atlas_rigid(
         raise ValueError("registered_classes must contain one flag per class")
 
     def energy_at(candidate: NDArray[np.float32]) -> np.float32:
-        # MultipleToadAtlas evaluates even a non-finite line-search trial.
-        # Its Java interpolation/comparison path yields a NaN energy, which
-        # fails the strict `E > E0` acceptance check and leaves the current
-        # transform in place. Match that result instead of raising from the
-        # Python coordinate validator.
-        if not np.isfinite(candidate).all():
+        if not np.isfinite(candidate).all() and not allow_nonfinite_trials:
             return np.float32(np.nan)
+        # The Java bounded interpolation maps NaN coordinates to the same
+        # clamped edge sample in the selected deformation-atlas pyramid path.
         return vectorized_toads_registration_energy(
             mem,
             shapes,
@@ -998,6 +1013,9 @@ def register_toads_atlas_rigid(
             image_center_xyz=image_center_xyz,
             template_center_xyz=template_center_xyz,
             precomputed_affine=precomputed_affine,
+            allow_nonfinite_transform=(
+                allow_nonfinite_trials and not np.isfinite(candidate).all()
+            ),
         )
 
     history: list[ToadsRigidRegistrationIteration] = []
@@ -1129,6 +1147,7 @@ def register_toads_atlas_rigid_pyramid(
             energy_tolerance=energy_tolerance,
             minimum_lambda=minimum_lambda,
             source_faithful=source_faithful,
+            allow_nonfinite_trials=True,
             subsample=int(subsample_factor),
             scale=level.scale,
             image_center_xyz=image_center,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -654,11 +655,29 @@ def test_pyramid_registration_matches_actual_vandycruise_entry_point(tmp_path: P
                  + completed.stdout),
     )
     assert np.int32(java_result["lambda_bits"]) == python_result.levels[-1].result.iterations[-1].lambda_value.view(np.int32)
+    assert python_result.levels[-1].result.energy.view(np.int32) == np.float32(java_result["final_energy"]).view(np.int32)
     coarse = python_result.levels[0].result
     assert len(coarse.iterations) == 1
     assert coarse.iterations[0].rejected_trials == 11
     assert not coarse.iterations[0].accepted
-    assert np.isnan(coarse.energy)
+    assert coarse.energy.view(np.int32) == np.float32(java_result["coarse_nan_trial_energy"]).view(np.int32)
+    coarse_log = completed.stdout.split("level 2", maxsplit=1)[0]
+    source_initial_match = re.search(r"a: 1\.0\(([^)]+)\)->", coarse_log)
+    assert source_initial_match is not None
+    coarse_delta = np.float32(coarse.energy - np.float32(source_initial_match.group(1)))
+    source_relative_change = np.float32(coarse_delta / coarse.energy)
+    assert coarse.iterations[0].relative_change.view(np.int32) == source_relative_change.view(np.int32)
+    assert coarse_log.count("trial transform:") == coarse.iterations[0].rejected_trials
+    np.testing.assert_array_equal(coarse.transform, np.asarray(initial, np.float32))
+    assert " (E:" not in coarse_log
+    fine_log = completed.stdout.split("level 2", maxsplit=1)[1]
+    assert fine_log.count("trial transform:") == sum(
+        iteration.rejected_trials + int(iteration.accepted)
+        for iteration in python_result.levels[-1].result.iterations
+    )
+    assert fine_log.count(" (E:") == sum(
+        iteration.accepted for iteration in python_result.levels[-1].result.iterations
+    )
 
 
 def test_pyramid_registration_levels_one_is_source_noop() -> None:

@@ -22,17 +22,18 @@ supplied source's actual `updateShapeRegistration(..., "rigid", ...)` and
 `registerShapesPyramid()` entry points. Its launcher checks hashes for the
 selected VandyCRUISE Java classes before compiling. On the committed
 asymmetric synthetic RAS memberships and atlas shapes, Python matches the
-source method's final six float32 transform parameters and final line-search
-lambda exactly.
+source method's final six float32 transform parameters, final line-search
+lambda, and final energy exactly. At scale 4, it also matches the source
+trace's initial energy, final rejected NaN-trial energy, relative change,
+unchanged transform handoff, and 11 rejected trials. At scale 2, the harness
+counts the same trial and accepted updates as the Python iteration history.
 
 The coarse level has zero gradient and Hessian for this small phantom. The
-source takes its 11 rejected NaN trials before advancing to scale 2. Python
-preserves the unchanged coarse transform and rejection count, but currently
-reports a NaN coarse-level energy where the Java path produces a finite
-decreased energy while evaluating NaN coordinates. Thus this evidence does
-not yet validate per-level energies, relative-change values, or complete
-optimizer state. P18ck remains Started until those intermediate states are
-reconciled and the broader suite is rerun.
+source produces NaN parameter trials, but its comparison-based `Numerics`
+clamping maps those coordinates to a finite edge interpolation. Python now
+reproduces that behavior for rejected energy evaluations. This is a synthetic
+actual-method comparison; it does not establish full TOADS segmentation or
+MaCRUISE workflow equivalence.
 
 ## Validation
 
@@ -40,10 +41,10 @@ reconciled and the broader suite is rerun.
   `pytest -q tests/test_toads_registration_sampling.py::test_pyramid_registration_matches_actual_vandycruise_entry_point` —
   **1 passed**.
 - Focused registration module:
-  `pytest -q tests/test_toads_registration_sampling.py` — **22 passed**.
-- Alignment-startup regressions:
-  `pytest -q tests/test_toads_alignment_startup.py` — **6 passed**.
+- Combined registration and alignment-startup modules:
+  `pytest -q tests/test_toads_registration_sampling.py tests/test_toads_alignment_startup.py` —
+  **28 passed**.
+- No full-suite claim is made yet for the latest source-semantics change.
 - These focused checks are synthetic source comparisons. They do not validate
   full TOADS segmentation, the full MaCRUISE workflow, or real MRI data.
-- The most recent full suite predates this change; no full-suite claim is made
-  for this report.
+- The full suite is pending after this change.
