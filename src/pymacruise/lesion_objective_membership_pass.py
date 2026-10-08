@@ -4,8 +4,10 @@ This composes the selected LesionTOADS interior update for OBJECT, LESION,
 BLACKHOLE, OUTMASK, MASK, and OUTLIER class families.
 Images and statistical estimation are upstream: inputs here are fixed energy,
 shape, similarity, and membership maps. Every interior class must be active
-(positive shape) so this slice does not emulate Java's stale ``energy[k]``
-value for a shape-skipped class.
+(positive shape) in the safe default mode. ``source_faithful=True`` also
+preserves the selected Java scan's class-energy accumulation across voxels and
+its zero-shape skip behavior, including the stale energy value used by the
+objective after a class is skipped.
 Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``. This
 source-selected membership/objective slice uses fixed maps and excludes
 statistics estimation and unsupported skipped-shape cases.
@@ -67,6 +69,7 @@ def run_lesion_toads_objective_membership_pass(
     prior_coefficient: float,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
+    source_faithful: bool = False,
 ) -> LesionObjectiveMembershipPass:
     """Run one fixed-input, source-ordered OBJECT/LESION/BH/OUTMASK pass.
 
@@ -74,8 +77,12 @@ def run_lesion_toads_objective_membership_pass(
     interior x/y/z coordinates and ascending classes, mutating the working
     memberships in place so later voxels observe earlier updates. Exactly one
     BLACKHOLE and OUTMASK class and at most one LESION class are supported;
-    only direct and prior relations are supported. All classes must have
-    positive shape at every interior voxel.
+    only direct and prior relations are supported. By default, all classes
+    must have positive shape at every interior voxel. With
+    ``source_faithful=True``, zero-shape classes are skipped as in the source;
+    their membership is set to zero while their energy accumulator retains
+    its previous value. The source also accumulates class and auxiliary
+    energies over the full x/y/z scan before using them in the objective.
 
     ``class_data_terms`` contains each class's raw ``num`` term,
     ``lesion_data_terms``/``black_hole_data_terms`` contain the auxiliary
@@ -128,6 +135,8 @@ def run_lesion_toads_objective_membership_pass(
     )
     if any(not np.isfinite(array).all() for array in finite_arrays):
         raise ValueError("all map, prior, and similarity inputs must be finite")
+    if not isinstance(source_faithful, (bool, np.bool_)):
+        raise ValueError("source_faithful must be boolean")
     if np.any(smooth_prior < 0) or np.any(atlas_prior < 0):
         raise ValueError("smoothing_priors and shape_priors must be nonnegative")
     smooth = np.float32(smoothing)
@@ -138,7 +147,10 @@ def run_lesion_toads_objective_membership_pass(
         raise ValueError("smoothing and prior_coefficient must be finite and nonnegative")
     if not np.isfinite(zero_value) or zero_value < 0 or not np.isfinite(infinity_value) or infinity_value < 0:
         raise ValueError("zero and infinity must be finite and nonnegative")
-    if np.any(shapes[1:-1, 1:-1, 1:-1] <= np.float32(0.0)):
+    interior_shapes = shapes[1:-1, 1:-1, 1:-1]
+    if np.any(interior_shapes < np.float32(0.0)) or (
+        not source_faithful and np.any(interior_shapes == np.float32(0.0))
+    ):
         raise ValueError("all interior classes must be active with strictly positive shape values")
 
     lesion_class = max((k for k, kind in enumerate(types) if kind in {"LESION", "BLACKHOLE"}), default=-1)
@@ -148,11 +160,21 @@ def run_lesion_toads_objective_membership_pass(
     lesion_energy = np.zeros(spatial, dtype=np.float32)
     black_hole_energy = np.zeros(spatial, dtype=np.float32)
     denominator_map = np.zeros(spatial, dtype=np.float32)
+    class_energy_accumulator = np.zeros(classes, dtype=np.float32)
+    lesion_energy_accumulator = np.float32(0.0)
+    black_hole_energy_accumulator = np.float32(0.0)
 
     for neighborhood in iter_lesion_toads_six_face_neighborhoods(current, lesion, black_hole):
         x, y, z = neighborhood.coordinate
         denominator = np.float32(0.0)
         for k, class_type in enumerate(types):
+            if source_faithful and shapes[x, y, z, k] == np.float32(0.0):
+                # The source's ``if (shape[k] > 0)`` skips the update but its
+                # following ``else`` zeros this class membership. energy[k]
+                # is a method-local accumulator and is not reset per voxel.
+                current[x, y, z, k] = np.float32(0.0)
+                class_energy[x, y, z, k] = class_energy_accumulator[k]
+                continue
             raw_class = np.float32(class_data[x, y, z, k])
             raw_lesion = np.float32(lesion_data[x, y, z]) if class_type in {"LESION", "BLACKHOLE"} else np.float32(0.0)
             raw_black_hole = np.float32(black_hole_data[x, y, z]) if class_type == "BLACKHOLE" else np.float32(0.0)
@@ -260,13 +282,37 @@ def run_lesion_toads_objective_membership_pass(
                 denominator = np.float32(denominator + auxiliary_sum)
             denominator = np.float32(denominator + membership)
 
-            class_energy[x, y, z, k] = class_energy_value
+            if source_faithful:
+                class_energy_accumulator[k] = np.float32(
+                    class_energy_accumulator[k] + class_energy_value
+                )
+                class_energy[x, y, z, k] = class_energy_accumulator[k]
+            else:
+                class_energy[x, y, z, k] = class_energy_value
             if class_type in {"LESION", "BLACKHOLE"}:
-                lesion_energy[x, y, z] = lesion_energy_value
+                if source_faithful:
+                    lesion_energy_accumulator = np.float32(
+                        lesion_energy_accumulator + lesion_energy_value
+                    )
+                    lesion_energy[x, y, z] = lesion_energy_accumulator
+                else:
+                    lesion_energy[x, y, z] = lesion_energy_value
             if class_type == "BLACKHOLE":
-                black_hole_energy[x, y, z] = black_hole_energy_value
+                if source_faithful:
+                    black_hole_energy_accumulator = np.float32(
+                        black_hole_energy_accumulator + black_hole_energy_value
+                    )
+                    black_hole_energy[x, y, z] = black_hole_energy_accumulator
+                else:
+                    black_hole_energy[x, y, z] = black_hole_energy_value
 
         denominator_map[x, y, z] = denominator
+        if source_faithful:
+            # Java uses the method-local auxiliary accumulators for every
+            # voxel's objective term, even where the matching class was
+            # skipped because its shape is zero.
+            lesion_energy[x, y, z] = lesion_energy_accumulator
+            black_hole_energy[x, y, z] = black_hole_energy_accumulator
         if denominator > np.float32(0.0):
             for k, class_type in enumerate(types):
                 current[x, y, z, k] = np.float32(current[x, y, z, k] / denominator)

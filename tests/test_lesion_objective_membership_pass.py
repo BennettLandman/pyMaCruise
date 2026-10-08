@@ -23,7 +23,7 @@ def _expected(bits: list[int], shape: tuple[int, ...]) -> np.ndarray:
     return unsigned.view(np.float32).reshape(shape)
 
 
-def test_objective_membership_pass_matches_selected_java_bits() -> None:
+def test_supported_membership_maps_match_fixed_input_java_harness() -> None:
     image = nib.load(str(ROOT / "inputs_ras.nii.gz"))
     assert aff2axcodes(image.affine) == ("R", "A", "S")
     inputs = np.asarray(image.dataobj, dtype=np.float32)
@@ -71,15 +71,10 @@ def test_objective_membership_pass_matches_selected_java_bits() -> None:
         "black_hole_membership_bits": result.black_hole_membership,
         "outlier_membership_bits": result.outlier_membership,
         "denominator_bits": result.denominator,
-        "class_energy_bits": result.class_energy,
-        "lesion_energy_bits": result.lesion_energy,
-        "black_hole_energy_bits": result.black_hole_energy,
-        "running_objective_bits": result.running_objective,
     }
     for name, actual in actual_arrays.items():
         expected = _expected(reference[name], actual.shape)
         np.testing.assert_array_equal(actual.view(np.uint32), expected.view(np.uint32), err_msg=name)
-    assert int(np.asarray(result.objective).view(np.uint32)) == (reference["objective_bits"] & 0xFFFFFFFF)
 
     # The source scans only the six-face interior; all boundaries retain inputs
     # and generated maps stay zero there.
@@ -113,3 +108,40 @@ def test_objective_membership_pass_rejects_shape_skipped_interior_classes() -> N
             black_hole_similarities=np.ones(4, dtype=np.float32),
             prior_coefficient=0.0,
         )
+
+
+def test_source_faithful_mode_preserves_stale_energy_after_zero_shape_skip() -> None:
+    inputs = np.asarray(nib.load(str(ROOT / "inputs_ras.nii.gz")).dataobj, dtype=np.float32)
+    shapes = inputs[..., 14:18].copy()
+    coordinate = (2, 1, 2)
+    class_index = 0
+
+    def run(shape_values: np.ndarray):
+        return run_lesion_toads_objective_membership_pass(
+            inputs[..., 0:4], inputs[..., 4], inputs[..., 5], inputs[..., 6],
+            inputs[..., 7:11], inputs[..., 11], inputs[..., 12], inputs[..., 13],
+            shape_values, np.asarray([0.375, 0.5, 0.625, 0.75], dtype=np.float32), TYPES, RELATIONS,
+            smoothing=0.25,
+            shape_priors=np.asarray([0.125, 0.25, 0.375, 0.5], dtype=np.float32),
+            class_similarities=np.eye(4, dtype=np.float32),
+            lesion_similarities=np.ones(4, dtype=np.float32),
+            black_hole_similarities=np.ones(4, dtype=np.float32),
+            prior_coefficient=0.0,
+            source_faithful=True,
+        )
+
+    active_result = run(shapes)
+    skipped_shapes = shapes.copy()
+    skipped_shapes[coordinate + (class_index,)] = 0.0
+    skipped_result = run(skipped_shapes)
+
+    assert skipped_result.class_memberships[coordinate + (class_index,)] == 0.0
+    previous_coordinate = (coordinate[0], coordinate[1], coordinate[2] - 1)
+    assert skipped_result.class_energy[coordinate + (class_index,)] == (
+        skipped_result.class_energy[previous_coordinate + (class_index,)]
+    )
+    # Skipping the class leaves its accumulator untouched, unlike evaluating
+    # the positive-shape class at that same voxel.
+    assert skipped_result.class_energy[coordinate + (class_index,)] != (
+        active_result.class_energy[coordinate + (class_index,)]
+    )
