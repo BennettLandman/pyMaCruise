@@ -318,6 +318,7 @@ def register_toads_alignment_startup(
         initial_transform=tuple(float(v) for v in setup.transform),
         registered_classes=registered_classes,
         max_iterations=setup.max_iterations,
+        subsample_factor=setup.subsample_factor,
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
     )

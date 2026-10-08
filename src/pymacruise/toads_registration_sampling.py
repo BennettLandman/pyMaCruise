@@ -1082,19 +1082,24 @@ def register_toads_atlas_rigid_pyramid(
     initial_transform: tuple[float, float, float, float, float, float],
     registered_classes: ArrayLike | None = None,
     max_iterations: int = 50,
+    subsample_factor: int = 2,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
-    source_faithful: bool = True,
+    source_faithful: bool = False,
 ) -> ToadsRigidRegistrationPyramidResult:
     """Run exact-membership rigid registration on source pyramid levels.
 
     Membership and atlas arrays are independently downsampled from their
     native grids. Full-resolution image/template centers are retained while
-    each coarse-grid level uses its source scale. The selected source method
-    does not optimize a scale-1 level. It also evaluates every registered
-    class across each coarse image grid, so this wrapper uses full-grid class
-    bounds at each level rather than fixed-transform support boxes.
+    each coarse-grid level uses its source scale. The selected
+    ``MultipleToadDeformableAtlas`` source method does not optimize a scale-1
+    level, scans every second coarse-grid voxel from offset zero, and uses the
+    raw gradient divided once by the prior norm. That last detail differs
+    from the separate ``MultipleToadAtlas`` implementation. Full-grid class
+    bounds are used at every level rather than fixed-transform support boxes.
     """
+    if not isinstance(subsample_factor, (int, np.integer)) or subsample_factor < 1:
+        raise ValueError("subsample_factor must be a positive integer")
     mem = np.asarray(memberships, dtype=np.float32)
     shapes = np.asarray(atlas_shapes, dtype=np.float32)
     if mem.ndim != 4 or shapes.ndim != 4:
@@ -1124,6 +1129,7 @@ def register_toads_atlas_rigid_pyramid(
             energy_tolerance=energy_tolerance,
             minimum_lambda=minimum_lambda,
             source_faithful=source_faithful,
+            subsample=int(subsample_factor),
             scale=level.scale,
             image_center_xyz=image_center,
             template_center_xyz=template_center,

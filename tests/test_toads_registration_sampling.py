@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import nibabel as nib
@@ -538,9 +539,9 @@ def test_pyramid_registration_runs_scales_and_hands_transform_between_levels() -
     for left, right in zip(result.levels, repeated.levels, strict=True):
         np.testing.assert_array_equal(left.initial_transform, right.initial_transform)
         np.testing.assert_array_equal(left.result.transform, right.result.transform)
-        assert left.result.energy == right.result.energy
+        np.testing.assert_equal(left.result.energy, right.result.energy)
         assert len(left.result.iterations) <= 2
-        assert np.isfinite(left.result.energy)
+    assert np.isfinite(result.levels[-1].result.energy)
 
 
 def test_pyramid_registration_matches_selected_java_reference() -> None:
@@ -561,6 +562,12 @@ def test_pyramid_registration_matches_selected_java_reference() -> None:
         template_resolutions_mm=(0.9, 1.1, 1.3),
         initial_transform=initial,
         max_iterations=2,
+        # This selected-helper reference exercises its independently
+        # transcribed all-voxel/MultipleToadAtlas coefficient convention.
+        # The actual VandyCRUISE method uses offset-zero step-two sampling and
+        # the MultipleToadDeformableAtlas gradient path tested below.
+        subsample_factor=1,
+        source_faithful=True,
     )
 
     assert [level.scale for level in result.levels] == [4, 2]
@@ -599,6 +606,59 @@ def test_pyramid_registration_matches_selected_java_reference() -> None:
                 expected_iteration["rejected_trials"]
                 + int(expected_iteration["accepted"])
             )
+
+
+def test_pyramid_registration_matches_actual_vandycruise_entry_point(tmp_path: Path) -> None:
+    fixture_dir = TOADS_REGISTRATION_PYRAMID_FIXTURE
+    memberships_image = nib.load(fixture_dir / "memberships.nii.gz")
+    atlas_image = nib.load(fixture_dir / "atlas_shapes.nii.gz")
+    memberships = np.asanyarray(memberships_image.dataobj, dtype=np.float32)
+    atlas = np.asanyarray(atlas_image.dataobj, dtype=np.float32)
+    assert nib.aff2axcodes(memberships_image.affine) == ("R", "A", "S")
+    assert nib.aff2axcodes(atlas_image.affine) == ("R", "A", "S")
+    mem_path = tmp_path / "memberships-f32le.bin"
+    atlas_path = tmp_path / "atlas-f32le.bin"
+    memberships.tofile(mem_path)
+    atlas.tofile(atlas_path)
+    image_spacing = memberships_image.header.get_zooms()[:3]
+    atlas_spacing = atlas_image.header.get_zooms()[:3]
+    initial = (0.04, -0.025, 0.015, 0.03, -0.02, 0.01)
+    command = [
+        str(Path(__file__).parent / "java_reference" / "run_toads_pyramid_actual_registration_reference.sh"),
+        str(mem_path), str(atlas_path),
+        *(str(value) for value in memberships.shape[:3]),
+        *(str(value) for value in atlas.shape[:3]),
+        str(memberships.shape[3]),
+        *(str(float(value)) for value in image_spacing),
+        *(str(float(value)) for value in atlas_spacing),
+        "3", "2", *(str(value) for value in initial),
+    ]
+    completed = subprocess.run(command, check=True, text=True, capture_output=True)
+    java_result = json.loads(next(line for line in completed.stdout.splitlines() if line.startswith("{")))
+    assert java_result["source"].endswith("registerShapesExactPyramid()")
+
+    python_result = register_toads_atlas_rigid_pyramid(
+        memberships,
+        atlas,
+        levels=3,
+        image_resolutions_mm=tuple(float(value) for value in image_spacing),
+        template_resolutions_mm=tuple(float(value) for value in atlas_spacing),
+        initial_transform=initial,
+        registered_classes=np.asarray((False, True, True)),
+        max_iterations=2,
+    )
+    np.testing.assert_array_equal(
+        np.asarray(java_result["transform_bits"], dtype=np.int32),
+        python_result.transform.view(np.int32),
+        err_msg=("actual VandyCRUISE pyramid source differs from the Python port; source trace:\n"
+                 + completed.stdout),
+    )
+    assert np.int32(java_result["lambda_bits"]) == python_result.levels[-1].result.iterations[-1].lambda_value.view(np.int32)
+    coarse = python_result.levels[0].result
+    assert len(coarse.iterations) == 1
+    assert coarse.iterations[0].rejected_trials == 11
+    assert not coarse.iterations[0].accepted
+    assert np.isnan(coarse.energy)
 
 
 def test_pyramid_registration_levels_one_is_source_noop() -> None:
