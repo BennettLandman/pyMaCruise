@@ -1,14 +1,29 @@
 # TOADS, SPECTRE, and BET implementation plan
 
-**Status as of 2026-10-06:** P18 remains in progress. P34's six-stage base
-workflow now runs and converges on the synthetic brain-resolution case, but
-P34 remains Started pending source-output comparison and the agreed numerical
-acceptance. The user-supplied brain mask
-decision removes BET/SPECTRE skull stripping from the runtime contract; it does
-not establish algorithmic equivalence to either tool. The owner has selected
-native T1 RAS space for the Python TOADS path. This is a deliberate working-
-space deviation from historical V3, whose selected BET branch also ran
-SPECTRE affine registration/resampling before TOADS.
+**Status as of 2026-10-08:** The restartable seven-stage P34 base workflow
+completes on the brain-resolution synthetic grid; both TOADS passes converge,
+and same-settings resume verifies all stage outputs. A fresh selected-Java
+TGDM run from the current workflow's exact core inputs passes all three
+surface gates. The source-faithful refinement replay localizes seven label
+differences to the upstream outer-field threshold crossings; this is not an
+independent MATLAB refinement comparison. P34 is complete for synthetic
+orchestration/output/restart; P37 source-composite equivalence remains open.
+P18 remains in progress because the broader selected-source method inventory,
+atlas-to-input physical alignment, and recorded Dura intermediate deviations
+are not fully closed. See the [current base workflow report](reports/base-workflow-seven-stage-brain-resolution-2026-10-08.md),
+[current-run TGDM report](reports/base-workflow-current-run-java-tgdm-2026-10-08.md),
+and the [main plan](../plan.md).
+
+The user-supplied brain-mask decision removes BET/SPECTRE skull stripping from
+the runtime contract; it does not establish algorithmic equivalence to either
+tool. The owner selected native T1 RAS space for the Python TOADS path. This
+is a deliberate working-space deviation from historical V3, whose selected
+BET branch also ran SPECTRE affine registration/resampling before TOADS.
+
+The detailed substage notes below preserve the validation scope and state at
+the time each source slice was recorded. For current workflow status, use the
+opening status above and the main plan rather than treating historical
+"remaining/open" sentences in old substage reports as current blockers.
 
 ## Selected implementation decisions
 
@@ -379,8 +394,10 @@ The nested full-profile and folded-cortex tests pass. The full suite passed
 [`docs/reports/full-pytest-2026-09-30-p18-dura-tgdm.md`](reports/full-pytest-2026-09-30-p18-dura-tgdm.md).
 The folded final segmentation and surface metrics meet the agreed thresholds;
 four voxel signs and the measured intermediate-field differences remain
-documented. P18 remains Started because TOADS evolution, registration
-optimization, and full end-to-end equivalence remain open.
+documented. At that earlier Dura-wrapper milestone, P18 remained Started
+because later TOADS evolution and registration work had not yet been
+validated. Current synthetic workflow evidence is summarized at the top of
+this document; full composite equivalence remains open under P37.
 
 ### Completed substage: Dura wrapper output-mask application
 
