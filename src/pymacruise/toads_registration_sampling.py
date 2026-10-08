@@ -1104,6 +1104,7 @@ def register_toads_atlas_rigid_pyramid(
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
     source_faithful: bool = False,
+    allow_nonfinite_trials: bool = False,
 ) -> ToadsRigidRegistrationPyramidResult:
     """Run exact-membership rigid registration on source pyramid levels.
 
@@ -1115,6 +1116,11 @@ def register_toads_atlas_rigid_pyramid(
     raw gradient divided once by the prior norm. That last detail differs
     from the separate ``MultipleToadAtlas`` implementation. Full-grid class
     bounds are used at every level rather than fixed-transform support boxes.
+    By default, nonfinite trial transforms are rejected to keep a degenerate
+    coarse level from poisoning the finer-scale handoff. Set
+    ``allow_nonfinite_trials=True`` to reproduce the Java edge-interpolation
+    behavior exactly; some degenerate inputs then accept a NaN transform and
+    the historical Java code fails at the next pyramid scale.
     """
     if not isinstance(subsample_factor, (int, np.integer)) or subsample_factor < 1:
         raise ValueError("subsample_factor must be a positive integer")
@@ -1147,7 +1153,7 @@ def register_toads_atlas_rigid_pyramid(
             energy_tolerance=energy_tolerance,
             minimum_lambda=minimum_lambda,
             source_faithful=source_faithful,
-            allow_nonfinite_trials=True,
+            allow_nonfinite_trials=allow_nonfinite_trials,
             subsample=int(subsample_factor),
             scale=level.scale,
             image_center_xyz=image_center,

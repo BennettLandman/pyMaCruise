@@ -45,8 +45,8 @@ def test_registered_startup_runs_all_three_source_scales_at_four_levels() -> Non
 
     assert [level.scale for level in result.registration.levels] == [8, 4, 2]
     coarsest, middle, finest = result.registration.levels
-    # The selected-source line search keeps the initial transform when its
-    # scale-8 energy and relative change are nonfinite; later scales still run.
+    # The default safe mode rejects nonfinite trial transforms at scale 8,
+    # keeping the initial transform available for the finer-scale handoff.
     assert coarsest.result.transform.shape == (6,)
     np.testing.assert_array_equal(coarsest.result.transform, coarsest.initial_transform)
     assert np.isnan(coarsest.result.energy)

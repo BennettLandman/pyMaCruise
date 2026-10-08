@@ -255,6 +255,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="rigid atlas updates after template refresh (selected Java default: 1)",
     )
     toads.add_argument("--registration-max-iterations", type=int, default=5)
+    toads.add_argument(
+        "--source-faithful-nonfinite-registration-trials",
+        action="store_true",
+        help=("allow Java-style edge interpolation for NaN registration trials; "
+              "degenerate inputs may produce a NaN transform and fail at the next pyramid scale"),
+    )
     toads.add_argument("--padding", type=int, default=10)
     toads.add_argument("--maximum-iterations", type=int, default=50)
     toads.add_argument("--convergence-threshold", type=float, default=1e-4)
@@ -937,6 +943,7 @@ def main(argv: list[str] | None = None) -> int:
             levels=args.registration_levels,
             max_iterations=args.registration_iterations,
             refinement_iterations=args.post_refresh_registration_iterations,
+            allow_nonfinite_trials=args.source_faithful_nonfinite_registration_trials,
             modality=args.modality,
             padding=args.padding,
             relation_limit=args.relation_limit,

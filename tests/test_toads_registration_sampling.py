@@ -647,6 +647,7 @@ def test_pyramid_registration_matches_actual_vandycruise_entry_point(tmp_path: P
         initial_transform=initial,
         registered_classes=np.asarray((False, True, True)),
         max_iterations=2,
+        allow_nonfinite_trials=True,
     )
     np.testing.assert_array_equal(
         np.asarray(java_result["transform_bits"], dtype=np.int32),

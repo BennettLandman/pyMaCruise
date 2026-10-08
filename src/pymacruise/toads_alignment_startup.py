@@ -250,6 +250,7 @@ def register_toads_alignment_startup(
     max_iterations: int = 50,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    allow_nonfinite_trials: bool = False,
 ) -> ToadsAlignmentRegistration:
     """Run the selected exact-membership rigid pyramid from startup state.
 
@@ -321,6 +322,7 @@ def register_toads_alignment_startup(
         subsample_factor=setup.subsample_factor,
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
+        allow_nonfinite_trials=allow_nonfinite_trials,
     )
     return ToadsAlignmentRegistration(startup, setup, registration)
 
@@ -339,6 +341,7 @@ def register_toads_from_atlas_assets(
     relation_limit: int = 3,
     energy_tolerance: float = 1e-6,
     minimum_lambda: float = 1e-3,
+    allow_nonfinite_trials: bool = False,
     progress_callback: Callable[[str], None] | None = None,
 ) -> ToadsAtlasAlignmentRun:
     """Wire descriptor assets through startup and initial rigid registration.
@@ -387,6 +390,7 @@ def register_toads_from_atlas_assets(
         max_iterations=max_iterations,
         energy_tolerance=energy_tolerance,
         minimum_lambda=minimum_lambda,
+        allow_nonfinite_trials=allow_nonfinite_trials,
     )
     if progress_callback is not None:
         progress_callback("initial rigid atlas registration complete")
