@@ -71,7 +71,7 @@ does not claim parity with those excluded skull-stripping stages.
 
 ## Completed substeps
 
-### P39a: intensity and centroid initialization (reopened)
+### Completed substep P39a: selected intensity normalization and centroid initialization
 
 The initial robust-span implementation and its 2026-09-28 full-suite entry
 are superseded: source audit of `AlgorithmLesionToads` confirmed that the
@@ -89,8 +89,12 @@ convenience composition computes centroids on the uncropped full grid; exact
 wrapper call order uses the separate APIs with the crop adapter in between.
 Zero ordinary or centroid spans are rejected with `ValueError`, while Java
 would propagate NaN/infinity; this invalid-input deviation is explicit.
-P39a remains open until a full-suite report covers the corrected code.
-See `tests/data/synthetic/lesion_toads_preprocessing/README.md`.
+The latest full repository run covers this corrected implementation: **1,230
+passed, 0 failed, 0 skipped, 11 expected RAS warnings in 1,607.32 seconds**
+on tested commit `c17d2c47c94fb5dc80d2d215890b3fa92d853df4`, with a 13.364 GB
+peak sampled RSS. See the [full-suite report](reports/full-pytest-2026-10-07-plus-resume-versioning.md)
+and `tests/data/synthetic/lesion_toads_preprocessing/README.md`. P39a is now
+closed; this does not imply full LesionTOADS equivalence.
 
 ### P39b: descriptor prior parsing
 
