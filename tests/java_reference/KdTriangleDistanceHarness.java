@@ -26,6 +26,7 @@ public final class KdTriangleDistanceHarness {
         for(int i=6;i<a.length;i++) {
             int face=Integer.parseInt(a[i]); int at=3*face;
             IntersectorTriangle tri=new IntersectorTriangle(mesh.getCoordinateIndex(at),mesh.getCoordinateIndex(at+1),mesh.getCoordinateIndex(at+2),face,mesh);
+            for(int warmup=0;warmup<12000;warmup++) tri.distance(query);
             double distance=tri.distance(query); Point3f p=edu.jhu.ece.iacl.algorithms.graphics.locator.kdtree.KdTriangle.getLastIntersectionPoint();
             out.putInt(face).putDouble(distance).putFloat(p.x).putFloat(p.y).putFloat(p.z);
         }

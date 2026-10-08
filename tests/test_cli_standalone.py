@@ -210,8 +210,11 @@ def test_surface_and_thickness_cli_match_public_apis_on_committed_phantoms(tmp_p
         "--inner-output", measured_inner_path,
     )
     measured_inner = read_legacy_vtk(measured_inner_path)
+    # The VTK writer stores RAS coordinates at ten significant digits. The
+    # source-faithful JIST query converts those coordinates to Point3f float32,
+    # so the direct mesh and CLI round trip can differ by a few 1e-6 mm.
     for field_name, expected_values in expected_surface_thickness.inner_surface.point_data.items():
         np.testing.assert_allclose(
-            measured_inner.point_data[field_name], expected_values, rtol=0, atol=1e-8
+            measured_inner.point_data[field_name], expected_values, rtol=0, atol=5e-6
         )
     assert f"nonzero_vertices={expected_surface_thickness.nonzero_vertex_count}" in stdout

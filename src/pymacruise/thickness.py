@@ -24,9 +24,9 @@ from dataclasses import dataclass
 
 import nibabel as nib
 import numpy as np
-from scipy.spatial import cKDTree
 
 from pymacruise.image_io import normalize_image_to_ras
+from pymacruise.jist_intersector import JistSurfaceTree
 from pymacruise.surfaces import SurfaceMesh
 
 
@@ -158,29 +158,8 @@ def _nearest_surface_points(
     points: np.ndarray,
     mesh: SurfaceMesh,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Exact closest-point queries using centroid-tree conservative pruning."""
-    triangles = mesh.vertices[mesh.faces]
-    centroids = triangles.mean(axis=1)
-    radii = np.linalg.norm(triangles - centroids[:, None, :], axis=2).max(axis=1)
-    maximum_radius = float(radii.max())
-    tree = cKDTree(centroids)
-    _seed_distance, seed_indices = tree.query(points, k=1)
-    closest = np.empty_like(points, dtype=np.float64)
-    distances = np.empty(len(points), dtype=np.float64)
-    face_indices = np.empty(len(points), dtype=np.int64)
-    for index, point in enumerate(points):
-        seed = int(seed_indices[index])
-        seed_point, seed_squared = _closest_points_on_triangles(
-            point, triangles[seed : seed + 1]
-        )
-        upper_bound = float(np.sqrt(seed_squared[0]))
-        candidate_ids = tree.query_ball_point(point, upper_bound + maximum_radius + 1e-12)
-        candidates, squared = _closest_points_on_triangles(point, triangles[candidate_ids])
-        local = int(np.argmin(squared))
-        closest[index] = candidates[local]
-        distances[index] = np.sqrt(squared[local])
-        face_indices[index] = int(candidate_ids[local])
-    return closest, distances, face_indices
+    """Run the source-faithful JIST triangle tree on RAS millimetre points."""
+    return JistSurfaceTree(mesh.vertices, mesh.faces).query_many(points)
 
 
 def closest_point_thickness(
@@ -196,11 +175,13 @@ def closest_point_thickness(
     If a central surface is supplied, its point data also project the mean
     thickness from the nearest inner triangle vertex, matching the source.
     """
-    inner_to_outer_points, distance_inner_to_outer, _ = _nearest_surface_points(
-        inner.vertices, outer
+    inner_tree = JistSurfaceTree(inner.vertices, inner.faces)
+    outer_tree = JistSurfaceTree(outer.vertices, outer.faces)
+    inner_to_outer_points, distance_inner_to_outer, _ = outer_tree.query_many(
+        inner.vertices
     )
-    _return_points, distance_outer_to_inner, _ = _nearest_surface_points(
-        inner_to_outer_points, inner
+    _return_points, distance_outer_to_inner, _ = inner_tree.query_many(
+        inner_to_outer_points
     )
     mean_thickness = (distance_inner_to_outer + distance_outer_to_inner) / 2.0
     inner_data = dict(inner.point_data)
@@ -215,8 +196,8 @@ def closest_point_thickness(
 
     central_with_data: SurfaceMesh | None = None
     if central is not None:
-        closest_on_inner, distance_to_inner, triangle_ids = _nearest_surface_points(
-            central.vertices, inner
+        closest_on_inner, distance_to_inner, triangle_ids = inner_tree.query_many(
+            central.vertices
         )
         triangle_vertices = inner.faces[triangle_ids]
         distances_to_vertices = np.linalg.norm(

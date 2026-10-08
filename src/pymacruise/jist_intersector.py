@@ -1,10 +1,8 @@
 """Python reproduction of the selected JIST ``KdTree`` traversal ordering.
 
-This module is intentionally kept separate from the fast geometric locator in
-``thickness.py``. It reproduces the JIST surface-area split and Java priority
-queue ordering for source-tie queries. Point-to-triangle distances still use
-the shared geometric kernel; source comparison determines whether its float32
-ordering is sufficient before this path is connected to production.
+This implements the selected JIST ``KdTree`` surface-area split, Java
+priority-queue ordering, float32 ``KdTriangle.distance`` arithmetic, and
+float32 projected points used by the closest-point thickness operation.
 """
 
 from __future__ import annotations
@@ -13,10 +11,8 @@ from dataclasses import dataclass, field
 import math
 
 import numpy as np
-from numba import njit
 
 
-@njit(cache=True)
 def _jist_triangle_distance_point(point, p1, p2, p3):
     """Float32 transcription of the selected Java ``KdTriangle.distance``."""
     zero = np.float32(0.0)
@@ -206,7 +202,7 @@ class _Box:
 
 
 class JistSurfaceTree:
-    """Selected JIST SAH triangle tree with its closest-triangle query order."""
+    """Selected JIST SAH triangle tree and Java-compatible closest-point order."""
 
     def __init__(self, vertices: np.ndarray, faces: np.ndarray, *, max_depth: int = 13):
         points = np.asarray(vertices, dtype=np.float32)

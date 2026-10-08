@@ -1,7 +1,15 @@
 {
+  "centroid_tree_baseline": {
+    "metrics": {
+      "central_to_inner_face_mismatches": 932,
+      "inner_to_outer_face_mismatches": 569,
+      "max_outer_to_inner_distance_error_mm": 0.04567677132434289
+    },
+    "status": "historical approximate locator; retained for regression context, not used by production thickness API"
+  },
   "face_order_diagnostics": {
     "central": {
-      "central_nearest_vertex_index_mismatches": 11,
+      "central_nearest_vertex_index_mismatches": 0,
       "java_python_selected_face_mismatches": 932,
       "maximum_distance_difference_mm": 2.4620326599666953e-07,
       "mismatches_where_java_face_is_highest_face_within_1e-6_mm_tie": 507,
@@ -45,47 +53,47 @@
   "limitations": [
     "This validates the selected mesh overload on committed Java IsoSurfaceOnGrid output meshes; it holds mesh extraction fixed and does not validate the complete workflow.",
     "The selected wrapper's serialized VTK/NIfTI output adapters are not exercised.",
-    "The production API comparison still fails: Java and Python choose different equidistant outer faces at a folded-surface tie, producing a 0.0457 mm return-distance difference. A separate Python JIST-tree prototype now reproduces the exact Java tree structure and reduces this to a 0.000533 mm return-distance error and one central nearest-vertex mismatch (0.1227 mm projected-thickness difference). The prototype remains disconnected from production pending exact queue-tie behavior and runtime validation."
+    "The exact source tree/query path increases runtime over the former centroid-tree locator; brain-resolution runtime and peak memory remain to be measured."
   ],
   "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner.java mesh overload and its selected SurfaceIntersector/KdTree sources. Minimal EmbeddedSurface, ThicknessSolver, JIST progress, image-only overload, and unused Jama import stubs support compilation; source thickness methods are compiled unchanged.",
   "metrics": {
-    "all_physical_fields_pass": false,
-    "central_nearest_inner_vertex_index_mismatches": 11,
-    "comparison_pass": false,
+    "all_physical_fields_pass": true,
+    "central_nearest_inner_vertex_index_mismatches": 0,
+    "comparison_pass": true,
     "max_absolute_field_difference": {
-      "central.distance_central_to_inner_mm": 2.6732265467899197e-07,
-      "central.distance_inner_to_outer_mm": 0.12268431107104583,
-      "central.distance_to_inner_vertex_mm": 0.04023482297991965,
-      "central.nearest_inner_vertex_index": 40.0,
-      "inner.distance_inner_to_outer_mm": 3.0276107132465313e-07,
-      "inner.distance_outer_to_inner_mm": 0.04567677132434289,
-      "inner.mean_thickness_mm": 0.022838362207048934
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 2.032333039636569e-07,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
     },
     "maximum_physical_field_error_gate_mm": 0.001,
     "mean_absolute_field_difference": {
-      "central.distance_central_to_inner_mm": 3.993784974913956e-08,
-      "central.distance_inner_to_outer_mm": 0.0002042213439197844,
-      "central.distance_to_inner_vertex_mm": 5.323530382609896e-05,
-      "central.nearest_inner_vertex_index": 0.035924232527759635,
-      "inner.distance_inner_to_outer_mm": 5.5757693687312286e-08,
-      "inner.distance_outer_to_inner_mm": 2.1310253047748053e-05,
-      "inner.mean_thickness_mm": 1.0658900585468921e-05
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 3.8842688840521996e-08,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
     },
-    "nearest_vertex_indices_exact": false
+    "nearest_vertex_indices_exact": true
   },
-  "python_jist_tree_port_prototype": {
+  "python_jist_tree_port": {
     "metrics": {
-      "central_nearest_vertex_index_mismatches": 1,
-      "central_to_inner_face_mismatches": 219,
-      "inner_to_outer_face_mismatches": 119,
-      "max_central_nearest_vertex_distance_error_mm": 0.008260011672973633,
-      "max_central_projected_thickness_error_mm": 0.1226841461804069,
-      "max_central_surface_distance_error_mm": 1.1820394263395428e-07,
-      "max_inner_to_outer_distance_error_mm": 2.3284663974720843e-07,
-      "max_mean_inner_thickness_error_mm": 0.0002663482583340482,
-      "max_outer_to_inner_distance_error_mm": 0.0005325912763507468
+      "central_nearest_vertex_index_mismatches": 0,
+      "central_to_inner_face_mismatches": 0,
+      "inner_to_outer_face_mismatches": 0,
+      "max_central_nearest_vertex_distance_error_mm": 0.0,
+      "max_central_projected_thickness_error_mm": 0.0,
+      "max_central_surface_distance_error_mm": 0.0,
+      "max_inner_to_outer_distance_error_mm": 0.0,
+      "max_mean_inner_thickness_error_mm": 0.0,
+      "max_outer_to_inner_distance_error_mm": 0.0
     },
-    "status": "isolated prototype; not connected to production thickness API",
+    "status": "connected to production thickness API; exact selected-source match on these committed meshes",
     "tree_builds": {
       "inner": {
         "java_node_count": 17707,
@@ -108,6 +116,14 @@
   },
   "synthetic_only": true,
   "tie_diagnostic": {
+    "centroid_baseline_outer_distance_mm": 3.6100893372086746,
+    "centroid_baseline_outer_hit_ras_mm": [
+      19.424655066252395,
+      6.299778533343712,
+      19.575344933747605
+    ],
+    "centroid_baseline_return_distance_from_java_hit_mm": 3.5518578093569455,
+    "centroid_baseline_selected_outer_face": 3830,
     "inner_vertex_index": 1050,
     "java_outer_distance_mm": 3.61008938411892,
     "java_outer_hit_ras_mm": [
@@ -116,15 +132,7 @@
       20.42465591430664
     ],
     "java_return_distance_mm": 3.5518576959594244,
-    "java_selected_outer_face": 4086,
-    "python_outer_distance_mm": 3.6100893372086746,
-    "python_outer_hit_ras_mm": [
-      19.424655066252395,
-      6.299778533343712,
-      19.575344933747605
-    ],
-    "python_return_distance_from_java_hit_mm": 3.5518578093569455,
-    "python_selected_outer_face": 3830
+    "java_selected_outer_face": 4086
   },
   "title": "Selected ClosestPointThicknessForInner versus Python thickness API"
 }
