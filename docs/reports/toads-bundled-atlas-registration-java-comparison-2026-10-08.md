@@ -10,6 +10,7 @@ Scope: selected VandyCRUISE actual rigid pyramid method using the bundled 11-cla
   --limit-gb 16 --interval-seconds 1 --report-interval-seconds 30 -- \
   ./.venv/bin/python scripts/compare_toads_actual_atlas_registration.py \
     --max-iterations 50 \
+    --verify-full-startup \
     --output-dir build/toads-actual-atlas-registration-50iter-2026-10-08
 ```
 
@@ -21,7 +22,8 @@ The script loads the repository atlas, prepares the committed synthetic `(172,21
 - Eleven atlas classes; startup membership grid `(167,207,160,11)` and shape-prior grid `(172,216,164,11)`.
 - At scales 8, 4, and 2, Python naturally stops after 12, 7, and 9 optimizer iterations, respectively; no 50-iteration cap is reached. All three stop with `energy_tolerance` and finite transforms.
 - Python's accepted updates and total line-search trials match Java at each scale: 11/46, 6/30, and 9/35. The terminal transform is bit-exact.
-- Peak sampled RSS: **1.140 GB** under a 16 GB watchdog.
+- The public atlas-startup wrapper then completed registered template refresh, post-refresh registration (one iteration), segmentation constructor initialization, and initial statistics/relation state. The initial-registration transform stayed bit-exact; post-refresh transform and all checked membership, shape-prior, variance, similarity, relation, boundary-distance, and closest-label arrays were finite. Constructor grid: `(167,208,163)`.
+- Peak sampled RSS for registration plus full startup: **2.388 GB** under a 16 GB watchdog.
 - Reproducibility outputs: `comparison.json`, `java-harness.log`, and raw harness arrays under the requested output directory. The report records T1, brain-mask, and atlas-descriptor SHA-256 hashes.
 
-This is synthetic actual-atlas registration evidence with natural convergence. It does not validate full TOADS evolution, the two-pass MaCRUISE composite, real MRI, or atlas-to-subject biological alignment. It adds no selected Java source lines to the coarse coverage estimate.
+This is synthetic actual-atlas startup evidence with natural registration convergence. The wrapper stops before its first TOADS thinning/segmentation iteration; the post-refresh registration is intentionally limited to one iteration. This does not validate full TOADS evolution, the two-pass MaCRUISE composite, real MRI, or atlas-to-subject biological alignment. It adds no selected Java source lines to the coarse coverage estimate.

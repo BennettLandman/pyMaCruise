@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
 import subprocess
@@ -15,6 +16,7 @@ import numpy as np
 from pymacruise.toads_alignment_startup import (
     prepare_toads_alignment_startup,
     register_toads_alignment_startup,
+    register_toads_from_atlas_assets,
 )
 from pymacruise.toads_atlas import (
     load_toads_atlas,
@@ -53,6 +55,11 @@ def main() -> int:
         type=int,
         default=1,
         help="registration iterations per level; 1 gives a bounded source-comparison slice",
+    )
+    parser.add_argument(
+        "--verify-full-startup",
+        action="store_true",
+        help="also run the bundled-atlas wrapper through post-registration constructor state",
     )
     args = parser.parse_args()
     if args.max_iterations < 1:
@@ -193,6 +200,60 @@ def main() -> int:
         "max_iterations_per_level": args.max_iterations,
         "python_source_faithful_nonfinite_trials": False,
     }
+    if args.verify_full_startup:
+        expected_transform_bits = python_bits
+        del startup, atlas_data, intensity_priors, shapes, python_result
+        gc.collect()
+        stages: list[str] = []
+        full_startup = register_toads_from_atlas_assets(
+            t1,
+            brain_mask,
+            atlas.descriptor,
+            levels=4,
+            max_iterations=args.max_iterations,
+            padding=10,
+            background_ratio=0.0,
+            refinement_iterations=1,
+            relation_limit=3,
+            progress_callback=stages.append,
+        )
+        full_transform_bits = (
+            full_startup.alignment.registration.transform.view(np.int32).tolist()
+        )
+        if full_transform_bits != expected_transform_bits:
+            raise AssertionError(
+                "full wrapper startup changed the initial registration transform"
+            )
+        scientific_arrays = {
+            "initial_memberships": full_startup.segmentation_initialization.memberships,
+            "transformed_shape_priors": full_startup.transformed_shape_priors,
+            "class_standard_deviations": full_startup.initial_variances.standard_deviations,
+            "image_variance_weights": full_startup.initial_image_variance.image_variance_weights,
+            "centroid_similarity": full_startup.initial_centroid_similarity.similarity,
+            "relation_map": full_startup.relation_state.relation.relation_map,
+            "boundary_distances": full_startup.relation_state.boundary_distances,
+            "closest_labels": full_startup.relation_state.closest_labels,
+        }
+        nonfinite_arrays = [
+            name
+            for name, values in scientific_arrays.items()
+            if not np.isfinite(np.asarray(values)).all()
+        ]
+        if nonfinite_arrays:
+            raise AssertionError(
+                f"nonfinite selected startup products: {nonfinite_arrays}"
+            )
+        report["full_startup"] = {
+            "stage_callbacks": stages,
+            "initial_registration_transform_bit_exact": True,
+            "post_refresh_transform_finite": bool(
+                np.isfinite(full_startup.post_refresh_registration.final_transform).all()
+            ),
+            "constructor_segmentation_shape": list(
+                full_startup.segmentation_constructor.segmentation.shape
+            ),
+            "finite_startup_products": sorted(scientific_arrays),
+        }
     report_path = output_dir / "comparison.json"
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

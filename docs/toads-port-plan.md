@@ -8,7 +8,7 @@ coarse-to-fine registration method also matches on both an asymmetric fixture
 and a larger 48³ folded-cortex fixture. The bundled 11-class atlas on the
 synthetic brain-resolution T1/mask also converges naturally at registration
 scales 8/4/2 within the 50-iteration limit; Python/Java iteration counts,
-line-search traces, and final transform match at 1.140 GB peak RSS. The full
+line-search traces, and final transform match. The full startup through template refresh, post-refresh registration, constructor, statistics, and relation initialization peaks at 2.388 GB RSS. The full
 suite passes **1,501 tests** under the 16 GB watchdog. The source-faithful
 refinement replay localizes seven
 label differences to upstream outer-field threshold crossings, but this is not
