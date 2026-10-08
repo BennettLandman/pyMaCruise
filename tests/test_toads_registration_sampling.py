@@ -664,6 +664,9 @@ def test_pyramid_registration_matches_actual_vandycruise_entry_point(tmp_path: P
     coarse_log = completed.stdout.split("level 2", maxsplit=1)[0]
     source_initial_match = re.search(r"a: 1\.0\(([^)]+)\)->", coarse_log)
     assert source_initial_match is not None
+    source_trial_energies = re.findall(r"\)->\(([^)]+)\)", coarse_log)
+    assert len(source_trial_energies) == coarse.iterations[0].rejected_trials
+    assert coarse.energy.view(np.int32) == np.float32(source_trial_energies[-1]).view(np.int32)
     coarse_delta = np.float32(coarse.energy - np.float32(source_initial_match.group(1)))
     source_relative_change = np.float32(coarse_delta / coarse.energy)
     assert coarse.iterations[0].relative_change.view(np.int32) == source_relative_change.view(np.int32)
