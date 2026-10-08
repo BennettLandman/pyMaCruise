@@ -1,0 +1,80 @@
+{
+  "fixture": {
+    "coordinate_storage": "RAS millimetres rounded to Java Point3f float32",
+    "mesh_counts": {
+      "central": {
+        "faces": 6120,
+        "vertices": 3062
+      },
+      "inner": {
+        "faces": 4384,
+        "vertices": 2194
+      },
+      "outer": {
+        "faces": 8136,
+        "vertices": 4070
+      }
+    },
+    "path": "tests/data/synthetic/jist_surface_comparison",
+    "synthetic_only": true
+  },
+  "limitations": [
+    "This validates the selected mesh overload on Lewiner-generated input meshes, not JIST-generated meshes; the latter are a separately measured substitution.",
+    "The selected wrapper's serialized VTK/NIfTI output adapters and full pipeline are not exercised.",
+    "The overall comparison fails: Java and Python choose different equidistant outer faces at an exact folded-surface tie, producing a 0.0457 mm return-distance difference. The central projection also has 21 nearest-triangle/vertex selection differences and up to 0.307 mm projected-thickness difference. Java uses float32 triangle arithmetic plus source KD traversal ordering; Python uses float64 geometry and centroid-tree ordering. This report records the unresolved source-ordering deviation; it is not hidden by the looser surface-position tolerances."
+  ],
+  "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner.java mesh overload and its selected SurfaceIntersector/KdTree sources. Minimal EmbeddedSurface, ThicknessSolver, JIST progress, image-only overload, and unused Jama import stubs support compilation; source thickness methods are compiled unchanged.",
+  "metrics": {
+    "all_physical_fields_pass": false,
+    "central_nearest_inner_vertex_index_mismatches": 21,
+    "comparison_pass": false,
+    "max_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 2.1380164660911305e-07,
+      "central.distance_inner_to_outer_mm": 0.3072353278237183,
+      "central.distance_to_inner_vertex_mm": 0.05004293112471547,
+      "central.nearest_inner_vertex_index": 134.0,
+      "inner.distance_inner_to_outer_mm": 2.481802598985894e-07,
+      "inner.distance_outer_to_inner_mm": 0.04567663707427139,
+      "inner.mean_thickness_mm": 0.022838295082013182
+    },
+    "maximum_physical_field_error_gate_mm": 0.001,
+    "mean_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 3.70309591067266e-08,
+      "central.distance_inner_to_outer_mm": 0.00045947450811084374,
+      "central.distance_to_inner_vertex_mm": 0.00012719601944778121,
+      "central.nearest_inner_vertex_index": 0.3432397126061398,
+      "inner.distance_inner_to_outer_mm": 5.5896031282717356e-08,
+      "inner.distance_outer_to_inner_mm": 2.1266529784628184e-05,
+      "inner.mean_thickness_mm": 1.063715442815325e-05
+    },
+    "nearest_vertex_indices_exact": false
+  },
+  "sources": {
+    "closest_point_thickness_for_inner_sha256": "9fc19e8b9caf3defd8278a7dec1dfd417f37b0431f579da4cd17123d662534b6",
+    "intersector_triangle_sha256": "8fee2adf76b6cc74122d1a76914615229fb01fbced3d0ec4694a93907dd54759",
+    "kd_tree_sha256": "155a5e0b2a09ed1cb00a73ec99eff2288f75f6cfad55d26e659e4c72db7207f3",
+    "kd_triangle_sha256": "66ae0741225bd1f57031d6122866ff5940c5975c09a98e0940a1e1810120faf1",
+    "surface_intersector_sha256": "0450c8cbb76770ef4458f9540980748959e0c6ec1c780f3b638173491f92916d"
+  },
+  "synthetic_only": true,
+  "tie_diagnostic": {
+    "inner_vertex_index": 1124,
+    "java_outer_distance_mm": 3.61008938411892,
+    "java_outer_hit_ras_mm": [
+      19.42465591430664,
+      6.299778461456299,
+      20.42465591430664
+    ],
+    "java_return_distance_mm": 3.551857830209496,
+    "java_selected_outer_face": 3717,
+    "python_outer_distance_mm": 3.6100893372086746,
+    "python_outer_hit_ras_mm": [
+      19.424655066252395,
+      6.299778533343712,
+      19.575344933747605
+    ],
+    "python_return_distance_from_java_hit_mm": 3.5518578093569455,
+    "python_selected_outer_face": 3714
+  },
+  "title": "Selected ClosestPointThicknessForInner versus Python thickness API"
+}
