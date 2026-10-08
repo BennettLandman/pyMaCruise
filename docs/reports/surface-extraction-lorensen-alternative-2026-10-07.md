@@ -22,6 +22,10 @@ The JSON output, including per-input SHA-256 digests and all measured values, is
 
 All three meshes are closed, connected genus-zero surfaces under both methods (zero boundary and nonmanifold edges; Euler characteristic 2). Under the owner-confirmed P08 metric, the symmetric sampled vertex-to-triangle mean distances (1.73e-7–1.83e-7 mm) pass the 0.01 mm surface-position threshold; the maximum sampled distances (0.83e-6–1.86e-6 mm) are also below the 1 mm Hausdorff threshold. These are the agreed deterministic vertex samples, not a continuous triangle-to-triangle certificate. Despite effectively coincident vertex positions, mapped face connectivity remains different. Applying the same Python thickness operator to both mesh sets gives mean thickness 3.5587640 mm for JIST and 3.5582182 mm for Lorensen, a delta of **−0.00054585 mm**; P08 does not define a thickness acceptance threshold.
 
+## Focused regression
+
+`./.venv/bin/python -m pytest -q tests/test_jist_surface_lorensen_alternative.py`: **1 passed in 5.22s**. The regression reruns this selected-source synthetic comparison and asserts the agreed P08 sampled surface gates, closed manifold topology, and continued face-connectivity difference. No full suite was run for this report-only comparison.
+
 ## Interpretation and limits
 
 The available scikit-image alternative meets the agreed sampled surface-position tolerances on this phantom, but does not reproduce local face connectivity or eliminate the measured thickness shift. This supports the existing library substitution for the stated geometric tolerance on this case; the connectivity and downstream-measurement differences remain explicit P37 deviations requiring stage-level review. Distances sample vertices against the other mesh's triangles and are not a continuous Hausdorff certificate. This is a synthetic, selected-source comparison, not full-workflow or real-MRI validation. P37 remains open until the production substitution is either replaced with source-compatible triangulation or accepted with downstream evidence and an explicit decision.
