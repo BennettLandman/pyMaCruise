@@ -1,0 +1,47 @@
+{
+  "fixture": {
+    "path": "tests/data/synthetic/jist_surface_comparison",
+    "query_count": 256,
+    "query_groups": {
+      "central_vertices": 64,
+      "inner_vertices": 64,
+      "jittered_inner_vertices": 64,
+      "random_interior_points": 64
+    },
+    "query_input_sha256": "bdb9f0689f4255fec3e5ba7b2b96b109db2cbaad73745f7be81c0b240d1197cf",
+    "query_seed": 20261007,
+    "surfaces": "41^3 folded synthetic signed level sets, extracted with PyMaCRUISE Lewiner",
+    "target": "outer surface triangles after float32 coordinate storage",
+    "triangle_count": 8136,
+    "triangle_input_sha256": "d236bb1fb8c9bd3eae1b01148104d4688c3c5b18fe45eb847c7f3e369b2659f4"
+  },
+  "limitations": [
+    "The Java harness calls the selected KdTriangle source method directly, but scans every triangle instead of reproducing SurfaceIntersector's KD tree traversal.",
+    "This compares the query arithmetic on Python-generated meshes; it does not compare Java/JIST mesh extraction or a complete thickness report.",
+    "The agreed P08 surface tolerances do not define a point-query float arithmetic tolerance; the 1e-5 mm gate is a focused source-comparison tolerance for this fixture."
+  ],
+  "method_scope": "Selected JIST KdTriangle.distance(Point3f), exhaustively queried over target triangles. This isolates point-to-triangle arithmetic; it does not execute the selected SurfaceIntersector KD traversal or complete thickness wrapper.",
+  "metrics": {
+    "all_queries_pass": true,
+    "closest_point_euclidean_error_mm": {
+      "max": 0.000433490605906359,
+      "mean": 2.567023857652182e-06,
+      "p99": 2.6544655664744125e-06
+    },
+    "distance_absolute_error_mm": {
+      "max": 4.568458535914033e-07,
+      "mean": 5.510199882572536e-08,
+      "p99": 2.316073772101743e-07
+    },
+    "max_closest_point_error_gate_mm": 0.001,
+    "max_distance_error_gate_mm": 1e-05
+  },
+  "source": {
+    "bbox_sha256": "3343dde091fe872d145c595357b0459a24cf475953ababd831164cb1d1237676",
+    "harness": "tests/java_reference/KdTriangleDistanceHarness.java",
+    "kdpoint_sha256": "369a25a09282c734c4a7deca08b6150bdbd66e3884c04f5360ef37e1a5c3347d",
+    "kdtriangle_sha256": "66ae0741225bd1f57031d6122866ff5940c5975c09a98e0940a1e1810120faf1"
+  },
+  "synthetic_only": true,
+  "title": "Selected JIST KdTriangle.distance versus Python exact triangle projection"
+}
