@@ -12,6 +12,7 @@ from pymacruise.cli import main
 from pymacruise.lesion_dura_outputs import generate_lesion_dura_removal_outputs
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise import workflow
+from pymacruise import plus_full_workflow as plus_full_workflow_module
 
 
 ROOT = Path(__file__).parent
@@ -425,3 +426,46 @@ def test_workflow_run_config_executes_and_resumes_folded_synthetic_plus(
     resumed = json.loads(run_manifest.read_text(encoding="utf-8"))
     assert resumed["status"] == "complete"
     assert resumed["terminal"] is True
+
+
+def test_plus_full_run_uses_new_preserved_generation_after_code_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    output = tmp_path / "plus-full-code-change"
+    command = _command(t1, flair, mask, maseg, output)
+    assert main(command) == 0
+
+    manifest_path = output / "plus-full-workflow.json"
+    before = json.loads(manifest_path.read_text())
+    old_root = Path(before["stage_root"])
+    old_manifests = {
+        name: Path(record["manifest"]["path"])
+        for name, record in before["stages"].items()
+    }
+    assert before["implementation_signature"]
+    assert old_root == output
+    assert all(path.is_file() for path in old_manifests.values())
+
+    changed_signature = "a" * 64
+    monkeypatch.setattr(
+        plus_full_workflow_module, "_implementation_signature", lambda: changed_signature
+    )
+    assert main([*command, "--resume"]) == 0
+
+    updated = json.loads(manifest_path.read_text())
+    new_root = output / "code-revisions" / changed_signature[:16]
+    assert updated["status"] == "complete"
+    assert updated["previous_implementation_signature"] == before["implementation_signature"]
+    assert updated["implementation_signature"] == changed_signature
+    assert Path(updated["stage_root"]) == new_root
+    assert old_root.is_dir() and all(path.is_file() for path in old_manifests.values())
+    assert all(not record["resumed"] for record in updated["stages"].values())
+    assert all(
+        Path(record["manifest"]["path"]).is_relative_to(new_root)
+        for record in updated["stages"].values()
+    )
+
+    assert main([*command, "--resume"]) == 0
+    resumed = json.loads(manifest_path.read_text())
+    assert all(record["resumed"] for record in resumed["stages"].values())

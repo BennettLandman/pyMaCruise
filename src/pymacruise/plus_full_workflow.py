@@ -59,6 +59,23 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def _implementation_signature(source_root: Path | None = None) -> str:
+    """Fingerprint package code so a resume cannot accept stale stage outputs.
+
+    The plus runner has child workflows whose input and option signatures are
+    stable across implementation edits. A source change therefore needs a
+    fresh output generation while preserving the prior generation for review.
+    """
+    root = Path(source_root) if source_root is not None else Path(__file__).resolve().parent
+    sources = sorted(root.rglob("*.py"))
+    if not sources:
+        raise RuntimeError(f"No Python implementation files found beneath {root}")
+    return hashlib.sha256(json.dumps([
+        {"path": path.relative_to(root).as_posix(), "sha256": _sha256(path)}
+        for path in sources
+    ], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def _file_record(path: Path) -> dict[str, str]:
     if not path.is_file() or path.is_symlink():
         raise FileNotFoundError(f"Missing regular workflow file: {path}")
@@ -187,6 +204,7 @@ def run_plus_full_workflow(
     signature = hashlib.sha256(
         json.dumps(signature_data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     ).hexdigest()
+    implementation_signature = _implementation_signature()
     root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "plus-full-workflow.json"
     if manifest_path.is_symlink():
@@ -197,28 +215,53 @@ def run_plus_full_workflow(
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest.get("run_signature") != signature:
             raise ValueError("Cannot resume plus workflow: inputs or settings differ")
+        previous_implementation = manifest.get("implementation_signature")
+        if previous_implementation == implementation_signature:
+            stage_root = Path(manifest.get("stage_root", root)).resolve()
+            if stage_root != root and root not in stage_root.parents:
+                raise ValueError("Cannot resume plus workflow: stage root escapes output directory")
+        else:
+            # Keep the completed prior generation intact. Child workflows use
+            # fixed manifests and input-only signatures, so a code revision
+            # must run in a new directory instead of silently reusing them.
+            stage_root = root / "code-revisions" / implementation_signature[:16]
+            manifest["previous_implementation_signature"] = previous_implementation
+            manifest["implementation_signature"] = implementation_signature
+            manifest["stage_root"] = str(stage_root)
+            manifest["stages"] = {}
+            manifest["active_stage"] = None
+            manifest["status"] = "running"
+            _write_json(manifest_path, manifest)
     else:
         if resume:
             raise FileNotFoundError(f"Cannot resume; no plus workflow manifest exists: {manifest_path}")
         manifest = {
             **signature_data,
             "run_signature": signature,
+            "implementation_signature": implementation_signature,
+            "stage_root": str(root),
             "status": "running",
             "active_stage": None,
             "stages": {},
         }
+        stage_root = root
         _write_json(manifest_path, manifest)
 
+    stage_root.mkdir(parents=True, exist_ok=True)
+    manifest["implementation_signature"] = implementation_signature
+    manifest["stage_root"] = str(stage_root)
+    _write_json(manifest_path, manifest)
+
     stage_paths = {
-        "preprocessing": root / "preprocessing" / "lesion-preprocessing.json",
-        "crop": root / "crop" / "lesion-crop.json",
-        "initial_alignment": root / "initial_alignment" / "lesion-initial-atlas-alignment.json",
-        "registered_recrop": root / "registered_recrop" / "lesion-registered-recrops.json",
-        "lesion_workflow": root / "lesion_workflow" / "plus-lesion-loop-workflow.json",
-        "dura_outputs": root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
-        "native_dura_transfer": root / "native-dura" / "native-dura-transfer.json",
-        "maseg_cortical_separation": root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
-        "plus_surface_workflow": root / "plus-surface" / "run.json",
+        "preprocessing": stage_root / "preprocessing" / "lesion-preprocessing.json",
+        "crop": stage_root / "crop" / "lesion-crop.json",
+        "initial_alignment": stage_root / "initial_alignment" / "lesion-initial-atlas-alignment.json",
+        "registered_recrop": stage_root / "registered_recrop" / "lesion-registered-recrops.json",
+        "lesion_workflow": stage_root / "lesion_workflow" / "plus-lesion-loop-workflow.json",
+        "dura_outputs": stage_root / "dura-outputs" / "lesion-dura-output-checkpoint.json",
+        "native_dura_transfer": stage_root / "native-dura" / "native-dura-transfer.json",
+        "maseg_cortical_separation": stage_root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
+        "plus_surface_workflow": stage_root / "plus-surface" / "run.json",
     }
     definitions = (
         ("preprocessing", "plus-lesion-input-preparation"),
@@ -243,7 +286,7 @@ def run_plus_full_workflow(
         try:
             if name == "preprocessing":
                 result = run_plus_lesion_preprocessing_checkpoint(
-                    t1, flair, mask, root / name,
+                    t1, flair, mask, stage_root / name,
                     registration_config=registration_config,
                     n4_config=n4_config,
                     resume=child_resume,
@@ -251,13 +294,13 @@ def run_plus_full_workflow(
             elif name == "crop":
                 prior = results["preprocessing"]
                 result = run_plus_lesion_crop_checkpoint(
-                    prior.modalities_path, topology.path, root / name,
+                    prior.modalities_path, topology.path, stage_root / name,
                     padding=crop_padding, resume=child_resume,
                 )
             elif name == "initial_alignment":
                 prior = results["crop"]
                 result = run_plus_lesion_initial_atlas_alignment_checkpoint(
-                    prior.cropped_path, prior.manifest_path, descriptor, root / name,
+                    prior.cropped_path, prior.manifest_path, descriptor, stage_root / name,
                     init_align_iterations=init_align_iterations,
                     pyramid_levels=pyramid_levels,
                     resume=child_resume,
@@ -267,12 +310,12 @@ def run_plus_full_workflow(
                 alignment = results["initial_alignment"]
                 result = run_plus_lesion_registered_recrop_checkpoint(
                     crop.normalized_path, crop.manifest_path, alignment.manifest_path,
-                    descriptor, root / name, resume=child_resume,
+                    descriptor, stage_root / name, resume=child_resume,
                 )
             elif name == "lesion_workflow":
                 recrop = results["registered_recrop"]
                 result = run_plus_lesion_loop_workflow(
-                    recrop.manifest_path, descriptor, root / name,
+                    recrop.manifest_path, descriptor, stage_root / name,
                     iterations=lesion_iterations,
                     first_thinning_limit=first_thinning_limit,
                     first_thinning_volume_ratio=first_thinning_volume_ratio,
@@ -290,17 +333,17 @@ def run_plus_full_workflow(
                 result = run_plus_lesion_dura_output_checkpoint(
                     recrop.manifest_path,
                     loop.registered_loop_manifest,
-                    root / "dura-outputs",
+                    stage_root / "dura-outputs",
                     resume=child_resume,
                 )
             elif name == "native_dura_transfer":
                 dura = results["dura_outputs"]
                 result = run_plus_lesion_native_dura_transfer(
-                    dura.manifest_path, t1, root / "native-dura", resume=child_resume
+                    dura.manifest_path, t1, stage_root / "native-dura", resume=child_resume
                 )
             elif name == "maseg_cortical_separation":
                 result = run_plus_maseg_cortical_checkpoint(
-                    maseg, root / "maseg-cortical-separation", resume=child_resume
+                    maseg, stage_root / "maseg-cortical-separation", resume=child_resume
                 )
             else:
                 native = results["native_dura_transfer"]
@@ -316,7 +359,7 @@ def run_plus_full_workflow(
                     multi_atlas_wm_path=cortical.outputs["Atlas_WM"],
                     multi_atlas_mask_path=cortical.outputs["Atlas_Mask"],
                     brain_mask_path=mask,
-                    output_dir=root / "plus-surface",
+                    output_dir=stage_root / "plus-surface",
                     options=pipeline_options,
                     resume=child_resume,
                 )
