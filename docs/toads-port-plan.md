@@ -507,26 +507,28 @@ phantom, and regeneration details.
    correctly labeled, aligned to the declared RAS reference grid, and meet the
    project Dice/surface tolerances or carry an explicitly accepted deviation.
 
-## Remaining P34 acceptance gaps
+## Remaining source-equivalence gaps after P34 integration
 
 The repository contains source-checked preprocessing, atlas registration,
 membership, topology, thinning/growing, Dura, and selected iteration-control
-operations. It also composes these stages into a restartable six-stage base
-workflow at a 172×216×164 input grid. Both TOADS passes converge (iterations
-39 and 25); all 30 image outputs are finite and RAS, and resume verifies all
-six stages. A compact synthetic Vandy comparison matches 19 memberships,
-registration transforms, and final labels exactly through natural
-convergence. This does not establish source equivalence for the full base
-workflow: selected atlas-registration and wrapper behavior, Dura-stage
-outputs, and downstream CRUISE/refinement products still need same-input
-reference comparison against the agreed metrics.
-
-P34 is **Started**, not blocked at execution. Its remaining blocker is
-acceptance evidence: matched selected-source references and per-stage
-numerical comparisons, with deviations evaluated against P08. See the
-[brain-resolution workflow report](reports/toads-compiled-queue-base-run-2026-10-06.md),
-[compact Java comparison](reports/toads-jama-lu-compact-vandy-iteration-trace-2026-10-06.md),
+operations. P34's restartable base workflow now composes seven checked stages
+on the `(172,216,164)` synthetic brain-resolution grid, including CRUISE,
+source-faithful MaSeg refinement, and scientific surface/thickness products.
+Both TOADS passes naturally converge (iterations 12 and 34) with the previously
+recorded selected-Java terminal ratios. All stage outputs are hashed; all 31
+stage NIfTIs are finite RAS; same-settings resume verifies/skips all seven
+stages. Peak sampled RSS was 8.433 GB for the run and 0.124 GB for resume. See
+the [seven-stage base workflow report](reports/base-workflow-seven-stage-brain-resolution-2026-10-08.md)
 and [P34 row in the main plan](../plan.md#step-by-step-acceptance-table).
+
+This closes P34's synthetic orchestration/output/restart scope, not whole-
+workflow source equivalence. Same-input reference comparisons for the
+remaining composite stages and any numerical deviations are tracked under
+P37, including MaSeg refinement and the documented Lewiner/JIST mesh
+connectivity substitution. Base plus real-MRI validation remains separate.
+Selected standalone/source comparisons remain useful evidence but do not by
+themselves establish full-workflow equivalence. See also the [compact Java
+TOADS comparison](reports/toads-jama-lu-compact-vandy-iteration-trace-2026-10-06.md).
 The P18ae data-term slice is
 described in [its Java comparison report](reports/toads-optimized-likelihood-2026-09-28.md),
 and P18af validates its PSF-bias input primitive in
