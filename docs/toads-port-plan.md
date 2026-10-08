@@ -1,17 +1,21 @@
 # TOADS, SPECTRE, and BET implementation plan
 
-**Status as of 2026-10-08:** The restartable seven-stage P34 base workflow
-completes on the brain-resolution synthetic grid; both TOADS passes converge,
-and same-settings resume verifies all stage outputs. A fresh selected-Java
-TGDM run from the current workflow's exact core inputs passes all three
-surface gates. The source-faithful refinement replay localizes seven label
-differences to the upstream outer-field threshold crossings; this is not an
-independent MATLAB refinement comparison. P34 is complete for synthetic
-orchestration/output/restart; P37 source-composite equivalence remains open.
-P18 remains in progress because the broader selected-source method inventory,
-atlas-to-input physical alignment, and recorded Dura intermediate deviations
-are not fully closed. See the [current base workflow report](reports/base-workflow-seven-stage-brain-resolution-2026-10-08.md),
+**Status as of 2026-10-08:** P34's restartable seven-stage brain-resolution
+synthetic base workflow completes; both TOADS passes converge, and same-settings
+resume verifies every stage output. The current run's selected-Java TGDM
+comparison passes all three agreed surface gates. The actual VandyCRUISE
+coarse-to-fine registration method also matches on both an asymmetric fixture
+and a larger 48³ folded-cortex fixture; the full suite passes **1,501 tests**
+under the 16 GB watchdog. The source-faithful refinement replay localizes seven
+label differences to upstream outer-field threshold crossings, but this is not
+an independent MATLAB refinement comparison. P34 is complete for synthetic
+orchestration/output/restart; P37 whole-workflow source parity remains open.
+P18 remains in progress: broad selected-source coverage is incomplete, physical
+atlas-to-input alignment and the historical SPECTRE transform are not in the
+chosen native-RAS contract, and recorded Dura intermediate deviations remain
+unresolved. See the [current base workflow report](reports/base-workflow-seven-stage-brain-resolution-2026-10-08.md),
 [current-run TGDM report](reports/base-workflow-current-run-java-tgdm-2026-10-08.md),
+[folded registration comparison](reports/toads-registration-pyramid-folded-2026-10-08.md),
 and the [main plan](../plan.md).
 
 The user-supplied brain-mask decision removes BET/SPECTRE skull stripping from
