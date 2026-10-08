@@ -32,8 +32,10 @@ grid with 0.9375 mm spacing.
 
 The NIfTI fixtures and their SHA-256 hashes are in
 [`tests/data/synthetic/base_core_source_match`](../../tests/data/synthetic/base_core_source_match).
-The focused regression checks fixture hashes, RAS geometry, and the recorded
-acceptance metrics.
+The focused regression checks fixture hashes and RAS geometry, then
+recomputes Dice and symmetric mesh distances from all three NIfTI pairs and
+checks them against the report and agreed gates. It also checks the
+source-faithful refined-label metrics.
 
 ## Reproduction
 
@@ -65,7 +67,8 @@ javac -d build/java-reference/tgdm-current-core \
 ./.venv/bin/python -m pytest -q tests/test_base_core_current_java_match.py
 ```
 
-The source-faithful Java-surface refinement comparison used
+The focused regression command completed with **2 passed in 52.77s** after
+recomputing mesh metrics. The source-faithful Java-surface refinement comparison used
 `refine_segmentation_by_surfaces(..., source_faithful=True)` on the original
 synthetic MaSeg input and the fresh Java surfaces, then compared against the
 saved Python refinement output. The committed regression records the resulting
