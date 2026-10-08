@@ -162,6 +162,17 @@ def _nearest_surface_points(
     return JistSurfaceTree(mesh.vertices, mesh.faces).query_many(points)
 
 
+def _point3f_distances(point: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """Match ``javax.vecmath.Point3f.distance`` float32 operation order."""
+    query = np.asarray(point, dtype=np.float32)
+    vertices = np.asarray(candidates, dtype=np.float32)
+    delta = np.subtract(query[None, :], vertices, dtype=np.float32)
+    squared = np.multiply(delta, delta, dtype=np.float32)
+    xy = np.add(squared[:, 0], squared[:, 1], dtype=np.float32)
+    xyz = np.add(xy, squared[:, 2], dtype=np.float32)
+    return np.sqrt(xyz, dtype=np.float32)
+
+
 def closest_point_thickness(
     inner: SurfaceMesh,
     outer: SurfaceMesh,
@@ -200,9 +211,11 @@ def closest_point_thickness(
             central.vertices
         )
         triangle_vertices = inner.faces[triangle_ids]
-        distances_to_vertices = np.linalg.norm(
-            central.vertices[:, None, :] - inner.vertices[triangle_vertices], axis=2
-        )
+        distances_to_vertices = np.empty((len(triangle_vertices), 3), dtype=np.float32)
+        for index, (point, triangle) in enumerate(
+            zip(central.vertices, inner.vertices[triangle_vertices], strict=True)
+        ):
+            distances_to_vertices[index] = _point3f_distances(point, triangle)
         nearest_corners = np.argmin(distances_to_vertices, axis=1)
         nearest_inner_vertex = triangle_vertices[np.arange(len(triangle_ids)), nearest_corners]
         central_data = dict(central.point_data)

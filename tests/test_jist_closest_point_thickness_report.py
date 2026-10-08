@@ -32,3 +32,26 @@ def test_selected_closest_point_thickness_report_records_java_match_and_baseline
     assert all(tree["tree_structure_exact"] for tree in port["tree_builds"].values())
     assert port["metrics"]["central_nearest_vertex_index_mismatches"] == 0
     assert port["metrics"]["max_outer_to_inner_distance_error_mm"] == 0
+
+
+def test_brain_resolution_selected_thickness_wrapper_matches_java_exactly():
+    report_path = (
+        Path(__file__).resolve().parents[1]
+        / "docs/reports/jist-closest-point-thickness-brain-resolution-java-comparison-2026-10-07.json"
+    )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["synthetic_only"] is True
+    assert report["metrics"]["comparison_pass"] is True
+    assert report["metrics"]["max_absolute_field_difference"] == {
+        "central.distance_central_to_inner_mm": 0.0,
+        "central.distance_inner_to_outer_mm": 0.0,
+        "central.distance_to_inner_vertex_mm": 0.0,
+        "central.nearest_inner_vertex_index": 0.0,
+        "inner.distance_inner_to_outer_mm": 0.0,
+        "inner.distance_outer_to_inner_mm": 0.0,
+        "inner.mean_thickness_mm": 0.0,
+    }
+    assert report["metrics"]["central_nearest_inner_vertex_index_mismatches"] == 0
+    assert report["fixture"]["mesh_counts"]["inner"]["faces"] == 232328
+    assert report["fixture"]["mesh_counts"]["central"]["vertices"] == 121074
+    assert report["runtime"]["python_process_peak_rss_gb"] < 2.0

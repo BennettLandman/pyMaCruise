@@ -1,0 +1,77 @@
+{
+  "fixture": {
+    "coordinate_storage": "RAS millimetres stored as Java Point3f float32",
+    "levelset_path": "tests/data/synthetic/base_core_source_match/java_reference",
+    "levelset_sha256": {
+      "central": "dd06b1ba10e8fd9a71f032083462d15c355f98be669e15a6c8e4cf7c8a452c22",
+      "inner": "eaaf58e1f2e29f127bcaca03ceb10137d6615a47f63de698442c3c17a8970901",
+      "outer": "e0995817d9a576c769832c09b2f66e062f2a6a34be1d51d8699626f3526f744b"
+    },
+    "mesh_counts": {
+      "central": {
+        "faces": 242144,
+        "vertices": 121074
+      },
+      "inner": {
+        "faces": 232328,
+        "vertices": 116166
+      },
+      "outer": {
+        "faces": 247652,
+        "vertices": 123828
+      }
+    },
+    "mesh_json_sha256": {
+      "central": "650b03918acf1859ec8f52e63d1f1459868912614a4ed81e6dcbcc309c276a45",
+      "inner": "c3efd3846fa0338f495457ebbf82c71ffbd0f9b6ef2166cbbf3f329dfcf93ea7",
+      "outer": "aae30868e6305ee7811d69c1210200b992c03bc780a6329c800d35e45eb434d6"
+    },
+    "mesh_origin": "selected Java IsoSurfaceOnGrid outputs; mesh extraction is held fixed",
+    "mesh_path": "build/java-reference/current-base-surface-comparison/meshes"
+  },
+  "limitations": [
+    "This validates the selected thickness wrapper on held-fixed Java meshes, not the complete workflow or real-MRI behavior.",
+    "Mesh extraction connectivity and upstream stage equivalence remain separate P37 items.",
+    "Python peak RSS is measured for this process; Java heap is capped at 2 GiB, but process RSS is not included."
+  ],
+  "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner mesh overload and selected JIST tree/intersector sources unchanged. One full-grid Java wrapper execution is compared with the production Python API on identical Java IsoSurfaceOnGrid meshes.",
+  "metrics": {
+    "all_physical_fields_pass": true,
+    "central_nearest_inner_vertex_index_mismatches": 0,
+    "comparison_pass": true,
+    "max_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 0.0,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
+    },
+    "maximum_physical_field_error_gate_mm": 0.001,
+    "mean_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 0.0,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
+    },
+    "nearest_vertex_indices_exact": true
+  },
+  "runtime": {
+    "java_heap_cap_gb": 2,
+    "python_api_elapsed_seconds": 473.79370933398604,
+    "python_process_peak_rss_gb": 0.62529536
+  },
+  "sources": {
+    "closest_point_thickness_for_inner_sha256": "9fc19e8b9caf3defd8278a7dec1dfd417f37b0431f579da4cd17123d662534b6",
+    "intersector_triangle_sha256": "8fee2adf76b6cc74122d1a76914615229fb01fbced3d0ec4694a93907dd54759",
+    "kd_tree_sha256": "155a5e0b2a09ed1cb00a73ec99eff2288f75f6cfad55d26e659e4c72db7207f3",
+    "kd_triangle_sha256": "66ae0741225bd1f57031d6122866ff5940c5975c09a98e0940a1e1810120faf1",
+    "surface_intersector_sha256": "0450c8cbb76770ef4458f9540980748959e0c6ec1c780f3b638173491f92916d"
+  },
+  "synthetic_only": true,
+  "title": "Selected JIST closest-point thickness wrapper on synthetic brain-resolution meshes"
+}

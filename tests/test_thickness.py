@@ -14,7 +14,11 @@ from pymacruise.surfaces import (
     transform_surface_ras,
     write_legacy_vtk,
 )
-from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
+from pymacruise.thickness import (
+    _point3f_distances,
+    closest_point_thickness,
+    levelset_subtraction_thickness,
+)
 
 
 THICKNESS_FIXTURES = (
@@ -93,6 +97,27 @@ def test_closest_point_thickness_reports_bidirectional_triangle_distances() -> N
     assert np.mean(central_data["distance_central_to_inner_mm"]) == pytest.approx(1.0, abs=0.08)
     assert np.all(central_data["nearest_inner_vertex_index"] >= 0)
     assert np.all(central_data["nearest_inner_vertex_index"] < len(inner.vertices))
+
+
+def test_point3f_vertex_distance_uses_java_float32_sum_order() -> None:
+    query = np.asarray([17.125, -8.25, 31.5], dtype=np.float64)
+    candidates = np.asarray(
+        [[17.0, -8.0, 31.0], [16.5, -8.125, 31.25], [17.25, -8.5, 31.75]],
+        dtype=np.float64,
+    )
+    q = query.astype(np.float32)
+    v = candidates.astype(np.float32)
+    expected = []
+    for point in v:
+        dx = np.float32(q[0] - point[0])
+        dy = np.float32(q[1] - point[1])
+        dz = np.float32(q[2] - point[2])
+        squared = np.float32(
+            np.float32(np.float32(dx * dx) + np.float32(dy * dy))
+            + np.float32(dz * dz)
+        )
+        expected.append(np.float32(np.sqrt(squared)))
+    np.testing.assert_array_equal(_point3f_distances(query, candidates), expected)
 
 
 def test_surface_normals_are_unit_outward_ras_vectors() -> None:
