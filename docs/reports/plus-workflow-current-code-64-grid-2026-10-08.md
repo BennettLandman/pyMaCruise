@@ -36,6 +36,8 @@ The top-level manifest `build/plus-scaled-grid-current/natural-run-64/plus-full-
 
 The complete set of nested stage manifests contains **72 unique hashed output records**: 62 compressed NIfTIs, 3 VTK meshes, and 7 summaries/provenance files. An independent audit verified every path/hash record across the new stage root, loaded every output NIfTI, and confirmed finite voxels with RAS orientation. It parsed each VTK surface and confirmed finite points, valid triangles, and in-range point indices. The top-level plus workflow records 17 final product links; the downstream surface stage includes inner/central/outer level sets, three RAS-mm surfaces, and thickness volume/metrics.
 
+**Count scope clarification (2026-10-08):** the 72 count above is the principal-output tally (62 NIfTIs, 3 meshes, 7 selected ancillary outputs), not every recursively referenced file. A later recursive audit of all `outputs` and `final_outputs` references verifies 74 unique files in this preserved implementation generation. The current pyramid-source generation verifies 75; the extra path is its Dura output checkpoint manifest. Both generations have 62 finite RAS NIfTIs and 3 surfaces. See the [current-source workflow report](plus-workflow-current-pyramid-source-2026-10-08.md).
+
 ## Restart and tests
 
 The same command and settings were rerun with `--resume` and a stricter 4 GB watchdog. The workflow reported that it verified and resumed the raw-input plus LesionTOADS workflow, exited 0, and peaked at **0.236 GB RSS**.

@@ -18,10 +18,11 @@ This run exercises the full seven-stage synthetic base workflow on the brain-res
   --registration-levels 1 --registration-iterations 1 \
   --post-refresh-registration-iterations 1 --registration-max-iterations 1 \
   --toads-iterations 50 --dura-iterations 1 --crop-edge-width 2 \
-  --ace-diffusion-iterations 1 --gvf-iterations 200 --tgdm-iterations 1
+  --ace-diffusion-iterations 1 --gvf-iterations 200 --tgdm-iterations 1 \
+  --resume
 ```
 
-Exit code was 0 and all seven stage checks passed. Both TOADS loops reached their energy thresholds (not iteration caps): first pass, 12 iterations and terminal ratio `6.96809075e-05`; second pass, 34 iterations and terminal ratio `5.54052858e-05`. The second pass also produced 544,793 changed classification voxels, matching the previous successful run. The run manifest reports all seven stages complete.
+The pre-existing manifest belonged to an older implementation signature. With `--resume`, the runner preserved old attempts and regenerated stages affected by the new signature. Exit code was 0 and all seven stage checks passed. Both TOADS loops reached their energy thresholds (not iteration caps): first pass, 12 iterations and terminal ratio `6.96809075e-05`; second pass, 34 iterations and terminal ratio `5.54052858e-05`. The second pass also produced 544,793 changed classification voxels, matching the previous successful run. The run manifest reports all seven stages complete.
 
 An independent audit verified all **46 stage-output SHA-256 hashes**, loaded all **31 stage NIfTIs** to confirm finite voxel values and RAS orientation, and found the four expected mesh outputs. The 16 GB RSS watchdog sampled a **7.690 GB peak** and did not terminate the run.
 
