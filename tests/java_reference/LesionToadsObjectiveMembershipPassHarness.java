@@ -4,7 +4,8 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 
 /**
- * P39zzzzp selected computeMemberships excerpt: OBJECT + LESION + BLACKHOLE + OUTMASK.
+ * P39 objective membership excerpt: OBJECT + LESION + BLACKHOLE + OUTMASK,
+ * including the selected zero-shape class skip and stale energy behavior.
  * Source SHA-256: 545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99.
  * The synthetic arrays use the same exact binary-fraction fixture generator as
  * tests/data/synthetic/lesion_objective_membership_pass/generate_fixture.py.
@@ -66,13 +67,26 @@ public final class LesionToadsObjectiveMembershipPassHarness {
         float[][][][] mem=memberships();
         float[][][] lesion=scalar(4,5,13,2,16), bh=scalar(5,7,11,2,16), outlier=scalar(6,2,7,1,16);
         float[][][][] data=classVolume(7), shapes=classVolume(14);
+        shapes[2][1][2][0]=0.0f;
+        shapes[2][1][3][1]=0.0f;
+        shapes[2][2][1][2]=0.0f;
+        shapes[2][2][2][3]=0.0f;
         float[][][] lesionData=scalar(11,9,19,3,16), bhData=scalar(12,4,17,2,16), outmaskData=scalar(13,6,15,2,16);
         float[][][][] energy=new float[NX][NY][NZ][K];
         float[][][] lesionEnergy=new float[NX][NY][NZ], bhEnergy=new float[NX][NY][NZ], denMap=new float[NX][NY][NZ];
+        float[] energyState=new float[K]; float lesionEnergyState=0.0f, bhEnergyState=0.0f;
         float total=0.0f; float[][][] running=new float[NX][NY][NZ];
         for(int x=1;x<NX-1;x++)for(int y=1;y<NY-1;y++)for(int z=1;z<NZ-1;z++){
             float den=0.0f;
             for(int k=0;k<K;k++){
+                if(shapes[x][y][z][k]<=0.0f){
+                    // The selected Java loop sets skipped class membership
+                    // to zero after the shape[k] > 0 branch, while energy[k]
+                    // is left at its last value for objective calculation.
+                    mem[x][y][z][k]=0.0f;
+                    energy[x][y][z][k]=energyState[k];
+                    continue;
+                }
                 float num=data[x][y][z][k], numL=0.0f, numB=0.0f, numO=0.0f;
                 if(k==1||k==2)numL=lesionData[x][y][z];
                 if(k==2)numB=bhData[x][y][z];
@@ -115,9 +129,10 @@ public final class LesionToadsObjectiveMembershipPassHarness {
                 e+=0.5f*PRIOR_COEFFICIENT*inv;
                 if(k==1||k==2)lesionE+=0.5f*PRIOR_COEFFICIENT*invL;
                 if(k==2)bhE+=0.5f*PRIOR_COEFFICIENT*invB;
-                if(k==1||k==2)lesionEnergy[x][y][z]=lesionE;
-                if(k==2)bhEnergy[x][y][z]=bhE;
-                energy[x][y][z][k]=e;
+                energyState[k]=e;
+                if(k==1||k==2)lesionEnergyState=lesionE;
+                if(k==2)bhEnergyState=bhE;
+                energy[x][y][z][k]=energyState[k];
                 float classMem=invert(num), lesionMem=0, bhMem=0;
                 if(k==1||k==2)lesionMem=invert(numL);
                 if(k==2)bhMem=invert(numB);
@@ -140,6 +155,8 @@ public final class LesionToadsObjectiveMembershipPassHarness {
                 den+=mem[x][y][z][k];
             }
             denMap[x][y][z]=den;
+            lesionEnergy[x][y][z]=lesionEnergyState;
+            bhEnergy[x][y][z]=bhEnergyState;
             if(den>0.0f){
                 for(int k=0;k<K;k++){
                     mem[x][y][z][k]/=den;
@@ -160,6 +177,10 @@ public final class LesionToadsObjectiveMembershipPassHarness {
     private static String inputDigest() throws Exception {
         MessageDigest md=MessageDigest.getInstance("SHA-256");ByteBuffer b=ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
         float[][][][] mem=memberships(), data=classVolume(7), shapes=classVolume(14);
+        shapes[2][1][2][0]=0.0f;
+        shapes[2][1][3][1]=0.0f;
+        shapes[2][2][1][2]=0.0f;
+        shapes[2][2][2][3]=0.0f;
         float[][][] a=scalar(4,5,13,2,16), c=scalar(5,7,11,2,16), d=scalar(6,2,7,1,16), e=scalar(11,9,19,3,16), f=scalar(12,4,17,2,16), g=scalar(13,6,15,2,16);
         for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++){
             for(int k=0;k<K;k++){put(md,b,mem[x][y][z][k]);}

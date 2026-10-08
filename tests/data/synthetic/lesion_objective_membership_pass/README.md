@@ -12,22 +12,21 @@ asymmetric folded value pattern. Its 18 channels are grouped as follows:
 The Java excerpt harness pins selected
 `LesionToadSegmentation.computeMemberships()` source SHA-256
 `545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99` and
-records bitwise results for the supported membership maps and shared
-denominator. The test checks those maps, the input-data digest, and that all
-six boundary faces are unchanged. The harness energy/objective arrays are not
-source-equivalence evidence: the selected Java method assigns active-class
-energy from each voxel's data term and then adds that voxel's smoothing/prior
-terms; its method-local value is retained only when a zero-shape class skips
-the assignment. The source-faithful Python option and zero-shape regression
-preserve the skip behavior, but a direct Java composite reference for its
-objective remains open.
+records bitwise results for the supported membership maps, denominator,
+effective energy maps, running objective, and final objective. The test checks
+all of these values, the input-data digest, and that all six boundary faces
+are unchanged. The harness follows the selected method's behavior: active
+classes assign energy from the current voxel's data term and add same-voxel
+smoothing/prior contributions; a zero-shape skip zeros membership while
+retaining the prior energy value used in the objective.
 
 All spatial and data-energy arrays are fixed inputs; the harness compares the
 supported interior membership, smoothing, prior, and normalization maps.
 Shape-prior values, similarities, relations, smoothing coefficients, and
-class order are fixed in the test/harness. All classes stay active in this
-fixture. A separate source-faithful regression covers the source's stale
-`energy[k]` value when shape suppresses a class. Unsupported types, input
+class order are fixed in the test/harness. One dependent interior class of
+each type (OBJECT, LESION, BLACKHOLE, OUTMASK) has zero shape, so the
+comparison covers membership clearing and stale energy use for skipped
+classes. Unsupported types, input
 energy construction, shape/topology/distance generation, and full iteration
 or workflow behavior are outside this fixture.
 

@@ -13,7 +13,9 @@ from pymacruise.lesion_objective_membership_pass import run_lesion_toads_objecti
 
 ROOT = Path(__file__).parent / "data" / "synthetic" / "lesion_objective_membership_pass"
 REFERENCE = ROOT / "java_reference.json"
+HARNESS = Path(__file__).parent / "java_reference" / "LesionToadsObjectiveMembershipPassHarness.java"
 SOURCE_SHA = "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+HARNESS_SHA = "bbf086b2d69dc22d95454f43e4fd73d549538f6d8b081ceaa4910ae9794240ab"
 TYPES = ("OBJECT", "LESION", "BLACKHOLE", "OUTMASK")
 RELATIONS = ("direct", "prior", "direct", "prior")
 
@@ -24,6 +26,7 @@ def _expected(bits: list[int], shape: tuple[int, ...]) -> np.ndarray:
 
 
 def test_supported_membership_maps_match_fixed_input_java_harness() -> None:
+    assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == HARNESS_SHA
     image = nib.load(str(ROOT / "inputs_ras.nii.gz"))
     assert aff2axcodes(image.affine) == ("R", "A", "S")
     inputs = np.asarray(image.dataobj, dtype=np.float32)
@@ -71,10 +74,15 @@ def test_supported_membership_maps_match_fixed_input_java_harness() -> None:
         "black_hole_membership_bits": result.black_hole_membership,
         "outlier_membership_bits": result.outlier_membership,
         "denominator_bits": result.denominator,
+        "class_energy_bits": result.class_energy,
+        "lesion_energy_bits": result.lesion_energy,
+        "black_hole_energy_bits": result.black_hole_energy,
+        "running_objective_bits": result.running_objective,
     }
     for name, actual in actual_arrays.items():
         expected = _expected(reference[name], actual.shape)
         np.testing.assert_array_equal(actual.view(np.uint32), expected.view(np.uint32), err_msg=name)
+    assert int(np.asarray(result.objective).view(np.uint32)) == (reference["objective_bits"] & 0xFFFFFFFF)
 
     # The source scans only the six-face interior; all boundaries retain inputs
     # and generated maps stay zero there.
@@ -107,13 +115,14 @@ def test_objective_membership_pass_rejects_shape_skipped_interior_classes() -> N
             lesion_similarities=np.ones(4, dtype=np.float32),
             black_hole_similarities=np.ones(4, dtype=np.float32),
             prior_coefficient=0.0,
+            source_faithful=False,
         )
 
 
 def test_source_faithful_mode_retains_last_energy_after_zero_shape_skip() -> None:
     inputs = np.asarray(nib.load(str(ROOT / "inputs_ras.nii.gz")).dataobj, dtype=np.float32)
     shapes = inputs[..., 14:18].copy()
-    coordinate = (2, 1, 2)
+    coordinate = (2, 1, 3)
     class_index = 0
 
     def run(shape_values: np.ndarray):

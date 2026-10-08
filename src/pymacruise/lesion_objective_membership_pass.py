@@ -4,13 +4,13 @@ This composes the selected LesionTOADS interior update for OBJECT, LESION,
 BLACKHOLE, OUTMASK, MASK, and OUTLIER class families.
 Images and statistical estimation are upstream: inputs here are fixed energy,
 shape, similarity, and membership maps. Every interior class must be active
-(positive shape) in the safe default mode. ``source_faithful=True`` also
+(positive shape) when ``source_faithful=False``. The source-faithful default
 preserves the selected Java scan's zero-shape skip behavior: active classes
 reset their energy from the current data term, while a skipped class retains
 the last value in the method-local energy array for the objective.
 Paper context: Shiee et al. (2010), ``docs/papers/lesion-toads.md``. This
 source-selected membership/objective slice uses fixed maps and excludes
-statistics estimation and unsupported skipped-shape cases.
+statistics estimation and other unsupported class branches.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def run_lesion_toads_objective_membership_pass(
     prior_coefficient: float,
     zero: float = 1.0e-10,
     infinity: float = 1.0e10,
-    source_faithful: bool = False,
+    source_faithful: bool = True,
 ) -> LesionObjectiveMembershipPass:
     """Run one fixed-input, source-ordered OBJECT/LESION/BH/OUTMASK pass.
 
@@ -77,12 +77,12 @@ def run_lesion_toads_objective_membership_pass(
     interior x/y/z coordinates and ascending classes, mutating the working
     memberships in place so later voxels observe earlier updates. Exactly one
     BLACKHOLE and OUTMASK class and at most one LESION class are supported;
-    only direct and prior relations are supported. By default, all classes
-    must have positive shape at every interior voxel. With
-    ``source_faithful=True``, zero-shape classes are skipped as in the source;
-    their membership is set to zero while their energy value retains its
-    previous value. Active class and auxiliary energies start from the current
-    voxel's data terms and receive same-voxel smoothing and prior additions.
+    only direct and prior relations are supported. With
+    ``source_faithful=True`` (the default), zero-shape classes are skipped as
+    in the source; their membership is set to zero while their energy value
+    retains its previous value. Active class and auxiliary energies start from
+    the current voxel's data terms and receive same-voxel smoothing and prior
+    additions.
 
     ``class_data_terms`` contains each class's raw ``num`` term,
     ``lesion_data_terms``/``black_hole_data_terms`` contain the auxiliary

@@ -1,4 +1,4 @@
-"""Create deterministic active-class inputs for the P39zzzzp Java harness."""
+"""Create deterministic inputs, including a zero-shape skip, for Java harness."""
 
 from __future__ import annotations
 
@@ -37,6 +37,13 @@ def make_inputs() -> np.ndarray:
                 values[x, y, z, 11] = _f32((fold * 9) % 19 + 3, 16)
                 values[x, y, z, 12] = _f32((fold * 4) % 17 + 2, 16)
                 values[x, y, z, 13] = _f32((fold * 6) % 15 + 2, 16)
+    # These dependent interior voxels exercise source skips for OBJECT, LESION,
+    # BLACKHOLE, and OUTMASK. Each skipped class is zeroed while method-local
+    # energy values retain the last value assigned by an active class.
+    values[2, 1, 2, 14] = np.float32(0.0)
+    values[2, 1, 3, 15] = np.float32(0.0)
+    values[2, 2, 1, 16] = np.float32(0.0)
+    values[2, 2, 2, 17] = np.float32(0.0)
     return values
 
 
