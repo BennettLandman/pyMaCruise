@@ -1,42 +1,8 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status:** P39 is Started. P39a–P39zzh have validated bounded preparation, registration, membership-formula, spatial-neighborhood, fixed-input smoothing-composition, volume membership sweeps through OBJECT+LESION (including OPTIMIZED_LESION), final classification output, and thinning-frontier initialization, alongside BLACKHOLE prior/distance handling and combined OBJECT+LESION+OUTMASK, BLACKHOLE+OUTMASK, and LESION+BLACKHOLE+OUTMASK smoothing/blending/prior/distance/normalization,
-atlas loading/sampling, registration derivatives, and selected registration
-coefficient slices on synthetic/reference data, as well as LesionTOADS growing
-queue exhaustion with pre-supplied memberships and P39t validates the
-membership update's centroid-similarity setup. P39d/e validate bundled
-compressed-NIfTI handling only; P39k reduces pre-sampled terms and does not
-include atlas sampling, transform optimization, or segmentation. This
-document tracks algorithm scope and source contracts; it does not claim a
-full LesionTOADS port. P39zzn also matches repeated thinning with accepted and
-rejected topology-driven label changes, and P39zzo matches the constrained
-centroid updater with and without field correction; upstream membership
-estimation remains unported. P39zzp also validates the selected weighted
-centroid update for several blend factors, and P39zzq validates the selected
-class/auxiliary variance update with its source branch behavior. P39zzr
-validates selected diagonal-covariance channel weights and fallback behavior,
-P39zzs validates pooled noise standard deviations, and P39zzt validates
-generic centroid update modes. P39zzu validates source OUTLIER suppression in
-the generic class-centroid accumulators, P39zzv validates PowerTable weights
-for optimized CSF/GM/WM centroids, and P39zzw validates ordinary LESION and
-BLACKHOLE centroid routing.
-P39zzx validates its optimized LESION/BLACKHOLE variant and its separate
-PowerTable factor source.
-P39zzy combines the validated categories in one selected `computeCentroids()`
-pass and validates cross-category linked updates.
+**Status as of 2026-10-07: P39 remains Started.** The port now includes selected 13-class LesionTOADS initialization, statistics, membership, thinning, registration, loop control, output routing, and restartable checkpoint adapters, with bounded selected-Java comparisons at method and fixed-state volume level. The corrected zero-shape objective behavior is source-matched against a pinned Java excerpt, and a folded 13-class volume case matches float32 outputs exactly. These component and fixed-state results do not establish a composite Java LesionTOADS segmentation match.
 
-**Integrated workflow status as of 2026-10-06:** P41's `plus-full-run` now
-executes all nine raw-input stages on committed 25³ and 36×45×34 folded RAS
-fixtures. P41v reaches natural LesionTOADS convergence at iteration 5 with
-energy ratio `8.241410796472337e-06` under the default `1e-4` threshold; P42a5
-repeats the run from an isolated installed wheel and verifies restart. The
-wheel and checkout produce identical terminal synthetic segmentations,
-level sets, thickness volumes, meshes, and thickness summaries. Small
-upstream floating-point differences remain between separate runs, and the
-cause is not yet isolated. These results prove restartable synthetic
-composition and convergence, not whole-source LesionTOADS equivalence,
-brain-resolution plus robustness, or real-MRI acceptance. P39 remains Started
-while selected-source behavior and its comparison gates are completed.
+**Integrated synthetic status:** `plus-full-run` completes and resumes all nine stages from T1, FLAIR, user brain mask, MaSeg, and bundled atlas inputs. On the 64×80×64 folded RAS fixture, LesionTOADS converges naturally at iteration 6; surface/thickness products and hash-checked restart are produced. This is Python integration evidence, not whole-source equivalence, brain-resolution plus robustness, or real-MRI validation. Selected Aladin registration is implemented with ANTsPy; optimizer equivalence remains open. BET, SPECTRE, and FreeSurfer are intentionally excluded under the owner-selected brain-mask/native-T1-RAS contract. Whole-workflow source comparison and approved real-data validation remain open.
 
 ## Selected workflow and source
 
