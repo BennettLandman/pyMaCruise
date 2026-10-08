@@ -13,12 +13,11 @@ dependencies = [
     "numba>=0.61,<1",
     "nibabel>=5.2,<6",
     "scipy>=1.10,<2",
-    "scikit-image>=0.22,<1",
 ]
 
 [project.optional-dependencies]
 ants = ["antspyx>=0.6,<0.7"]
-dev = ["pytest>=8,<9", "build>=1.2,<2"]
+dev = ["pytest>=8,<9", "build>=1.2,<2", "scikit-image>=0.22,<1"]
 
 [project.scripts]
 pymacruise = "pymacruise.cli:main"
@@ -28,4 +27,4 @@ pymacruise-lesion-output = "pymacruise.lesion_output_cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-pymacruise = ["data/*.raw.gz"]
+pymacruise = ["data/*.raw.gz", "data/*.json"]

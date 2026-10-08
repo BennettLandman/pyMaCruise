@@ -1665,8 +1665,8 @@ def main(argv: list[str] | None = None) -> int:
             "schema_version": 1,
             "coordinate_frame": "RAS",
             "surface_units": "mm",
-            "mesh_method": "scikit-image Lewiner marching cubes",
-            "mesh_connectivity_deviation": "JIST IsoSurfaceOnGrid connectivity 18 is not reproduced by scikit-image",
+            "mesh_method": "PyMaCRUISE source-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
+            "mesh_connectivity": 18,
             "levelset_thickness": {
                 "method": "absolute inner/outer level-set subtraction",
                 "iso_level": 0.0,
@@ -1695,7 +1695,7 @@ def main(argv: list[str] | None = None) -> int:
                 "iso_level": 0.0,
                 "coordinate_frame": "RAS",
                 "surface_units": "mm",
-                "mesh_method": "scikit-image Lewiner marching cubes",
+                "mesh_method": "PyMaCRUISE source-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
             },
             outputs={**outputs, "provenance": args.provenance},
         )

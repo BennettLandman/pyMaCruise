@@ -294,11 +294,11 @@ def _check_workflow_dependencies(config: WorkflowConfig) -> dict[str, str]:
     """Check importability of core requirements and selected optional N4."""
     dependencies = {
         package: _package_version(package)
-        for package in ("pymacruise", "numpy", "nibabel", "scipy", "scikit-image")
+        for package in ("pymacruise", "numpy", "nibabel", "scipy")
     }
     missing_core = [
         package
-        for package in ("numpy", "nibabel", "scipy", "skimage")
+        for package in ("numpy", "nibabel", "scipy")
         if importlib.util.find_spec(package) is None
     ]
     if missing_core:

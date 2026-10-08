@@ -8,10 +8,10 @@ fixture uses 1.0 × 1.5 × 2.0 mm spacing and a nonzero crop origin; all images
 are RAS-oriented.
 
 The integration test starts from these files and composes crop restoration,
-nested surface extraction, and thickness measurement. It does not execute or
-claim TOADS/LesionTOADS, MaACE/GVF, or full MaCRUISEplus. Surface extraction
-uses scikit-image Lewiner marching cubes; equivalence with JIST
-`IsoSurfaceOnGrid` remains an explicit unresolved risk.
+nested source-derived JIST connectivity-18 surface extraction, and thickness
+measurement. It does not execute or claim TOADS/LesionTOADS, MaACE/GVF, or full
+MaCRUISEplus. Selected-source surface comparisons are reported in
+`docs/reports/jist-connectivity18-case-template-port-2026-10-08.md`.
 
 Regenerate the files by running `make_phantom.py` from the repository root's
 `pymacruise` directory. `SHA256SUMS` records their committed content.

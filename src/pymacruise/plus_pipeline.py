@@ -415,18 +415,10 @@ def extract_plus_surfaces(
 ) -> PlusSurfaceResult:
     """Extract nested meshes from full-grid TGDM level sets.
 
-    This reuses scikit-image Lewiner marching cubes and the complete-affine
-    RAS conversion. Exact mesh equivalence to JIST ``IsoSurfaceOnGrid`` is an
-    explicit, still-open comparison risk.
-
-    The triangulator corresponds to Lewiner et al. (2003), cited in
-    ``docs/papers/marching-cubes.md``. That paper citation applies to the
-    external marching-cubes implementation only; near-zero handling, JIST
-    iso-level/connectivity settings, and the output affine are separate source
-    and PyMaCRUISE conventions. In particular, JIST's selected digital
-    connectivity 18 has no matching scikit-image argument and is not
-    reproduced; Lewiner's topological guarantee does not establish equivalent
-    connectivity, topology, or vertices versus JIST ``IsoSurfaceOnGrid``.
+    This uses the Python-native case table generated from selected JIST
+    ``IsoSurfaceOnGrid`` source and the complete-affine RAS conversion. The
+    case table and direct selected-source comparisons are documented in
+    ``docs/reports/jist-connectivity18-case-template-port-2026-10-08.md``.
     """
     if not isinstance(result, PlusUncroppedTGDMResult):
         raise ValueError("result must be PlusUncroppedTGDMResult")
@@ -470,9 +462,8 @@ def run_plus_post_tgdm_stages(
     computes the selected level-set and closest-point thickness products.
     It does not run TOADS/LesionTOADS, MaACE/GVF, or full MaCRUISEplus.
 
-    The mesh stage uses scikit-image Lewiner marching cubes. Exact equivalence
-    with JIST ``IsoSurfaceOnGrid`` remains an explicit comparison risk; see
-    :func:`extract_plus_surfaces` and ``docs/papers/marching-cubes.md``.
+    The mesh stage uses the source-derived JIST connectivity-18 case table;
+    see :func:`extract_plus_surfaces` and the linked source comparison report.
     """
     level_sets = uncrop_plus_tgdm_outputs(cropped_tgdm, crop_parameters)
     surfaces = extract_plus_surfaces(level_sets)

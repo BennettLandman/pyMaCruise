@@ -3,7 +3,7 @@
 
 This operates on the exact saved inner/central/outer scalar fields in
 ``--core-dir``. It compiles the selected Java IsoSurfaceOnGrid source harness,
-then compares each Java mesh with the production scikit-image Lewiner mesh.
+then compares each Java mesh with the production source-derived 18/6 templates.
 Temporary raw arrays and mesh outputs stay under ``build/``.
 """
 
@@ -23,52 +23,50 @@ from scipy.spatial import cKDTree
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import compare_jist_surface_geometry as reference  # noqa: E402
-from pymacruise.jist_intersector import JistSurfaceTree  # noqa: E402
 from pymacruise.surfaces import extract_levelset_surface  # noqa: E402
 
 
-def compare_meshes(reference_mesh, candidate_mesh, *, max_samples: int = 4096) -> dict[str, object]:
-    """Compare topology exactly and nearest-surface distances on fixed samples."""
+def compare_meshes(reference_mesh, candidate_mesh) -> dict[str, object]:
+    """Compare topology, vertex correspondence, and mapped triangle connectivity."""
     reference_count = len(reference_mesh.vertices)
     candidate_count = len(candidate_mesh.vertices)
-    reference_samples = np.linspace(
-        0, reference_count - 1, min(reference_count, max_samples), dtype=np.int64
+    reference_to_candidate, nearest_indices = cKDTree(candidate_mesh.vertices).query(
+        reference_mesh.vertices
     )
-    candidate_samples = np.linspace(
-        0, candidate_count - 1, min(candidate_count, max_samples), dtype=np.int64
+    candidate_to_reference, reverse_indices = cKDTree(reference_mesh.vertices).query(
+        candidate_mesh.vertices
     )
-    reference_to_candidate = JistSurfaceTree(
-        candidate_mesh.vertices, candidate_mesh.faces
-    ).query_many(reference_mesh.vertices[reference_samples])[1]
-    candidate_to_reference = JistSurfaceTree(
-        reference_mesh.vertices, reference_mesh.faces
-    ).query_many(candidate_mesh.vertices[candidate_samples])[1]
-
-    nearest_indices = cKDTree(candidate_mesh.vertices).query(reference_mesh.vertices)[1]
-    mapped_reference_faces = {
-        tuple(sorted(int(nearest_indices[vertex]) for vertex in face))
-        for face in reference_mesh.faces
+    mapped_reference_faces = nearest_indices[reference_mesh.faces]
+    matching_faces = int(np.count_nonzero(
+        np.all(mapped_reference_faces == candidate_mesh.faces, axis=1)
+    ))
+    unordered_matches = {
+        tuple(sorted(int(vertex) for vertex in face))
+        for face in mapped_reference_faces
     }
     candidate_faces = {
         tuple(sorted(int(vertex) for vertex in face)) for face in candidate_mesh.faces
     }
-    matching_faces = len(mapped_reference_faces & candidate_faces)
+    matching_unordered_faces = len(unordered_matches & candidate_faces)
     all_distances = np.concatenate((reference_to_candidate, candidate_to_reference))
     return {
         "jist_topology": reference.mesh_topology(reference_mesh),
         "python_topology": reference.mesh_topology(candidate_mesh),
-        "triangle_connectivity_after_nearest_vertex_mapping": {
-            "matching_unordered_faces": matching_faces,
+        "vertex_geometry_and_triangle_correspondence": {
+            "all_reference_vertices_map_uniquely": bool(len(set(map(int, nearest_indices))) == reference_count),
+            "all_python_vertices_map_uniquely": bool(len(set(map(int, reverse_indices))) == candidate_count),
+            "matching_ordered_faces": matching_faces,
+            "matching_unordered_faces": matching_unordered_faces,
             "jist_face_count": int(len(reference_mesh.faces)),
             "python_face_count": int(len(candidate_mesh.faces)),
-            "matching_fraction_of_jist_faces": float(
-                matching_faces / len(reference_mesh.faces)
+            "matching_fraction_of_jist_faces": float(matching_unordered_faces / len(reference_mesh.faces)),
+            "symmetric_vertex_to_vertex_distance_mm": {
+                "mean": float(np.mean(all_distances)),
+                "max": float(np.max(all_distances)),
+            },
+            "continuous_corresponding_triangle_distance_bound_mm": float(
+                np.max(all_distances)
             ),
-        },
-        "sampled_symmetric_vertex_to_triangle_distance_mm": {
-            "sample_count_per_direction": int(min(reference_count, max_samples)),
-            "symmetric_mean": float(np.mean(all_distances)),
-            "symmetric_max": float(np.max(all_distances)),
         },
     }
 
@@ -114,6 +112,8 @@ def main() -> None:
     spacing: list[float] | None = None
     for name in ("inner", "central", "outer"):
         image_path = core_dir / f"{name}.nii.gz"
+        if not image_path.exists():
+            image_path = core_dir / f"{name}_level_set.nii.gz"
         image = nib.load(str(image_path))
         if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
             raise ValueError(f"{image_path} is not RAS-oriented")
@@ -160,7 +160,7 @@ def main() -> None:
         "source_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
         "comparison": metrics,
         "limits": [
-            "Vertex-to-triangle distances sample mesh vertices; they do not certify continuous Hausdorff distance.",
+        "If vertex mapping is bijective and every mapped triangle matches, the maximum paired-vertex displacement bounds the continuous distance between corresponding planar triangles.",
             "This is a held-fixed surface-extraction comparison, not whole-workflow equivalence.",
         ],
     }

@@ -13,9 +13,10 @@ on the triangulated central surface as the difference between the inner and
 outer signed-distance level sets there. The selected wrappers port a volume
 level-set subtraction product and a separate closest-point surface measure;
 neither adapter is claimed to reproduce that central-surface equation or the
-paper's measurements. The different JIST-to-Lewiner surface substitution also
-prevents an assumption of equivalent mesh-dependent values. See
-``docs/papers/cruise.md`` for the operation-to-code and validation boundaries.
+paper's measurements. Current production surfaces use selected-source JIST
+18/6 templates; see the source-comparison report for the held-fixed evidence.
+The thickness operator itself remains a separate adapter. See
+``docs/papers/cruise.md`` for operation-to-code and validation boundaries.
 """
 
 from __future__ import annotations
