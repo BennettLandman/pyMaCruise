@@ -1,0 +1,207 @@
+{
+  "fixture": {
+    "coordinate_storage": "RAS millimetres stored as Java Point3f float32",
+    "levelset_path": "/Users/landmaba/dev/mipav/pymacruise/build/base-workflow-2026-10-09-retained-center/stages/cruise-core/attempt-01",
+    "levelset_sha256": {
+      "central": "b62d81326d0317c9d5bb0107535d56f8269936d0af51dde8ae75727c0d83aab8",
+      "inner": "154c87d4ee35df33f9849ed4a51cde8ab0f9eb7878878ee05f77a32251c49a49",
+      "outer": "73e7b22b2628cbd82948c4a696a254310450e50d48d8d4c273adde9b68c2e354"
+    },
+    "mesh_counts": {
+      "central": {
+        "faces": 241448,
+        "vertices": 120726
+      },
+      "inner": {
+        "faces": 231032,
+        "vertices": 115518
+      },
+      "outer": {
+        "faces": 247652,
+        "vertices": 123828
+      }
+    },
+    "mesh_json_sha256": {
+      "central": "c47e02887142ed22c357ebf01eab18d81d6aa4426335ddf912faecea8b39d940",
+      "inner": "29acd3a2b534b82514796117d4437221af7e17ecce036f72d5aa6655e57e169d",
+      "outer": "f13f34ce155c7bfb3b49870ca36841e7d8c932930c8187edd7efc0a23b80fa03"
+    },
+    "mesh_origin": "selected Java IsoSurfaceOnGrid outputs; mesh extraction is held fixed",
+    "mesh_path": "/Users/landmaba/dev/mipav/pymacruise/build/base-workflow-2026-10-09-retained-center/java-jist-surfaces/meshes"
+  },
+  "implementation_commit": "ae7c082",
+  "limitations": [
+    "This validates the selected thickness wrapper on held-fixed Java meshes, not the complete workflow or real-MRI behavior.",
+    "Mesh extraction connectivity and upstream stage equivalence remain separate P37 items.",
+    "Python peak RSS is measured for this process; Java heap is capped at 2 GiB, but process RSS is not included."
+  ],
+  "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner mesh overload and selected JIST tree/intersector sources unchanged. One full-grid Java wrapper execution is compared with the production Python API on identical Java IsoSurfaceOnGrid meshes.",
+  "metrics": {
+    "all_physical_fields_pass": true,
+    "central_nearest_inner_vertex_index_mismatches": 0,
+    "comparison_pass": true,
+    "max_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 0.0,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
+    },
+    "maximum_physical_field_error_gate_mm": 0.001,
+    "mean_absolute_field_difference": {
+      "central.distance_central_to_inner_mm": 0.0,
+      "central.distance_inner_to_outer_mm": 0.0,
+      "central.distance_to_inner_vertex_mm": 0.0,
+      "central.nearest_inner_vertex_index": 0.0,
+      "inner.distance_inner_to_outer_mm": 0.0,
+      "inner.distance_outer_to_inner_mm": 0.0,
+      "inner.mean_thickness_mm": 0.0
+    },
+    "nearest_vertex_indices_exact": true
+  },
+  "runtime": {
+    "java_heap_cap_gb": 2,
+    "python_api_elapsed_seconds": 465.7788397499826,
+    "python_process_peak_rss_gb": 0.60628992,
+    "thickness_watchdog_limit_gb": 4,
+    "thickness_watchdog_peak_sampled_rss_gb": 0.534
+  },
+  "sources": {
+    "closest_point_thickness_for_inner_sha256": "9fc19e8b9caf3defd8278a7dec1dfd417f37b0431f579da4cd17123d662534b6",
+    "intersector_triangle_sha256": "8fee2adf76b6cc74122d1a76914615229fb01fbced3d0ec4694a93907dd54759",
+    "kd_tree_sha256": "155a5e0b2a09ed1cb00a73ec99eff2288f75f6cfad55d26e659e4c72db7207f3",
+    "kd_triangle_sha256": "66ae0741225bd1f57031d6122866ff5940c5975c09a98e0940a1e1810120faf1",
+    "surface_intersector_sha256": "0450c8cbb76770ef4458f9540980748959e0c6ec1c780f3b638173491f92916d"
+  },
+  "surface_comparison": {
+    "central": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 241448,
+        "nonmanifold_edges": 0,
+        "unique_edges": 362172,
+        "vertices": 120726
+      },
+      "python_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 241448,
+        "nonmanifold_edges": 0,
+        "unique_edges": 362172,
+        "vertices": 120726
+      },
+      "vertex_geometry_and_triangle_correspondence": {
+        "all_python_vertices_map_uniquely": true,
+        "all_reference_vertices_map_uniquely": true,
+        "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+        "jist_face_count": 241448,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_ordered_faces": 241448,
+        "matching_unordered_faces": 241448,
+        "python_face_count": 241448,
+        "symmetric_vertex_to_vertex_distance_mm": {
+          "max": 7.1411132864795945e-06,
+          "mean": 1.2524976246295127e-06
+        }
+      }
+    },
+    "inner": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 231032,
+        "nonmanifold_edges": 0,
+        "unique_edges": 346548,
+        "vertices": 115518
+      },
+      "python_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 231032,
+        "nonmanifold_edges": 0,
+        "unique_edges": 346548,
+        "vertices": 115518
+      },
+      "vertex_geometry_and_triangle_correspondence": {
+        "all_python_vertices_map_uniquely": true,
+        "all_reference_vertices_map_uniquely": true,
+        "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+        "jist_face_count": 231032,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_ordered_faces": 231032,
+        "matching_unordered_faces": 231032,
+        "python_face_count": 231032,
+        "symmetric_vertex_to_vertex_distance_mm": {
+          "max": 7.1411132864795945e-06,
+          "mean": 1.2386869324177985e-06
+        }
+      }
+    },
+    "outer": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 247652,
+        "nonmanifold_edges": 0,
+        "unique_edges": 371478,
+        "vertices": 123828
+      },
+      "python_topology": {
+        "boundary_edges": 0,
+        "connected_components": 1,
+        "euler_characteristic": 2,
+        "faces": 247652,
+        "nonmanifold_edges": 0,
+        "unique_edges": 371478,
+        "vertices": 123828
+      },
+      "vertex_geometry_and_triangle_correspondence": {
+        "all_python_vertices_map_uniquely": true,
+        "all_reference_vertices_map_uniquely": true,
+        "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+        "jist_face_count": 247652,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_ordered_faces": 247652,
+        "matching_unordered_faces": 247652,
+        "python_face_count": 247652,
+        "symmetric_vertex_to_vertex_distance_mm": {
+          "max": 7.1411132864795945e-06,
+          "mean": 1.2347631453389678e-06
+        }
+      }
+    }
+  },
+  "surface_source": {
+    "comparison_peak_sampled_rss_gb": 0.535,
+    "grid_shape": [
+      172,
+      216,
+      164
+    ],
+    "harness_sha256": "973263fa3e46408c165ad4c707688f7849b030e4be97e6fd8c3829c2cf119be2",
+    "levelset_float32_c_order_sha256": {
+      "central": "103b9a2a66ef61778f07106f748e14524dc9fc0e913cc78a2bf76a73de481b09",
+      "inner": "564e869d9fea0e4d3c052e72055d7ed21126e29ef70920457df2db1fcc3580a9",
+      "outer": "df50a3634e1de8c13de456a417702cd6eda165fd8739d80f35d4bb65a9ff4a38"
+    },
+    "orientation": "RAS",
+    "source_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
+    "source_sha256": "a323ac5eed8b66ad62a68cd93a6bc7bcf01281453fc6541ee5c4ccc529d40c38",
+    "spacing_mm": [
+      0.9375,
+      0.9375,
+      0.9375
+    ],
+    "watchdog_limit_gb": 8
+  },
+  "synthetic_only": true,
+  "title": "Corrected retained-center base workflow thickness source comparison"
+}
