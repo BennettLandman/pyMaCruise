@@ -1,6 +1,6 @@
 # Labeled folded-cortex TGDM validation
 
-**Implementation commit:** `eb04598` (`Add labeled folded cortex TGDM validation case`); saved-stage datatype correction is included in the follow-up report commit.  
+**TGDM implementation commit:** `eb04598` (`Add labeled folded cortex TGDM validation case`); saved-stage datatype correction is included in the follow-up report commit. **Production ribbon-validation runner/report commit:** `7111e4a` (`Validate folded cortex ribbon with production APIs`).
 **Evidence categories:** synthetic integration passed; full-profile selected Java surface gates passed; no human MRI used.
 
 ## Case and runnable checks
@@ -78,7 +78,7 @@ symmetric mean distance ≤ 0.01 mm, Hausdorff ≤ 1 mm):
 | Inner | 1.000000 | 0.00000014 | 0.000004 | Pass |
 | Outer | 1.000000 | 0.000773 | 0.070323 | Pass |
 
-The selected Java/Python level-set MAE is 2.8e-8 for the signed seed, 1.31e-4
+The production-validator rerun leaves the level-set arrays unchanged. The selected Java/Python level-set MAE is 2.8e-8 for the signed seed, 1.31e-4
 after initial smoothing, 8.39e-6 for initial-inner, 4.73e-4 for central,
 1.25e-4 for central-shrink, 2.43e-7 for final inner, and 4.97e-4 for outer.
 The exact Java/Python stage metrics are in
