@@ -1,0 +1,850 @@
+{
+  "title": "Brain-resolution synthetic base MaCRUISE workflow with full registration and natural TOADS convergence",
+  "run_date": "2026-10-08",
+  "run_commit": "c247857",
+  "implementation_commit": "5a0adcf",
+  "implementation_signature": "351683078aa0f1afc5f5b75269879e003a2a8af79532a02dfefbfdca1f3d7c86",
+  "run_signature": "ea47d9667974e09d022226b44980726625a4f62b4d9861d457fb33e382f51e80",
+  "workflow_scope": "synthetic/native-grid base route; not a full Java-equivalence claim",
+  "manifest_status": "complete",
+  "converged": true,
+  "result_interpretation": "base-stage-run-converged",
+  "source_equivalence_claim": false,
+  "inputs": {
+    "atlas_descriptor": {
+      "path": "data/atlases/cruise-atlas-10obj-toads2008.txt",
+      "sha256": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939"
+    },
+    "brain_mask": {
+      "path": "tests/data/synthetic/base_workflow_brain_resolution/brain-mask.nii.gz",
+      "sha256": "2d617064fbea8e8a5d807165d2567d87a9b40f0d4487078810b25a755ad87a00"
+    },
+    "maseg": {
+      "path": "tests/data/synthetic/base_workflow_brain_resolution/maseg.nii.gz",
+      "sha256": "06cb8f49e12d7966cff025601695b41de9dae5526358ab23b2be7cb4a2631005"
+    },
+    "t1": {
+      "path": "tests/data/synthetic/base_workflow_brain_resolution/t1.nii.gz",
+      "sha256": "ebf945d06cc2519114763c949af0fc1ec88d938677748a41126852ab6782f158"
+    }
+  },
+  "options": {
+    "ace_diffusion_iterations": 1,
+    "crop_edge_width": 2,
+    "dura_iterations": 1,
+    "gvf_iterations": 200,
+    "post_refresh_registration_iterations": 50,
+    "registration_iterations": 50,
+    "registration_levels": 4,
+    "registration_max_iterations": 50,
+    "tgdm_iterations": 1,
+    "toads_iterations": 50
+  },
+  "command": "./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 --interval-seconds 0.5 --report-interval-seconds 60 -- ./.venv/bin/pymacruise base-run --t1 tests/data/synthetic/base_workflow_brain_resolution/t1.nii.gz --brain-mask tests/data/synthetic/base_workflow_brain_resolution/brain-mask.nii.gz --maseg tests/data/synthetic/base_workflow_brain_resolution/maseg.nii.gz --atlas-descriptor data/atlases/cruise-atlas-10obj-toads2008.txt --output-dir build/base-workflow-2026-10-08-natural-registration --registration-levels 4 --registration-iterations 50 --post-refresh-registration-iterations 50 --registration-max-iterations 50 --toads-iterations 50 --dura-iterations 1 --crop-edge-width 2 --ace-diffusion-iterations 1 --gvf-iterations 200 --tgdm-iterations 1",
+  "run_started_local": "2026-10-08 17:02:17 CDT",
+  "run_finished_local": "2026-10-08 20:10:50 CDT",
+  "elapsed_seconds": 11313,
+  "rss_watchdog": {
+    "limit_gb": 16,
+    "peak_sampled_gb": 8.514,
+    "terminated": false
+  },
+  "stages": {
+    "cruise-core": {
+      "status": "complete",
+      "output_count": 13
+    },
+    "dura": {
+      "status": "complete",
+      "output_count": 8
+    },
+    "maseg-refinement": {
+      "status": "complete",
+      "output_count": 3
+    },
+    "n4": {
+      "status": "complete",
+      "output_count": 2
+    },
+    "surface-thickness": {
+      "status": "complete",
+      "output_count": 8
+    },
+    "toads-first": {
+      "status": "complete",
+      "output_count": 6,
+      "toads_stop": {
+        "energy_threshold_reached": true,
+        "iteration_limit_reached": false,
+        "iterations": 11,
+        "terminal_energy_ratio": 8.55285762e-05
+      }
+    },
+    "toads-second": {
+      "status": "complete",
+      "output_count": 6,
+      "toads_stop": {
+        "energy_threshold_reached": true,
+        "iteration_limit_reached": false,
+        "iterations": 48,
+        "terminal_energy_ratio": 5.68501309e-05
+      }
+    }
+  },
+  "output_audit": {
+    "manifest_output_count": 46,
+    "final_output_count": 24,
+    "sha256_and_size_match_manifest": true,
+    "nifti_count": 31,
+    "all_nifti_values_finite": true,
+    "all_nifti_axis_codes": [
+      "R",
+      "A",
+      "S"
+    ]
+  },
+  "surface_thickness_summary": {
+    "coordinate_frame": "RAS",
+    "levelset_thickness": {
+      "crossing_voxel_count": 142549,
+      "iso_level": 0.0,
+      "maximum_mm": 5.301629066467285,
+      "mean_mm": 1.99990589788182,
+      "method": "absolute inner/outer level-set subtraction",
+      "minimum_mm": 0.22115297615528107,
+      "standard_deviation_mm": 0.35562024146686094
+    },
+    "mesh_connectivity": 18,
+    "mesh_method": "PyMaCRUISE source-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
+    "schema_version": 1,
+    "surface_thickness": {
+      "mean_mm": 1.6501923290950367,
+      "method": "symmetric closest-point distance from inner to outer surface",
+      "nonzero_vertex_count": 115516,
+      "standard_deviation_mm": 0.49214968267252523
+    },
+    "surface_units": "mm"
+  },
+  "maseg_refinement_summary": {
+    "changed_voxels": {
+      "central_fill": 843,
+      "inner_wm": 0,
+      "outer_clear": 615939
+    },
+    "command": "segmentation-refine",
+    "output": "build/base-workflow-2026-10-08-natural-registration/stages/maseg-refinement/attempt-01/SEG_refine.nii.gz",
+    "rules": {
+      "central_fill": {
+        "candidate_voxels": 0,
+        "changed_voxels": 843,
+        "sweeps": 2,
+        "threshold_voxels": null,
+        "unresolved_voxels": 150
+      },
+      "central_gm": {
+        "candidate_voxels": 993,
+        "changed_voxels": 0,
+        "sweeps": 0,
+        "threshold_voxels": 0.21333333333333335,
+        "unresolved_voxels": 0
+      },
+      "central_wm": {
+        "candidate_voxels": 0,
+        "changed_voxels": 0,
+        "sweeps": 0,
+        "threshold_voxels": 0.21333333333333335,
+        "unresolved_voxels": 0
+      },
+      "inner_wm": {
+        "candidate_voxels": 1127,
+        "changed_voxels": 0,
+        "sweeps": 1,
+        "threshold_voxels": 0.21333333333333335,
+        "unresolved_voxels": 1127
+      },
+      "outer_central": {
+        "candidate_voxels": 0,
+        "changed_voxels": 0,
+        "sweeps": 0,
+        "threshold_voxels": 0.21333333333333335,
+        "unresolved_voxels": 0
+      },
+      "outer_clear": {
+        "candidate_voxels": 615939,
+        "changed_voxels": 615939,
+        "sweeps": 1,
+        "threshold_voxels": null,
+        "unresolved_voxels": 0
+      },
+      "outer_gm": {
+        "candidate_voxels": 0,
+        "changed_voxels": 0,
+        "sweeps": 0,
+        "threshold_voxels": 0.21333333333333335,
+        "unresolved_voxels": 0
+      }
+    },
+    "schema_version": 1,
+    "source_faithful": true,
+    "spatial_convention": "RAS",
+    "sweeps": {
+      "central_fill": 2,
+      "inner_wm": 1,
+      "outer_clear": 1
+    },
+    "threshold_voxels": {
+      "central_gm": 0.21333333333333335,
+      "central_wm": 0.21333333333333335,
+      "inner_wm": 0.21333333333333335,
+      "outer_central": 0.21333333333333335,
+      "outer_gm": 0.21333333333333335
+    },
+    "unresolved_voxels": {
+      "central_fill": 150,
+      "inner_wm": 1127,
+      "outer_clear": 0
+    }
+  },
+  "resume_check": {
+    "command": "same base-run command and options with --resume",
+    "exit_code": 0,
+    "stages_skipped": [
+      "n4",
+      "toads-first",
+      "dura",
+      "toads-second",
+      "cruise-core",
+      "maseg-refinement",
+      "surface-thickness"
+    ],
+    "peak_sampled_rss_gb": 0.121
+  },
+  "full_suite_context": {
+    "tested_commit": "5a0adcf",
+    "result": "1,502 passed; 0 failed; 0 skipped; 11 expected RAS warnings",
+    "elapsed_seconds": 1873.83,
+    "peak_sampled_rss_gb": 12.442,
+    "code_changed_after_tested_commit": false
+  },
+  "source_line_delta": 0,
+  "outputs": [
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/gm_cropped.nii.gz",
+      "bytes": 7488182,
+      "sha256": "4e62f9f79646a705398793ee347411b994941c8885be4ca8a1af80ed531447a6",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/wmfill_cropped.nii.gz",
+      "bytes": 5873677,
+      "sha256": "ac6121a12f48e1b7ca31ebfebe8d21a9b8082ac8899d9889eaad819d4912ca52",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/wmmask_cropped.nii.gz",
+      "bytes": 230899,
+      "sha256": "16d548c113c5eb9a1d71d52b4a763d7fdf10a4b52552196b3e11c8f85e4cbf37",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/wmfill_topology_corrected.nii.gz",
+      "bytes": 2293612,
+      "sha256": "2b54a46b8f868f8ce86a62b4fa02a3285e70aebd72e78e7d41ef0e085944258b",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/ace_enhanced_gm.nii.gz",
+      "bytes": 7352068,
+      "sha256": "89ba51e757d0d7643382434bb40a0ad14edadfd22842e010a4d1cc7a35af5272",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/ace_skeleton.nii.gz",
+      "bytes": 228954,
+      "sha256": "202682e326f39b51eed2cd15571a0a7bdece63f15b4bb5d97d74d898e49ad4ac",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/ace_thinned_skeleton.nii.gz",
+      "bytes": 216729,
+      "sha256": "ab7ce7d493bab7a8febcf17f85d3050968869f43951cc6bfc3e4fcf64be0e027",
+      "shape": [
+        166,
+        208,
+        154
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/gvf.nii.gz",
+      "bytes": 57417291,
+      "sha256": "daa50d7e1d51346b3b6a96e0e318b22b2f03626c41a9bf7b959f74e4f7a6e8c2",
+      "shape": [
+        166,
+        208,
+        154,
+        3
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/inner.nii.gz",
+      "bytes": 8183407,
+      "sha256": "7711f54c7c0864a1afc327f67b6c154d6cbb58d00437f315d5ceba2c6fa669a9",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/central.nii.gz",
+      "bytes": 8382319,
+      "sha256": "07071da0f05a47fa7a021f83291f03bc993939f8c60618198e15dc61fc6ae6a7",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/outer.nii.gz",
+      "bytes": 8745585,
+      "sha256": "539737654341dc6c39ce5f5b9673e28a9fa9499143b9311ec7f36522bdafb100",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/provenance.json",
+      "bytes": 4058,
+      "sha256": "c040fc29388d0b00e4e03368aaaa27712c025f1bd49d0f887cb23e50ed5d9493"
+    },
+    {
+      "stage": "cruise-core",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01/stage.log",
+      "bytes": 1812,
+      "sha256": "6b02edba05ab562e701caa4646088651a283e91d786ea1f296d6d7a2c1818779"
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/stripped_t1.nii.gz",
+      "bytes": 3646989,
+      "sha256": "f3a19b22fb014a1dde19bc6a92646cfb6b2b9418be6f7198aae1be5952166f49",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/corrected_white_matter.nii.gz",
+      "bytes": 3771120,
+      "sha256": "54c98176e188b6efc192f5d6ec022b1a94b2e6e16572f8b3ade04977fb63ce67",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/corrected_gray_matter.nii.gz",
+      "bytes": 3519490,
+      "sha256": "9cfdef8b40123f585bd01170ddfd20719151c1cb9f37931437eda7fa03c8b5ec",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/brain_mask_level_set.nii.gz",
+      "bytes": 3588939,
+      "sha256": "237ae0f89cfbdaf18043c61044bdfbd1a8fa5c3f2c99b75216bd830ddb4c24b9",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/brain_mask.nii.gz",
+      "bytes": 148613,
+      "sha256": "922c6443eb8467cb820eda57336c82154cc165a2e15f33733a9af4025dd747ff",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/wm_topology.nii.gz",
+      "bytes": 579071,
+      "sha256": "0fe372533e54c6cc07f459270a5dcc0dabf622043a48f5efa7f65e658388291b",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/gm_topology.nii.gz",
+      "bytes": 1831476,
+      "sha256": "df4c13b5ae8051473aa378a58804d9e5f7474a72f07a17b121531bc0f79753b7",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "dura",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/stage.log",
+      "bytes": 988,
+      "sha256": "05ffef5b8b3d7c23f3ab9b22e2f03bd2038203b50798d78b75357a7cd49cae4f"
+    },
+    {
+      "stage": "maseg-refinement",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/maseg-refinement/attempt-01/SEG_refine.nii.gz",
+      "bytes": 155683,
+      "sha256": "881e688598fd2016d23b276f76bd8a5326cdb46ec78b30ae4e721379cee5baee",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "maseg-refinement",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/maseg-refinement/attempt-01/SEG_refine-summary.json",
+      "bytes": 2033,
+      "sha256": "a5357deb11c933bf168f4a17c6465e2cdea77e43664df2845b06aefcf769512c"
+    },
+    {
+      "stage": "maseg-refinement",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/maseg-refinement/attempt-01/stage.log",
+      "bytes": 343,
+      "sha256": "fffc8fbb7b291d0eb14155b840b5796ba1efa70978c3f5dfb627d281a467a64c"
+    },
+    {
+      "stage": "n4",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/n4/attempt-01/t1-n4.nii.gz",
+      "bytes": 5640729,
+      "sha256": "0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "n4",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/n4/attempt-01/stage.log",
+      "bytes": 648,
+      "sha256": "6acd207c1c5830c35ee6b9a6384cf34236d5416c241097ae2e7f54fdc4b06880"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/inner_surface.vtk",
+      "bytes": 8229155,
+      "sha256": "add17925cb4bba0fefdf26a023e629f2531ecc55f06cc247bf5d6b5aa7f13f33"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/central_surface.vtk",
+      "bytes": 8646241,
+      "sha256": "ca510ffec473630007fecd4d6a2b5004e792b0c9d05afd7c81517624a06f9ef6"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/outer_surface.vtk",
+      "bytes": 8882977,
+      "sha256": "95621649618b808a0bba3f5ee86c08b0e065b17f0ec8d1f6abc0060bd3c415bc"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/inner_surface_thickness.vtk",
+      "bytes": 12385142,
+      "sha256": "248e380d6f8837a22172fa1f0e70af00b228b758f46585f20a703f3180d5de30"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/thickness_levelset.nii.gz",
+      "bytes": 8164003,
+      "sha256": "dab6309ce633cecc6e13f75246188cd6b37d60df1efb26e09799f4b2314eb7a1",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/thickness_summary.json",
+      "bytes": 736,
+      "sha256": "d3c00c6398a34528cdd260eb41c642e2cdaba43989a40a67e5625bc82042e919"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/provenance.json",
+      "bytes": 2081,
+      "sha256": "f014af3b18c2d6beaf179662fc8be7c65247172ed8290887a3efd4a015ec9e13"
+    },
+    {
+      "stage": "surface-thickness",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/surface-thickness/attempt-01/stage.log",
+      "bytes": 1184,
+      "sha256": "70f733ec5d0fc06a0783501aee04b190ad13e2dde47f237198a54e62f1647142"
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/classification.nii.gz",
+      "bytes": 197110,
+      "sha256": "5f44f26ab64cb922e59fc3ba9ca22b56969a213446bc5a98c417403e6788b28d",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/dura-inputs/t1-n4_wmfill.nii.gz",
+      "bytes": 5876833,
+      "sha256": "2730daecaebeccad627fbc1ab33bce10dac735f6c31efa88be1e38ca59c70ed1",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/dura-inputs/t1-n4_gm.nii.gz",
+      "bytes": 7541798,
+      "sha256": "efd509a90f801fa2ee3729c8312b68217da99d840ff839d2f9f380d78d117dcf",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/dura-inputs/t1-n4_wmmask.nii.gz",
+      "bytes": 244584,
+      "sha256": "d46527e2ce087abaacfb38d6937918dba1ed6e2c1e9bdefc4a39d89f5e5239fc",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/dura-inputs/t1-n4_csf.nii.gz",
+      "bytes": 7176190,
+      "sha256": "388b198be6d2dd924cf6f311ed7ee4a71cecbeba5aa59e1346cc1be50b063928",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-first",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/stage.log",
+      "bytes": 5337,
+      "sha256": "05822df75474dcc35d39e52f87f5c157c15b8561be68513a4bffdc5460123d3d"
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/classification.nii.gz",
+      "bytes": 250368,
+      "sha256": "25a4b3c5b760073e9bdf730fd5e0d2a7def66a5e5289949dc12870b4342483f8",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/dura-inputs/stripped_t1_wmfill.nii.gz",
+      "bytes": 5893035,
+      "sha256": "6082a107321f78ba054348b1b63783ee02fd8d7c37a1817b471d986225cf97dd",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/dura-inputs/stripped_t1_gm.nii.gz",
+      "bytes": 7508000,
+      "sha256": "99123b28d37c5386cb340cd7b834395fcbfdcbd1553b7c5aa501ed531e6a5922",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/dura-inputs/stripped_t1_wmmask.nii.gz",
+      "bytes": 245566,
+      "sha256": "83f29ed386c2435d19a8716a08a0cf8123a8bf02d1019dd046c981ed033c60bc",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/dura-inputs/stripped_t1_csf.nii.gz",
+      "bytes": 7838418,
+      "sha256": "49182f4aa248b83a9b7b29591a56bd2845e1c4a6bdbd9228fc8be13564763299",
+      "shape": [
+        172,
+        216,
+        164
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "finite": true
+    },
+    {
+      "stage": "toads-second",
+      "path": "build/base-workflow-2026-10-08-natural-registration/stages/toads-second/attempt-01/stage.log",
+      "bytes": 10236,
+      "sha256": "fa97aead31c384ec9bf3168eb656706f042fb07b9a6f315efecd3197b7022fa3"
+    }
+  ]
+}
