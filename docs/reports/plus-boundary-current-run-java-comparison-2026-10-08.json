@@ -1,0 +1,40 @@
+{
+  "comparison": "preserved JIST MinFilter3D source versus Python plus raw atlas boundary on held-fixed saved workflow labels",
+  "coordinate_system": "RAS",
+  "folded_case_is_nontrivial": true,
+  "folded_synthetic_case": {
+    "changed_voxels": 0,
+    "exact": true,
+    "input_sha256": "b973c15c1252449dff3eee5915ebf6a342841457e18557262ae3da19a4093516",
+    "java_foreground_voxels": 17190,
+    "java_peak_sampled_rss_gb": 0.083,
+    "java_reference_output_sha256": "c96ecfa6fc48dcb6100d77f87a7e51fa896846551ff5506c44269ef7f60fb2d1",
+    "python_foreground_voxels": 17190,
+    "python_reference_output_sha256": "e2e8c1da6a51161fc5a5aa313e4da3f40d9ef0eb9444830c703380ab1df69b1b",
+    "voxel_count": 331056
+  },
+  "implementation_signature": "abe8c0ecb3a5127e7540d515d345ca425f458d35508f00eeab4e9b722611f457",
+  "java_rss_limit_gb": 8,
+  "passed": true,
+  "saved_plus_crop_case": {
+    "changed_voxels": 0,
+    "exact": true,
+    "input_sha256": "966bd1eedcee850785b3c4b665f640daaf83d68523c4ac5188d1265cba0c4b38",
+    "java_foreground_voxels": 0,
+    "java_peak_sampled_rss_gb": 0.08,
+    "java_reference_output_sha256": "775aa5b76b59ecc394584d18cee4e227ccc2df44006ebd5747866ba4a12ae933",
+    "python_foreground_voxels": 0,
+    "python_reference_output_sha256": "dba43ad2b4db81860e82eaae5ff3d6f3409bff739ee79390b0be431445fa10bc",
+    "voxel_count": 331056
+  },
+  "saved_plus_crop_is_nontrivial": false,
+  "scope": "The same RAS segmentation crop was passed through selected Java MinFilter3D.GetBoundrayForOneLabel and the Python run_plus_boundary_stage; only the source boundary algorithm is compared.",
+  "selected_java_source_sha256": "ff3f6055325a7b8b488a9a375fa5b6481f8e11bdd4b75376d127d5f937f99daf",
+  "shape_xyz": [
+    66,
+    76,
+    66
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "8e69954dd8c027678c52cd413cb483e529012b3cbc12a5540e655905936e9979"
+}

@@ -31,4 +31,12 @@ public class ImageData {
     public void setHeader(ImageHeader value) { header = value; }
     public String getName() { return name; }
     public void setName(String value) { name = value; }
+    @Override public ImageData clone() {
+        ImageData copy=new ImageData();
+        copy.rows=rows; copy.cols=cols; copy.slices=slices;
+        copy.header=header; copy.name=name;
+        if(scalar!=null){copy.scalar=new float[rows][cols][slices];for(int x=0;x<rows;x++)for(int y=0;y<cols;y++)System.arraycopy(scalar[x][y],0,copy.scalar[x][y],0,slices);}
+        if(vector!=null){int components=vector[0][0][0].length;copy.vector=new float[rows][cols][slices][components];for(int x=0;x<rows;x++)for(int y=0;y<cols;y++)for(int z=0;z<slices;z++)System.arraycopy(vector[x][y][z],0,copy.vector[x][y][z],0,components);}
+        return copy;
+    }
 }

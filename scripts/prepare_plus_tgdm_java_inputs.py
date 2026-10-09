@@ -12,6 +12,7 @@ import numpy as np
 
 from pymacruise.plus_pipeline import PlusPipelineOptions
 from pymacruise.plus_topology_composition import run_plus_topology_and_tgdm
+from pymacruise.boundary import multi_atlas_csf_boundary_image
 
 INPUT_ORDER = (
     "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm",
@@ -72,6 +73,24 @@ def main() -> None:
     with ace_input_path.open("wb") as stream:
         stream.write(struct.pack(">III",*shape))
         for array in ace_inputs: stream.write(np.asarray(array,dtype=">f4").tobytes(order="C"))
+    segmentation = np.asarray(inputs["segmentation"].dataobj, dtype=np.int32)
+    raw_boundary = np.asarray(result.boundary.raw_boundary.dataobj, dtype=np.int32)
+    boundary_input_path = args.output_dir / "boundary-labels.bin"
+    with boundary_input_path.open("wb") as stream:
+        stream.write(struct.pack(">III", *shape))
+        stream.write(segmentation.astype(">i4", copy=False).tobytes(order="C"))
+    np.save(args.output_dir / "python-raw-boundary.npy", raw_boundary)
+    folded_fixture_path = Path(__file__).resolve().parents[1] / "tests/data/synthetic/plus_boundary_folded_cortex/segmentation.nii.gz"
+    folded_fixture = nib.load(str(folded_fixture_path))
+    if folded_fixture.shape != shape or not np.allclose(folded_fixture.affine, result.tgdm.inner.affine, rtol=0, atol=1e-5):
+        raise SystemExit("folded boundary fixture does not match the held-fixed plus crop grid")
+    folded_boundary = np.asarray(multi_atlas_csf_boundary_image(folded_fixture).dataobj, dtype=np.int32)
+    folded_segmentation = np.asarray(folded_fixture.dataobj, dtype=np.int32)
+    folded_input_path = args.output_dir / "boundary-folded-labels.bin"
+    with folded_input_path.open("wb") as stream:
+        stream.write(struct.pack(">III", *shape))
+        stream.write(folded_segmentation.astype(">i4", copy=False).tobytes(order="C"))
+    np.save(args.output_dir / "python-folded-raw-boundary.npy", folded_boundary)
     gvf_input_path=args.output_dir/"gvf-input.bin"
     with gvf_input_path.open("wb") as stream:
         stream.write(struct.pack(">III",*shape))
@@ -104,6 +123,10 @@ def main() -> None:
         "ace_gvf_parameters": {"csf_merge_mode":3,"gvf_lambda":0.2,"gvf_iterations":200,"gvf_normalize":False},
         "held_fixed_input_binary_sha256": sha256(input_path),
         "ace_input_binary_sha256": sha256(ace_input_path),
+        "boundary_input_binary_sha256": sha256(boundary_input_path),
+        "raw_boundary_sha256": hashlib.sha256(raw_boundary.astype(">i4", copy=False).tobytes(order="C")).hexdigest(),
+        "folded_boundary_input_sha256": sha256(folded_input_path),
+        "folded_raw_boundary_sha256": hashlib.sha256(folded_boundary.astype(">i4", copy=False).tobytes(order="C")).hexdigest(),
         "gvf_input_binary_sha256": sha256(gvf_input_path),
     }
     (args.output_dir / "input-provenance.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")

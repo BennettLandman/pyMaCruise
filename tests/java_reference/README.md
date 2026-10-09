@@ -311,3 +311,15 @@ center-plus-six-neighbor 3D erosion. `scripts/compare_plus_tissue_update_saved_j
 rebuilds exact input arrays from the saved plus workflow and compares GM, WM,
 and mask products. The 66 x 76 x 66 workflow-derived case matches all three
 outputs bit-for-bit; source and attribution notes are in `license_info.md`.
+
+## Plus `MinFilter3D` boundary reference
+
+`upstream/edu/vanderbilt/masi/plugins/CRUISE/utilities/MinFilter3D.java`
+preserves Yuankai Huo's selected JIST source, including its author and CVS
+revision comments. `plus_boundary/PlusBoundarySourceHarness.java` executes the
+source's label boundary method on a saved workflow crop and a committed folded
+synthetic phantom. The repeatable comparison command is
+`scripts/compare_plus_boundary_saved_java.sh`; see
+`docs/reports/plus-boundary-current-run-java-comparison-2026-10-08.md` for
+source hash, inputs, exact output counts, and limitations. JIST API shims are
+headless and test-only; this source is not a runtime dependency.
