@@ -60,3 +60,4 @@ Keep comments that explain numerical choices, label definitions, coordinate tran
 
 This file is a factual working inventory and handoff aid, not a legal analysis or a license grant.
 | VandyCRUISE `MASImorph` morphology reference | The test-only source copy preserves Yuankai Huo author/version comments from `toads-cruise`; no standalone license notice appears in the source header. | Used only by the Java reference harness for selected 3D center-plus-six-neighbor minimum-filter comparison; not packaged in the Python runtime. Review the source copy and notices with tech transfer. |
+| VandyCRUISE `CombineMAandTOADS` source reference | The preserved source header lists Yuankai Huo and CVS revision 1.2; no standalone license notice appears in the class header. | Used only by the headless synthetic Java comparison harness; not packaged in the Python runtime. Review the source file, stubs, and notices with tech transfer. |

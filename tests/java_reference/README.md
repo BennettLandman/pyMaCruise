@@ -301,3 +301,13 @@ in `tests/data/synthetic/toads_object_mask_outlier_membership_pass/README.md`.
 `maskDistance(image, 0)` energy for positive, negative, exact-zero, and
 signed-zero samples. Regenerate with
 `scripts/generate_java_toads_mask_intensity_energy_reference.sh`.
+
+## MaCRUISEplus tissue update on saved workflow inputs
+
+`PlusTissueUpdateSourceHarness.java` invokes the preserved selected
+`CombineMAandTOADS.java` class directly using headless JIST parameter stubs.
+The class's source calls `MASImorph.Minimize3DFilter` for the selected
+center-plus-six-neighbor 3D erosion. `scripts/compare_plus_tissue_update_saved_java.sh`
+rebuilds exact input arrays from the saved plus workflow and compares GM, WM,
+and mask products. The 66 x 76 x 66 workflow-derived case matches all three
+outputs bit-for-bit; source and attribution notes are in `license_info.md`.

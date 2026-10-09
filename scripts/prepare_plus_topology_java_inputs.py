@@ -40,13 +40,21 @@ def main() -> None:
     for name,image in (('corrected',topology.corrected),('atlas_refined',topology.atlas_refined)):
         np.save(args.output_dir/f'python-{name}.npy',np.asarray(image.dataobj,dtype=np.float32))
     np.save(args.output_dir/'python-mawm-eroded.npy',_erode_multi_atlas_wm(np.asarray(load('multi_atlas_wm').dataobj)))
+    tissue_inputs=(load('multi_atlas_gm'),load('multi_atlas_wm'),load('multi_atlas_mask'),load('toads_gm'),load('toads_wm_fill'),load('toads_wm_mask'))
+    tissue_arrays=tuple(np.asarray(image.dataobj,dtype=np.float32) for image in tissue_inputs)
+    tissue_binary=args.output_dir/'tissue-arrays.bin'
+    with tissue_binary.open('wb') as f:
+        f.write(struct.pack('>III',*shape))
+        for array in tissue_arrays: f.write(np.asarray(array,dtype='>f4').tobytes(order='F'))
+    for name,image in zip(('gm','wm','mask'),(tissue.gm,tissue.wm,tissue.mask),strict=True):
+        np.save(args.output_dir/f'python-tissue-{name}.npy',np.asarray(image.dataobj))
     report={
         'synthetic_only':True,'workflow_manifest':str(root/'run.json'),'workflow_manifest_sha256':sha256(root/'run.json'),
         'workflow_run_signature':manifest['run_signature'],'shape_xyz':list(shape),'coordinate_system':'RAS',
         'affine_ras':tissue.wm.affine.tolist(),'settings':options.as_dict(),
-        'held_fixed_input_binary_sha256':sha256(input_path),
+        'held_fixed_input_binary_sha256':sha256(input_path),'tissue_input_binary_sha256':sha256(tissue_binary),
         'crop_inputs':{name:{'path':records[name]['path'],'sha256':sha256(Path(records[name]['path']))} for name in ('multi_atlas_gm','multi_atlas_wm','multi_atlas_mask','toads_gm','toads_wm_fill','toads_wm_mask')},
-        'outputs':['corrected','mawm_eroded','atlas_refined'],
+        'outputs':['tissue_gm','tissue_wm','tissue_mask','corrected','mawm_eroded','atlas_refined'],
         'scope':'selected Java topology correction compares the corrected scalar image; the MaWM erosion and Refine_Topo_by_MA post-step are separately compared using the preserved MASImorph source.'}
     (args.output_dir/'topology-provenance.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
     print(json.dumps(report,indent=2))
