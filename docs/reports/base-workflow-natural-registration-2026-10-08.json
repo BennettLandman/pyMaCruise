@@ -224,7 +224,8 @@
     "result": "1,502 passed; 0 failed; 0 skipped; 11 expected RAS warnings",
     "elapsed_seconds": 1873.83,
     "peak_sampled_rss_gb": 12.442,
-    "code_changed_after_tested_commit": false
+    "production_algorithm_code_changed_after_tested_commit": false,
+    "validation_only_comparator_added_after_tested_commit": true
   },
   "source_line_delta": 0,
   "outputs": [
@@ -1066,6 +1067,147 @@
           0.9375
         ],
         "synthetic_only": true
+      }
+    },
+    "dura": {
+      "evidence_type": "held-fixed selected Java Dura wrapper comparison on current four-level workflow inputs",
+      "java_harness_exit_code": 0,
+      "java_watchdog_limit_gb": 8,
+      "java_watchdog_terminated": false,
+      "python_peak_sampled_rss_gb": 2.105,
+      "python_recompute_command": "./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 20 -- ./.venv/bin/python scripts/compare_dura_saved_java.py --input-dir build/base-workflow-natural-registration-dura-java-2026-10-08/inputs --java-output-dir build/base-workflow-natural-registration-dura-java-2026-10-08/java-output --base-stage build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01 --report build/base-workflow-natural-registration-dura-java-2026-10-08/reproducible-comparison.json",
+      "results": {
+        "base_stage": "build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01",
+        "inputs_sha256": {
+          "gray_matter": "efd509a90f801fa2ee3729c8312b68217da99d840ff839d2f9f380d78d117dcf",
+          "t1": "0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a",
+          "white_matter": "2730daecaebeccad627fbc1ab33bce10dac735f6c31efa88be1e38ca59c70ed1",
+          "white_matter_mask": "d46527e2ce087abaacfb38d6937918dba1ed6e2c1e9bdefc4a39d89f5e5239fc"
+        },
+        "mask_surface_metrics": {
+          "candidate_to_reference_mean_mm": 5.406688449283177e-05,
+          "hausdorff_mm": 0.6629126073623883,
+          "mean_absolute_distance_mm": 4.771704346299834e-05,
+          "n_candidate_vertices": 144555,
+          "n_reference_vertices": 144551,
+          "reference_to_candidate_mean_mm": 4.1367202433164916e-05
+        },
+        "max_iterations": 1,
+        "orientation": "RAS",
+        "outputs": {
+          "brain_mask": {
+            "changed_voxels": 5,
+            "dice_foreground": 0.9999976849869086,
+            "exact": false,
+            "max_absolute_error": 1.0,
+            "mean_absolute_error": 8.206235163126825e-07,
+            "python_recomputed_matches_workflow_stage": true
+          },
+          "brain_mask_level_set": {
+            "changed_voxels": 318513,
+            "exact": false,
+            "max_absolute_error": 0.3549647927284241,
+            "mean_absolute_error": 8.484461435814423e-06,
+            "python_recomputed_matches_workflow_stage": true,
+            "sign_changed_voxels": 1
+          },
+          "corrected_gm": {
+            "changed_voxels": 5,
+            "exact": false,
+            "max_absolute_error": 254.99440002441406,
+            "mean_absolute_error": 0.00020910022123574043,
+            "python_recomputed_matches_workflow_stage": true
+          },
+          "corrected_wm": {
+            "changed_voxels": 5,
+            "exact": false,
+            "max_absolute_error": 0.7954297661781311,
+            "mean_absolute_error": 1.3357281489618567e-07,
+            "python_recomputed_matches_workflow_stage": true
+          },
+          "gm_tc": {
+            "changed_voxels": 0,
+            "dice_at_zero": 1.0,
+            "exact": true,
+            "max_absolute_error": 0.0,
+            "mean_absolute_error": 0.0,
+            "python_recomputed_matches_workflow_stage": true
+          },
+          "inner_distance": {
+            "changed_voxels": 196,
+            "exact": false,
+            "max_absolute_error": 9.5367431640625e-07,
+            "mean_absolute_error": 2.3008662585823885e-11,
+            "sign_changed_voxels": 0
+          },
+          "level_set": {
+            "changed_voxels": 318513,
+            "dice_at_zero": 0.9999994327312911,
+            "exact": false,
+            "max_absolute_error": 0.3549647927284241,
+            "mean_absolute_error": 8.484461435814423e-06,
+            "python_recomputed_matches_workflow_stage": true,
+            "sign_changed_voxels": 1
+          },
+          "outer_distance": {
+            "changed_voxels": 142174,
+            "exact": false,
+            "max_absolute_error": 0.04030066728591919,
+            "mean_absolute_error": 1.614039693138787e-05,
+            "sign_changed_voxels": 0
+          },
+          "stripped_t1": {
+            "changed_voxels": 5,
+            "exact": false,
+            "max_absolute_error": 399.09600830078125,
+            "mean_absolute_error": 0.0003026083125223851,
+            "python_recomputed_matches_workflow_stage": true
+          },
+          "tgdm_pass_01": {
+            "changed_voxels": 318513,
+            "dice_at_zero": 0.9999994327312911,
+            "exact": false,
+            "max_absolute_error": 0.3549647927284241,
+            "mean_absolute_error": 8.484461435814423e-06,
+            "sign_changed_voxels": 1
+          },
+          "union": {
+            "changed_voxels": 0,
+            "exact": true,
+            "max_absolute_error": 0.0,
+            "mean_absolute_error": 0.0
+          },
+          "wm_tc": {
+            "changed_voxels": 0,
+            "dice_at_zero": 1.0,
+            "exact": true,
+            "max_absolute_error": 0.0,
+            "mean_absolute_error": 0.0,
+            "python_recomputed_matches_workflow_stage": true
+          }
+        },
+        "scope": "selected Java Dura wrapper on held-fixed brain-resolution RAS inputs",
+        "shape": [
+          172,
+          216,
+          164
+        ],
+        "spacing_mm": [
+          0.9375,
+          0.9375,
+          0.9375
+        ],
+        "synthetic_only": true
+      },
+      "reference_and_comparator_sha256": {
+        "compare_dura_saved_java.py": "1aa58b3d8e52b5a1d366b20e0a793b0c80fb70e1eb2f960f04450f4d522d328a",
+        "run_java_dura_base_reference.sh": "52813c71aec1c38abdc5456146fc7e2b340584972d128248e336b8c1db5e21ee",
+        "DuraBaseInputsReferenceHarness.java": "1a3a69fa9f4e7bd0bbf5797781b2204cb0a98fceebf90fe3e3515aabfe1ffcfe",
+        "DuraAttachedNoDuraReferenceHarness.java": "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa",
+        "AlgorithmTopologyCorrection.java": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",
+        "DistanceFieldyh.java": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811",
+        "MaGenericTGDM.java": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d",
+        "GenericTGDM.java": "70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1"
       }
     }
   }
