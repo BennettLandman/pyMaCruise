@@ -53,3 +53,28 @@ workflow` and exits successfully.
 The full repository suite on the same implementation commit passed **1,503
 tests, 0 failed, 0 skipped, 11 expected RAS-orientation warnings in 1,764.57
 s**, with **13.787 GB** peak sampled RSS; see [full-suite evidence](full-pytest-2026-10-09-retained-center.md).
+
+## Held-fixed selected-source comparisons on this run
+
+The run's exact saved crop and level sets were replayed through selected Java
+or JIST source harnesses. These checks isolate the named stages; they do not
+compare the full upstream pipeline end to end.
+
+| Behavior | Result on the current run |
+|---|---|
+| Plus tissue fusion (`CombineMAandTOADS`) | GM, WM, and mask are exact across all 331,056 crop voxels. |
+| Plus topology correction and MaSeg refinement | Topology-corrected image, MaWM erosion, and MaSeg-refined output are exact across all 331,056 voxels. |
+| Plus raw atlas boundary (`MinFilter3D`) | The saved crop is empty on both sides (0 changed voxels; vacuous). The separate folded source fixture is nonempty (17,190 foreground voxels) and exact. |
+| Plus ACE mode 3 | Enhanced GM, skeleton, and thinned skeleton are exact across all 331,056 voxels. |
+| Plus GVF | Maximum absolute vector-component error `2.1234e-7`; mean `2.3023e-8`, within existing Java-reference limits. Java peak RSS was 0.247 GB. |
+| Plus TGDM | Central/inner/outer Dice is 1.0. Symmetric mean surface distances are `1.6512e-6`, `2.1938e-7`, and `1.6877e-6` mm; Hausdorff distances are `0.0003467`, `0.0000866`, and `0.0003281` mm. Java peak RSS was 0.358 GB. |
+| JIST `IsoSurfaceOnGrid` versus Python surfaces | Each of the three surfaces has 3,724 vertices and 7,444 faces; every ordered face matches, topology matches (one component, Euler characteristic 2), and maximum paired-vertex distance is `8.72e-7` mm. |
+
+The checked-in reproductions are `compare_plus_tissue_update_saved_java.sh`,
+`compare_plus_topology_saved_java.sh`, `compare_plus_boundary_saved_java.sh`,
+`compare_plus_ace_gvf_saved_java.sh`, `compare_plus_tgdm_saved_java.sh`, and
+`compare_workflow_jist_surfaces.py`; each consumed the run under
+`build/plus-retained-center-2026-10-09/`. The Java evidence holds upstream
+inputs fixed at the saved Python stage products. It therefore strengthens
+stage-level source validation, but does not establish LesionTOADS or complete
+plus-workflow Java/MATLAB equivalence.
