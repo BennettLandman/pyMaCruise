@@ -1,0 +1,44 @@
+{
+  "all_outputs_exact": true,
+  "comparison": "selected Java ACE output vs current Python CRUISE-core outputs",
+  "diffusion_iterations": 1,
+  "orientation": "RAS",
+  "outputs": {
+    "enhanced_gray_matter": {
+      "changed_voxels": 0,
+      "exact": true,
+      "java_sha256": "7bbe12ffac47a14453b6b4c0f8fd60e518a31f35946e07d0b6401e9a933d5c5b",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_sha256": "7bbe12ffac47a14453b6b4c0f8fd60e518a31f35946e07d0b6401e9a933d5c5b"
+    },
+    "skeleton": {
+      "changed_voxels": 0,
+      "dice": 1.0,
+      "exact": true,
+      "java_foreground": 70225,
+      "java_sha256": "162d2f7752ba56927254ec5a73e64525f91bdb3d13d1f0539600d939a80671e4",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_foreground": 70225,
+      "python_sha256": "162d2f7752ba56927254ec5a73e64525f91bdb3d13d1f0539600d939a80671e4"
+    },
+    "thinned_skeleton": {
+      "changed_voxels": 0,
+      "dice": 1.0,
+      "exact": true,
+      "java_foreground": 47081,
+      "java_sha256": "6f2e228a8216107ddfcc0809e3daf83db1889defe71e6a3573637faf8a85db83",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_foreground": 47081,
+      "python_sha256": "6f2e228a8216107ddfcc0809e3daf83db1889defe71e6a3573637faf8a85db83"
+    }
+  },
+  "shape": [
+    166,
+    208,
+    154
+  ],
+  "synthetic_only": true
+}

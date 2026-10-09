@@ -66,11 +66,17 @@ def read_intermediate(path: Path, shape: tuple[int, int, int]) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--place-to-add-csf", type=int, choices=(0, 1, 2, 3), default=2)
+    parser.add_argument(
+        "--diffusion-iterations", type=int, default=25,
+        help="selected Java AnisotropicDiffusion iterations (default: source value 25)",
+    )
     parser.add_argument("--input-root", type=Path, default=INPUTS,
                         help="directory containing gray_matter, white_matter, and multi_atlas_csf NIfTIs")
     parser.add_argument("--output-dir", type=Path,
                         help="reference output directory (defaults to INPUT_ROOT/java_reference)")
     args = parser.parse_args()
+    if args.diffusion_iterations < 0:
+        parser.error("--diffusion-iterations must be non-negative")
     javac, java = shutil.which("javac"), shutil.which("java")
     if not javac or not java:
         raise RuntimeError("A JDK with javac and java is required to generate ACE references")
@@ -82,6 +88,30 @@ def main() -> None:
     build.mkdir(parents=True, exist_ok=True)
     classes.mkdir(parents=True, exist_ok=True)
     intermediate.mkdir(parents=True, exist_ok=True)
+    source_root = SOURCE_ROOT / "upstream"
+    source_override = None
+    original_ace_source = (
+        source_root
+        / "edu/vanderbilt/masi/algorithms/CRUISE/ace/MaAnatomicallyConsistentEnhance.java"
+    )
+    if args.diffusion_iterations != 25:
+        source_text = original_ace_source.read_text(encoding="utf-8")
+        original_setting = "private static final int max_iter = 25;"
+        if source_text.count(original_setting) != 1:
+            raise RuntimeError("selected Java ACE max_iter declaration changed; review source mapping")
+        source_override = build / "source_override"
+        override_path = (
+            source_override
+            / "edu/vanderbilt/masi/algorithms/CRUISE/ace/MaAnatomicallyConsistentEnhance.java"
+        )
+        override_path.parent.mkdir(parents=True, exist_ok=True)
+        override_path.write_text(
+            source_text.replace(
+                original_setting,
+                f"private static final int max_iter = {args.diffusion_iterations};",
+            ),
+            encoding="utf-8",
+        )
     output.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
@@ -89,7 +119,7 @@ def main() -> None:
             "-d",
             str(classes),
             "-sourcepath",
-            f"{SOURCE_ROOT / 'stubs'}:{SOURCE_ROOT / 'upstream'}",
+            f"{SOURCE_ROOT / 'stubs'}:{source_override or source_root}:{source_root}",
             str(ROOT / "tests/java_reference/ACEReferenceHarness.java"),
         ],
         check=True,
@@ -149,7 +179,7 @@ def main() -> None:
             "intensity_threshold": 126.9,
             "gaussian_alpha": 1.8,
             "tensor_alpha": 1.6,
-            "diffusion_iterations": 25,
+            "diffusion_iterations": args.diffusion_iterations,
             "multi_atlas_csf_place": {
                 0: "None",
                 1: "BeforeDiffuse",
@@ -162,6 +192,11 @@ def main() -> None:
         "outputs": {key: path.name for key, path in reference_paths.items()},
         "java_intermediate_stages": stage_names,
     }
+    if source_override is not None:
+        metadata["java_reference_build_note"] = (
+            "Build-only copy of MaAnatomicallyConsistentEnhance.java changes only "
+            f"max_iter from 25 to {args.diffusion_iterations}; original upstream source is unchanged."
+        )
     (output / "spec.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     files = sorted(path for path in output.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
     (output / "SHA256SUMS").write_text(
