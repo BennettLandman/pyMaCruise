@@ -1,0 +1,173 @@
+{
+  "description": "65-cubed labeled folded cortex for restartable synthetic MaCRUISEplus validation",
+  "images": {
+    "brain-mask.nii.gz": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "uint8",
+      "sha256": "0eb95637854ead584b7ccec1806b228a579da7709c73710a091503ccbf987db4",
+      "shape": [
+        65,
+        65,
+        65
+      ]
+    },
+    "flair.nii.gz": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "float32",
+      "sha256": "3311ccadfcdcc9a3ceb3e157a523913d47527d0141da6704a9b7bcfd90aeb399",
+      "shape": [
+        65,
+        65,
+        65
+      ]
+    },
+    "maseg.nii.gz": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "uint16",
+      "sha256": "abfb31db22bde78a3085022a5ea84e557e6c98105db9ad461ea0bd684394fd6b",
+      "shape": [
+        65,
+        65,
+        65
+      ]
+    },
+    "t1.nii.gz": {
+      "affine_ras_mm": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "float32",
+      "sha256": "778e9134b5ffbd8beb1e4e21ccaecdb212efd303640da9206c70f8bb058361ae",
+      "shape": [
+        65,
+        65,
+        65
+      ]
+    }
+  },
+  "intensity_assumption": "deterministic tissue-specific T1 and FLAIR values; not clinical MRI",
+  "labels": {
+    "0": "background",
+    "100": "cortical gray matter",
+    "44": "white matter",
+    "5": "sulcal CSF"
+  },
+  "source_fixture": "../labeled_folded_cortex"
+}
