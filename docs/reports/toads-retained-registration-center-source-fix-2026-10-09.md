@@ -61,13 +61,14 @@ The focused reference command passed **5 tests**:
 The compact Java refresh harness was updated to retain the model's original
 center across recropping. This is selected-source equivalence on the committed
 brain-resolution synthetic workflow inputs. It does not establish complete
-MaCRUISE composite equivalence, nor real-MRI validation. The full Python base
-workflow has not yet been rerun with this correction.
+MaCRUISE composite equivalence, nor real-MRI validation. The corrected
+seven-stage synthetic base workflow subsequently completed and resumed; see
+[the integration report](base-workflow-retained-center-2026-10-09.md). The
+full-suite result on the same implementation commit is recorded in
+[the pytest report](full-pytest-2026-10-09-retained-center.md).
 
 ## Next integration milestone
 
-Rerun the restartable seven-stage synthetic base workflow with the corrected
-TOADS template refresh, then audit stage outputs, manifest hashes, natural
-convergence, RAS headers, resume behavior, runtime, and RSS. After that,
-advance the folded synthetic plus workflow and continue the remaining
-selected-source and composite checks.
+The corrected restartable seven-stage synthetic base workflow and its
+same-settings resume have now passed. Continue with the folded synthetic plus
+workflow and the remaining selected-source and composite checks.
