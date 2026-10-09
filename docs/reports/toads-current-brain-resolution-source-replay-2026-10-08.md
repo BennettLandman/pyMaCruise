@@ -51,17 +51,25 @@ as whole-workflow equivalence.
 To localize the stopping mismatch, a build-only copy of the selected Java
 `AlgorithmMultipleToads` source printed its existing float32 energy ratio
 after each iteration. The only source edit was this diagnostic print; the
-instrumented replay produced the same terminal label hash as the uninstrumented
-replay (`a220505a…439bb7e`). Python and Java ratios already differ in the first
-pass through the loop: iteration 1 is `0.525829971` / `0.5230326`, iteration 2
-is `0.0409516431` / `0.0383726`, and iteration 10 is `0.00370484893` /
-`0.003672864`. By iteration 23 they are `0.0041031288` / `0.0014557661`; at
+instrumented replay produced the same terminal label hash as each
+uninstrumented replay (`83357ca2…aecfbbba6` for pass one;
+`a220505a…439bb7e` for pass two). In the second pass, Python and Java ratios
+already differ in the first loop: iteration 1 is `0.525829971` / `0.5230326`,
+iteration 2 is `0.0409516431` / `0.0383726`, and iteration 10 is `0.00370484893`
+/ `0.003672864`. By iteration 23 they are `0.0041031288` / `0.0014557661`; at
 iteration 24 Python reports `0.0023892622`, while Java reports `1.4748772e-5`
 and stops. The maximum absolute ratio difference over Java's 24 iterations is
 `0.002797371`. This shows the discrepancy is in the evolving objective/state,
 not merely a different terminal comparison operator. Pinpointing which
 membership, field-correction, or registration update first causes the drift
 is the next TOADS integration task.
+
+The same print-only trace on the first pass also shows energy-ratio drift even
+though its final labels pass the Dice gate: the mean/max absolute difference
+over 11 iterations is `0.00331037` / `0.02710345`. At the terminal iteration,
+Python reports `8.55285762e-5` and Java `9.7743876e-5`; both stop below
+`1e-4`. The first-pass result therefore passes the requested label tolerance,
+but does not establish energy-trajectory equivalence.
 
 As a diagnostic only, replaying Java TOADS with the Java Dura output instead
 of the held-fixed Python Dura input is not included in the table. That first
