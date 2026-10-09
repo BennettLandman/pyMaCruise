@@ -100,6 +100,18 @@ The exact Python diagnostic command was:
 This shows the output tolerance is already exceeded by the second full loop
 cycle. The first divergent intermediate operation still needs to be isolated.
 
+The selected wrapper passes `firstIter=50` and `topIter=5`; Java sets later
+rigid updates to `topIter`. The Python comparison was repeated with the
+source-matched `--post-refresh-registration-iterations 5
+--registration-max-iterations 5`, instead of `50/50`. On this two-cycle
+input, the Python output hash and both energy ratios were unchanged from the
+`50/50` diagnostic (`b08d3bae…91396e15`, `0.525829971`, `0.0409516431`). The
+registration iteration override is not the cause of the observed mismatch in
+this replay. The `toads-loop` CLI default for post-refresh registration was
+corrected to `5`; the selected wrapper schedule is now `4/50/5/5` across the
+four Python CLI settings. A focused parser regression passes **1 test in
+0.58s**. This CLI correction does not resolve the loop-state mismatch.
+
 As a diagnostic only, replaying Java TOADS with the Java Dura output instead
 of the held-fixed Python Dura input is not included in the table. That first
 attempt used the Dura adapter's raw serialization in the wrong order; after
@@ -127,8 +139,9 @@ and `second-classification-java.raw` output paths shown in the report table;
 the same comparator is used against the saved `toads-second` NIfTI.
 
 This is **selected-source equivalence evidence**, not a general synthetic
-regression suite or real-data validation. No Python algorithm implementation
-changed in this evidence cycle, so no full `pytest` suite was rerun. The most
+regression suite or real-data validation. No numerical algorithm changed in
+this evidence cycle; the TOADS CLI parameter default and a focused parser
+regression changed, so no full `pytest` suite was rerun. The most
 recent full-suite evidence remains 1,502 passed, 0 failed, 0 skipped, and 11
 expected RAS warnings on implementation tree `5a0adcf`; see the
 [full-suite report](full-pytest-2026-10-08-bundled-atlas-startup.md).

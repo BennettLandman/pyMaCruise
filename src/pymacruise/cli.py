@@ -251,8 +251,8 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument(
         "--post-refresh-registration-iterations",
         type=int,
-        default=1,
-        help="rigid atlas updates after template refresh (selected Java default: 1)",
+        default=5,
+        help="rigid atlas updates after template refresh (selected V3 wrapper default: 5)",
     )
     toads.add_argument("--registration-max-iterations", type=int, default=5)
     toads.add_argument(

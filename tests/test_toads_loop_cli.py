@@ -7,13 +7,31 @@ import shutil
 import nibabel as nib
 import numpy as np
 
-from pymacruise.cli import main
+from pymacruise.cli import build_parser, main
 from pymacruise.toads_dura import run_dura_removal
 
 
 ROOT = Path(__file__).parent
 FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
+
+
+def test_toads_loop_defaults_match_selected_v3_registration_schedule() -> None:
+    args = build_parser().parse_args(
+        [
+            "toads-loop",
+            "--t1-n4",
+            "t1.nii.gz",
+            "--brain-mask",
+            "mask.nii.gz",
+            "--output",
+            "classification.nii.gz",
+        ]
+    )
+    assert args.registration_levels == 4
+    assert args.registration_iterations == 50
+    assert args.post_refresh_registration_iterations == 5
+    assert args.registration_max_iterations == 5
 
 
 def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path, capsys) -> None:
