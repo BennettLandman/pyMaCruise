@@ -367,6 +367,7 @@ def transform_toads_topology(
     image_res = np.asarray(image_resolution, dtype=np.float32)
     template_res = np.asarray(template_resolution, dtype=np.float32)
     signs = np.asarray(orientation_signs, dtype=np.float32)
+    signed_image_res = np.asarray(image_res / signs, dtype=np.float32)
     rot = toads_rotation_matrix(trans[:3])
     centers_image = tuple(np.float32(dimension / 2.0) for dimension in crop_shape)
     centers_template = tuple(np.float32(dimension / 2.0) for dimension in atlas.shape)
@@ -379,8 +380,16 @@ def transform_toads_topology(
                 for axis in range(3):
                     total = np.float32(0.0)
                     for component in range(3):
-                        term = np.float32(rot[axis, component] * np.float32(source_coords[component] - centers_image[component]))
-                        term = np.float32(term * image_res[component] / signs[component])
+                        # Java ParametricTransform.imageToTemplate first forms
+                        # Xi=(coordinate-center)*signedResolution, then applies
+                        # the rotation matrix. Preserve this float32 operation
+                        # order even though it did not change the held-fixed
+                        # brain-resolution constructor-map mismatch.
+                        image_coordinate = np.float32(
+                            np.float32(source_coords[component] - centers_image[component])
+                            * signed_image_res[component]
+                        )
+                        term = np.float32(rot[axis, component] * image_coordinate)
                         total = np.float32(total + term)
                     total = np.float32(total + trans[axis + 3])
                     target.append(np.float32(total / template_res[axis] + centers_template[axis]))

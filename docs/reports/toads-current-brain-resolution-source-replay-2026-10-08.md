@@ -180,11 +180,33 @@ and `second-classification-java.raw` output paths shown in the report table;
 the same comparator is used against the saved `toads-second` NIfTI.
 
 This is **selected-source equivalence evidence**, not a general synthetic
-regression suite or real-data validation. No numerical algorithm changed in
-this evidence cycle; the TOADS CLI parameter default and a focused parser
-regression changed earlier. The current implementation tree was `ae839a4`;
-these state-dump replays are diagnostics, not pytest validation. No full
-`pytest` suite was rerun. The most
+regression suite or real-data validation. The current implementation tree
+before the constructor-map operation-order experiment was `ae839a4`; these
+state-dump replays are diagnostics, not pytest validation. No full `pytest`
+suite was rerun. The most
 recent full-suite evidence remains 1,502 passed, 0 failed, 0 skipped, and 11
 expected RAS warnings on implementation tree `5a0adcf`; see the
 [full-suite report](full-pytest-2026-10-08-bundled-atlas-startup.md).
+
+## Constructor-map transform-order check
+
+On 2026-10-08, the selected constructor label maps were compared before the
+first thinning pass on the same `(168, 207, 161)` working grid. The Java map
+contains 183,510 differing voxels out of 5,598,936 versus Python; the
+SulcalCSF/class-1 Dice is `0.875304517`, and CerebellarGM/class-3 Dice is
+`0.945092254`. The raw Java and Python constructor maps have SHA-256 values
+`b5aa3856bfa6d2abc383c5dc91a43cfc657b8f783a45ba413f9de8358024fbfd` and
+`2e3772f6e29822133e7eb4f57f6cfa0f749b19ec7f6802843c4f9c5fc13fc6dd`.
+
+I changed `transform_toads_topology` to follow the selected Java
+`ParametricTransform.imageToTemplate` float32 order explicitly: form each
+centered coordinate times signed resolution, then multiply by the rotation
+matrix, accumulating each product and sum as float32. The focused command
+`./.venv/bin/pytest -q tests/test_toads_crop.py tests/test_toads_post_registration_template_refresh.py`
+passed **5 tests** in 0.87 s. Re-running the bounded constructor capture showed
+the same mismatch counts and Dice values, so operation ordering is now
+source-aligned but does not explain this divergence. Registration parameter
+vectors were independently bitwise-equal at both saved boundaries. The next
+useful comparison is the actual Java/Python mapped coordinate or sampled atlas
+index at the constructor boundary, including orientation-sign handling; no
+whole-workflow parity claim changes from this experiment.
