@@ -46,6 +46,23 @@ failure make current full-resolution second-pass TOADS parity an open blocker
 for the base workflow; synthetic integration completion must not be described
 as whole-workflow equivalence.
 
+## Iteration-trace diagnosis
+
+To localize the stopping mismatch, a build-only copy of the selected Java
+`AlgorithmMultipleToads` source printed its existing float32 energy ratio
+after each iteration. The only source edit was this diagnostic print; the
+instrumented replay produced the same terminal label hash as the uninstrumented
+replay (`a220505a…439bb7e`). Python and Java ratios already differ in the first
+pass through the loop: iteration 1 is `0.525829971` / `0.5230326`, iteration 2
+is `0.0409516431` / `0.0383726`, and iteration 10 is `0.00370484893` /
+`0.003672864`. By iteration 23 they are `0.0041031288` / `0.0014557661`; at
+iteration 24 Python reports `0.0023892622`, while Java reports `1.4748772e-5`
+and stops. The maximum absolute ratio difference over Java's 24 iterations is
+`0.002797371`. This shows the discrepancy is in the evolving objective/state,
+not merely a different terminal comparison operator. Pinpointing which
+membership, field-correction, or registration update first causes the drift
+is the next TOADS integration task.
+
 As a diagnostic only, replaying Java TOADS with the Java Dura output instead
 of the held-fixed Python Dura input is not included in the table. That first
 attempt used the Dura adapter's raw serialization in the wrong order; after
