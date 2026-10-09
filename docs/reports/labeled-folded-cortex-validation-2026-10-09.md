@@ -1,6 +1,6 @@
 # Labeled folded-cortex TGDM validation
 
-**TGDM implementation commit:** `eb04598` (`Add labeled folded cortex TGDM validation case`); saved-stage datatype correction is included in the follow-up report commit. **Production ribbon-validation runner/report commit:** `7111e4a` (`Validate folded cortex ribbon with production APIs`).
+**TGDM implementation commit:** `eb04598` (`Add labeled folded cortex TGDM validation case`); saved-stage datatype correction is included in the follow-up report commit. **Production ribbon-validation runner/report commits:** `7111e4a` (`Validate folded cortex ribbon with production APIs`) and `05b9f79` (`Set explicit production ribbon quality bounds`).
 **Evidence categories:** synthetic integration passed; full-profile selected Java surface gates passed; no human MRI used.
 
 ## Case and runnable checks
