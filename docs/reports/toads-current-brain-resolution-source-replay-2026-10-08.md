@@ -60,9 +60,50 @@ iteration 2 is `0.0409516431` / `0.0383726`, and iteration 10 is `0.00370484893`
 iteration 24 Python reports `0.0023892622`, while Java reports `1.4748772e-5`
 and stops. The maximum absolute ratio difference over Java's 24 iterations is
 `0.002797371`. This shows the discrepancy is in the evolving objective/state,
-not merely a different terminal comparison operator. Pinpointing which
-membership, field-correction, or registration update first causes the drift
-is the next TOADS integration task.
+not merely a different terminal comparison operator.
+
+## Iteration-state checkpoints
+
+Iteration-state snapshots show that this second-pass input diverges by the end
+of the **first** registered loop update, before the iteration-2 membership
+update. A temporary build-only diagnostic copy of `AlgorithmMultipleToads`
+exported its internal class-index segmentation immediately after growth and
+after each thinning pass; the source file itself remains unmodified in the
+supplied checkout. Python retained the corresponding `registered_cycles`
+states with full per-event traces disabled. Java and Python raw maps use the
+same internal `(168, 207, 161)` grid, x-fastest order, and class indices 0–10.
+
+| Fixed-state checkpoint | Changed voxels | SulcalCSF / class 1 Dice | CerebellarGM / class 3 Dice |
+|---|---:|---:|---:|
+| After iteration 1 growth | 69,645 / 5,598,936 | 0.906149 | 0.947163 |
+| After iteration 2 thinning (Python cycle 1 next-thinning vs Java iteration 2 thinning) | 77,970 / 5,598,936 | 0.886833 | 0.876237 |
+| After iteration 2 growth | 58,039 / 5,598,936 | 0.915408 | 0.958100 |
+
+The Java diagnostic source was the selected `AlgorithmMultipleToads.java`
+(`b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d`) plus
+temporary raw-map dumps after `propagateGrowing()` and `propagateThinning()`;
+the build-only instrumented Java source SHA-256 was
+`a6856581dfb6fb3e79e5a3abccf472285a1d231097078f554d4b926907dcfc87`. The
+Java iteration-1 post-growth map SHA-256 is
+`4e9faa1fb80ea8c6861edc166d971511357393051e9e786c31e38dc29186317d`; the
+matching Python map SHA-256 is
+`6f9f5f667376630588b9052f032e5f1fd8d116edfe6ae3aa83eeded198ba17a1`. The
+Java iteration-2 post-thinning and Python cycle-1 next-thinning maps have
+SHA-256 values `d90e10ee3bbc780daa90bd014e995580bccdca7590999f63c2a8b70cdf824fdb`
+and `5aab02b553e294881a70b74e738d5c631492b8960be374eae6dabb9086b8e0f4`,
+respectively. The two-iteration terminal Java classification remains exactly
+the same hash as the previous uninstrumented source run. Java and Python
+diagnostic runs stayed below the 16 GB watchdog (3.60 GB and 6.06 GB peak
+sampled RSS).
+
+This locates the failure earlier than the terminal comparison: the first
+registered update as a whole already exceeds the label tolerance, and the
+difference persists through the next thinning pass. It does **not** yet
+separate the first update's thinning, centroid/variance refresh, membership,
+registration, and growth stages. The next debugging slice should capture the
+Java and Python state immediately after the first thinning and then after the
+first membership/registration boundary, so the first mismatching stage is
+identified before changing production numerics.
 
 The same print-only trace on the first pass also shows energy-ratio drift even
 though its final labels pass the Dice gate: the mean/max absolute difference
@@ -141,7 +182,9 @@ the same comparator is used against the saved `toads-second` NIfTI.
 This is **selected-source equivalence evidence**, not a general synthetic
 regression suite or real-data validation. No numerical algorithm changed in
 this evidence cycle; the TOADS CLI parameter default and a focused parser
-regression changed, so no full `pytest` suite was rerun. The most
+regression changed earlier. The current implementation tree was `ae839a4`;
+these state-dump replays are diagnostics, not pytest validation. No full
+`pytest` suite was rerun. The most
 recent full-suite evidence remains 1,502 passed, 0 failed, 0 skipped, and 11
 expected RAS warnings on implementation tree `5a0adcf`; see the
 [full-suite report](full-pytest-2026-10-08-bundled-atlas-startup.md).
