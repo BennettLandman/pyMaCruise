@@ -846,5 +846,227 @@
       "bytes": 10236,
       "sha256": "fa97aead31c384ec9bf3168eb656706f042fb07b9a6f315efecd3197b7022fa3"
     }
-  ]
+  ],
+  "selected_source_comparisons": {
+    "tgdm_core": {
+      "evidence_type": "held-fixed selected Java source comparison on this workflow output",
+      "command_steps": [
+        "./.venv/bin/python scripts/prepare_tgdm_core_java_inputs.py build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01 --target build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_inputs",
+        "javac -d build/base-workflow-natural-registration-tgdm-java-2026-10-08/classes -sourcepath tests/java_reference/stubs:tests/java_reference/upstream tests/java_reference/TGDMCoreReferenceHarness.java",
+        "./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 4 --interval-seconds 0.5 --report-interval-seconds 20 -- java -Xms256m -Xmx3g -cp build/base-workflow-natural-registration-tgdm-java-2026-10-08/classes TGDMCoreReferenceHarness build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_inputs build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_reference",
+        "./.venv/bin/python scripts/convert_tgdm_core_java_reference.py --input-root build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_inputs --reference-root build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_reference",
+        "./.venv/bin/python scripts/compare_tgdm_core_saved_java_reference.py --core-dir build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01 --reference-root build/base-workflow-natural-registration-tgdm-java-2026-10-08/java_reference --report build/base-workflow-natural-registration-tgdm-java-2026-10-08/comparison.json"
+      ],
+      "java_harness_exit_code": 0,
+      "java_harness_peak_sampled_rss_gb": 1.754,
+      "results": {
+        "acceptance": {
+          "mask_dice_minimum": 0.97,
+          "symmetric_hausdorff_mm_maximum": 1.0,
+          "symmetric_mean_surface_distance_mm_maximum": 0.01
+        },
+        "comparison": "saved Python synthetic base-run core outputs vs selected MaGenericTGDM Java outputs",
+        "orientation": "RAS",
+        "passed": true,
+        "python_source": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01",
+        "scope_note": "source comparison covers delivered inner, central and outer masks on native RAS grid; intermediate evolution fields are retained in the Java fixture but not re-run here",
+        "shape": [
+          172,
+          216,
+          164
+        ],
+        "source_harness": "TGDMCoreReferenceHarness; same RAS crop inputs and one-iteration wrapper profile",
+        "stages": {
+          "central": {
+            "candidate_to_reference_mean_mm": 1.451476567029978e-06,
+            "dice": 1.0,
+            "hausdorff_mm": 0.003292143991651274,
+            "mae": 2.255353158194224e-06,
+            "max_abs": 0.03194457292556763,
+            "mean_absolute_distance_mm": 1.316543156546389e-06,
+            "n_candidate_vertices": 120834,
+            "n_reference_vertices": 120834,
+            "n_values": 6092928,
+            "reference_to_candidate_mean_mm": 1.1816097460628003e-06,
+            "rmse": 3.836541150946565e-05
+          },
+          "inner": {
+            "candidate_to_reference_mean_mm": 2.7583976235502653e-06,
+            "dice": 1.0,
+            "hausdorff_mm": 0.001959782407843415,
+            "mae": 1.1938525553709111e-05,
+            "max_abs": 0.019955337047576904,
+            "mean_absolute_distance_mm": 2.6677850533826505e-06,
+            "n_candidate_vertices": 115521,
+            "n_reference_vertices": 115521,
+            "n_values": 6092928,
+            "reference_to_candidate_mean_mm": 2.5771724832150353e-06,
+            "rmse": 0.00011554705015506707
+          },
+          "outer": {
+            "candidate_to_reference_mean_mm": 0.00013898501876210732,
+            "dice": 0.9999894253146578,
+            "hausdorff_mm": 0.08875994410005723,
+            "mae": 8.562318084558435e-05,
+            "max_abs": 0.2941426634788513,
+            "mean_absolute_distance_mm": 0.00013989731334249393,
+            "n_candidate_vertices": 123981,
+            "n_reference_vertices": 123983,
+            "n_values": 6092928,
+            "reference_to_candidate_mean_mm": 0.0001408096079228805,
+            "rmse": 0.001006941435182451
+          }
+        },
+        "synthetic_only": true,
+        "voxel_spacing_mm": [
+          0.9375,
+          0.9375,
+          0.9375
+        ]
+      },
+      "source_sha256": {
+        "TGDMCoreReferenceHarness.java": "04284ad617d933f61844a222ea2e45dc0121b4ec94160c8b0e8d3342e05cd3c4",
+        "MaGenericTGDM.java": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d",
+        "GenericTGDM.java": "70f5b21541e8a6c6139f1bd227c4ece12e8818db717f2a78ef50d69fe89f08d1"
+      }
+    },
+    "jist_isosurface": {
+      "evidence_type": "held-fixed selected Java source comparison on this workflow output",
+      "command": "./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- ./.venv/bin/python scripts/compare_workflow_jist_surfaces.py --core-dir build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01 --work-dir build/base-workflow-natural-registration-jist18-2026-10-08",
+      "exit_code": 0,
+      "peak_sampled_rss_gb": 0.539,
+      "results": {
+        "comparison": {
+          "central": {
+            "jist_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 241616,
+              "nonmanifold_edges": 0,
+              "unique_edges": 362424,
+              "vertices": 120810
+            },
+            "python_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 241616,
+              "nonmanifold_edges": 0,
+              "unique_edges": 362424,
+              "vertices": 120810
+            },
+            "vertex_geometry_and_triangle_correspondence": {
+              "all_python_vertices_map_uniquely": true,
+              "all_reference_vertices_map_uniquely": true,
+              "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+              "jist_face_count": 241616,
+              "matching_fraction_of_jist_faces": 1.0,
+              "matching_ordered_faces": 241616,
+              "matching_unordered_faces": 241616,
+              "python_face_count": 241616,
+              "symmetric_vertex_to_vertex_distance_mm": {
+                "max": 7.1411132864795945e-06,
+                "mean": 1.2529794107538538e-06
+              }
+            }
+          },
+          "inner": {
+            "jist_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 231028,
+              "nonmanifold_edges": 0,
+              "unique_edges": 346542,
+              "vertices": 115516
+            },
+            "python_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 231028,
+              "nonmanifold_edges": 0,
+              "unique_edges": 346542,
+              "vertices": 115516
+            },
+            "vertex_geometry_and_triangle_correspondence": {
+              "all_python_vertices_map_uniquely": true,
+              "all_reference_vertices_map_uniquely": true,
+              "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+              "jist_face_count": 231028,
+              "matching_fraction_of_jist_faces": 1.0,
+              "matching_ordered_faces": 231028,
+              "matching_unordered_faces": 231028,
+              "python_face_count": 231028,
+              "symmetric_vertex_to_vertex_distance_mm": {
+                "max": 7.1411132864795945e-06,
+                "mean": 1.2427600370007125e-06
+              }
+            }
+          },
+          "outer": {
+            "jist_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 247884,
+              "nonmanifold_edges": 0,
+              "unique_edges": 371826,
+              "vertices": 123944
+            },
+            "python_topology": {
+              "boundary_edges": 0,
+              "connected_components": 1,
+              "euler_characteristic": 2,
+              "faces": 247884,
+              "nonmanifold_edges": 0,
+              "unique_edges": 371826,
+              "vertices": 123944
+            },
+            "vertex_geometry_and_triangle_correspondence": {
+              "all_python_vertices_map_uniquely": true,
+              "all_reference_vertices_map_uniquely": true,
+              "continuous_corresponding_triangle_distance_bound_mm": 7.1411132864795945e-06,
+              "jist_face_count": 247884,
+              "matching_fraction_of_jist_faces": 1.0,
+              "matching_ordered_faces": 247884,
+              "matching_unordered_faces": 247884,
+              "python_face_count": 247884,
+              "symmetric_vertex_to_vertex_distance_mm": {
+                "max": 7.1411132864795945e-06,
+                "mean": 1.2371378232950244e-06
+              }
+            }
+          }
+        },
+        "core_dir": "build/base-workflow-2026-10-08-natural-registration/stages/cruise-core/attempt-01",
+        "evidence_type": "synthetic selected-source comparison",
+        "harness_sha256": "973263fa3e46408c165ad4c707688f7849b030e4be97e6fd8c3829c2cf119be2",
+        "jist_source_sha256": "a323ac5eed8b66ad62a68cd93a6bc7bcf01281453fc6541ee5c4ccc529d40c38",
+        "limits": [
+          "If vertex mapping is bijective and every mapped triangle matches, the maximum paired-vertex displacement bounds the continuous distance between corresponding planar triangles.",
+          "This is a held-fixed surface-extraction comparison, not whole-workflow equivalence."
+        ],
+        "orientation": "RAS",
+        "shape": [
+          172,
+          216,
+          164
+        ],
+        "source_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
+        "source_scalar_sha256_float32_c_order": {
+          "central": "6462b1b83895aacaad91c85bf83309d59566165dab3ac8a1abdddcc102c0c70a",
+          "inner": "5039cf88dc7c155cc445234013f1e72e7b48dfe50dc400549216527088a49faa",
+          "outer": "77b893f361b207b649f788f48011600308bc4cf11b581fb14a22cf2e33bf39c7"
+        },
+        "spacing_mm": [
+          0.9375,
+          0.9375,
+          0.9375
+        ],
+        "synthetic_only": true
+      }
+    }
+  }
 }
