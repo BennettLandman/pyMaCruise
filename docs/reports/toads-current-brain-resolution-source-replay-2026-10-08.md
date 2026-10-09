@@ -1,0 +1,80 @@
+# Selected VandyCRUISE TOADS replay on the current brain-resolution run
+
+## Scope
+
+This is a held-fixed source comparison of `AlgorithmMultipleToads` using the
+selected `MedicAlgorithmToads08` settings on the current seven-stage synthetic
+base workflow. Java receives the exact Python-produced T1 volume used by each
+corresponding Python pass, along with the selected source-order atlas. This
+isolates the TOADS classification stage; it does not compare upstream N4 or
+Dura production.
+
+The Java adapter is
+[`ToadsWorkflowSourceHarness.java`](../../tests/java_reference/ToadsWorkflowSourceHarness.java).
+It uses the selected wrapper parameters: smoothing `0.2`, maximum iterations
+`50`, maximum difference `1e-4`, atlas prior/range `2.0/0.2`, rigid
+registration, pyramid parameters `4/50/5/0`, correction enabled, polynomial
+degree `3`, kernel `30`, and 18/6 connectivity. The source parameter call is
+at `MedicAlgorithmToads08.java:280` in the supplied VandyCRUISE checkout.
+
+Source checksums:
+
+- `AlgorithmMultipleToads.java`: `b6ee1cd14dc0ad5eb7a3c0e9809ce19978c3381b233bfcc752ab070a50bbf01d`
+- `MultipleToadDeformableAtlas.java`: `e949505a3ccdd63745fea7ba8a1dd5a67d5c4c4eb9644553d1d63beb6217a9e2`
+- `MedicAlgorithmToads08.java`: `d00a7ad609ab0c6381334248b53f4daadc070161af67ef853e2a552dd008d115`
+- Selected atlas descriptor used by Java: `build/java-reference/source-vandy-atlas.txt`
+
+The input volume is `(172, 216, 164)` at `0.9375 mm` isotropic spacing. NIfTI
+values were serialized as float32, little-endian, x-fastest. Java label bytes
+were read back in the same x-fastest order using Fortran-order reshape. The
+committed comparator is
+[`compare_toads_java_classification.py`](../../scripts/compare_toads_java_classification.py).
+
+## Results
+
+| Pass | Held-fixed T1 SHA-256 (`.nii.gz`) | Python result | Java result | Changed voxels | Minimum per-label Dice | Gate |
+|---|---|---|---|---:|---:|---|
+| First TOADS | `0d08d8419e31a1034423062e5d26f55e0bd34d3ae551dab127bd99d17359f28a` | 11 iterations; classification SHA-256 `5f44f26ab64cb922e59fc3ba9ca22b56969a213446bc5a98c417403e6788b28d` | 11 iterations; raw labels SHA-256 `83357ca2f01e01276d796c07c8bd984a2983e0c9f7df15390336169aecfbbba6` | 851 / 6,092,928 | 0.99522679 (label 6) | Passes Dice ≥ 0.97 |
+| Second TOADS | `f3a19b22fb014a1dde19bc6a92646cfb6b2b9418be6f7198aae1be5952166f49` | 48 iterations; classification SHA-256 `25a4b3c5b760073e9bdf730fd5e0d2a7def66a5e5289949dc12870b4342483f8` | 24 iterations; raw labels SHA-256 `a220505ae8e073e1623cd4a1483b408415eccb83aeeec1592cd4cd067439bb7e` | 36,625 / 6,092,928 | 0.95620434 (label 5 / SulcalCSF) | **Fails Dice ≥ 0.97** |
+
+The first pass is within the agreed segmentation tolerance for every label.
+The second pass is not: labels 1, 5, 6, 14, 15, 16, 17, 22, 24, and 25 have
+Dice scores of 0.99654, 0.95620, 0.98988, 0.98392, 0.99732, 0.99858,
+0.99747, 0.99143, 0.99693, and 0.99980, respectively. Label 18 is exact.
+The notably different convergence counts (24 versus 48) and the label-5 Dice
+failure make current full-resolution second-pass TOADS parity an open blocker
+for the base workflow; synthetic integration completion must not be described
+as whole-workflow equivalence.
+
+As a diagnostic only, replaying Java TOADS with the Java Dura output instead
+of the held-fixed Python Dura input is not included in the table. That first
+attempt used the Dura adapter's raw serialization in the wrong order; after
+correcting the conversion, the Java Dura T1 differed from Python at five
+voxels and its independent TOADS replay stopped at iteration 30. It is a
+different upstream input and does not replace the held-fixed second-pass
+comparison above.
+
+## Reproduction and validation category
+
+The Java harness was compiled against the supplied VandyCRUISE/MIPAV/JIST
+classes and dependency jars in this workspace. Its executions used the
+16 GB RSS watchdog with `-Xmx12g`; peak sampled RSS was 3.943 GB for the first
+pass and 3.674 GB for the second. The calls used the committed harness and
+current workflow inputs under `build/`:
+
+```sh
+CP="$(cat build/java-reference/toads-selected-wrapper-harness/classpath.txt):build/java-reference/toads-selected-wrapper-harness"
+./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 --interval-seconds 0.5 --report-interval-seconds 60 -- /usr/bin/java -Xms512m -Xmx12g -cp "$CP" ToadsWorkflowSourceHarness build/current-toads-first-java-2026-10-08/current-n4-t1-xfast-f32le.raw build/java-reference/source-vandy-atlas.txt 172 216 164 0.9375 0.9375 0.9375 50 build/current-toads-selected-wrapper-2026-10-08/first-classification-java.raw
+./.venv/bin/python scripts/compare_toads_java_classification.py build/current-toads-selected-wrapper-2026-10-08/first-classification-java.raw build/base-workflow-2026-10-08-natural-registration/stages/toads-first/attempt-01/classification.nii.gz
+```
+
+The second-pass invocation substitutes the `current-dura-stripped-t1` input
+and `second-classification-java.raw` output paths shown in the report table;
+the same comparator is used against the saved `toads-second` NIfTI.
+
+This is **selected-source equivalence evidence**, not a general synthetic
+regression suite or real-data validation. No Python algorithm implementation
+changed in this evidence cycle, so no full `pytest` suite was rerun. The most
+recent full-suite evidence remains 1,502 passed, 0 failed, 0 skipped, and 11
+expected RAS warnings on implementation tree `5a0adcf`; see the
+[full-suite report](full-pytest-2026-10-08-bundled-atlas-startup.md).
