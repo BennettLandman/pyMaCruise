@@ -1,0 +1,81 @@
+{
+  "checks": {
+    "explicit_maseg_wm_gm_csf_labels_present": false,
+    "levelset_mean_thickness_within_bounds": false,
+    "production_surface_thickness_within_bounds": false,
+    "surfaces_closed_connected_euler_two": true
+  },
+  "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+  "levelset_subtraction_thickness": {
+    "crossing_voxel_count": 7,
+    "maximum_mm": 0.3549387753009796,
+    "mean_mm": 0.2864700662238257,
+    "minimum_mm": 0.23164744675159454,
+    "stdev_mm": 0.04916512013977709
+  },
+  "manifest": "build/plus-retained-center-2026-10-09/plus-full-workflow.json",
+  "manifest_run_signature": "10b675496155129863ba7a4e4ef18a6d17c84bc0287e955a9ae59e9f74e780bc",
+  "maseg_labels": {
+    "counts": {
+      "0": 241106,
+      "100": 72676,
+      "4": 13898
+    },
+    "present": [
+      0,
+      4,
+      100
+    ]
+  },
+  "orientation": "RAS",
+  "passed": false,
+  "quality_bounds": {
+    "levelset_mean_tolerance_mm": 1.0,
+    "nominal_ribbon_mm": 5.0,
+    "surface_median_tolerance_mm": 1.0,
+    "surface_p05_minimum_mm": 2.0,
+    "surface_p95_maximum_mm": 8.0
+  },
+  "shape": [
+    64,
+    80,
+    64
+  ],
+  "surface_closest_point_thickness": {
+    "mean_mm": 0.06239464428468834,
+    "median_mm": 0.06034166530435167,
+    "p05_mm": 0.034246369621200964,
+    "p95_mm": 0.09641792344249397,
+    "sample_count": 3724,
+    "stdev_mm": 0.01823706482936404
+  },
+  "surface_meshes": {
+    "central": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 7444,
+      "nonmanifold_edges": 0,
+      "vertices": 3724,
+      "watertight": true
+    },
+    "inner": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 7444,
+      "nonmanifold_edges": 0,
+      "vertices": 3724,
+      "watertight": true
+    },
+    "outer": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 7444,
+      "nonmanifold_edges": 0,
+      "vertices": 3724,
+      "watertight": true
+    }
+  }
+}
