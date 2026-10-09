@@ -71,6 +71,35 @@ Python reports `8.55285762e-5` and Java `9.7743876e-5`; both stop below
 `1e-4`. The first-pass result therefore passes the requested label tolerance,
 but does not establish energy-trajectory equivalence.
 
+## Two-iteration held-fixed replay
+
+The shortest supported Python loop run uses two iterations. On the same
+second-pass T1 and atlas, the selected Java run (iteration cap 2) and Python
+run (iteration cap 2) completed under 16 GB watchdogs with peak RSS of 3.782
+GB and 6.240 GB, respectively. Both ratios differ at each step:
+
+| Iteration | Python energy ratio | Java energy ratio |
+|---:|---:|---:|
+| 1 | `0.525829971` | `0.5230326` |
+| 2 | `0.0409516431` | `0.0383726` |
+
+The capped terminal maps differ at 58,039 of 6,092,928 voxels. Per-label Dice
+is below 0.97 for SulcalCSF (label 5, `0.915408`) and CerebellarGM (label 14,
+`0.958100`). Java raw label SHA-256 is
+`8d18b1c54687510d9674c79ed1d6a581c3bd526bee1107eadab8de5bef81dc91`; Python
+NIfTI SHA-256 is
+`b08d3bae4f1bd67f3a9fe867db4b50690975ba145b8cfa1e7df4a74391396e15`. The
+two-iteration cap is for diagnosis only; neither run naturally converged.
+
+The exact Python diagnostic command was:
+
+```sh
+./.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 --interval-seconds 0.5 --report-interval-seconds 60 -- ./.venv/bin/pymacruise toads-loop --t1-n4 build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/stripped_t1.nii.gz --brain-mask build/base-workflow-2026-10-08-natural-registration/stages/dura/attempt-01/brain_mask.nii.gz --output build/current-toads-selected-wrapper-2026-10-08/iteration2-python/classification.nii.gz --atlas-descriptor build/base-workflow-2026-10-08-natural-registration/resources/dura-atlas/cruise-atlas-10obj-toads2008.txt --registration-levels 4 --registration-iterations 50 --post-refresh-registration-iterations 50 --registration-max-iterations 50 --maximum-iterations 2
+```
+
+This shows the output tolerance is already exceeded by the second full loop
+cycle. The first divergent intermediate operation still needs to be isolated.
+
 As a diagnostic only, replaying Java TOADS with the Java Dura output instead
 of the held-fixed Python Dura input is not included in the table. That first
 attempt used the Dura adapter's raw serialization in the wrong order; after
