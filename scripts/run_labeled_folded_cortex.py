@@ -114,7 +114,14 @@ def main() -> None:
         out = nib.Nifti1Image(np.asarray(field), reference.affine, reference.header.copy())
         out.set_qform(reference.affine, code=1)
         out.set_sform(reference.affine, code=1)
-        nib.save(out, str(args.output_dir / f"{name}.nii.gz"))
+        # The initial-membership fixture is uint8; keep the NIfTI header's
+        # stored datatype aligned to the stage array or float level sets are
+        # silently quantized when written through its copied header.
+        out.set_data_dtype(np.asarray(field).dtype)
+        output_path = args.output_dir / f"{name}.nii.gz"
+        nib.save(out, str(output_path))
+        if nib.load(str(output_path)).get_data_dtype() != np.asarray(field).dtype:
+            raise ValueError(f"{name} output NIfTI datatype does not match its array")
     meshes = {}
     for name, field in fields.items():
         if not np.isfinite(field).all():
@@ -122,7 +129,11 @@ def main() -> None:
         out = nib.Nifti1Image(field.astype(np.float32), reference.affine, reference.header.copy())
         out.set_qform(reference.affine, code=1)
         out.set_sform(reference.affine, code=1)
-        nib.save(out, str(args.output_dir / f"{name}_levelset.nii.gz"))
+        out.set_data_dtype(np.float32)
+        output_path = args.output_dir / f"{name}_levelset.nii.gz"
+        nib.save(out, str(output_path))
+        if nib.load(str(output_path)).get_data_dtype() != np.dtype(np.float32):
+            raise ValueError(f"{name} level-set NIfTI was not stored as float32")
         meshes[name] = _mesh_metrics(field, reference.affine)
         mesh = meshes[name]
         if mesh["boundary_edges"] != 0 or mesh["nonmanifold_edges"] != 0:

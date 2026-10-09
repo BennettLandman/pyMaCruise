@@ -63,5 +63,5 @@ same case are committed under `java_reference/`; regenerate them with
 
 Synthetic quality checks, source equivalence, and real-data validation are
 separate evidence categories. The current selected Java comparison passes the
-Dice and Hausdorff limits, but its final-surface mean distances are above
-0.01 mm; the report records the numerical mismatch without relaxing that gate.
+Dice, symmetric mean-distance, and Hausdorff limits on all three final
+surfaces. See [the validation report](../../../../docs/reports/labeled-folded-cortex-validation-2026-10-09.md).

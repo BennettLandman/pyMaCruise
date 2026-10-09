@@ -1,0 +1,58 @@
+{
+  "all_outputs_exact": true,
+  "java_linear_order": "x-fastest / Fortran reshape",
+  "java_output_mode": "DuraRemoval_input",
+  "java_unconditional_wrapper_scale": 255.0,
+  "orientation": "RAS",
+  "outputs": {
+    "classification": {
+      "changed_voxels": 0,
+      "exact": true,
+      "java_sha256": "83357ca2f01e01276d796c07c8bd984a2983e0c9f7df15390336169aecfbbba6",
+      "python_sha256": "cc1da0ce5849050a1b3030da49b2acdd19e373fdd52e0229df68e1d6b391de95",
+      "voxel_count": 6092928
+    },
+    "csf": {
+      "changed_voxels_after_scale": 0,
+      "exact_after_scale": true,
+      "java_scale": 255.0,
+      "java_sha256": "70e24428adbf41ff47776a1ec6d54e930a8c91e1b61824743758b6fbcbeee9f1",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_sha256": "627cdebfca4bb815c73d2663ea775fff218fa4ac876331e55db7ae7ea59431b6"
+    },
+    "gm": {
+      "changed_voxels_after_scale": 0,
+      "exact_after_scale": true,
+      "java_scale": 255.0,
+      "java_sha256": "8c89a965a893631f460a349d1694030cdb28867c43fa2d38e44e82f4ec62911a",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_sha256": "c0cbd7cba646070b1bd2cc771006ae23bf40060ce8f3685f07a93924391c9cf8"
+    },
+    "wmfill": {
+      "changed_voxels_after_scale": 0,
+      "exact_after_scale": true,
+      "java_scale": 255.0,
+      "java_sha256": "345035e1f2db1600886873908d57f64efc69529cceaf188926ae90dfb478a2ca",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_sha256": "6c94e1ec18fc353f72d4940a0b4210e8d4797ce421b52f0968bcb325baec60a2"
+    },
+    "wmmask": {
+      "changed_voxels_after_scale": 0,
+      "exact_after_scale": true,
+      "java_scale": 255.0,
+      "java_sha256": "85f2893f12b3906532dd56aabe3dc60bf80827c4ff4bbabce65913aaaaea39ad",
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_sha256": "a984c245bb18666eb8db41a6f10fa93371bb4827e17af694b6dd00641be72760"
+    }
+  },
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "synthetic_only": true
+}

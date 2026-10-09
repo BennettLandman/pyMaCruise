@@ -1,0 +1,119 @@
+{
+  "acceptance": {
+    "final_surface_dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "evidence_category": "selected Java/Python source comparison on one synthetic labeled folded-cortex case",
+  "final_surfaces_passed": true,
+  "orientation": "RAS",
+  "source_profile": "full TGDMBaselineParameters with run_ToadsCruise WM iso 0.6 and explicit signed brain bound",
+  "stages": {
+    "central": {
+      "accepted": true,
+      "java_sha256": "d1dc688279b80f45760f236596337dd7080c3a2f5cdf6a2a21576a30f74ae856",
+      "mae": 0.00047298043047502494,
+      "max_abs": 0.035620927810668945,
+      "n_values": 274625,
+      "python_sha256": "838624cc6130e2fde55fcccf2107f8129f4a557b839064687d3b27c1fe29a5ac",
+      "region_dice": 1.0,
+      "rmse": 0.0015643717138230132,
+      "surface": {
+        "candidate_to_reference_mean_mm": 4.7539120995640095e-05,
+        "hausdorff_mm": 0.017551814608744182,
+        "mean_absolute_distance_mm": 4.5205042150384594e-05,
+        "n_candidate_vertices": 6098,
+        "n_reference_vertices": 6098,
+        "reference_to_candidate_mean_mm": 4.287096330512909e-05
+      }
+    },
+    "central_shrink": {
+      "java_sha256": "f3104d98b2b80dc684e4cf6aade826eaacf3bc257fcca788f5477c00f061dda9",
+      "mae": 0.00012526630836318114,
+      "max_abs": 0.010511696338653564,
+      "n_values": 274625,
+      "python_sha256": "5fd9fe7ab5c361bf004d931e79fd42cc00a36069786b9b0b87b3bc217ea1d1c0",
+      "region_dice": 1.0,
+      "rmse": 0.00040910856416973186
+    },
+    "initial_inner": {
+      "java_sha256": "d7b35696c78125a7fe55cf7b9b7261a8a3ee28138a7605863ef60435e7e1493e",
+      "mae": 8.390891806993585e-06,
+      "max_abs": 0.0005543529987335205,
+      "n_values": 274625,
+      "python_sha256": "df188e15ac9f6323433b41278ad4f4320bd3df27f04873c5bbeb763823fe853c",
+      "region_dice": 1.0,
+      "rmse": 1.78134842247903e-05,
+      "surface": {
+        "candidate_to_reference_mean_mm": 2.382736037001719e-05,
+        "hausdorff_mm": 0.0004995019053411917,
+        "mean_absolute_distance_mm": 2.3682810828192604e-05,
+        "n_candidate_vertices": 5982,
+        "n_reference_vertices": 5982,
+        "reference_to_candidate_mean_mm": 2.3538261286368017e-05
+      }
+    },
+    "inner": {
+      "accepted": true,
+      "java_sha256": "3e5d1a4a2b6bbb414fff459dd4d842b5ebcf6d19b7dc94fdae964cc0543ce080",
+      "mae": 2.431772923979588e-07,
+      "max_abs": 3.814697265625e-06,
+      "n_values": 274625,
+      "python_sha256": "769aad3af1e1a3025da5bea6d020a3dfcb3bc591da27875353c39788e0299835",
+      "region_dice": 1.0,
+      "rmse": 5.484918272298563e-07,
+      "surface": {
+        "candidate_to_reference_mean_mm": 1.457367008931011e-07,
+        "hausdorff_mm": 3.814697265625e-06,
+        "mean_absolute_distance_mm": 1.416873830537393e-07,
+        "n_candidate_vertices": 5990,
+        "n_reference_vertices": 5990,
+        "reference_to_candidate_mean_mm": 1.3763806521437745e-07
+      }
+    },
+    "outer": {
+      "accepted": true,
+      "java_sha256": "c67ec7e9a2e14f30d4a341508008310de773c02224cd0ef064d830223f1f8249",
+      "mae": 0.0004967954555712046,
+      "max_abs": 0.08079662919044495,
+      "n_values": 274625,
+      "python_sha256": "731442704eeb7b61f01c9db7676f17554382998ab684d4e8cf54ebb53f1df89e",
+      "region_dice": 1.0,
+      "rmse": 0.001814548028236777,
+      "surface": {
+        "candidate_to_reference_mean_mm": 0.0007712849727730749,
+        "hausdorff_mm": 0.07032286283523165,
+        "mean_absolute_distance_mm": 0.0007733291249385765,
+        "n_candidate_vertices": 9724,
+        "n_reference_vertices": 9724,
+        "reference_to_candidate_mean_mm": 0.0007753732771040783
+      }
+    },
+    "signed_seed": {
+      "java_sha256": "5aa5e325e61858933f01bfcc46d7ff5376911d9acc4711912eecb13fe9a8c9d2",
+      "mae": 2.801770994649131e-08,
+      "max_abs": 9.5367431640625e-07,
+      "n_values": 274625,
+      "python_sha256": "deca13cde2f1845749af990159a45f8ea9adab3b875f4da73dd799e07fb87298",
+      "region_dice": 1.0,
+      "rmse": 1.1025802995347e-07
+    },
+    "smoothed_initial": {
+      "java_sha256": "f43c6f3ccef6a03c0ab1e59a9e281b272c7360ca2919a04a7a2d9c3b9f067f77",
+      "mae": 0.00013113059797327818,
+      "max_abs": 0.01756995916366577,
+      "n_values": 274625,
+      "python_sha256": "38360d5e46e0eecacabb76fe6ee09a0b221de64d12d7b42d34bd6b462b9eaed0",
+      "region_dice": 1.0,
+      "rmse": 0.0003520216222517877
+    },
+    "tissue_sign": {
+      "java_sha256": "2e3de36e5e94879c80b5a91a3f7dc397e7340889683e16bcf8b8d73f83dae76a",
+      "mae": 0.0,
+      "max_abs": 0.0,
+      "n_values": 274625,
+      "python_sha256": "50de36060e9c16ff940b3845a1f2f1c742a9571102980b89134c70331d904c97",
+      "rmse": 0.0
+    }
+  }
+}

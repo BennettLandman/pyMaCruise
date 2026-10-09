@@ -1,0 +1,157 @@
+{
+  "affine_ras_mm": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "checks": {
+    "all_inputs_share_finite_ras_grid": true,
+    "all_surfaces_closed_manifold": true,
+    "each_surface_one_component_euler_2": true,
+    "explicit_maseg_labels_present": true,
+    "labeled_tissue_regions_agree_with_surfaces": true,
+    "nested_voxel_regions": true,
+    "nominal_five_mm_ribbon_thickness_retained": true,
+    "positive_finite_inner_outer_vertex_distances": true
+  },
+  "completed_steps": {
+    "central": 190,
+    "central_shrink": 10,
+    "initial_inner": 100,
+    "inner": 100,
+    "outer": 205,
+    "smoothing": 180
+  },
+  "evidence_category": "synthetic integration; not Java equivalence or real-data validation",
+  "fixture": "tests/data/synthetic/labeled_folded_cortex",
+  "java_acceptance_gates_not_yet_evaluated": {
+    "maximum_symmetric_hausdorff_mm": 1.0,
+    "maximum_symmetric_mean_surface_distance_mm": 0.01,
+    "minimum_region_dice": 0.97
+  },
+  "label_surface_consistency_counts": {
+    "csf_voxels_inside_outer": 0,
+    "gm_voxels_inside_inner": 0,
+    "gm_voxels_outside_outer": 4,
+    "wm_voxels_outside_inner": 0
+  },
+  "label_surface_consistency_fractions": {
+    "csf_outside_outer": 1.0,
+    "gm_between_inner_and_outer": 0.9998346902508576,
+    "minimum": 0.97,
+    "wm_inside_inner": 1.0
+  },
+  "labels": {
+    "counts": {
+      "0": 216095,
+      "100": 24197,
+      "44": 20987,
+      "5": 13346
+    },
+    "present": [
+      0,
+      5,
+      44,
+      100
+    ]
+  },
+  "nesting_voxel_counts": {
+    "central_outside_outer_voxels": 0,
+    "inner_outside_central_voxels": 0
+  },
+  "orientation": "RAS",
+  "passed": true,
+  "ribbon_thickness_vertex_nearest_mm": {
+    "maximum": 5.297346119155918,
+    "median": 4.756708642960076,
+    "minimum": 4.0800933837890625,
+    "p05": 4.340654397243147,
+    "p95": 5.091164602490751,
+    "sampling_note": "symmetric nearest vertex distance; approximate diagnostic, not point-to-triangle thickness"
+  },
+  "shape": [
+    65,
+    65,
+    65
+  ],
+  "source_selected_parameters": {
+    "central": {
+      "curvature": 0.15,
+      "external": 1.0,
+      "iterations": 7,
+      "pressure": 1.5
+    },
+    "central_gvf": "zero vector, as selected wrapper receives from absent GVF stage in this controlled fixture",
+    "central_shrink_iterations": 1,
+    "gray_matter_iso": 0.4,
+    "initial_iso_level": 126.9,
+    "initial_smoothing": {
+      "curvature": 1.0,
+      "iterations": 6
+    },
+    "inner": {
+      "curvature": 0.2,
+      "external": 0.0,
+      "iterations": 4,
+      "pressure": 1.0
+    },
+    "outer": {
+      "curvature": 1.0,
+      "effective_iterations": 7,
+      "external": 0.0,
+      "pressure": 1.0,
+      "wrapper_note": "selected wrapper passes central iteration option to Java outer stage"
+    },
+    "white_matter_iso": 0.6
+  },
+  "surfaces": {
+    "central": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 12192,
+      "nonmanifold_edges": 0,
+      "vertices": 6098,
+      "watertight": true
+    },
+    "inner": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 11976,
+      "nonmanifold_edges": 0,
+      "vertices": 5990,
+      "watertight": true
+    },
+    "outer": {
+      "boundary_edges": 0,
+      "connected_components": 1,
+      "euler_characteristic": 2,
+      "faces": 19444,
+      "nonmanifold_edges": 0,
+      "vertices": 9724,
+      "watertight": true
+    }
+  }
+}
