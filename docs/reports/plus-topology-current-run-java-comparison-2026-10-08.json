@@ -1,0 +1,24 @@
+{
+  "comparison": "selected Java AlgorithmTopologyCorrection vs plus Python topology_correct core",
+  "coordinate_system": "RAS",
+  "corrected_scalar_output": {
+    "changed_voxels": 0,
+    "exact": true,
+    "label_dice_at_zero": 1.0,
+    "maximum_absolute_error": 0.0,
+    "mean_absolute_error": 0.0,
+    "voxel_count": 331056
+  },
+  "java_peak_sampled_rss_gb": null,
+  "java_rss_limit_gb": 8,
+  "mawm_refinement_saved_for_followup": true,
+  "rss_measurement_note": "The watchdog returned less than 0.01 GB for this short JVM run; treated as below measurement resolution, not a reliable peak.",
+  "scope": "selected Java topology correction directly compares the corrected scalar image; subsequent MaWM refinement remains a separate wrapper operation.",
+  "shape_xyz": [
+    66,
+    76,
+    66
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "8e69954dd8c027678c52cd413cb483e529012b3cbc12a5540e655905936e9979"
+}
