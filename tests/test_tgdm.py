@@ -26,6 +26,7 @@ from pymacruise.tgdm import (
     _PROFILE_SETTINGS,
     _SMOOTHING_PROFILE_SETTINGS,
     _INNER_FROM_CENTRAL_PROFILE_SETTINGS,
+    _binary_brain_mask_bound,
 )
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
@@ -37,6 +38,16 @@ def test_tgdm_final_distance_cap_matches_selected_java_constructor_behavior() ->
     assert {profile.final_max_signed_distance for profile in _PROFILE_SETTINGS.values()} == {20.0}
     assert _SMOOTHING_PROFILE_SETTINGS.final_max_signed_distance == 20.0
     assert _INNER_FROM_CENTRAL_PROFILE_SETTINGS.final_max_signed_distance == 20.0
+
+
+def test_tgdm_binary_brain_mask_becomes_inside_negative_bound() -> None:
+    mask = np.zeros((3, 3, 3), dtype=np.uint8)
+    mask[1, 1, 1] = 255
+    bound = _binary_brain_mask_bound(mask)
+    assert bound.dtype == np.float32
+    assert bound[1, 1, 1] < 0
+    assert np.all(bound[mask == 0] > 0)
+    assert np.all(bound[mask > 0] < 0)
 
 
 def test_tgdm_evolution_can_record_selected_voxel_values_per_iteration() -> None:
@@ -464,6 +475,29 @@ def test_tgdm_nested_synthetic_phantom_runs_every_evolution_stage() -> None:
     assert np.all(masks[1] <= masks[2])
     for mask in masks:
         assert ndimage.label(mask, structure=ndimage.generate_binary_structure(3, 1))[1] == 1
+
+
+def test_tgdm_nested_array_uses_binary_brain_mask_as_signed_outer_bound() -> None:
+    x, y, z = np.indices((17, 17, 17), dtype=np.float32)
+    radius = np.sqrt((x - 8) ** 2 + (y - 8) ** 2 + (z - 8) ** 2)
+    membership = np.where(radius <= 5, 255, 0).astype(np.float32)
+    wm = np.where(radius <= 3, 255, 0).astype(np.float32)
+    gm = np.where((radius > 3) & (radius <= 6), 255, 0).astype(np.float32)
+    ace_gm = gm.copy()
+    mask = np.where(radius <= 7, 255, 0).astype(np.uint8)
+    parameters = TGDMBaselineParameters(
+        initial_iterations=1, inner_iterations=1, central_shrink_iterations=1,
+        central_iterations=1, outer_iterations=1,
+    )
+
+    result = tgdm_nested_arrays(
+        membership, wm, gm, ace_gm, brain_mask=mask, parameters=parameters
+    )
+
+    nested = [result.inner.level_set <= 0, result.central.level_set <= 0, result.outer.level_set <= 0]
+    assert np.all(nested[0] <= nested[1])
+    assert np.all(nested[1] <= nested[2])
+    assert np.all(nested[2][radius > 7] == 0)
 
 
 def test_tgdm_default_nested_stages_match_java_synthetic_reference() -> None:

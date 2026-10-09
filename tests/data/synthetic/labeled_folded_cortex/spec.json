@@ -1,0 +1,95 @@
+{
+  "description": "Deterministic folded cortical ribbon with explicit MaSeg tissue labels; entirely synthetic.",
+  "shape_voxels": [
+    65,
+    65,
+    65
+  ],
+  "center_voxel_ras": [
+    32.0,
+    32.0,
+    32.0
+  ],
+  "affine_ras_mm": [
+    [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "orientation": "RAS",
+  "voxel_size_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "outer_radius_mm": "22 + 1.8*sin(phi)^2*cos(6*theta) + 0.9*sin(phi)^2*cos(4*phi+0.35) + 0.35*sin(phi)^4*sin(3*theta+0.2)",
+  "ground_truth_cortical_ribbon_thickness_mm": 5.0,
+  "label_values": {
+    "background": 0,
+    "sulcal_csf": 5,
+    "white_matter": 44,
+    "cortical_gray_matter": 100
+  },
+  "image_intensities": {
+    "background": 0,
+    "sulcal_csf": 35,
+    "white_matter": 110,
+    "cortical_gray_matter": 145
+  },
+  "supports": {
+    "initial_membership": "255 within the binary brain mask; 0 outside",
+    "tgdm_brain_bound": "inside-negative/outside-positive unit-sign field derived from brain_mask for GenericTGDM bound semantics",
+    "white_matter": "255 inside the analytic WM boundary; 0 elsewhere",
+    "gray_matter": "255 in the analytic cortical ribbon; 0 elsewhere",
+    "ace_gray_matter": "same support and values as gray_matter",
+    "ace_skeleton": "zero everywhere to isolate nested-surface forces; MaACE is covered by separate source comparisons",
+    "ground_truth_inner_levelset": "radius minus analytic inner boundary; negative inside WM",
+    "ground_truth_outer_levelset": "radius minus analytic outer boundary; negative inside cortex"
+  },
+  "selected_maCRUISE_surface_evolution": {
+    "initial_iso_level": 126.9,
+    "white_matter_iso": 0.6,
+    "gray_matter_iso": 0.4,
+    "initial_smoothing_curvature": 1.0,
+    "initial_smoothing_iterations": 6,
+    "inner_curvature": 0.2,
+    "inner_pressure": 1.0,
+    "inner_iterations": 4,
+    "central_curvature": 0.15,
+    "central_pressure": 1.5,
+    "central_external": 1.0,
+    "central_iterations": 7,
+    "central_shrink_iterations": 1,
+    "outer_curvature": 1.0,
+    "outer_pressure": 1.0,
+    "outer_iterations": 7,
+    "provenance": "TGDMBaselineParameters selected by run_ToadsCruise; WM iso is overridden to 0.6 in the base MaCRUISE core."
+  },
+  "ribbon_quality_checks": [
+    "inner, central, and outer meshes are finite, closed, manifold, one component, Euler characteristic 2, and RAS-mm",
+    "each adjacent pair is strictly nested with no zero/negative sampled ribbon thickness",
+    "WM label 44 is inside the inner surface, GM label 100 lies between inner and outer, and CSF label 5 lies outside the outer surface, with voxel-boundary tolerance stated in the report",
+    "Java/Python final inner/central/outer surfaces meet Dice >= 0.97, symmetric mean distance <= 0.01 mm, and Hausdorff <= 1 mm",
+    "positive finite thickness is produced wherever inner/outer surfaces have valid opposing closest points"
+  ]
+}

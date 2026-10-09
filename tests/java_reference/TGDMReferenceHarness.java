@@ -19,9 +19,10 @@ public final class TGDMReferenceHarness {
     private static final float CENTER = 12.0f;
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 1 || args.length > 2) {
-            throw new IllegalArgumentException("usage: TGDMReferenceHarness OUTPUT_DIR [INPUT_DIR]");
+        if (args.length < 1 || args.length > 3) {
+            throw new IllegalArgumentException("usage: TGDMReferenceHarness OUTPUT_DIR [INPUT_DIR [WM_ISO]]");
         }
+        float wmIso = args.length > 2 ? Float.parseFloat(args[2]) : 0.5f;
         File output = new File(args[0]);
         if (!output.isDirectory() && !output.mkdirs()) {
             throw new IOException("cannot create output directory: " + output);
@@ -32,14 +33,17 @@ public final class TGDMReferenceHarness {
         float[][][] gm;
         float[][][] aceGm;
         float[][][] skeleton;
+        float[][][] brainBound = null;
         int nx = SIZE, ny = SIZE, nz = SIZE;
-        if (args.length == 2) {
+        if (args.length >= 2) {
             File input = new File(args[1]);
             membership = readNifti(new File(input, "initial_membership.nii.gz"));
             wm = readNifti(new File(input, "white_matter.nii.gz"));
             gm = readNifti(new File(input, "gray_matter.nii.gz"));
             aceGm = readNifti(new File(input, "ace_gray_matter.nii.gz"));
             skeleton = readNifti(new File(input, "ace_skeleton.nii.gz"));
+            File boundFile = new File(input, "tgdm_brain_bound.nii.gz");
+            if (boundFile.isFile()) brainBound = readNifti(boundFile);
             nx = membership.length;
             ny = membership[0].length;
             nz = membership[0][0].length;
@@ -58,7 +62,7 @@ public final class TGDMReferenceHarness {
         for (int x = 0; x < nx; x++) {
             for (int y = 0; y < ny; y++) {
                 for (int z = 0; z < nz; z++) {
-                    if (args.length == 2) continue;
+                    if (args.length >= 2) continue;
                     double dx = x - CENTER;
                     double dy = y - CENTER;
                     double dz = z - CENTER;
@@ -95,7 +99,8 @@ public final class TGDMReferenceHarness {
         ImageDataFloat thinSkeleton = new ImageDataFloat(skeleton);
         ImageDataFloat gvf = new ImageDataFloat(new float[nx][ny][nz][3]);
         ImageDataFloat firstInner = tgdm.solveInnerSurfaceFromOuter(
-                smoothed, null, white, null, 0.2f, 0.0f, 1.0f, 126.9f, 0.5f, 4);
+                smoothed, brainBound == null ? null : new ImageDataFloat(brainBound),
+                white, null, 0.2f, 0.0f, 1.0f, 126.9f, wmIso, 4);
 
         float[][][] sign = new float[nx][ny][nz];
         float[][][] wmValues = white.toArray3d();
@@ -121,16 +126,18 @@ public final class TGDMReferenceHarness {
         }
 
         ImageDataFloat central = tgdm.solveCentralSurface(
-                firstInner, null, new ImageDataFloat(sign), gvf,
+                firstInner, brainBound == null ? null : new ImageDataFloat(brainBound),
+                new ImageDataFloat(sign), gvf,
                 0.15f, 1.0f, 1.5f, 7);
         ImageDataFloat centralShrink = tgdm.solveInnerSurfaceFromCentral(
                 central, null, null, null, 0.15f, 0.0f, -1.0f,
-                126.9f, 0.5f, 1);
+                126.9f, wmIso, 1);
         ImageDataFloat finalInner = tgdm.solveInnerSurfaceFromCentral(
                 centralShrink, null, white, null, 0.2f, 0.0f, -1.0f,
-                126.9f, 0.5f, 4);
+                126.9f, wmIso, 4);
         ImageDataFloat outer = tgdm.solveOuterSurface(
-                central, null, gray, null, thinSkeleton,
+                central, brainBound == null ? null : new ImageDataFloat(brainBound),
+                gray, null, thinSkeleton,
                 1.0f, 0.0f, 1.0f, 0.4f, 7);
 
         writeNifti(new File(output, "initial_inner.nii.gz"), firstInner.toArray3d());

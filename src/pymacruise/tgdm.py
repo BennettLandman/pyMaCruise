@@ -542,7 +542,14 @@ def tgdm_nested_arrays(
             raise ValueError(f"{name} must be finite and match the initial grid")
     if not np.isfinite(membership).all():
         raise ValueError("initial membership must be finite")
-    mask = _optional_field(brain_mask, shape, "brain_mask")
+    mask_values = _optional_field(brain_mask, shape, "brain_mask")
+    # The public workflow contract supplies a binary brain mask, while
+    # GenericTGDM's outer-bound argument is a signed field (inside < 0,
+    # outside >= 0). Passing a 0/255 mask directly made every voxel satisfy
+    # the positive-bound test and blocked legitimate surface evolution.
+    # Only the sign is needed for this containment gate; use unit magnitude
+    # to avoid inventing physical-distance units in the array-only adapter.
+    mask = None if mask_values is None else _binary_brain_mask_bound(mask_values)
     skeleton = _optional_field(ace_skeleton, shape, "ace_skeleton")
     velocity = _optional_vector(gvf, shape)
 
@@ -730,6 +737,17 @@ def _optional_field(field: np.ndarray | None, shape: tuple[int, ...], name: str)
     if values.shape != shape or not np.isfinite(values).all():
         raise ValueError(f"{name} must be finite and match the TGDM grid")
     return values
+
+
+def _binary_brain_mask_bound(mask: np.ndarray) -> np.ndarray:
+    """Convert a binary mask to TGDM's inside-negative containment field."""
+    values = np.asarray(mask, dtype=np.float32)
+    if values.ndim != 3 or not np.isfinite(values).all():
+        raise ValueError("brain mask must be a finite 3D field")
+    # GenericTGDM tests the sign of its bound and clamps same-sign values.
+    # Keep only that sign here: array adapters do not carry voxel spacing with
+    # which to define a physical signed-distance magnitude.
+    return np.where(values > 0, -1.0, 1.0).astype(np.float32)
 
 
 def _optional_vector(field: np.ndarray | None, shape: tuple[int, ...]) -> np.ndarray | None:
