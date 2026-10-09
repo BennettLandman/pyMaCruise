@@ -14,9 +14,7 @@ import sys
 
 import nibabel as nib
 import numpy as np
-from scipy import ndimage
 from scipy.spatial import cKDTree
-from skimage.measure import marching_cubes
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 
@@ -24,11 +22,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_arrays  # noqa: E402
+from pymacruise.surfaces import SurfaceMesh, extract_levelset_surface  # noqa: E402
+from pymacruise.thickness import (  # noqa: E402
+    closest_point_thickness,
+    levelset_subtraction_thickness,
+)
 
 
-def _mesh_metrics(field: np.ndarray, affine: np.ndarray) -> dict[str, object]:
-    vertices, faces, _, _ = marching_cubes(field, level=0.0)
-    vertices = nib.affines.apply_affine(affine, vertices)
+def _mesh_metrics(surface: SurfaceMesh) -> dict[str, object]:
+    vertices, faces = surface.vertices, surface.faces
     edges = np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]))
     edges.sort(axis=1)
     unique_edges, edge_uses = np.unique(edges, axis=0, return_counts=True)
@@ -48,7 +50,6 @@ def _mesh_metrics(field: np.ndarray, affine: np.ndarray) -> dict[str, object]:
         "nonmanifold_edges": int(np.count_nonzero(edge_uses > 2)),
         "euler_characteristic": int(euler),
         "watertight": bool(np.all(edge_uses == 2)),
-        "vertices_ras_mm": vertices,
     }
 
 
@@ -60,6 +61,7 @@ def main() -> None:
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
+    args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     names = (
@@ -123,6 +125,8 @@ def main() -> None:
         if nib.load(str(output_path)).get_data_dtype() != np.asarray(field).dtype:
             raise ValueError(f"{name} output NIfTI datatype does not match its array")
     meshes = {}
+    surfaces = {}
+    levelset_images = {}
     for name, field in fields.items():
         if not np.isfinite(field).all():
             raise ValueError(f"{name} level set contains non-finite values")
@@ -134,7 +138,12 @@ def main() -> None:
         nib.save(out, str(output_path))
         if nib.load(str(output_path)).get_data_dtype() != np.dtype(np.float32):
             raise ValueError(f"{name} level-set NIfTI was not stored as float32")
-        meshes[name] = _mesh_metrics(field, reference.affine)
+        levelset_image = nib.load(str(output_path))
+        surface = extract_levelset_surface(levelset_image)
+        surfaces[name] = surface
+        levelset_images[name] = levelset_image
+        meshes[name] = _mesh_metrics(surface)
+        meshes[name]["extractor"] = "PyMaCRUISE Java-derived JIST IsoSurfaceOnGrid connectivity-18 templates"
         mesh = meshes[name]
         if mesh["boundary_edges"] != 0 or mesh["nonmanifold_edges"] != 0:
             raise ValueError(f"{name} surface is open or nonmanifold")
@@ -163,14 +172,32 @@ def main() -> None:
     csf_outside_fraction = 1.0 - label_check["csf_voxels_inside_outer"] / max(1, int(np.count_nonzero(csf)))
     # Vertex-to-vertex nearest distances are a reproducible sampled ribbon
     # thickness diagnostic. They are not an exact point-to-triangle distance.
-    inner_vertices = meshes["inner"].pop("vertices_ras_mm")
-    central_vertices = meshes["central"].pop("vertices_ras_mm")
-    outer_vertices = meshes["outer"].pop("vertices_ras_mm")
+    inner_vertices = surfaces["inner"].vertices
+    outer_vertices = surfaces["outer"].vertices
     inner_to_outer = cKDTree(outer_vertices).query(inner_vertices, k=1)[0]
     outer_to_inner = cKDTree(inner_vertices).query(outer_vertices, k=1)[0]
     ribbon_distances = np.concatenate((inner_to_outer, outer_to_inner))
     if not np.isfinite(ribbon_distances).all() or np.any(ribbon_distances <= 0):
         raise ValueError("ribbon surface distance is not finite and strictly positive")
+
+    # Validate the production triangle-distance thickness path as well as the
+    # source level-set subtraction output. These are distinct measures and are
+    # both retained in the report rather than blended into one tolerance.
+    surface_thickness = closest_point_thickness(
+        surfaces["inner"], surfaces["outer"], central=surfaces["central"]
+    )
+    point_thickness = surface_thickness.inner_surface.point_data["mean_thickness_mm"]
+    volume_thickness = levelset_subtraction_thickness(
+        levelset_images["inner"], levelset_images["outer"]
+    )
+    thickness_path = args.output_dir / "thickness_levelset.nii.gz"
+    nib.save(volume_thickness.image, str(thickness_path))
+    if nib.load(str(thickness_path)).get_data_dtype() != np.dtype(np.float32):
+        raise ValueError("level-set subtraction thickness output was not stored as float32")
+    if (not np.isfinite(point_thickness).all() or np.any(point_thickness <= 0)
+            or volume_thickness.crossing_voxel_count == 0
+            or not np.isfinite(volume_thickness.mean_mm)):
+        raise ValueError("production ribbon thickness contains invalid or empty measurements")
 
     checks = {
         "all_inputs_share_finite_ras_grid": True,
@@ -186,6 +213,11 @@ def main() -> None:
         "nested_voxel_regions": all(value == 0 for value in nesting.values()),
         "positive_finite_inner_outer_vertex_distances": bool(
             np.isfinite(ribbon_distances).all() and np.all(ribbon_distances > 0)
+        ),
+        "production_surface_and_volume_thickness_valid": bool(
+            np.isfinite(point_thickness).all() and np.all(point_thickness > 0)
+            and volume_thickness.crossing_voxel_count > 0
+            and np.isfinite(volume_thickness.mean_mm)
         ),
         "labeled_tissue_regions_agree_with_surfaces": bool(
             wm_inside_fraction >= 0.97 and gm_between_fraction >= 0.97
@@ -246,6 +278,27 @@ def main() -> None:
             "p95": float(np.percentile(ribbon_distances, 95)),
             "maximum": float(np.max(ribbon_distances)),
             "sampling_note": "symmetric nearest vertex distance; approximate diagnostic, not point-to-triangle thickness",
+        },
+        "production_ribbon_thickness": {
+            "surface_closest_point": {
+                "mean_mm": float(surface_thickness.mean_mm),
+                "stdev_mm": float(surface_thickness.standard_deviation_mm),
+                "sample_count": int(surface_thickness.nonzero_vertex_count),
+                "minimum_mm": float(np.min(point_thickness)),
+                "p05_mm": float(np.percentile(point_thickness, 5)),
+                "median_mm": float(np.median(point_thickness)),
+                "p95_mm": float(np.percentile(point_thickness, 95)),
+                "maximum_mm": float(np.max(point_thickness)),
+            },
+            "levelset_subtraction": {
+                "crossing_voxels": int(volume_thickness.crossing_voxel_count),
+                "mean_mm": float(volume_thickness.mean_mm),
+                "stdev_mm": float(volume_thickness.standard_deviation_mm),
+                "minimum_mm": float(volume_thickness.minimum_mm),
+                "maximum_mm": float(volume_thickness.maximum_mm),
+                "output": str(thickness_path.relative_to(ROOT)),
+            },
+            "implementation": "production PyMaCRUISE closest-point triangle and level-set subtraction APIs",
         },
         "checks": checks,
         "passed": all(checks.values()),

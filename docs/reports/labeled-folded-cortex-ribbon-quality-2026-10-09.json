@@ -33,7 +33,8 @@
     "labeled_tissue_regions_agree_with_surfaces": true,
     "nested_voxel_regions": true,
     "nominal_five_mm_ribbon_thickness_retained": true,
-    "positive_finite_inner_outer_vertex_distances": true
+    "positive_finite_inner_outer_vertex_distances": true,
+    "production_surface_and_volume_thickness_valid": true
   },
   "completed_steps": {
     "central": 190,
@@ -82,12 +83,33 @@
   },
   "orientation": "RAS",
   "passed": true,
+  "production_ribbon_thickness": {
+    "implementation": "production PyMaCRUISE closest-point triangle and level-set subtraction APIs",
+    "levelset_subtraction": {
+      "crossing_voxels": 24193,
+      "maximum_mm": 5.501346111297607,
+      "mean_mm": 4.643141759026811,
+      "minimum_mm": 1.242477536201477,
+      "output": "build/labeled-folded-cortex-source-selected-v2/thickness_levelset.nii.gz",
+      "stdev_mm": 0.8025364480995394
+    },
+    "surface_closest_point": {
+      "maximum_mm": 5.18350553528334,
+      "mean_mm": 4.672900242094979,
+      "median_mm": 4.689525117885013,
+      "minimum_mm": 4.0547197226712095,
+      "p05_mm": 4.294816264284702,
+      "p95_mm": 5.002349608894544,
+      "sample_count": 5990,
+      "stdev_mm": 0.21331261481476518
+    }
+  },
   "ribbon_thickness_vertex_nearest_mm": {
-    "maximum": 5.297346119155918,
-    "median": 4.756708642960076,
+    "maximum": 5.34103572309401,
+    "median": 4.755365128115552,
     "minimum": 4.0800933837890625,
-    "p05": 4.340654397243147,
-    "p95": 5.091164602490751,
+    "p05": 4.340554236170854,
+    "p95": 5.093820163698626,
     "sampling_note": "symmetric nearest vertex distance; approximate diagnostic, not point-to-triangle thickness"
   },
   "shape": [
@@ -130,6 +152,7 @@
       "boundary_edges": 0,
       "connected_components": 1,
       "euler_characteristic": 2,
+      "extractor": "PyMaCRUISE Java-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
       "faces": 12192,
       "nonmanifold_edges": 0,
       "vertices": 6098,
@@ -139,6 +162,7 @@
       "boundary_edges": 0,
       "connected_components": 1,
       "euler_characteristic": 2,
+      "extractor": "PyMaCRUISE Java-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
       "faces": 11976,
       "nonmanifold_edges": 0,
       "vertices": 5990,
@@ -148,6 +172,7 @@
       "boundary_edges": 0,
       "connected_components": 1,
       "euler_characteristic": 2,
+      "extractor": "PyMaCRUISE Java-derived JIST IsoSurfaceOnGrid connectivity-18 templates",
       "faces": 19444,
       "nonmanifold_edges": 0,
       "vertices": 9724,

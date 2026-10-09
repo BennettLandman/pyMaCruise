@@ -23,8 +23,9 @@ Run the complete selected profile under an 8 GB sampled-RSS watchdog:
 
 The run used full selected iterations: smoothing 6, initial/inner 4,
 central 7, central shrink 1, and outer 7 (the selected wrapper maps the
-central iteration option to outer). It used WM iso 0.6 and zero GVF. It
-completed successfully with peak sampled RSS **0.336 GB**. The binary mask is
+central iteration option to outer). It used WM iso 0.6 and zero GVF. The
+original diagnostic run completed at 0.336 GB peak sampled RSS. The production
+surface/thickness validation rerun completed at **0.349 GB** peak sampled RSS. The binary mask is
 converted to the inside-negative/outside-positive sign field expected by
 `GenericTGDM`'s bound logic; passing raw 0/255 mask values blocked evolution.
 The adapter correction is covered by two mask tests, and the full focused
@@ -37,13 +38,23 @@ Synthetic ribbon checks passed:
   Euler characteristic 2; voxel regions are nested with zero violations.
 - WM is inside inner at **100%**, GM is between inner and outer at **99.983%**,
   and CSF is outside outer at **100%**. Four GM voxels fell outside outer.
-- Symmetric nearest-vertex inner/outer separation is finite and positive;
-  median **4.757 mm**, 5th percentile **4.341 mm**, 95th percentile **5.091
-  mm**. This is a sampled diagnostic, not exact point-to-triangle thickness.
+- Production JIST-derived surfaces are closed/manifold and are fed directly to
+  the PyMaCRUISE closest-point triangle thickness operator. Inner-surface
+  thickness mean is **4.673 mm** (SD 0.213 mm; 5th/95th percentiles 4.295/
+  5.002 mm; 5,990 samples). The separate source level-set-subtraction output
+  has 24,193 crossing voxels and mean **4.643 mm** (SD 0.803 mm; range
+  1.242–5.501 mm); its float32 RAS NIfTI is `thickness_levelset.nii.gz`.
+- Symmetric nearest-vertex inner/outer separation remains an auxiliary
+  diagnostic: median **4.755 mm**, 5th/95th percentiles 4.341/5.094 mm.
+  It is not used as a substitute for either production thickness measure.
 
 The detailed machine-readable report is
 [labeled-folded-cortex-ribbon-quality-2026-10-09.json](labeled-folded-cortex-ribbon-quality-2026-10-09.json).
-It is reproducible from the command above.
+It records the production JIST extractor, topology counts, label agreement,
+both thickness measures, and all nine passed checks. It is reproducible from
+the command above. The held-fixed Java comparator was rerun on the same output
+and all final Dice, mean-distance, and Hausdorff gates still passed; its source
+metrics are unchanged in the linked Java comparison report.
 
 ## Selected Java comparison
 
