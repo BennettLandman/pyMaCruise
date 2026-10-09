@@ -67,6 +67,18 @@ def main() -> None:
         stream.write(struct.pack(">III", *shape))
         for array in held:
             stream.write(np.asarray(array, dtype=">f4").tobytes(order="C"))
+    ace_inputs=(np.asarray(result.tissue.gm.dataobj,dtype=np.float32),np.asarray(result.tissue.wm.dataobj,dtype=np.float32),np.asarray(result.boundary.cleaned_boundary.dataobj,dtype=np.float32))
+    ace_input_path=args.output_dir/"ace-input.bin"
+    with ace_input_path.open("wb") as stream:
+        stream.write(struct.pack(">III",*shape))
+        for array in ace_inputs: stream.write(np.asarray(array,dtype=">f4").tobytes(order="C"))
+    gvf_input_path=args.output_dir/"gvf-input.bin"
+    with gvf_input_path.open("wb") as stream:
+        stream.write(struct.pack(">III",*shape))
+        stream.write(np.asarray(result.ace.enhanced_gray_matter.dataobj,dtype=">f4").tobytes(order="C"))
+    for name,array in (("ace-enhanced",result.ace.enhanced_gray_matter),("ace-skeleton",result.ace.skeleton),("ace-thinned-skeleton",result.ace.thinned_skeleton)):
+        np.save(args.output_dir/f"python-{name}.npy",np.asarray(array.dataobj))
+    np.save(args.output_dir/"python-gvf-vector.npy",np.asarray(result.gvf.vector_field.dataobj,dtype=np.float32))
     for name in OUTPUT_NAMES:
         np.save(args.output_dir / f"python-{name}.npy", np.asarray(getattr(result.tgdm, name).dataobj))
     full_manifest_path = root.parent / "plus-full-workflow.json"
@@ -89,7 +101,10 @@ def main() -> None:
         "settings": options.as_dict(),
         "crop_inputs": input_records,
         "replayed_saved_outputs_exactly": list(OUTPUT_NAMES),
+        "ace_gvf_parameters": {"csf_merge_mode":3,"gvf_lambda":0.2,"gvf_iterations":200,"gvf_normalize":False},
         "held_fixed_input_binary_sha256": sha256(input_path),
+        "ace_input_binary_sha256": sha256(ace_input_path),
+        "gvf_input_binary_sha256": sha256(gvf_input_path),
     }
     (args.output_dir / "input-provenance.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2))
