@@ -33,7 +33,7 @@ env PYTHONNOUSERSITE=1 \
 
 ## Current state
 
-At 2026-10-09 19:11 UTC, preprocessing, crop, initial alignment, registered recrop, and registered-branch checkpoints were complete. The full manifest and lesion subworkflow manifest both reported `running`; the active stage was `registered_loop`. The stage had produced no incremental checkpoint or iteration log. Peak sampled RSS was 0.740 GB under the 8 GB watchdog. The child process remained active in subsequent samples; no successful exit, failure, or final surface output has been observed yet.
+At 2026-10-09 20:05 UTC, preprocessing, crop, initial alignment, registered recrop, and registered-branch checkpoints were complete. The full manifest and lesion subworkflow manifest both reported `running`; the active stage was `registered_loop`. The stage had produced no incremental checkpoint or iteration log after roughly three hours. Peak sampled RSS was 0.740 GB under the 8 GB watchdog. The child process remained active in subsequent samples; no successful exit, failure, or final surface output has been observed yet. For context, the earlier `plus-retained-center-2026-10-09` synthetic run completed this registered loop at iteration 6, but its tissue labels and ribbon failed the new acceptance checks. The current case has more populated atlas topology classes and its runtime cannot yet be compared at an equal completed-iteration count.
 
 This is synthetic workflow execution evidence only. It is not source-equivalence evidence, a completed workflow, or real-MRI validation. No test suite was run specifically for this active-run record. The fixture commit is `ffbdf2b`; this report and its plan/README references are documentation-only.
 
