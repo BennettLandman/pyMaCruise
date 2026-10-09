@@ -60,6 +60,8 @@ def main() -> None:
     # compact atlas images beside the fixture and update the declared grid.
     referenced = sorted(set(re.findall(r"(?m)^File:\s*(\S+\.nii\.gz)\s*$", descriptor_text)))
     for name in referenced:
+        if name == TOPOLOGY:
+            continue
         source = np.asarray(nib.load(str(ATLAS / name)).dataobj, dtype=np.float32)
         output_files[name] = _resample(source, TARGET, order=1).astype(np.float32)
     for name, values in output_files.items():

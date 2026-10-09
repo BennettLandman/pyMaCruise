@@ -553,8 +553,8 @@
         "A",
         "S"
       ],
-      "dtype": "float32",
-      "sha256": "082883aa6fffee58672960b8bb7a0ec827c1287e3b5f702b38af14211b1a6ca5",
+      "dtype": "uint8",
+      "sha256": "9847b258cee9284ba3562b746230c629d01b430cc19070fad8ab1fbb9f6ebd27",
       "shape": [
         65,
         81,
