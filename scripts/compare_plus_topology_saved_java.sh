@@ -7,7 +7,7 @@ report=${3:-"$repo_root/docs/reports/plus-topology-current-run-java-comparison-2
 mkdir -p "$reference_dir/classes"
 PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/prepare_plus_topology_java_inputs.py" --workflow-root "$workflow_root" --output-dir "$reference_dir"
 case_dir="$repo_root/tests/java_reference/topology_correction"
-javac -d "$reference_dir/classes" \
+javac -sourcepath "$repo_root/tests/java_reference/stubs:$case_dir/stubs:$case_dir/upstream" -d "$reference_dir/classes" \
   "$case_dir/stubs/gov/nih/mipav/model/algorithms/AlgorithmBase.java" \
   "$case_dir/stubs/gov/nih/mipav/model/structures/ModelImage.java" \
   "$case_dir/stubs/gov/nih/mipav/view/ViewUserInterface.java" \
@@ -20,9 +20,10 @@ javac -d "$reference_dir/classes" \
   "$case_dir/upstream/edu/jhmi/rad/medic/libraries/NeighborConnectivity.java" \
   "$case_dir/upstream/edu/jhmi/rad/medic/libraries/TopologyPropagation.java" \
   "$case_dir/upstream/edu/jhmi/rad/medic/algorithms/AlgorithmTopologyCorrection.java" \
+  "$repo_root/tests/java_reference/upstream/edu/vanderbilt/masi/plugins/CRUISE/utilities/MASImorph.java" \
   "$case_dir/PlusTopologyReferenceHarness.java"
 "$repo_root/.venv/bin/python" "$repo_root/scripts/run_with_rss_watchdog.py" --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
   /usr/bin/java -Xms128m -Xmx6g -cp "$reference_dir/classes" PlusTopologyReferenceHarness \
-  "$reference_dir/topology-arrays.bin" "$reference_dir/topology-java.raw.gz" > "$reference_dir/topology-java-watchdog.log" 2>&1
+  "$reference_dir/topology-arrays.bin" "$reference_dir" > "$reference_dir/topology-java-watchdog.log" 2>&1
 cat "$reference_dir/topology-java-watchdog.log"
 PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/compare_plus_topology_java.py" --reference-dir "$reference_dir" --report "$report"

@@ -11,6 +11,13 @@ public class ImageDataInt extends ImageData {
         slices = z;
     }
 
+    public ImageDataInt(int[][][] data) {
+        this(data.length, data[0].length, data[0][0].length);
+        for (int x = 0; x < rows; x++)
+            for (int y = 0; y < cols; y++)
+                System.arraycopy(data[x][y], 0, values[x][y], 0, slices);
+    }
+
     public ImageDataInt(ImageData source) {
         this(source.getRows(), source.getCols(), source.getSlices());
         for (int x = 0; x < rows; x++)

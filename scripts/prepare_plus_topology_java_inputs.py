@@ -9,6 +9,7 @@ import struct
 import nibabel as nib
 import numpy as np
 from pymacruise.plus_pipeline import PlusPipelineOptions, run_plus_tissue_update_stage, run_plus_topology_stage
+from pymacruise.topology import _erode_multi_atlas_wm
 
 
 def sha256(path: Path) -> str:
@@ -38,14 +39,15 @@ def main() -> None:
         for array in arrays: f.write(np.asarray(array,dtype='>f4').tobytes(order='F'))
     for name,image in (('corrected',topology.corrected),('atlas_refined',topology.atlas_refined)):
         np.save(args.output_dir/f'python-{name}.npy',np.asarray(image.dataobj,dtype=np.float32))
+    np.save(args.output_dir/'python-mawm-eroded.npy',_erode_multi_atlas_wm(np.asarray(load('multi_atlas_wm').dataobj)))
     report={
         'synthetic_only':True,'workflow_manifest':str(root/'run.json'),'workflow_manifest_sha256':sha256(root/'run.json'),
         'workflow_run_signature':manifest['run_signature'],'shape_xyz':list(shape),'coordinate_system':'RAS',
         'affine_ras':tissue.wm.affine.tolist(),'settings':options.as_dict(),
         'held_fixed_input_binary_sha256':sha256(input_path),
         'crop_inputs':{name:{'path':records[name]['path'],'sha256':sha256(Path(records[name]['path']))} for name in ('multi_atlas_gm','multi_atlas_wm','multi_atlas_mask','toads_gm','toads_wm_fill','toads_wm_mask')},
-        'outputs':['corrected','atlas_refined'],
-        'scope':'selected Java topology correction directly compares the corrected scalar image; subsequent MaWM refinement remains a separate wrapper operation.'}
+        'outputs':['corrected','mawm_eroded','atlas_refined'],
+        'scope':'selected Java topology correction compares the corrected scalar image; the MaWM erosion and Refine_Topo_by_MA post-step are separately compared using the preserved MASImorph source.'}
     (args.output_dir/'topology-provenance.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
     print(json.dumps(report,indent=2))
 

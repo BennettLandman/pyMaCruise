@@ -59,3 +59,4 @@ Keep comments that explain numerical choices, label definitions, coordinate tran
 - Add the tech-transfer-approved project license and any required acknowledgments before the chosen release.
 
 This file is a factual working inventory and handoff aid, not a legal analysis or a license grant.
+| VandyCRUISE `MASImorph` morphology reference | The test-only source copy preserves Yuankai Huo author/version comments from `toads-cruise`; no standalone license notice appears in the source header. | Used only by the Java reference harness for selected 3D center-plus-six-neighbor minimum-filter comparison; not packaged in the Python runtime. Review the source copy and notices with tech transfer. |
