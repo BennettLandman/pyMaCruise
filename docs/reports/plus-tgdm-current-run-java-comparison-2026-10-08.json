@@ -1,0 +1,114 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "affine_ras": [
+    [
+      0.3047619163990021,
+      0.0,
+      0.0,
+      -0.3047619163990021
+    ],
+    [
+      0.0,
+      0.24303798377513885,
+      0.0,
+      0.9721519351005554
+    ],
+    [
+      0.0,
+      0.0,
+      0.4571428894996643,
+      -0.4571428894996643
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
+  "coordinate_system": "RAS",
+  "full_workflow_run_signature": "10b675496155129863ba7a4e4ef18a6d17c84bc0287e955a9ae59e9f74e780bc",
+  "implementation_signature": "abe8c0ecb3a5127e7540d515d345ca425f458d35508f00eeab4e9b722611f457",
+  "java_peak_sampled_rss_gb": 0.442,
+  "java_rss_limit_gb": 8,
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 1.6447438131184475e-06,
+      "changed_voxels": 59495,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.00034669747428488896,
+      "maximum_absolute_voxel_error": 0.004419684410095215,
+      "mean_absolute_distance_mm": 1.6511670314172526e-06,
+      "mean_absolute_voxel_error": 3.4203168700081113e-06,
+      "n_candidate_vertices": 3724,
+      "n_reference_vertices": 3724,
+      "reference_to_candidate_mean_mm": 1.6575902497160578e-06,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 331056
+    },
+    "initial_inner": {
+      "changed_voxels": 56918,
+      "exact": false,
+      "maximum_absolute_voxel_error": 5.7220458984375e-06,
+      "mean_absolute_voxel_error": 1.7209673481059623e-07,
+      "sign_changed_voxels": 0,
+      "voxel_count": 331056
+    },
+    "initial_level_set": {
+      "changed_voxels": 9220,
+      "exact": false,
+      "maximum_absolute_voxel_error": 9.5367431640625e-07,
+      "mean_absolute_voxel_error": 1.1805664789543577e-08,
+      "sign_changed_voxels": 0,
+      "voxel_count": 331056
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 2.068602330464248e-07,
+      "changed_voxels": 61133,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 8.657475411373905e-05,
+      "maximum_absolute_voxel_error": 0.00021499395370483398,
+      "mean_absolute_distance_mm": 2.1937802967509547e-07,
+      "mean_absolute_voxel_error": 7.025986894742638e-07,
+      "n_candidate_vertices": 3724,
+      "n_reference_vertices": 3724,
+      "reference_to_candidate_mean_mm": 2.3189582630376614e-07,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 331056
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 1.6948740351662137e-06,
+      "changed_voxels": 59154,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.0003281450606542941,
+      "maximum_absolute_voxel_error": 0.04847145080566406,
+      "mean_absolute_distance_mm": 1.6877329802007076e-06,
+      "mean_absolute_voxel_error": 3.7800253959886036e-06,
+      "n_candidate_vertices": 3724,
+      "n_reference_vertices": 3724,
+      "reference_to_candidate_mean_mm": 1.6805919252352014e-06,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 331056
+    }
+  },
+  "scope": "TGDM only; upstream topology, ACE, GVF, TOADS, and LesionTOADS were held fixed at replayed Python outputs",
+  "shape_xyz": [
+    66,
+    76,
+    66
+  ],
+  "surface_thresholds_pass": true,
+  "synthetic_only": true,
+  "workflow_run_signature": "8e69954dd8c027678c52cd413cb483e529012b3cbc12a5540e655905936e9979"
+}
