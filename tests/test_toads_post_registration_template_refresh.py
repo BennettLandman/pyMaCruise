@@ -17,7 +17,7 @@ from pymacruise.toads_post_registration_template_refresh import (
 ROOT = Path(__file__).parent / "data" / "synthetic" / "toads_post_registration_template_refresh"
 REFERENCE = ROOT / "java_reference.json"
 HARNESS = Path(__file__).parent / "java_reference" / "ToadsPostRegistrationTemplateRefreshReferenceHarness.java"
-HARNESS_SHA256 = "0a597b74dcbe257aa6099189b147d7b1516f7ec42d53516998cd23e3c0ca14c5"
+HARNESS_SHA256 = "2551f7253307a0e6dd0f0e03c65103e27e3b8b44f3fb0b6738ef3692840e22b2"
 FIXTURE_SHA256 = {
     "native_t1_channels_ras.nii.gz": "c6b32c5b8a71d851ddf2db5005d6b8dbc0062c97c01a072d45ff3d7733dd8a36",
     "atlas_template_ras.nii.gz": "2b477b6f71542f2784460e4d5a5c7c10f6b1058d59d8c3ca0025acdaa3efcbeb",

@@ -141,6 +141,10 @@ def toads_post_registration_template_refresh(
         image_resolution=image_resolution_mm,
         template_resolution=template_resolution_mm,
         orientation_signs=orientation_signs,
+        # AlgorithmMultipleToads changes atlas image info after crop, but the
+        # ParametricTransform created before registration retains the original
+        # cropped dimensions used for its x0i/y0i/z0i center fields.
+        image_center_shape=tuple(int(size) for size in images.shape[1:]),
         background_label=background_label,
     )
     return ToadsPostRegistrationTemplateRefresh(

@@ -351,9 +351,16 @@ def transform_toads_topology(
     image_resolution: tuple[float, float, float],
     template_resolution: tuple[float, float, float],
     orientation_signs: tuple[float, float, float],
+    image_center_shape: tuple[int, int, int] | None = None,
     background_label: int = 1,
 ) -> np.ndarray:
-    """Nearest-neighbor resample categorical atlas labels onto padded crop."""
+    """Nearest-neighbor resample atlas labels using the selected source center.
+
+    ``image_center_shape`` preserves the dimensions captured by a Java
+    ``ParametricTransform`` when the wrapper later changes crop dimensions
+    without rebuilding that transform model. It defaults to ``crop_shape`` for
+    initial-grid resampling.
+    """
     atlas = np.asarray(topology)
     if atlas.ndim != 3:
         raise ValueError("TOADS topology must be 3D")
@@ -369,7 +376,10 @@ def transform_toads_topology(
     signs = np.asarray(orientation_signs, dtype=np.float32)
     signed_image_res = np.asarray(image_res / signs, dtype=np.float32)
     rot = toads_rotation_matrix(trans[:3])
-    centers_image = tuple(np.float32(dimension / 2.0) for dimension in crop_shape)
+    center_shape = crop_shape if image_center_shape is None else image_center_shape
+    if len(center_shape) != 3 or min(center_shape) < 1:
+        raise ValueError("image_center_shape must contain three positive dimensions")
+    centers_image = tuple(np.float32(dimension / 2.0) for dimension in center_shape)
     centers_template = tuple(np.float32(dimension / 2.0) for dimension in atlas.shape)
     output = np.full(expected, background_label, dtype=atlas.dtype)
     for x in range(x0, x_n + 1):
@@ -383,8 +393,7 @@ def transform_toads_topology(
                         # Java ParametricTransform.imageToTemplate first forms
                         # Xi=(coordinate-center)*signedResolution, then applies
                         # the rotation matrix. Preserve this float32 operation
-                        # order even though it did not change the held-fixed
-                        # brain-resolution constructor-map mismatch.
+                        # order at every intermediate.
                         image_coordinate = np.float32(
                             np.float32(source_coords[component] - centers_image[component])
                             * signed_image_res[component]

@@ -1,5 +1,9 @@
 # Selected VandyCRUISE TOADS replay on the current brain-resolution run
 
+> Historical baseline: the pre-fix mismatches below were resolved by the
+> retained-registration-center correction and exact held-fixed Java comparisons
+> in [the 2026-10-09 report](toads-retained-registration-center-source-fix-2026-10-09.md).
+
 ## Scope
 
 This is a held-fixed source comparison of `AlgorithmMultipleToads` using the
@@ -210,3 +214,8 @@ vectors were independently bitwise-equal at both saved boundaries. The next
 useful comparison is the actual Java/Python mapped coordinate or sampled atlas
 index at the constructor boundary, including orientation-sign handling; no
 whole-workflow parity claim changes from this experiment.
+
+**Superseded:** the source-center lifecycle check identified the mismatch and
+resolved it. The corrected constructor map and both natural-convergence
+outputs match the held-fixed Java references exactly; see the linked
+2026-10-09 report above. A full synthetic composite rerun is still pending.
