@@ -31,10 +31,11 @@
     "each_surface_one_component_euler_2": true,
     "explicit_maseg_labels_present": true,
     "labeled_tissue_regions_agree_with_surfaces": true,
+    "levelset_mean_ribbon_within_one_mm_of_nominal": true,
     "nested_voxel_regions": true,
-    "nominal_five_mm_ribbon_thickness_retained": true,
     "positive_finite_inner_outer_vertex_distances": true,
-    "production_surface_and_volume_thickness_valid": true
+    "production_surface_and_volume_thickness_valid": true,
+    "production_surface_ribbon_within_bounds": true
   },
   "completed_steps": {
     "central": 190,
@@ -88,12 +89,22 @@
     "levelset_subtraction": {
       "crossing_voxels": 24193,
       "maximum_mm": 5.501346111297607,
+      "mean_acceptance": {
+        "absolute_tolerance_mm": 1.0,
+        "nominal_mm": 5.0
+      },
       "mean_mm": 4.643141759026811,
       "minimum_mm": 1.242477536201477,
-      "output": "build/labeled-folded-cortex-source-selected-v2/thickness_levelset.nii.gz",
+      "output": "build/labeled-folded-cortex-source-selected-final/thickness_levelset.nii.gz",
       "stdev_mm": 0.8025364480995394
     },
     "surface_closest_point": {
+      "acceptance": {
+        "median_absolute_tolerance_mm": 1.0,
+        "nominal_mm": 5.0,
+        "p05_minimum_mm": 2.0,
+        "p95_maximum_mm": 8.0
+      },
       "maximum_mm": 5.18350553528334,
       "mean_mm": 4.672900242094979,
       "median_mm": 4.689525117885013,

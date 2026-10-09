@@ -187,6 +187,9 @@ def main() -> None:
         surfaces["inner"], surfaces["outer"], central=surfaces["central"]
     )
     point_thickness = surface_thickness.inner_surface.point_data["mean_thickness_mm"]
+    surface_thickness_p05 = float(np.percentile(point_thickness, 5))
+    surface_thickness_median = float(np.median(point_thickness))
+    surface_thickness_p95 = float(np.percentile(point_thickness, 95))
     volume_thickness = levelset_subtraction_thickness(
         levelset_images["inner"], levelset_images["outer"]
     )
@@ -223,10 +226,13 @@ def main() -> None:
             wm_inside_fraction >= 0.97 and gm_between_fraction >= 0.97
             and csf_outside_fraction >= 0.97
         ),
-        "nominal_five_mm_ribbon_thickness_retained": bool(
-            abs(float(np.median(ribbon_distances)) - 5.0) <= 1.0
-            and float(np.percentile(ribbon_distances, 5)) >= 2.0
-            and float(np.percentile(ribbon_distances, 95)) <= 8.0
+        "production_surface_ribbon_within_bounds": bool(
+            abs(surface_thickness_median - 5.0) <= 1.0
+            and surface_thickness_p05 >= 2.0
+            and surface_thickness_p95 <= 8.0
+        ),
+        "levelset_mean_ribbon_within_one_mm_of_nominal": bool(
+            abs(float(volume_thickness.mean_mm) - 5.0) <= 1.0
         ),
     }
     report = {
@@ -285,10 +291,16 @@ def main() -> None:
                 "stdev_mm": float(surface_thickness.standard_deviation_mm),
                 "sample_count": int(surface_thickness.nonzero_vertex_count),
                 "minimum_mm": float(np.min(point_thickness)),
-                "p05_mm": float(np.percentile(point_thickness, 5)),
-                "median_mm": float(np.median(point_thickness)),
-                "p95_mm": float(np.percentile(point_thickness, 95)),
+                "p05_mm": surface_thickness_p05,
+                "median_mm": surface_thickness_median,
+                "p95_mm": surface_thickness_p95,
                 "maximum_mm": float(np.max(point_thickness)),
+                "acceptance": {
+                    "nominal_mm": 5.0,
+                    "median_absolute_tolerance_mm": 1.0,
+                    "p05_minimum_mm": 2.0,
+                    "p95_maximum_mm": 8.0,
+                },
             },
             "levelset_subtraction": {
                 "crossing_voxels": int(volume_thickness.crossing_voxel_count),
@@ -296,6 +308,10 @@ def main() -> None:
                 "stdev_mm": float(volume_thickness.standard_deviation_mm),
                 "minimum_mm": float(volume_thickness.minimum_mm),
                 "maximum_mm": float(volume_thickness.maximum_mm),
+                "mean_acceptance": {
+                    "nominal_mm": 5.0,
+                    "absolute_tolerance_mm": 1.0,
+                },
                 "output": str(thickness_path.relative_to(ROOT)),
             },
             "implementation": "production PyMaCRUISE closest-point triangle and level-set subtraction APIs",

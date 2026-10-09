@@ -48,10 +48,12 @@ Synthetic ribbon checks passed:
   diagnostic: median **4.755 mm**, 5th/95th percentiles 4.341/5.094 mm.
   It is not used as a substitute for either production thickness measure.
 
+The explicit production acceptance bounds are: triangle-thickness median within 1 mm of the synthetic 5 mm target, p05 at least 2 mm, p95 at most 8 mm; level-set-subtraction mean within 1 mm of target. All pass. These are phantom-quality bounds, separate from the Java-equivalence tolerances.
+
 The detailed machine-readable report is
 [labeled-folded-cortex-ribbon-quality-2026-10-09.json](labeled-folded-cortex-ribbon-quality-2026-10-09.json).
 It records the production JIST extractor, topology counts, label agreement,
-both thickness measures, and all nine passed checks. It is reproducible from
+both thickness measures, acceptance thresholds, and all ten passed checks. It is reproducible from
 the command above. The held-fixed Java comparator was rerun on the same output
 and all final Dice, mean-distance, and Hausdorff gates still passed; its source
 metrics are unchanged in the linked Java comparison report.
