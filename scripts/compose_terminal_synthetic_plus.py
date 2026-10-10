@@ -139,27 +139,36 @@ def main() -> None:
         f"plus_{name}": _record(plus.outputs[name])
         for name in surface_names
     }
-    manifest = {
+    stage_records = {name: _record(path) for name, path in stages.items()}
+    settings = {
+        "plus_pipeline_options": PlusPipelineOptions().as_dict(),
+        "tgdm_surface_evolution": asdict(TGDMBaselineParameters()),
+        "file_workflow_run_manifest": _record(plus.manifest_path),
+    }
+    signature_data = {
         "schema_version": 1,
         "stage": "synthetic-plus-terminal-surface-composition",
+        "spatial_convention": "RAS",
+        "stop_reason": loop_summary.get("stop_reason"),
+        "completed_iteration": loop_summary.get("completed_iteration"),
+        "inputs": inputs,
+        "stages": stage_records,
+        "settings": settings,
+        "final_outputs": final_outputs,
+        "source_equivalence_claim": False,
+    }
+    run_signature = hashlib.sha256(
+        json.dumps(signature_data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    manifest = {
+        **signature_data,
+        "run_signature": run_signature,
         "status": "complete",
         "terminal": True,
-        "spatial_convention": "RAS",
         "workflow_scope": (
             "source-selected terminal synthetic plus surface composition from hash-checked "+
             "registered-loop state; these checkpoint stages were not run by one uninterrupted plus-full-run call"
         ),
-        "stop_reason": loop_summary.get("stop_reason"),
-        "completed_iteration": loop_summary.get("completed_iteration"),
-        "inputs": inputs,
-        "stages": {name: _record(path) for name, path in stages.items()},
-        "settings": {
-            "plus_pipeline_options": PlusPipelineOptions().as_dict(),
-            "tgdm_surface_evolution": asdict(TGDMBaselineParameters()),
-            "file_workflow_run_manifest": _record(plus.manifest_path),
-        },
-        "final_outputs": final_outputs,
-        "source_equivalence_claim": False,
     }
     manifest_path = output_root / "synthetic-plus-terminal-surface-composition.json"
     _write_json(manifest_path, manifest)
