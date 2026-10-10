@@ -59,11 +59,29 @@ PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
   --iterations 99 --thinning-limit 1000 --max-passes 1 --finite-zero-variance
 ```
 
-The restartable normal continuation has reached source iteration 71. Checkpoints through iteration 71 are synthetic and hash-checked; none has reached a source stop. Iterations 67–71 completed in `97.89s`, `97.15s`, `97.46s`, `96.97s`, and `99.13s`, respectively. The latest energy ratio is `0.1502525508` (stop=false); its output and checkpoint are under `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0072/`, with peak sampled RSS `0.547 GB` under the 8 GB watchdog. Peak RSS across this five-pass window was 0.596 GB. Ratios remain nonmonotonic near `0.15`, far above the selected convergence threshold. The selected source convergence stop has not occurred. No terminal ribbon-quality or full workflow-equivalence verdict is yet available.
+The restartable normal continuation has reached source iteration 75. Checkpoints through iteration 75 are synthetic and hash-checked; none has reached a source stop. Iterations 72–75 completed in `96.87s`, `97.01s`, `97.72s`, and `96.58s`, respectively. The latest energy ratio is `0.1490713805` (stop=false); its output and checkpoint are under `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0076/`, with peak sampled RSS `0.552 GB` under the 8 GB watchdog. Peak RSS across this four-pass window was 0.559 GB. Ratios remain nonmonotonic near `0.15`, far above the selected convergence threshold. The selected source convergence stop has not occurred. No terminal ribbon-quality or full workflow-equivalence verdict is yet available.
 
 These are synthetic execution and source-reference test results, not full workflow equivalence or real-MRI validation. The ribbon audit remains pending until the selected loop reaches a terminal result and the complete workflow manifest is available.
 
 The fixture generator, full-run invocation, progress-log schema, and eventual audit command remain the reproducibility record. The audit is intentionally pending until a complete terminal manifest exists.
+
+## Terminal surface composition
+
+Once the registered loop reports a terminal stop, compose its saved checkpoint with the existing Dura, native-space transfer, MaSeg separation, and selected plus surface stages:
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
+  --loop-manifest build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0099/lesion-registered-loop.json \
+  --t1 tests/data/synthetic/plus_vandy_atlas_aligned/t1.nii.gz \
+  --brain-mask tests/data/synthetic/plus_vandy_atlas_aligned/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_vandy_atlas_aligned/maseg.nii.gz \
+  --output-dir build/plus-vandy-atlas-aligned-v3/terminal-surfaces
+PYTHONPATH=src .venv/bin/python scripts/audit_plus_ribbon_quality.py \
+  build/plus-vandy-atlas-aligned-v3/terminal-surfaces/synthetic-plus-terminal-surface-composition.json \
+  --report docs/reports/plus-aligned-folded-ribbon-quality-2026-10-09.json
+```
+
+The composition records the default selected `PlusPipelineOptions` and `TGDMBaselineParameters`, child-stage manifests, RAS inputs, output hashes, and stop reason. It is explicit that these persisted stages were composed from a checkpoint, rather than executed by one uninterrupted `plus-full-run` call. The audit verifies those hashes and evaluates finite RAS grids, label support, mesh topology, nesting, and surface/level-set thickness.
 
 ## Acceptance checks after completion
 
