@@ -16,7 +16,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from .lesion_shapes import (
     LesionRegistrationOptimizationResult,
-    _linear_interpolation_with_default,
+    _linear_interpolation_default_grid,
     optimize_lesion_shapes_scaled,
 )
 from .toads_shapes import ToadShapeBounds, _rotation_matrix
@@ -70,28 +70,35 @@ def _bounds_for_transform(
     lower = list(image_dims)
     upper = [0, 0, 0]
     support_count = 0
+    y_indices = np.arange(image_dims[1], dtype=np.float32)
+    z_indices = np.arange(image_dims[2], dtype=np.float32)
+    y_grid, z_grid = np.meshgrid(y_indices, z_indices, indexing="ij")
+    coordinates = np.empty((image_dims[1], image_dims[2], 3), dtype=np.float32)
     for x in range(image_dims[0]):
-        for y in range(image_dims[1]):
-            for z in range(image_dims[2]):
-                point = (x, y, z)
-                mapped = []
-                for axis in range(3):
-                    coordinate = np.float32(matrix[axis, 0] * np.float32(x))
-                    coordinate = np.float32(
-                        coordinate + np.float32(matrix[axis, 1] * np.float32(y))
-                    )
-                    coordinate = np.float32(
-                        coordinate + np.float32(matrix[axis, 2] * np.float32(z))
-                    )
-                    coordinate = np.float32(coordinate + matrix[axis, 3])
-                    mapped.append(coordinate)
-                if _linear_interpolation_with_default(
-                    values, tuple(mapped), np.float32(0.0)
-                ) > np.float32(0.0):
-                    support_count += 1
-                    for axis in range(3):
-                        lower[axis] = min(lower[axis], point[axis])
-                        upper[axis] = max(upper[axis], point[axis])
+        for axis in range(3):
+            coordinate = np.float32(matrix[axis, 0] * np.float32(x))
+            coordinate = np.float32(
+                coordinate + np.float32(matrix[axis, 1] * y_grid)
+            )
+            coordinate = np.float32(
+                coordinate + np.float32(matrix[axis, 2] * z_grid)
+            )
+            coordinates[..., axis] = np.float32(coordinate + matrix[axis, 3])
+        sampled = _linear_interpolation_default_grid(
+            values, coordinates, np.float32(0.0)
+        )
+        selected = sampled > np.float32(0.0)
+        count = int(np.count_nonzero(selected))
+        if count:
+            selected_y = y_grid[selected].astype(np.int64)
+            selected_z = z_grid[selected].astype(np.int64)
+            support_count += count
+            lower[0] = min(lower[0], x)
+            lower[1] = min(lower[1], int(selected_y.min()))
+            lower[2] = min(lower[2], int(selected_z.min()))
+            upper[0] = max(upper[0], x)
+            upper[1] = max(upper[1], int(selected_y.max()))
+            upper[2] = max(upper[2], int(selected_z.max()))
     return ToadShapeBounds(tuple(lower), tuple(upper), support_count, None)
 
 
