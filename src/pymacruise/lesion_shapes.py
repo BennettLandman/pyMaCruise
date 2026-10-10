@@ -16,7 +16,10 @@ from pymacruise.toads_registration import (
     rigid_image_to_template_jacobian,
     trilinear_prior_derivatives,
 )
-from pymacruise.toads_shapes import sample_toad_shape_prior
+from pymacruise.toads_shapes import (
+    _rotation_matrix as toads_rotation_matrix,
+    sample_toad_shape_prior,
+)
 from pymacruise.toads_registration_sampling import (
     ToadsRegistrationPyramidLevel,
     build_toads_registration_pyramid,
@@ -113,6 +116,7 @@ def sample_lesion_shape_prior(
     image_center_xyz: tuple[float, float, float] | None = None,
     template_center_xyz: tuple[float, float, float] | None = None,
     _prevalidated_shape: bool = False,
+    _precomputed_rotation_matrix: np.ndarray | None = None,
 ) -> LesionShapeSample:
     """Sample one class as in `LesionToadAtlas.getRegularTransformedShape`.
 
@@ -176,6 +180,7 @@ def sample_lesion_shape_prior(
         template_center_xyz=template_center_xyz,
         _java_float32_norm=True,
         _prevalidated_shape=_prevalidated_shape,
+        _precomputed_rotation_matrix=_precomputed_rotation_matrix,
     )
     if bounds.template_xyz is None:
         return LesionShapeSample(default, None)
@@ -461,6 +466,9 @@ def lesion_registration_volume_coefficients(
     priors = np.zeros(mem.shape, dtype=np.float32)
     gradients = np.zeros(mem.shape + (3,), dtype=np.float32)
     jacobians = np.zeros(mem.shape[:3] + (3, 6), dtype=np.float32)
+    rotation_matrix = toads_rotation_matrix(
+        np.asarray(transform[:3], dtype=np.float32), java_float32_norm=True
+    )
     full_input_bounds = (tuple(0 for _ in range(3)), image_dims)
     for x in range(int(offset), image_dims[0], int(subsample)):
         for y in range(int(offset), image_dims[1], int(subsample)):
@@ -481,6 +489,7 @@ def lesion_registration_volume_coefficients(
                         image_center_xyz=image_center_xyz,
                         template_center_xyz=template_center_xyz,
                         _prevalidated_shape=True,
+                        _precomputed_rotation_matrix=rotation_matrix,
                     )
                     priors[x, y, z, class_index] = sample.value
                     if sample.template_gradient_xyz is not None:

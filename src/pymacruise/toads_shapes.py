@@ -174,6 +174,7 @@ def sample_toad_shape_prior(
     template_center_xyz: tuple[float, float, float] | None = None,
     _java_float32_norm: bool = False,
     _prevalidated_shape: bool = False,
+    _precomputed_rotation_matrix: np.ndarray | None = None,
 ) -> ToadShapeSample:
     """Sample a source TOADS shape prior at one input-grid voxel.
 
@@ -245,9 +246,14 @@ def sample_toad_shape_prior(
         default = np.float32(1.0 if class_index == 0 else 0.0)
         return ToadShapeSample(default, None)
 
-    matrix = _rotation_matrix(
-        transform_values[:3], java_float32_norm=_java_float32_norm
-    )
+    if _precomputed_rotation_matrix is None:
+        matrix = _rotation_matrix(
+            transform_values[:3], java_float32_norm=_java_float32_norm
+        )
+    else:
+        matrix = np.asarray(_precomputed_rotation_matrix, dtype=np.float32)
+        if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
+            raise ValueError("precomputed rotation matrix must be a finite 3x3 array")
     physical = tuple(
         np.float32(
             np.float32(np.float32(point[axis]) * scale_value - image_center[axis])
