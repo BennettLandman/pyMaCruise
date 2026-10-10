@@ -321,6 +321,33 @@ def run_lesion_toads_descriptor_loop(
                 "scope": "pass",
                 "status": "started",
             })
+        registered_subphase_started: dict[str, float] = {}
+
+        def report_registered_subphase(event: str) -> None:
+            if stage_progress_callback is None:
+                return
+            subphase, separator, status = event.rpartition(":")
+            if not separator or status not in {"running", "complete"}:
+                return
+            if status == "running":
+                registered_subphase_started[subphase] = perf_counter()
+                stage_progress_callback({
+                    "iteration": int(iteration),
+                    "stage": subphase,
+                    "scope": "registration_subphase",
+                    "status": "started",
+                })
+            else:
+                started = registered_subphase_started.pop(subphase, None)
+                if started is not None:
+                    stage_progress_callback({
+                        "iteration": int(iteration),
+                        "stage": subphase,
+                        "scope": "registration_subphase",
+                        "status": "completed",
+                        "elapsed_seconds": float(perf_counter() - started),
+                    })
+
         registered = register_and_branch_lesion_toads_descriptor_iteration(
             transition,
             options.atlas_shape_priors,
@@ -341,6 +368,10 @@ def run_lesion_toads_descriptor_loop(
             has_lesion=options.has_lesion,
             use_lesion_max=options.use_lesion_max,
             retain_growth_event_states=options.retain_growth_event_states,
+            progress_callback=(
+                report_registered_subphase
+                if stage_progress_callback is not None else None
+            ),
         )
         if stage_progress_callback is not None:
             stage_progress_callback({

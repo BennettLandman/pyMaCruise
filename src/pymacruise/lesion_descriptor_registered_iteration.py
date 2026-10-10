@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
 from numpy.typing import ArrayLike
 
@@ -51,6 +51,7 @@ def register_and_branch_lesion_toads_descriptor_iteration(
     has_lesion: bool = True,
     use_lesion_max: bool = False,
     retain_growth_event_states: bool = True,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> LesionToadsDescriptorRegisteredIteration:
     """Run the selected order: ``registerShapes`` then control and branching.
 
@@ -70,6 +71,7 @@ def register_and_branch_lesion_toads_descriptor_iteration(
         template_resolutions_mm=template_resolutions_mm,
         align_shapes=align_shapes,
         init_align_iter=init_align_iter,
+        progress_callback=progress_callback,
     )
     thinning_state = transition.thinning.run
     control = continue_after_next_iteration_registration(
@@ -90,6 +92,7 @@ def register_and_branch_lesion_toads_descriptor_iteration(
         has_lesion=has_lesion,
         use_lesion_max=use_lesion_max,
         retain_growth_event_states=retain_growth_event_states,
+        progress_callback=progress_callback,
     )
     return LesionToadsDescriptorRegisteredIteration(
         transition,

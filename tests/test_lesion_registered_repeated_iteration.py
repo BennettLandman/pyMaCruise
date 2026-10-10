@@ -316,6 +316,24 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
         for event in pass_progress
         if event["status"] == "completed"
     )
+    registration_progress = [
+        item for item in loop_stage_progress
+        if item["scope"] == "registration_subphase"
+    ]
+    assert registration_progress
+    assert {item["stage"] for item in registration_progress} >= {
+        "shape_optimizer", "shape_bounds:0", "shape_bounds:12",
+        "growth", "relation_refresh", "terminal_classification",
+    }
+    assert all(
+        item["status"] in {"started", "completed"}
+        for item in registration_progress
+    )
+    assert all(
+        item["elapsed_seconds"] >= 0
+        for item in registration_progress
+        if item["status"] == "completed"
+    )
     continuing_progress = [
         item for item in loop_stage_progress if item["scope"] == "continuing"
     ]
