@@ -45,10 +45,25 @@ Using the selected MaCRUISE GM/WM MaSeg label sets and zero-level regions:
 
 The strong support deficits and fragmented meshes fail the current qualitative ribbon checks. The shortened TGDM settings are a leading explanation; the report does not claim they are the sole cause.
 
+## Source-selected CRUISE core and surface follow-up
+
+To test whether the smoke-run quality deficits came from shortened evolution, the converged TOADS/Dura products from the first run were reused and the CRUISE core was rerun with ACE diffusion 25 and source-selected TGDM iteration settings: initial 6, inner 4, central 7, and outer 7 (the selected wrapper maps central iterations to outer iterations). Source-faithful MaSeg refinement and surface/thickness then ran on those new level sets. Upstream registration caps and the one-pass Dura setting remain those of the smoke run; this is not a source-default whole-workflow run.
+
+All **22** files from this core/refinement/surface follow-up passed SHA-256 recording in the ignored audit; all **13** NIfTIs were finite and RAS-oriented. Tissue support improved:
+
+- GM between inner and outer surfaces: **525,643 / 642,291 (81.8%)**.
+- WM inside the inner surface: **356,149 / 428,303 (83.2%)**.
+- Inner voxels outside central: **5**; central outside outer: **0**.
+- Mean symmetric surface thickness: **2.850 mm**; mean level-set subtraction thickness: **4.556 mm** (different methods; not a parity comparison).
+
+All three meshes are watertight by edge incidence with no nonmanifold edges, but each still has **217 components**. The largest component contains 99.7% of total triangle area; 215 components have fewer than 100 vertices, and the largest component Euler characteristic is `−4`. Thus one dominant surface is present alongside many small shells and nontrivial topology. The support metrics improve over the smoke run, but no source/reference images were available to compute the agreed per-label Dice or surface-distance tolerances. The in-vivo case is not declared numerically equivalent or fully quality-accepted.
+
+The machine-readable audit and source-profile outputs are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-core-audit.json` and `build/invivo-base-2026-10-10-ras-grid/source-selected-core/`.
+
 ## Evidence limits and follow-up
 
 This is one in-vivo integration experiment with a documented oblique-grid resampling step. It is not comparison against the historical Singularity output: `sample-macruise/output` contained no reference products at inspection. It is also not Java equivalence, source-default execution, clinical validation, or a test of MaCRUISEplus.
 
-The follow-up reuses the converged second-pass TOADS/Dura products and runs the CRUISE core with source-selected ACE and TGDM settings (ACE 25; TGDM initial/inner/central/outer 6/4/7/7, with the selected wrapper mapping central iterations to outer iterations), followed by refinement, surface extraction, and the same quality audit. Its outputs remain under ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-core/`.
+The source-selected CRUISE core/tail follow-up is complete. A same-settings resume of the original seven-stage workflow verified and skipped all seven stages. Remaining in-vivo validation needs a reference run/output for per-label Dice and symmetric surface-distance comparison, plus investigation of the extra surface shells and Euler characteristic.
 
 The RSS watchdog used by the smoke command samples its direct workflow-runner process, not the full process tree. System-wide `memory_pressure` reported 66–69% free during/after the run; the 7.053 GB runner RSS peak must not be interpreted as total process-tree peak RSS.
