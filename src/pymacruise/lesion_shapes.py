@@ -18,6 +18,7 @@ from pymacruise.toads_registration import (
 )
 from pymacruise.toads_shapes import (
     _rotation_matrix as toads_rotation_matrix,
+    map_toad_shape_point,
     sample_toad_shape_prior,
 )
 from pymacruise.toads_registration_sampling import (
@@ -117,6 +118,7 @@ def sample_lesion_shape_prior(
     template_center_xyz: tuple[float, float, float] | None = None,
     _prevalidated_shape: bool = False,
     _precomputed_rotation_matrix: np.ndarray | None = None,
+    _precomputed_template_xyz: tuple[float, float, float] | None = None,
 ) -> LesionShapeSample:
     """Sample one class as in `LesionToadAtlas.getRegularTransformedShape`.
 
@@ -164,27 +166,42 @@ def sample_lesion_shape_prior(
     ):
         raise ValueError("pyramid sampling requires explicit full-resolution centers")
 
-    bounds = sample_toad_shape_prior(
-        values,
-        point,
-        image_dimensions_xyz=image_dims,
-        image_resolutions_mm=image_resolutions_mm,
-        template_resolutions_mm=template_resolutions_mm,
-        transform=transform,
-        class_index=int(class_index),
-        bbox_low_xyz=bbox_low_xyz,
-        bbox_high_xyz=bbox_high_xyz,
-        shape_slope=1.0,
-        scale=float(scale_value),
-        image_center_xyz=image_center_xyz,
-        template_center_xyz=template_center_xyz,
-        _java_float32_norm=True,
-        _prevalidated_shape=_prevalidated_shape,
-        _precomputed_rotation_matrix=_precomputed_rotation_matrix,
-    )
-    if bounds.template_xyz is None:
-        return LesionShapeSample(default, None)
-    mapped = bounds.template_xyz
+    if _precomputed_template_xyz is None:
+        bounds = sample_toad_shape_prior(
+            values,
+            point,
+            image_dimensions_xyz=image_dims,
+            image_resolutions_mm=image_resolutions_mm,
+            template_resolutions_mm=template_resolutions_mm,
+            transform=transform,
+            class_index=int(class_index),
+            bbox_low_xyz=bbox_low_xyz,
+            bbox_high_xyz=bbox_high_xyz,
+            shape_slope=1.0,
+            scale=float(scale_value),
+            image_center_xyz=image_center_xyz,
+            template_center_xyz=template_center_xyz,
+            _java_float32_norm=True,
+            _prevalidated_shape=_prevalidated_shape,
+            _precomputed_rotation_matrix=_precomputed_rotation_matrix,
+        )
+        if bounds.template_xyz is None:
+            return LesionShapeSample(default, None)
+        mapped = bounds.template_xyz
+    else:
+        if len(_precomputed_template_xyz) != 3 or not np.isfinite(
+            np.asarray(_precomputed_template_xyz, dtype=np.float32)
+        ).all():
+            raise ValueError("precomputed template coordinate must be a finite XYZ triple")
+        lower = _triple_int(bbox_low_xyz, "bbox_low_xyz")
+        upper = _triple_int(bbox_high_xyz, "bbox_high_xyz")
+        if any(lower[axis] < 0 or lower[axis] > image_dims[axis] for axis in range(3)) or any(
+            upper[axis] < 0 or upper[axis] > image_dims[axis] for axis in range(3)
+        ) or any(lower[axis] > upper[axis] for axis in range(3)):
+            raise ValueError("class bounds must be ordered and inside the declared input grid")
+        if any(point[axis] < lower[axis] or point[axis] >= upper[axis] for axis in range(3)):
+            return LesionShapeSample(default, None)
+        mapped = tuple(np.float32(value) for value in _precomputed_template_xyz)
     sampled = _linear_interpolation_with_default(values, mapped, default)
     # LesionToadAtlas computes derivatives only after its priorT > 0 gate.
     # Reuse the derivative primitive already compared against the selected
@@ -469,11 +486,27 @@ def lesion_registration_volume_coefficients(
     rotation_matrix = toads_rotation_matrix(
         np.asarray(transform[:3], dtype=np.float32), java_float32_norm=True
     )
+    shared_template_grid = len({values.shape for values in maps}) == 1
     full_input_bounds = (tuple(0 for _ in range(3)), image_dims)
     for x in range(int(offset), image_dims[0], int(subsample)):
         for y in range(int(offset), image_dims[1], int(subsample)):
             for z in range(int(offset), image_dims[2], int(subsample)):
                 point = (x, y, z)
+                mapped = None
+                if shared_template_grid:
+                    mapped = map_toad_shape_point(
+                        point,
+                        image_dimensions_xyz=image_dims,
+                        template_dimensions_xyz=maps[0].shape,
+                        image_resolutions_mm=image_resolutions_mm,
+                        template_resolutions_mm=template_resolutions_mm,
+                        transform=transform,
+                        scale=scale,
+                        image_center_xyz=image_center_xyz,
+                        template_center_xyz=template_center_xyz,
+                        _java_float32_norm=True,
+                        _precomputed_rotation_matrix=rotation_matrix,
+                    )
                 for class_index in range(1, mem.shape[-1]):
                     sample = sample_lesion_shape_prior(
                         maps[class_index],
@@ -490,6 +523,7 @@ def lesion_registration_volume_coefficients(
                         template_center_xyz=template_center_xyz,
                         _prevalidated_shape=True,
                         _precomputed_rotation_matrix=rotation_matrix,
+                        _precomputed_template_xyz=mapped,
                     )
                     priors[x, y, z, class_index] = sample.value
                     if sample.template_gradient_xyz is not None:

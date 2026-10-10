@@ -254,6 +254,108 @@ def sample_toad_shape_prior(
         matrix = np.asarray(_precomputed_rotation_matrix, dtype=np.float32)
         if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
             raise ValueError("precomputed rotation matrix must be a finite 3x3 array")
+    mapped = _map_toad_shape_point_validated(
+        point,
+        image_res,
+        template_res,
+        transform_values,
+        scale_value,
+        image_center,
+        template_center,
+        matrix,
+    )
+
+    sampled = _linear_closest(values, mapped)
+    recovered = np.float32(
+        np.float32(slope * np.float32(sampled - np.float32(0.5))) + np.float32(0.5)
+    )
+    result = np.float32(np.clip(recovered, np.float32(0.0), np.float32(1.0)))
+    return ToadShapeSample(result, mapped)
+
+
+def map_toad_shape_point(
+    image_point_xyz: tuple[int, int, int],
+    *,
+    image_dimensions_xyz: tuple[int, int, int],
+    template_dimensions_xyz: tuple[int, int, int],
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    transform: tuple[float, float, float, float, float, float],
+    scale: float = 1.0,
+    image_center_xyz: tuple[float, float, float] | None = None,
+    template_center_xyz: tuple[float, float, float] | None = None,
+    _java_float32_norm: bool = False,
+    _precomputed_rotation_matrix: np.ndarray | None = None,
+) -> tuple[np.float32, np.float32, np.float32]:
+    """Map one input voxel to atlas coordinates with source float32 ordering.
+
+    This exposes the class-independent coordinate step so a registration
+    volume can calculate it once and sample several class priors at the same
+    mapped point. Validation and the arithmetic sequence match
+    :func:`sample_toad_shape_prior`.
+    """
+    image_dims = _triple_int(image_dimensions_xyz, "image_dimensions_xyz", positive=True)
+    template_dims = _triple_int(
+        template_dimensions_xyz, "template_dimensions_xyz", positive=True
+    )
+    point = _triple_int(image_point_xyz, "image_point_xyz")
+    if any(point[axis] < 0 or point[axis] >= image_dims[axis] for axis in range(3)):
+        raise ValueError("image_point_xyz must be inside the declared input grid")
+    image_res = _signed_spacing(image_resolutions_mm, "image_resolutions_mm")
+    template_res = _triple_float(
+        template_resolutions_mm, "template_resolutions_mm", positive=True
+    )
+    scale_value = np.float32(scale)
+    if not np.isfinite(scale_value) or scale_value <= 0:
+        raise ValueError("scale must be positive and finite")
+    image_center = _triple_float(
+        image_center_xyz
+        if image_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in image_dims),
+        "image_center_xyz",
+    )
+    template_center = _triple_float(
+        template_center_xyz
+        if template_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in template_dims),
+        "template_center_xyz",
+    )
+    transform_values = np.asarray(transform, dtype=np.float32)
+    if transform_values.shape != (6,) or not np.isfinite(transform_values).all():
+        raise ValueError("transform must contain six finite rigid parameters")
+    if not isinstance(_java_float32_norm, (bool, np.bool_)):
+        raise TypeError("_java_float32_norm must be boolean")
+    if _precomputed_rotation_matrix is None:
+        matrix = _rotation_matrix(
+            transform_values[:3], java_float32_norm=_java_float32_norm
+        )
+    else:
+        matrix = np.asarray(_precomputed_rotation_matrix, dtype=np.float32)
+        if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
+            raise ValueError("precomputed rotation matrix must be a finite 3x3 array")
+    return _map_toad_shape_point_validated(
+        point,
+        image_res,
+        template_res,
+        transform_values,
+        scale_value,
+        image_center,
+        template_center,
+        matrix,
+    )
+
+
+def _map_toad_shape_point_validated(
+    point: tuple[int, int, int],
+    image_res: tuple[np.float32, np.float32, np.float32],
+    template_res: tuple[np.float32, np.float32, np.float32],
+    transform_values: np.ndarray,
+    scale_value: np.float32,
+    image_center: tuple[np.float32, np.float32, np.float32],
+    template_center: tuple[np.float32, np.float32, np.float32],
+    matrix: np.ndarray,
+) -> tuple[np.float32, np.float32, np.float32]:
+    """Map validated inputs without changing the selected source operation order."""
     physical = tuple(
         np.float32(
             np.float32(np.float32(point[axis]) * scale_value - image_center[axis])
@@ -275,13 +377,7 @@ def sample_toad_shape_prior(
         coordinate = np.float32(coordinate + template_center[axis])
         coordinate = np.float32(coordinate / scale_value)
         mapped.append(coordinate)
-
-    sampled = _linear_closest(values, mapped)
-    recovered = np.float32(
-        np.float32(slope * np.float32(sampled - np.float32(0.5))) + np.float32(0.5)
-    )
-    result = np.float32(np.clip(recovered, np.float32(0.0), np.float32(1.0)))
-    return ToadShapeSample(result, tuple(mapped))
+    return tuple(mapped)
 
 
 def _rotation_matrix(

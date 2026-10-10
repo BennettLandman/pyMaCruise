@@ -18,6 +18,7 @@ from pymacruise.lesion_shapes import (
     sample_lesion_shape_prior,
 )
 from pymacruise.toads_registration import trilinear_prior_derivatives
+from pymacruise.toads_shapes import map_toad_shape_point
 
 
 FIXTURE_DIR = Path(__file__).parent / "data" / "synthetic" / "lesion_shape_sampling"
@@ -135,6 +136,51 @@ def test_lesion_shape_sampler_matches_selected_java_formula_harness() -> None:
                 np.asarray(case["mapped"], dtype=np.float32),
                 err_msg=case["name"],
             )
+
+
+def test_precomputed_shared_template_coordinate_preserves_lesion_samples() -> None:
+    dims = (9, 8, 7)
+    point = (4, 3, 5)
+    transform = (0.12, -0.08, 0.04, 0.7, -0.3, 0.2)
+    image_res = (0.8, 1.1, 1.3)
+    template_res = (0.9, 1.0, 1.2)
+    maps = tuple(_shape_prior(dims, class_index) for class_index in range(3))
+    mapped = map_toad_shape_point(
+        point,
+        image_dimensions_xyz=dims,
+        template_dimensions_xyz=dims,
+        image_resolutions_mm=image_res,
+        template_resolutions_mm=template_res,
+        transform=transform,
+        _java_float32_norm=True,
+    )
+    for class_index, shape in enumerate(maps):
+        regular = sample_lesion_shape_prior(
+            shape,
+            point,
+            image_dimensions_xyz=dims,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_index=class_index,
+            bbox_low_xyz=(0, 0, 0),
+            bbox_high_xyz=dims,
+        )
+        reused = sample_lesion_shape_prior(
+            shape,
+            point,
+            image_dimensions_xyz=dims,
+            image_resolutions_mm=image_res,
+            template_resolutions_mm=template_res,
+            transform=transform,
+            class_index=class_index,
+            bbox_low_xyz=(0, 0, 0),
+            bbox_high_xyz=dims,
+            _precomputed_template_xyz=mapped,
+        )
+        assert reused.value == regular.value
+        assert reused.template_xyz == regular.template_xyz == mapped
+        assert reused.template_gradient_xyz == regular.template_gradient_xyz
 
 
 def test_lesion_shape_none_mode_directly_samples_ras_loaded_nifti_array(tmp_path: Path) -> None:
