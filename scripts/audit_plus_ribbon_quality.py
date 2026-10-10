@@ -8,6 +8,7 @@ completed workflow manifest as evidence that its synthetic anatomy is useful.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -31,16 +32,35 @@ def main() -> None:
     args = parser.parse_args()
     manifest_path = args.manifest.resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("status") != "complete" or manifest.get("terminal") is not True:
-        raise ValueError("ribbon audit requires a completed terminal plus manifest")
+    if (
+        manifest.get("status") != "complete"
+        or manifest.get("terminal") is not True
+        or manifest.get("stage") not in {
+            "plus-full-workflow",
+            "synthetic-plus-terminal-surface-composition",
+        }
+    ):
+        raise ValueError("ribbon audit requires a completed terminal plus or terminal-surface-composition manifest")
     outputs = manifest["final_outputs"]
-    images = {
-        key: nib.load(outputs[key]["path"])
-        for key in (
-            "plus_inner_level_set", "plus_central_level_set", "plus_outer_level_set"
-        )
-    }
+    image_names = ("plus_inner_level_set", "plus_central_level_set", "plus_outer_level_set")
+    images = {}
+    for key in image_names:
+        record = outputs.get(key, {})
+        image_path = Path(record.get("path", "")).resolve()
+        if (
+            not image_path.is_file()
+            or image_path.is_symlink()
+            or hashlib.sha256(image_path.read_bytes()).hexdigest() != record.get("sha256")
+        ):
+            raise ValueError(f"final output {key!r} is missing or fails its manifest hash")
+        images[key] = nib.load(str(image_path))
     labels_path = manifest["inputs"]["maseg"]["path"]
+    if (
+        not Path(labels_path).is_file()
+        or hashlib.sha256(Path(labels_path).read_bytes()).hexdigest()
+        != manifest["inputs"]["maseg"].get("sha256")
+    ):
+        raise ValueError("MaSeg input is missing or fails its manifest hash")
     labels_image = nib.load(labels_path)
     ref = images["plus_inner_level_set"]
     for key, image in {**images, "maseg": labels_image}.items():
