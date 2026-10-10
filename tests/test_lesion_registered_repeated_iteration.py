@@ -275,14 +275,21 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
             align_shapes=True,
             init_align_iter=1,
         )
+    loop_progress = []
     loop = run_lesion_toads_descriptor_loop(
         prior_branch,
         first_branch.registration.registration,
         starting_iteration=1,
         options=loop_options,
+        progress_callback=loop_progress.append,
     )
     assert tuple(item.iteration for item in loop.passes) == (2, 3)
     assert loop.stop_reason == "iteration_limit"
+    assert [item["iteration"] for item in loop_progress] == [2, 3]
+    assert all(np.isfinite(item["energy_ratio"]) for item in loop_progress)
+    assert [item["stop"] for item in loop_progress] == [False, True]
+    assert all(item["stage_order"] for item in loop_progress)
+    assert all(item["elapsed_seconds"] >= 0 for item in loop_progress)
     assert all(item.transition is None and item.transformed_shape_values is None for item in loop.passes)
     assert np.isfinite([item.energy_ratio for item in loop.passes]).all()
     assert np.array_equal(

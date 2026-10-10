@@ -350,8 +350,15 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     summary = json.loads(loop.summary_path.read_text())
     assert manifest["status"] == "complete"
     assert manifest["stage"] == "plus-lesion-registered-loop"
+    assert "progress_log" in manifest
     assert summary["completed_iteration"] == 2
     assert summary["stop"] is False
+    progress = json.loads(Path(manifest["progress_log"]["path"]).read_text())
+    assert progress["run_signature"] == manifest["run_signature"]
+    assert len(progress["attempts"]) == 1
+    assert progress["attempts"][0]["status"] == "complete"
+    assert [event["iteration"] for event in progress["attempts"][0]["events"]] == [2]
+    assert progress["attempts"][0]["events"][0]["stage_order"]
     assert nib.aff2axcodes(nib.load(str(loop.segmentation_path)).affine) == ("R", "A", "S")
     direct_loop = captured_loop["result"]
     refreshed = direct_loop.final_distance_maps

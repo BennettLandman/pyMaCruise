@@ -10,7 +10,8 @@ outside this runner.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
+from time import perf_counter
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -116,6 +117,7 @@ def run_lesion_toads_descriptor_loop(
     starting_iteration: int,
     options: LesionToadsDescriptorLoopOptions,
     max_passes: int | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Run registered 13-class updates until source convergence or loop cap.
 
@@ -132,6 +134,8 @@ def run_lesion_toads_descriptor_loop(
         raise ValueError("initial_branch must be a continuing registered state")
     if not isinstance(options, LesionToadsDescriptorLoopOptions):
         raise TypeError("options must be LesionToadsDescriptorLoopOptions")
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable when supplied")
     if isinstance(starting_iteration, (bool, np.bool_)) or not isinstance(
         starting_iteration, (int, np.integer)
     ) or starting_iteration < 1:
@@ -203,6 +207,7 @@ def run_lesion_toads_descriptor_loop(
     )
     correction_degree = int(options.initial_correction_degree)
     passes: list[LesionToadsDescriptorLoopPass] = []
+    loop_started = perf_counter()
 
     last_iteration = maximum if max_passes is None else min(
         maximum, int(starting_iteration) + int(max_passes)
@@ -307,6 +312,15 @@ def run_lesion_toads_descriptor_loop(
         class_centroids = transition.statistics.statistics.centroids.class_centroids
         lesion_centroids = transition.statistics.statistics.centroids.lesion_centroids
         black_hole_centroids = transition.statistics.statistics.centroids.black_hole_centroids
+        if progress_callback is not None:
+            progress_callback({
+                "iteration": int(iteration),
+                "energy_ratio": float(transition.membership.energy_ratio.energy_ratio),
+                "stop": bool(branch.stop),
+                "stop_reason": branch.stop_reason,
+                "stage_order": list(passes[-1].stage_order),
+                "elapsed_seconds": float(perf_counter() - loop_started),
+            })
         if branch.stop:
             assert branch.stop_reason is not None
             return LesionToadsDescriptorLoopResult(

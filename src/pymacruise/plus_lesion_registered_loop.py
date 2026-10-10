@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, Callable
 
 import nibabel as nib
 import numpy as np
@@ -109,7 +111,7 @@ def hydrate_plus_lesion_registered_branch(
     images = {
         name: load_nifti_ras(path)
         for name, path in outputs.items()
-        if name not in {"summary"}
+        if name not in {"summary", "progress"}
     }
     reference = images["memberships"]
     spatial = reference.shape[:3]
@@ -204,6 +206,7 @@ def continue_plus_lesion_registered_loop(
     correction_fields_path: str | Path | None = None,
     correction_polynomial_degree: int | None = None,
     initial_correction_degree: int | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Hydrate P41k and run the next selected registered P39 iteration.
 
@@ -359,7 +362,7 @@ def continue_plus_lesion_registered_loop(
     )
     return run_lesion_toads_descriptor_loop(
         branch, registration, starting_iteration=starting_iteration,
-        options=options, max_passes=max_passes,
+        options=options, max_passes=max_passes, progress_callback=progress_callback,
     )
 
 
@@ -484,17 +487,49 @@ def persist_plus_lesion_registered_loop_checkpoint(
     # In that case, ``resume=True`` means reuse any valid child checkpoint and
     # start this missing stage from the completed parent state.
 
-    loop = continue_plus_lesion_registered_loop(
-        parent_path, descriptor,
-        n_iter_max=settings["n_iter_max"],
-        thinning_limit=settings["thinning_limit"],
-        source_zero_variance_nan=settings["source_zero_variance_nan"],
-        max_passes=settings["max_passes"],
-        convergence_threshold=settings["max_distance"],
-        correction_fields_path=correction_fields_path,
-        correction_polynomial_degree=settings["correction_polynomial_degree"],
-        initial_correction_degree=settings["initial_correction_degree"],
-    )
+    progress_path = root / "registered_loop_progress.json"
+    if progress_path.is_file():
+        progress = json.loads(progress_path.read_text(encoding="utf-8"))
+        if progress.get("run_signature") != signature:
+            raise ValueError("Cannot reuse registered-loop progress for different inputs or settings")
+        for prior_attempt in progress.get("attempts", []):
+            if prior_attempt.get("status") == "running":
+                prior_attempt["status"] = "interrupted"
+    else:
+        progress = {"schema_version": 1, "run_signature": signature, "attempts": []}
+    attempt = {
+        "started_at_utc": datetime.now(timezone.utc).isoformat(),
+        "status": "running",
+        "events": [],
+    }
+    progress["attempts"].append(attempt)
+    _json(progress_path, progress)
+
+    def record_progress(event: dict[str, Any]) -> None:
+        attempt["events"].append(event)
+        _json(progress_path, progress)
+
+    try:
+        loop = continue_plus_lesion_registered_loop(
+            parent_path, descriptor,
+            n_iter_max=settings["n_iter_max"],
+            thinning_limit=settings["thinning_limit"],
+            source_zero_variance_nan=settings["source_zero_variance_nan"],
+            max_passes=settings["max_passes"],
+            convergence_threshold=settings["max_distance"],
+            correction_fields_path=correction_fields_path,
+            correction_polynomial_degree=settings["correction_polynomial_degree"],
+            initial_correction_degree=settings["initial_correction_degree"],
+            progress_callback=record_progress,
+        )
+    except BaseException as exc:
+        attempt["status"] = "failed" if isinstance(exc, Exception) else "interrupted"
+        attempt["error"] = f"{type(exc).__name__}: {exc}"
+        _json(progress_path, progress)
+        raise
+    attempt["status"] = "complete"
+    attempt["completed_at_utc"] = datetime.now(timezone.utc).isoformat()
+    _json(progress_path, progress)
     branch = loop.final_branch
     if not branch.stop and (branch.growing is None or branch.relations is None):
         raise RegisteredBranchStateError(
@@ -658,6 +693,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
             "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
             "correction_fields": fields_input,
         },
+        "progress_log": {"path": str(progress_path), "sha256": _sha256(progress_path)},
         "outputs": {key: {"path": str(path), "sha256": _sha256(path)} for key, path in outputs.items()},
     }
     _json(manifest_path, complete_manifest)
