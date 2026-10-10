@@ -130,6 +130,33 @@ def test_standard13_zero_shape_skips_one_class_and_preserves_other_outputs() -> 
     assert result.class_energies[8] == 0.0
 
 
+def test_source_zero_variance_mode_is_valid_when_current_statistics_are_nonzero() -> None:
+    state = _state()
+    source = compute_lesion_toads_standard13_voxel(
+        **state,
+        gm_flag=True,
+        source_zero_variance_nan=True,
+    )
+    finite = compute_lesion_toads_standard13_voxel(
+        **state,
+        gm_flag=True,
+        source_zero_variance_nan=False,
+    )
+    for name in (
+        "class_memberships",
+        "lesion_membership",
+        "black_hole_membership",
+        "outlier_membership",
+        "lesion_relation",
+        "class_energies",
+        "lesion_energy",
+        "black_hole_energy",
+        "denominator",
+    ):
+        np.testing.assert_array_equal(getattr(source, name), getattr(finite, name))
+    assert source.objective.view(np.uint32) == finite.objective.view(np.uint32)
+
+
 def test_standard13_absent_lesion_preserves_previous_auxiliary_maps() -> None:
     state = _state()
     shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()

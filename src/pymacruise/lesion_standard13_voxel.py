@@ -157,11 +157,8 @@ def compute_lesion_toads_standard13_voxel(
         raise ValueError("numeric state must contain only finite values")
     if field is not None and (field.shape != image.shape or not np.isfinite(field).all()):
         raise ValueError("intensity_field must be finite and match image channel count")
-    if source_zero_variance_nan and (
-        not gm_flag
-        or not (np.any(deviations == np.float32(0.0)) or np.any(lesion_deviation == np.float32(0.0)))
-    ):
-        raise ValueError("source zero-variance NaNs require GMflag and a zero source deviation")
+    if source_zero_variance_nan and not gm_flag:
+        raise ValueError("source zero-variance NaNs require GMflag")
     # The Java volume pass accepts zero/negative transformed priors and skips
     # those classes (setting membership to zero). Registered atlas support is
     # class-specific, so this is expected outside individual class bounds.

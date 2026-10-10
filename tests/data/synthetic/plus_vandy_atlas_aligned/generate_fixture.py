@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import argparse
 
 import nibabel as nib
 import numpy as np
@@ -48,12 +49,20 @@ def _maseg_from_topology(topology: np.ndarray) -> np.ndarray:
 
 
 def main() -> None:
-    ROOT.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=ROOT)
+    parser.add_argument("--shape", type=int, nargs=3, default=TARGET, metavar=("NX", "NY", "NZ"))
+    args = parser.parse_args()
+    output_root = args.output_dir.expanduser().resolve()
+    target = tuple(args.shape)
+    if any(size < 3 for size in target):
+        parser.error("each target dimension must be at least 3 voxels")
+    output_root.mkdir(parents=True, exist_ok=True)
     descriptor_text = DESCRIPTOR.read_text(encoding="utf-8")
     topo_image = nib.load(str(ATLAS / TOPOLOGY))
     source_topology = np.asarray(topo_image.dataobj, dtype=np.uint8)
-    topology = _resample(source_topology, TARGET, order=0).astype(np.uint8)
-    scale = (np.asarray(source_topology.shape, dtype=np.float64) - 1) / (np.asarray(TARGET) - 1)
+    topology = _resample(source_topology, target, order=0).astype(np.uint8)
+    scale = (np.asarray(source_topology.shape, dtype=np.float64) - 1) / (np.asarray(target) - 1)
     affine = topo_image.affine.copy()
     affine[:3, :3] = topo_image.affine[:3, :3] @ np.diag(scale)
 
@@ -63,8 +72,8 @@ def main() -> None:
     # rather than being mislabeled as cortical GM/WM in the surface checks.
     maseg = _maseg_from_topology(topology)
     brain = (topology != 1).astype(np.uint8)
-    t1 = np.zeros(TARGET, dtype=np.float32)
-    flair = np.full(TARGET, 80.0, dtype=np.float32)
+    t1 = np.zeros(target, dtype=np.float32)
+    flair = np.full(target, 80.0, dtype=np.float32)
     t1[np.isin(topology, [5, 6])], flair[np.isin(topology, [5, 6])] = 20.0, 90.0
     t1[np.isin(topology, [24, 25, 26, 27])], flair[np.isin(topology, [24, 25, 26, 27])] = 130.0, 180.0
     t1[np.isin(topology, [14, 15, 16, 17, 18, 22])], flair[np.isin(topology, [14, 15, 16, 17, 18, 22])] = 90.0, 150.0
@@ -83,22 +92,22 @@ def main() -> None:
         if name == TOPOLOGY:
             continue
         source = np.asarray(nib.load(str(ATLAS / name)).dataobj, dtype=np.float32)
-        output_files[name] = _resample(source, TARGET, order=1).astype(np.float32)
+        output_files[name] = _resample(source, target, order=1).astype(np.float32)
     for name, values in output_files.items():
         image = nib.Nifti1Image(values, affine)
         image.set_qform(affine, code=1)
         image.set_sform(affine, code=1)
         image.set_data_dtype(values.dtype)
-        nib.save(image, str(ROOT / name))
+        nib.save(image, str(output_root / name))
 
     spacing = np.linalg.norm(affine[:3, :3], axis=0)
     descriptor_text = descriptor_text.replace(str(ATLAS / TOPOLOGY), TOPOLOGY)
-    descriptor_text = re.sub(r"(?m)^Dimensions:\s+172\s+216\s+164\s*$", "Dimensions:\t" + "\t".join(map(str, TARGET)), descriptor_text)
+    descriptor_text = re.sub(r"(?m)^Dimensions:\s+172\s+216\s+164\s*$", "Dimensions:\t" + "\t".join(map(str, target)), descriptor_text)
     descriptor_text = re.sub(r"(?m)^Resolutions:\s+0\.9375\s+0\.9375\s+0\.9375\s*$", "Resolutions:\t" + "\t".join(f"{v:.9g}" for v in spacing), descriptor_text)
     # The atlas descriptor parser resolves all NIfTI names relative to itself.
-    (ROOT / DESCRIPTOR.name).write_text(descriptor_text, encoding="utf-8")
+    (output_root / DESCRIPTOR.name).write_text(descriptor_text, encoding="utf-8")
     records = {}
-    for path in sorted(ROOT.glob("*.nii.gz")):
+    for path in sorted(output_root.glob("*.nii.gz")):
         image = nib.load(str(path))
         records[path.name] = {
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -107,10 +116,10 @@ def main() -> None:
             "axis_codes": list(nib.aff2axcodes(image.affine)),
             "affine_ras_mm": image.affine.tolist(),
         }
-    (ROOT / "provenance.json").write_text(json.dumps({
-        "description": "compact source-atlas-aligned synthetic plus case",
+    (output_root / "provenance.json").write_text(json.dumps({
+        "description": "source-atlas-aligned synthetic plus case",
         "source_atlas": "data/atlases/lesionToads-atlas-2012",
-        "target_shape": list(TARGET),
+        "target_shape": list(target),
         "label_mapping": {"0": "background", "5": "CSF", "44": "cerebral white matter", "75": "additional noncortical brain tissue", "100": "cerebral gray matter"},
         "topology_to_maseg": {str(key): value for key, value in TOPOLOGY_TO_MASEG.items()},
         "synthetic_intensity_values": {"T1": {"background": 0, "CSF": 20, "GM": 90, "WM": 130}, "FLAIR": {"background": 80, "CSF": 90, "GM": 150, "WM": 180}},
