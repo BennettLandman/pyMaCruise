@@ -58,6 +58,8 @@ All **22** files from this core/refinement/surface follow-up passed SHA-256 reco
 
 All three meshes are watertight by edge incidence with no nonmanifold edges, but each still has **217 components**. The largest component contains 99.7% of total triangle area; 215 components have fewer than 100 vertices, and the largest component Euler characteristic is `−4`. Thus one dominant surface is present alongside many small shells and nontrivial topology. The support metrics improve over the smoke run, but no source/reference images were available to compute the agreed per-label Dice or surface-distance tolerances. The in-vivo case is not declared numerically equivalent or fully quality-accepted.
 
+A follow-up spatial audit of the inner mesh found that **1,872 of 1,876 vertices** belonging to its 216 non-dominant components map inside the supplied brain mask. The nearest MaSeg voxel labels for these vertices were 209 (1,569), 11 (246), 35 (22), 0 (21), 122 (12), and 134 (6). This rules out the simple explanation that nearly all small shells are outside-mask fragments; the label meanings and whether the shells are valid structures still need investigation. This diagnostic used nearest-voxel label lookup and is not an anatomical classification.
+
 The machine-readable audit and source-profile outputs are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-core-audit.json` and `build/invivo-base-2026-10-10-ras-grid/source-selected-core/`.
 
 ## Evidence limits and follow-up
