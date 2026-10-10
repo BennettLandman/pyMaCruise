@@ -1,5 +1,5 @@
 {
-  "all_outputs_exact": false,
+  "all_outputs_exact": true,
   "comparison": "selected Java AlgorithmTopologyCorrection + MASImorph refinement vs plus Python topology_correct",
   "coordinate_system": "RAS",
   "java_peak_sampled_rss_gb": null,
@@ -13,17 +13,17 @@
       "voxel_count": 234000
     },
     "mawm_refined": {
-      "changed_voxels": 14,
-      "exact": false,
-      "maximum_absolute_error": 0.8006600737571716,
-      "mean_absolute_error": 4.430999740576133e-05,
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
       "voxel_count": 234000
     },
     "topology_corrected": {
-      "changed_voxels": 14,
-      "exact": false,
-      "maximum_absolute_error": 0.8006600737571716,
-      "mean_absolute_error": 4.430999740576133e-05,
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
       "voxel_count": 234000
     }
   },

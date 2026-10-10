@@ -10,28 +10,28 @@ registration.
 
 ## Topology correction and MaWM refinement
 
-Selected Java/Python topology outputs differ at 14 of 234,000 voxels (maximum
-absolute scalar difference 0.801). No voxel changes sign. MaWM erosion matches
-exactly; the 14 topology differences carry through to the refined membership.
-This is a small but real scalar-output discrepancy, recorded separately from
-surface quality.
+The first comparison showed 14 differences because its Java test harness used
+regularization `0.05`. The MaCRUISE wrapper explicitly selects
+`1.0e-4`; after correcting the harness setting, the selected Java and Python
+topology-corrected field, MaWM erosion, and MaWM-refined field each match
+exactly on all 234,000 voxels. The final comparison is saved in the
+machine-readable topology report.
 
-To determine whether the topology discrepancy affects the observed ribbon,
-the selected Java TGDM wrapper was also run from the Java-refined membership
-instead of the Python seed. Java/Python TGDM surface gates remain unchanged and
-pass: Dice 1.0, mean surface distances below 0.00008 mm, and Hausdorff below
-0.101 mm for central, inner, and outer. The topology output difference does
-not explain the 0.47 mm ribbon measured in this case.
+The selected Java TGDM wrapper was also run from the Java-refined membership.
+Java/Python TGDM surface gates remain unchanged and pass: Dice 1.0, mean
+surface distances below 0.00008 mm, and Hausdorff below 0.101 mm for central,
+inner, and outer. The algorithm ports match on this crop; the 0.47 mm ribbon
+therefore reflects the synthetic inputs and the registered LesionTOADS result
+that reached its configured iteration limit without convergence.
 
 ## Interpretation
 
 Together with the held-fixed TGDM comparison, these checks show exact tissue
-fusion and Java-equivalent surface geometry on the selected crop. They narrow
-the failed 5 mm ribbon support/quality result to the upstream synthetic
-anatomy, the registered LesionTOADS output, or the way those labels are mapped
-into tissue priors. The registered loop stopped at its iteration cap, so its
-output is not a naturally converged lesion segmentation. The 14-voxel
-topology scalar mismatch remains open for separate diagnosis.
+fusion and topology/refinement plus Java-equivalent surface geometry on the
+selected crop. They narrow the failed 5 mm ribbon support/quality result to
+the upstream synthetic anatomy or registered LesionTOADS output. The registered
+loop stopped at its iteration cap, so its output is not a naturally converged
+lesion segmentation.
 
 ## Evidence and reproduction
 

@@ -34,7 +34,7 @@
   "coordinate_system": "RAS",
   "full_workflow_run_signature": "0c408c15b4f8a98dd34d7d40033844f6d59318c53ab78886e82ead35ed8fefac",
   "implementation_signature": null,
-  "java_peak_sampled_rss_gb": 0.474,
+  "java_peak_sampled_rss_gb": 0.471,
   "java_rss_limit_gb": 8,
   "outputs": {
     "central": {
