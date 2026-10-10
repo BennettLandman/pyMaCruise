@@ -106,8 +106,35 @@ def main() -> None:
         np.asarray(labels_image.dataobj), return_counts=True
     )
     expected_labels = {0, 5, 44, 100}
+    labels = np.asarray(labels_image.dataobj)
+    inner_region = np.asarray(images["plus_inner_level_set"].dataobj) <= 0
+    central_region = np.asarray(images["plus_central_level_set"].dataobj) <= 0
+    outer_region = np.asarray(images["plus_outer_level_set"].dataobj) <= 0
+    nesting = {
+        "inner_outside_central_voxels": int(np.count_nonzero(inner_region & ~central_region)),
+        "central_outside_outer_voxels": int(np.count_nonzero(central_region & ~outer_region)),
+    }
+    wm = labels == 44
+    gm = labels == 100
+    csf = labels == 5
+    label_disagreements = {
+        "wm_voxels_outside_inner": int(np.count_nonzero(wm & ~inner_region)),
+        "gm_voxels_inside_inner": int(np.count_nonzero(gm & inner_region)),
+        "gm_voxels_outside_outer": int(np.count_nonzero(gm & ~outer_region)),
+        "csf_voxels_inside_outer": int(np.count_nonzero(csf & outer_region)),
+    }
+    label_support = {
+        "wm_inside_inner": 1.0 - label_disagreements["wm_voxels_outside_inner"] / max(1, int(np.count_nonzero(wm))),
+        "gm_between_inner_and_outer": (
+            int(np.count_nonzero(gm))
+            - label_disagreements["gm_voxels_inside_inner"]
+            - label_disagreements["gm_voxels_outside_outer"]
+        ) / max(1, int(np.count_nonzero(gm))),
+        "csf_outside_outer": 1.0 - label_disagreements["csf_voxels_inside_outer"] / max(1, int(np.count_nonzero(csf))),
+    }
     quality = {
         "nominal_ribbon_mm": 5.0,
+        "minimum_label_support": 0.97,
         "surface_median_tolerance_mm": 1.0,
         "surface_p05_minimum_mm": 2.0,
         "surface_p95_maximum_mm": 8.0,
@@ -125,6 +152,10 @@ def main() -> None:
             for metric in topology.values()
         ),
         "explicit_maseg_wm_gm_csf_labels_present": expected_labels.issubset(label_set),
+        "labeled_tissue_regions_agree_with_surfaces": bool(
+            min(label_support.values()) >= quality["minimum_label_support"]
+        ),
+        "nested_voxel_regions": all(value == 0 for value in nesting.values()),
         "production_surface_thickness_within_bounds": bool(
             abs(surface_median - quality["nominal_ribbon_mm"])
             <= quality["surface_median_tolerance_mm"]
@@ -149,6 +180,12 @@ def main() -> None:
             "present": [int(value) for value in label_values],
             "counts": {str(int(value)): int(count) for value, count in zip(label_values, label_counts, strict=True)},
         },
+        "label_surface_consistency": {
+            "disagreement_voxel_counts": label_disagreements,
+            "support_fractions": label_support,
+            "minimum_required_support": quality["minimum_label_support"],
+        },
+        "nesting_voxel_counts": nesting,
         "surface_meshes": {
             name: {
                 "vertices": int(len(mesh.vertices)),
