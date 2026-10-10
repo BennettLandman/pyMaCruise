@@ -8,10 +8,12 @@ import json
 import struct
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 from nibabel.affines import apply_affine
 from skimage.measure import marching_cubes
 
+from pymacruise.surfaces import extract_levelset_surface
 from pymacruise.tgdm import (
     TGDMBaselineParameters,
     _INNER_FROM_CENTRAL_PROFILE_SETTINGS,
@@ -31,6 +33,8 @@ def _read_java_volume(root: Path, name: str, shape: tuple[int, int, int]) -> np.
 def _surface_metrics(
     java: np.ndarray, python: np.ndarray, affine: np.ndarray
 ) -> dict[str, float | int | bool]:
+    java_surface = extract_levelset_surface(nib.Nifti1Image(java, affine))
+    py_surface = extract_levelset_surface(nib.Nifti1Image(python, affine))
     java_vertices, java_faces, _, _ = marching_cubes(java, level=0.0)
     py_vertices, py_faces, _, _ = marching_cubes(python, level=0.0)
     metrics: dict[str, float | int | bool] = {
@@ -38,9 +42,13 @@ def _surface_metrics(
         "dice_at_zero": dice_coefficient(java <= 0.0, python <= 0.0),
     }
     metrics.update(mesh_surface_distance_metrics(
+        java_surface.vertices, java_surface.faces,
+        py_surface.vertices, py_surface.faces,
+    ))
+    metrics["marching_cubes_diagnostic"] = mesh_surface_distance_metrics(
         apply_affine(affine, java_vertices), java_faces,
         apply_affine(affine, py_vertices), py_faces,
-    ))
+    )
     metrics["thresholds_pass"] = bool(
         metrics["dice_at_zero"] >= 0.97
         and metrics["mean_absolute_distance_mm"] <= 0.01
@@ -149,6 +157,8 @@ def main() -> None:
         "workflow_run_signature": provenance["workflow_run_signature"],
         "shape_xyz": list(shape),
         "coordinate_system": "RAS",
+        "surface_extractor": "source-matched JIST IsoSurfaceOnGrid connectivity-18 port",
+        "surface_gate_note": "Primary distance metrics use production JIST-compatible surfaces; marching_cubes_diagnostic is informational only.",
         "affine_ras": affine.tolist(),
         "settings": parameters.__dict__,
         "outputs": results,

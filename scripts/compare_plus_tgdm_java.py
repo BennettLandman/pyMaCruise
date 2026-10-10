@@ -12,6 +12,7 @@ import numpy as np
 from nibabel.affines import apply_affine
 from skimage.measure import marching_cubes
 
+from pymacruise.surfaces import extract_levelset_surface
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 NAMES = ("initial_level_set", "smoothed_initial", "initial_inner", "central", "inner", "outer")
@@ -52,13 +53,19 @@ def main() -> None:
             "sign_changed_voxels": int(np.count_nonzero(np.signbit(java) != np.signbit(python))),
         }
         if name in SURFACES:
+            java_surface = extract_levelset_surface(nib.Nifti1Image(java, affine))
+            py_surface = extract_levelset_surface(nib.Nifti1Image(python, affine))
             java_vertices, java_faces, _, _ = marching_cubes(java, level=0.0)
             py_vertices, py_faces, _, _ = marching_cubes(python, level=0.0)
             item["dice_at_zero"] = dice_coefficient(java <= 0.0, python <= 0.0)
             item.update(mesh_surface_distance_metrics(
+                java_surface.vertices, java_surface.faces,
+                py_surface.vertices, py_surface.faces,
+            ))
+            item["marching_cubes_diagnostic"] = mesh_surface_distance_metrics(
                 apply_affine(affine, java_vertices), java_faces,
                 apply_affine(affine, py_vertices), py_faces,
-            ))
+            )
             item["thresholds_pass"] = (
                 item["dice_at_zero"] >= 0.97
                 and item["mean_absolute_distance_mm"] <= 0.01
@@ -76,6 +83,8 @@ def main() -> None:
         "implementation_signature": provenance["implementation_signature"],
         "shape_xyz": list(shape),
         "coordinate_system": "RAS",
+        "surface_extractor": "source-matched JIST IsoSurfaceOnGrid connectivity-18 port",
+        "surface_gate_note": "Primary distance metrics use production JIST-compatible surfaces; marching_cubes_diagnostic is informational only.",
         "java_peak_sampled_rss_gb": float(peak_match.group(1)),
         "java_rss_limit_gb": 8,
         "affine_ras": affine.tolist(),

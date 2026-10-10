@@ -17,16 +17,15 @@ full-workflow equivalence or real-MRI validation.
 ## Results
 
 The Java and Python initial level sets have no sign differences. The three
-final surface masks each differ at only three voxels, with Dice ≥0.99993. However,
-the agreed Hausdorff limit is **1 mm**, and the measured distances exceed it:
+final surface masks each differ at only three voxels, with Dice ≥0.99993. Production distances below use the source-matched JIST connectivity-18 extractor used by PyMaCRUISE. Marching-cubes values are retained in the JSON as diagnostics only. The agreed Hausdorff limit is **1 mm**, and the initial-inner and later surfaces exceed it:
 
 | Surface | Sign-different voxels | Dice at zero | Mean surface distance | Hausdorff | Gate |
 |---|---:|---:|---:|---:|---|
-| Smoothed initial | 1 | 0.999986 | 0.000190 mm | 0.064 mm | Pass |
-| Initial inner | 3 | 0.999934 | 0.000358 mm | 1.374 mm | Fail |
-| Central | 3 | 0.999935 | 0.000371 mm | 1.345 mm | Fail |
-| Inner | 3 | 0.999934 | 0.000375 mm | 1.374 mm | Fail |
-| Outer | 3 | 0.999935 | 0.000510 mm | 1.347 mm | Fail |
+| Smoothed initial | 1 | 0.999986 | 0.000184 mm | 0.313 mm | Pass |
+| Initial inner | 3 | 0.999934 | 0.000334 mm | 1.411 mm | Fail |
+| Central | 3 | 0.999935 | 0.000343 mm | 1.414 mm | Fail |
+| Inner | 3 | 0.999934 | 0.000335 mm | 1.412 mm | Fail |
+| Outer | 3 | 0.999935 | 0.000406 mm | 1.415 mm | Fail |
 
 The smoothed initial surface differs in sign at one voxel
 `(29, 37, 26)` (Java `0.000082`, Python `-0.000670`), while its measured
@@ -38,17 +37,16 @@ The independent ribbon-quality audit still fails its tissue-support and
 thickness criteria.
 
 As a diagnostic, Python was rerun from the exact Java smoothed level set through
-the initial inner, central, recomputed inner, and outer stages. All four
-surfaces pass the Java thresholds with zero sign differences and Dice 1.0:
+the initial inner, central, recomputed inner, and outer stages. All four surfaces pass the Java thresholds with zero sign differences and Dice 1.0 using production JIST surfaces:
 
 | Surface | Mean surface distance | Hausdorff |
 |---|---:|---:|
-| Initial inner | 0.00000066 mm | 0.001588 mm |
-| Central | 0.00000524 mm | 0.003462 mm |
-| Inner | 0.00000344 mm | 0.099665 mm |
-| Outer | 0.00000516 mm | 0.002890 mm |
+| Initial inner | 0.00000062 mm | 0.001588 mm |
+| Central | 0.00000479 mm | 0.003462 mm |
+| Inner | 0.00000058 mm | 0.000453 mm |
+| Outer | 0.00000437 mm | 0.002890 mm |
 
-This diagnostic deliberately substitutes a Java intermediate and is not an
+The diagnostic uses source-matched JIST mesh extraction for its primary gate; marching-cubes values remain secondary diagnostics. It deliberately substitutes a Java intermediate and is not an
 end-to-end Python-vs-Java result. It localizes the amplified mismatch to the
 Python smoothing output passed into the inner stage. The explicit Java
 multiply/divide order for curvature magnitude is now encoded in the vectorized
