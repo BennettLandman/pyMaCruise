@@ -10,7 +10,8 @@ separate stages.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from time import perf_counter
+from typing import Any, Callable, Mapping, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -82,6 +83,7 @@ def run_lesion_toads_descriptor_continuing_iteration(
     correction_polynomial_degree: int | None = None,
     correction_degree: int = 0,
     correction_max_distance: float = 0.0,
+    stage_progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> LesionToadsDescriptorContinuingIteration:
     """Run thinning → 13-class statistics → GM membership and energy ratio.
 
@@ -101,6 +103,8 @@ def run_lesion_toads_descriptor_continuing_iteration(
         raise TypeError("source_zero_variance_nan must be boolean")
     if not isinstance(has_lesion, (bool, np.bool_)):
         raise TypeError("has_lesion must be boolean")
+    if stage_progress_callback is not None and not callable(stage_progress_callback):
+        raise TypeError("stage_progress_callback must be callable when supplied")
     values = np.asarray(images, dtype=np.float32)
     membership_update = getattr(previous_branch.membership_result, "membership", None)
     if membership_update is None or not hasattr(membership_update, "class_memberships"):
@@ -112,6 +116,9 @@ def run_lesion_toads_descriptor_continuing_iteration(
     lesion_relation = membership_update.lesion_relation
     previous_energy = float(membership_update.objective)
 
+    phase_started = perf_counter()
+    if stage_progress_callback is not None:
+        stage_progress_callback({"stage": "propagate_thinning", "status": "started"})
     thinning = run_lesion_toads_next_iteration_thinning(
         previous_branch,
         transformed_shape_values,
@@ -121,6 +128,12 @@ def run_lesion_toads_descriptor_continuing_iteration(
         limit=thinning_limit,
         use_lesion_max=use_lesion_max,
     )
+    if stage_progress_callback is not None:
+        stage_progress_callback({
+            "stage": "propagate_thinning",
+            "status": "completed",
+            "elapsed_seconds": float(perf_counter() - phase_started),
+        })
     inhomogeneity = None
     if correction_polynomial_degree is not None:
         if fields is None:
@@ -131,6 +144,9 @@ def run_lesion_toads_descriptor_continuing_iteration(
         previous_membership = getattr(previous_branch.membership_result, "membership", None)
         if previous_membership is None or not hasattr(previous_membership, "class_memberships"):
             raise TypeError("previous branch lacks memberships required for field refitting")
+        phase_started = perf_counter()
+        if stage_progress_callback is not None:
+            stage_progress_callback({"stage": "refit_correction_fields", "status": "started"})
         inhomogeneity = update_lesion_toads_exact_inhomogeneity_fields(
             values,
             previous_membership.class_memberships,
@@ -143,7 +159,16 @@ def run_lesion_toads_descriptor_continuing_iteration(
             previous_energy_ratio=float(previous_branch.energy_ratio),
             max_distance=correction_max_distance,
         )
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "stage": "refit_correction_fields",
+                "status": "completed",
+                "elapsed_seconds": float(perf_counter() - phase_started),
+            })
         fields = np.stack(inhomogeneity.fields, axis=-1)
+    phase_started = perf_counter()
+    if stage_progress_callback is not None:
+        stage_progress_callback({"stage": "refresh_statistics", "status": "started"})
     statistics = refresh_statistics_after_next_iteration_thinning(
         thinning,
         values,
@@ -160,6 +185,15 @@ def run_lesion_toads_descriptor_continuing_iteration(
         channel_weight_options=channel_weight_options,
         flair_channel=flair_channel,
     )
+    if stage_progress_callback is not None:
+        stage_progress_callback({
+            "stage": "refresh_statistics",
+            "status": "completed",
+            "elapsed_seconds": float(perf_counter() - phase_started),
+        })
+    phase_started = perf_counter()
+    if stage_progress_callback is not None and atlas_names is not None and has_lesion:
+        stage_progress_callback({"stage": "refresh_distance_maps", "status": "started"})
     refreshed = (
         refresh_lesion_toads_distance_maps(
             thinning.run.segmentation,
@@ -171,10 +205,19 @@ def run_lesion_toads_descriptor_continuing_iteration(
         )
         if atlas_names is not None and has_lesion else None
     )
+    if stage_progress_callback is not None and refreshed is not None:
+        stage_progress_callback({
+            "stage": "refresh_distance_maps",
+            "status": "completed",
+            "elapsed_seconds": float(perf_counter() - phase_started),
+        })
     if refreshed is not None:
         ventricle_distances = refreshed.maps.ventricle
         gray_matter_distances = refreshed.maps.gray_matter
         brainstem_distances = refreshed.maps.brainstem
+    phase_started = perf_counter()
+    if stage_progress_callback is not None:
+        stage_progress_callback({"stage": "update_memberships", "status": "started"})
     membership = run_lesion_toads_next_gm_membership_update(
         statistics,
         values,
@@ -197,6 +240,12 @@ def run_lesion_toads_descriptor_continuing_iteration(
         source_zero_variance_nan=source_zero_variance_nan,
         intensity_fields=fields,
     )
+    if stage_progress_callback is not None:
+        stage_progress_callback({
+            "stage": "update_memberships",
+            "status": "completed",
+            "elapsed_seconds": float(perf_counter() - phase_started),
+        })
     return LesionToadsDescriptorContinuingIteration(
         thinning,
         statistics,

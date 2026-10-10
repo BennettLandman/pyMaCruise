@@ -221,6 +221,7 @@ def run_lesion_toads_descriptor_loop(
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "registered_shape_priors",
+                "scope": "pass",
                 "status": "started",
             })
         shape_values = transform_registered_lesion_shape_priors(
@@ -234,6 +235,7 @@ def run_lesion_toads_descriptor_loop(
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "registered_shape_priors",
+                "scope": "pass",
                 "status": "completed",
                 "elapsed_seconds": float(perf_counter() - phase_started),
             })
@@ -245,6 +247,7 @@ def run_lesion_toads_descriptor_loop(
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "continuing_segmentation_statistics_memberships",
+                "scope": "pass",
                 "status": "started",
             })
         transition = run_lesion_toads_descriptor_continuing_iteration(
@@ -282,11 +285,21 @@ def run_lesion_toads_descriptor_loop(
             correction_polynomial_degree=options.correction_polynomial_degree,
             correction_degree=correction_degree,
             correction_max_distance=options.max_distance,
+            stage_progress_callback=(
+                None
+                if stage_progress_callback is None
+                else lambda event: stage_progress_callback({
+                    "iteration": int(iteration),
+                    "scope": "continuing",
+                    **event,
+                })
+            ),
         )
         if stage_progress_callback is not None:
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "continuing_segmentation_statistics_memberships",
+                "scope": "pass",
                 "status": "completed",
                 "elapsed_seconds": float(perf_counter() - phase_started),
             })
@@ -305,6 +318,7 @@ def run_lesion_toads_descriptor_loop(
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "registration_and_branching",
+                "scope": "pass",
                 "status": "started",
             })
         registered = register_and_branch_lesion_toads_descriptor_iteration(
@@ -332,6 +346,7 @@ def run_lesion_toads_descriptor_loop(
             stage_progress_callback({
                 "iteration": int(iteration),
                 "stage": "registration_and_branching",
+                "scope": "pass",
                 "status": "completed",
                 "elapsed_seconds": float(perf_counter() - phase_started),
             })

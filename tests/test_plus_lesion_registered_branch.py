@@ -360,7 +360,8 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     assert [event["iteration"] for event in progress["attempts"][0]["events"]] == [2]
     assert progress["attempts"][0]["events"][0]["stage_order"]
     phases = progress["attempts"][0]["phases"]
-    assert [phase["stage"] for phase in phases] == [
+    pass_phases = [phase for phase in phases if phase["scope"] == "pass"]
+    assert [phase["stage"] for phase in pass_phases] == [
         stage
         for stage in (
             "registered_shape_priors",
@@ -369,8 +370,20 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
         )
         for _ in ("started", "completed")
     ]
-    assert [phase["status"] for phase in phases] == ["started", "completed"] * 3
-    assert all(phase["elapsed_seconds"] >= 0 for phase in phases if "elapsed_seconds" in phase)
+    assert [phase["status"] for phase in pass_phases] == ["started", "completed"] * 3
+    assert all(
+        phase["elapsed_seconds"] >= 0
+        for phase in pass_phases
+        if "elapsed_seconds" in phase
+    )
+    transition_phases = [phase for phase in phases if phase["scope"] == "continuing"]
+    assert [phase["stage"] for phase in transition_phases] == [
+        "propagate_thinning", "propagate_thinning",
+        "refresh_statistics", "refresh_statistics",
+        "refresh_distance_maps", "refresh_distance_maps",
+        "update_memberships", "update_memberships",
+    ]
+    assert [phase["status"] for phase in transition_phases] == ["started", "completed"] * 4
     assert nib.aff2axcodes(nib.load(str(loop.segmentation_path)).affine) == ("R", "A", "S")
     direct_loop = captured_loop["result"]
     refreshed = direct_loop.final_distance_maps

@@ -292,7 +292,8 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
     assert [item["stop"] for item in loop_progress] == [False, True]
     assert all(item["stage_order"] for item in loop_progress)
     assert all(item["elapsed_seconds"] >= 0 for item in loop_progress)
-    assert [item["stage"] for item in loop_stage_progress] == [
+    pass_progress = [item for item in loop_stage_progress if item["scope"] == "pass"]
+    assert [item["stage"] for item in pass_progress] == [
         stage
         for _ in (2, 3)
         for stage in (
@@ -305,16 +306,30 @@ def test_registered_loop_driver_matches_two_manual_updates() -> None:
     assert all(
         event["status"] == status
         for event, status in zip(
-            loop_stage_progress,
+            pass_progress,
             ("started", "completed") * 6,
             strict=True,
         )
     )
     assert all(
         event["elapsed_seconds"] >= 0
-        for event in loop_stage_progress
+        for event in pass_progress
         if event["status"] == "completed"
     )
+    continuing_progress = [
+        item for item in loop_stage_progress if item["scope"] == "continuing"
+    ]
+    assert [item["stage"] for item in continuing_progress] == [
+        stage
+        for _ in (2, 3)
+        for stage in (
+            "propagate_thinning",
+            "refresh_statistics",
+            "update_memberships",
+        )
+        for _status in ("started", "completed")
+    ]
+    assert [item["status"] for item in continuing_progress] == ["started", "completed"] * 6
     assert all(item.transition is None and item.transformed_shape_values is None for item in loop.passes)
     assert np.isfinite([item.energy_ratio for item in loop.passes]).all()
     assert np.array_equal(
