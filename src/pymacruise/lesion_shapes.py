@@ -18,11 +18,13 @@ from pymacruise.toads_registration import (
 )
 from pymacruise.toads_shapes import (
     _rotation_matrix as toads_rotation_matrix,
-    map_toad_shape_point,
     sample_toad_shape_prior,
 )
 from pymacruise.toads_registration_sampling import (
     ToadsRegistrationPyramidLevel,
+    _map_registration_slab,
+    _registration_jacobian_slab,
+    _trilinear_derivatives_grid,
     build_toads_registration_pyramid,
 )
 
@@ -483,30 +485,85 @@ def lesion_registration_volume_coefficients(
     priors = np.zeros(mem.shape, dtype=np.float32)
     gradients = np.zeros(mem.shape + (3,), dtype=np.float32)
     jacobians = np.zeros(mem.shape[:3] + (3, 6), dtype=np.float32)
+    image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
+    template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
+    if image_res.shape != (3,) or not np.isfinite(image_res).all() or np.any(image_res == 0):
+        raise ValueError("image_resolutions_mm must contain three finite nonzero signed values")
+    if template_res.shape != (3,) or not np.isfinite(template_res).all() or np.any(template_res <= 0):
+        raise ValueError("template_resolutions_mm must contain three positive finite values")
+    transform_values = np.asarray(transform, dtype=np.float32)
+    if transform_values.shape != (6,) or not np.isfinite(transform_values).all():
+        raise ValueError("transform must contain six finite rigid parameters")
     rotation_matrix = toads_rotation_matrix(
-        np.asarray(transform[:3], dtype=np.float32), java_float32_norm=True
+        transform_values[:3], java_float32_norm=True
     )
+    scale_value = np.float32(scale)
+    if not np.isfinite(scale_value) or scale_value <= 0:
+        raise ValueError("scale must be positive and finite")
+    if scale_value != np.float32(1.0) and (
+        image_center_xyz is None or template_center_xyz is None
+    ):
+        raise ValueError("pyramid sampling requires explicit full-resolution centers")
+    center_values = np.asarray(
+        image_center_xyz
+        if image_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in image_dims),
+        dtype=np.float32,
+    )
+    if center_values.shape != (3,) or not np.isfinite(center_values).all():
+        raise ValueError("image_center_xyz must contain three finite values")
+    center = tuple(np.float32(value) for value in center_values)
+    template_center_values = np.asarray(
+        template_center_xyz
+        if template_center_xyz is not None
+        else tuple(np.float32(size / 2.0) for size in maps[0].shape),
+        dtype=np.float32,
+    )
+    if template_center_values.shape != (3,) or not np.isfinite(template_center_values).all():
+        raise ValueError("template_center_xyz must contain three finite values")
+    template_center = tuple(np.float32(value) for value in template_center_values)
+    image_indices_y = np.arange(int(offset), image_dims[1], int(subsample), dtype=np.int64)
+    image_indices_z = np.arange(int(offset), image_dims[2], int(subsample), dtype=np.int64)
     shared_template_grid = len({values.shape for values in maps}) == 1
     full_input_bounds = (tuple(0 for _ in range(3)), image_dims)
+    y_grid, z_grid = np.meshgrid(image_indices_y, image_indices_z, indexing="ij")
     for x in range(int(offset), image_dims[0], int(subsample)):
-        for y in range(int(offset), image_dims[1], int(subsample)):
-            for z in range(int(offset), image_dims[2], int(subsample)):
+        jacobian_slab = _registration_jacobian_slab(
+            x,
+            image_indices_y,
+            image_indices_z,
+            center,
+            image_res,
+            template_res,
+            transform_values,
+            scale_value,
+        )
+        if shared_template_grid:
+            mapped_grid = _map_registration_slab(
+                x,
+                image_indices_y,
+                image_indices_z,
+                transform_values,
+                image_res,
+                template_res,
+                rotation_matrix,
+                scale_value,
+                center,
+                template_center,
+            )
+            for class_index in range(1, mem.shape[-1]):
+                shape = maps[class_index]
+                priors[x, y_grid, z_grid, class_index] = _linear_interpolation_default_grid(
+                    shape, mapped_grid, np.float32(0.0)
+                )
+                gradients[x, y_grid, z_grid, class_index] = _trilinear_derivatives_grid(
+                    shape, mapped_grid
+                )
+            jacobians[x, y_grid, z_grid] = jacobian_slab
+            continue
+        for y_index, y in enumerate(image_indices_y):
+            for z_index, z in enumerate(image_indices_z):
                 point = (x, y, z)
-                mapped = None
-                if shared_template_grid:
-                    mapped = map_toad_shape_point(
-                        point,
-                        image_dimensions_xyz=image_dims,
-                        template_dimensions_xyz=maps[0].shape,
-                        image_resolutions_mm=image_resolutions_mm,
-                        template_resolutions_mm=template_resolutions_mm,
-                        transform=transform,
-                        scale=scale,
-                        image_center_xyz=image_center_xyz,
-                        template_center_xyz=template_center_xyz,
-                        _java_float32_norm=True,
-                        _precomputed_rotation_matrix=rotation_matrix,
-                    )
                 for class_index in range(1, mem.shape[-1]):
                     sample = sample_lesion_shape_prior(
                         maps[class_index],
@@ -523,24 +580,11 @@ def lesion_registration_volume_coefficients(
                         template_center_xyz=template_center_xyz,
                         _prevalidated_shape=True,
                         _precomputed_rotation_matrix=rotation_matrix,
-                        _precomputed_template_xyz=mapped,
                     )
                     priors[x, y, z, class_index] = sample.value
                     if sample.template_gradient_xyz is not None:
                         gradients[x, y, z, class_index] = sample.template_gradient_xyz
-                center = (
-                    image_center_xyz
-                    if image_center_xyz is not None
-                    else tuple(np.float32(size / 2.0) for size in image_dims)
-                )
-                jacobians[x, y, z] = rigid_image_to_template_jacobian(
-                    point,
-                    transform,
-                    center,
-                    image_resolutions_mm,
-                    template_resolutions_mm,
-                    scale=scale,
-                )
+                jacobians[x, y, z] = jacobian_slab[y_index, z_index]
     return accumulate_lesion_registration_coefficients(
         mem,
         priors,
@@ -859,6 +903,55 @@ def _linear_interpolation_with_default(
     for term in terms[2:]:
         result = np.float32(result + term)
     return result
+
+
+def _linear_interpolation_default_grid(
+    image: np.ndarray,
+    points_xyz: np.ndarray,
+    default: np.float32,
+) -> NDArray[np.float32]:
+    """Apply LesionTOADS' zero-outside interpolation to a coordinate slab.
+
+    This retains ``ImageFunctions.linearInterpolation`` bounds and term order
+    while evaluating independent points with NumPy float32 operations. It is
+    used only by the shared-grid registration path; exact selected Java volume
+    fixtures guard its values and accumulation.
+    """
+    values = np.asarray(image, dtype=np.float32)
+    points = np.asarray(points_xyz, dtype=np.float32)
+    if values.ndim != 3 or points.ndim != 3 or points.shape[-1] != 3:
+        raise ValueError("image and coordinate slab must be 3D with an XYZ trailing axis")
+    valid = np.ones(points.shape[:2], dtype=bool)
+    for axis in range(3):
+        valid &= (points[..., axis] >= np.float32(0.0)) & (
+            points[..., axis] <= np.float32(values.shape[axis] - 2)
+        )
+    indices = []
+    alpha = []
+    for axis in range(3):
+        safe_coordinate = np.where(valid, points[..., axis], np.float32(0.0))
+        index = np.floor(safe_coordinate).astype(np.int64)
+        fraction = np.float32(safe_coordinate - index.astype(np.float32))
+        indices.append(index)
+        alpha.append(fraction)
+    complement = [np.float32(np.float32(1.0) - fraction) for fraction in alpha]
+    x, y, z = indices
+    a, b, c = alpha
+    na, nb, nc = complement
+    terms = (
+        np.float32(np.float32(np.float32(na * nb) * nc) * values[x, y, z]),
+        np.float32(np.float32(np.float32(a * nb) * nc) * values[x + 1, y, z]),
+        np.float32(np.float32(np.float32(na * b) * nc) * values[x, y + 1, z]),
+        np.float32(np.float32(np.float32(na * nb) * c) * values[x, y, z + 1]),
+        np.float32(np.float32(np.float32(a * b) * nc) * values[x + 1, y + 1, z]),
+        np.float32(np.float32(np.float32(na * b) * c) * values[x, y + 1, z + 1]),
+        np.float32(np.float32(np.float32(a * nb) * c) * values[x + 1, y, z + 1]),
+        np.float32(np.float32(np.float32(a * b) * c) * values[x + 1, y + 1, z + 1]),
+    )
+    result = np.float32(terms[0] + terms[1])
+    for term in terms[2:]:
+        result = np.float32(result + term)
+    return np.where(valid, result, np.float32(default)).astype(np.float32, copy=False)
 
 
 def _triple_int(
