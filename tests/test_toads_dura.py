@@ -9,6 +9,8 @@ import pytest
 from skimage.measure import marching_cubes
 
 from pymacruise.toads_dura import (
+    _fast_marching_unit_gradient_at,
+    _fast_marching_unit_gradient_field,
     apply_dura_output_mask,
     dura_initial_level_sets,
     dura_tgdm_evolve,
@@ -30,6 +32,21 @@ FIXTURE = (
     / "p18_distancefield_jar_reference"
     / "distancefield-original-jar.json"
 )
+
+
+@pytest.mark.parametrize("shape", [(2, 3, 4), (7, 8, 9), (19, 4, 3)])
+def test_dura_vectorized_reference_gradient_matches_scalar_source(shape: tuple[int, int, int]) -> None:
+    rng = np.random.default_rng(8341)
+    field = rng.normal(size=shape).astype(np.float32)
+    field[0, 0, 0] = 0.0
+    field[-1, -1, -1] = -0.0
+    field[0, -1, 1] = 4.0
+    field[-1, 1, -1] = -3.0
+    actual = _fast_marching_unit_gradient_field(field)
+    expected = np.empty((*shape, 3), dtype=np.float32)
+    for point in np.ndindex(shape):
+        expected[point] = _fast_marching_unit_gradient_at(field, point).astype(np.float32)
+    np.testing.assert_array_equal(actual, expected)
 DYNAMIC_UPDATE_FIXTURE = (
     Path(__file__).parent
     / "data"

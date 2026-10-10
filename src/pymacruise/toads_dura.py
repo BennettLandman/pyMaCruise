@@ -574,9 +574,59 @@ def dura_tgdm_evolve(
 
 
 def _fast_marching_unit_gradient_field(level_set: np.ndarray) -> np.ndarray:
-    result = np.empty((*level_set.shape, 3), dtype=np.float32)
-    for point in np.ndindex(level_set.shape):
-        result[point] = _fast_marching_unit_gradient_at(level_set, point).astype(np.float32)
+    """Vectorize the source point gradient in bounded x slabs.
+
+    The scalar helper remains the arithmetic oracle. Slab processing avoids
+    constructing several full-resolution neighbor volumes for in-vivo grids.
+    """
+    values = np.asarray(level_set, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("level set must be a 3D volume with dimensions >= 2")
+    result = np.empty((*values.shape, 3), dtype=np.float32)
+    zero = np.float32(0.0)
+    y_indices = np.arange(values.shape[1])
+    z_indices = np.arange(values.shape[2])
+
+    def component(center: np.ndarray, before: np.ndarray, after: np.ndarray) -> np.ndarray:
+        positive = center > zero
+        positive_before = positive & (before < center) & (before < after)
+        positive_after = positive & ~positive_before & (after < center)
+        negative_before = ~positive & (before > center) & (before > after)
+        negative_after = ~positive & ~negative_before & (after > center)
+        output = np.zeros_like(center, dtype=np.float32)
+        np.subtract(center, before, out=output, where=positive_before | negative_before)
+        np.subtract(after, center, out=output, where=positive_after | negative_after)
+        return output
+
+    slab_depth = 16
+    for start in range(0, values.shape[0], slab_depth):
+        stop = min(start + slab_depth, values.shape[0])
+        x_indices = np.arange(start, stop)
+        slab = values[start:stop]
+        center = slab
+        dx = component(
+            center,
+            values[np.maximum(x_indices - 1, 0)],
+            values[np.minimum(x_indices + 1, values.shape[0] - 1)],
+        )
+        dy = component(
+            center,
+            slab[:, np.maximum(y_indices - 1, 0), :],
+            slab[:, np.minimum(y_indices + 1, values.shape[1] - 1), :],
+        )
+        dz = component(
+            center,
+            slab[:, :, np.maximum(z_indices - 1, 0)],
+            slab[:, :, np.minimum(z_indices + 1, values.shape[2] - 1)],
+        )
+        length = np.sqrt((dx * dx + dy * dy) + dz * dz).astype(np.float32, copy=False)
+        nonzero = length > zero
+        np.divide(dx, length, out=dx, where=nonzero)
+        np.divide(dy, length, out=dy, where=nonzero)
+        np.divide(dz, length, out=dz, where=nonzero)
+        result[start:stop, ..., 0] = dx
+        result[start:stop, ..., 1] = dy
+        result[start:stop, ..., 2] = dz
     return result
 
 
