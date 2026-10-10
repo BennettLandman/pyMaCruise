@@ -41,6 +41,10 @@ Commit `4ccf6e6` removes repeated temporary class arrays from the source-ordered
 
 The recorded runtime is a practical throughput blocker for this synthetic case, not a source-equivalence or ribbon-quality verdict. Current workflow evidence is synthetic execution only; it is not source-equivalence evidence, a completed workflow, or real-MRI validation. Fixture commit: `ffbdf2b`; iteration progress instrumentation and focused tests: `1751b45`.
 
+Follow-up on 2026-10-10: a bounded continuation from the saved iteration-1 registered branch completed the source-selected registered-loop pass and wrote a complete, hash-checked checkpoint at `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0003/lesion-registered-loop.json`. It advanced to iteration 2, retained the source stage order, reported energy ratio `0.026117630302906036`, and did not stop; elapsed time was `509.09s`, with peak sampled RSS `0.470 GB`. This is the first completed registered LesionTOADS iteration on the properly labeled plus fixture, but it is an intermediate checkpoint and does not yet permit the terminal surface audit. The run used implementation commit `d61c21e`; 29 focused lesion shape and TOADS sampling tests passed in `2.20s`, including exact equality between direct and reused shared-coordinate sampling. Commit `bcbd7db` then factored the registered-shape affine coordinate once per voxel across classes; its selected initial-thinning, repeated-iteration, and recrop integration tests passed `3/3` in `12.11s`. A continuation from iteration 2 using that optimization is now running, with a separate one-pass checkpoint directory.
+
+These are synthetic execution and source-reference test results, not full workflow equivalence or real-MRI validation. The ribbon audit remains pending until the selected loop reaches a terminal result and the complete workflow manifest is available.
+
 The fixture generator, full-run invocation, progress-log schema, and eventual audit command remain the reproducibility record. The audit is intentionally pending until a complete terminal manifest exists.
 
 ## Acceptance checks after completion
