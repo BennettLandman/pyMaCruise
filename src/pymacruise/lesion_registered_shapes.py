@@ -98,18 +98,24 @@ def transform_registered_lesion_shape_priors(
         for y in range(image_dims[1]):
             for z in range(image_dims[2]):
                 point = (x, y, z)
+                mapped = None
                 for k, (shape, box) in enumerate(zip(shapes, bounds, strict=True)):
                     lower, upper = box.lower_xyz, box.upper_xyz
                     if any(point[a] < lower[a] or point[a] >= upper[a] for a in range(3)):
                         output[x, y, z, k] = np.float32(1.0 if k == 0 else 0.0)
                         continue
-                    mapped = []
-                    for axis in range(3):
-                        coordinate = np.float32(matrix[axis, 0] * np.float32(x))
-                        coordinate = np.float32(coordinate + np.float32(matrix[axis, 1] * np.float32(y)))
-                        coordinate = np.float32(coordinate + np.float32(matrix[axis, 2] * np.float32(z)))
-                        coordinate = np.float32(coordinate + matrix[axis, 3])
-                        mapped.append(coordinate)
+                    if mapped is None:
+                        mapped = []
+                        for axis in range(3):
+                            coordinate = np.float32(matrix[axis, 0] * np.float32(x))
+                            coordinate = np.float32(
+                                coordinate + np.float32(matrix[axis, 1] * np.float32(y))
+                            )
+                            coordinate = np.float32(
+                                coordinate + np.float32(matrix[axis, 2] * np.float32(z))
+                            )
+                            coordinate = np.float32(coordinate + matrix[axis, 3])
+                            mapped.append(coordinate)
                     output[x, y, z, k] = _linear_interpolation_with_default(
                         shape, tuple(mapped), np.float32(1.0 if k == 0 else 0.0)
                     )
