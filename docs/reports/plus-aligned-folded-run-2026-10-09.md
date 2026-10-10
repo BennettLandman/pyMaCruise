@@ -59,7 +59,7 @@ PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
   --iterations 99 --thinning-limit 1000 --max-passes 1 --finite-zero-variance
 ```
 
-Across completed iterations 2 through 48, all forty-seven normal checkpoints are intermediate, synthetic, and hash-verified; none is a terminal result. Iterations 45–48 completed by CLI in `96.84s`, `96.64s`, `97.17s`, and `97.29s`. Latest ratio is `0.1502977759`, stop=false, peak sampled RSS `0.556 GB`; latest manifest and outputs are under `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0049/`. Ratios do not decrease monotonically: they peaked at `0.1706269979` at iteration 3 and continue to vary near `0.15`. The selected source convergence stop has not occurred. No ribbon-quality or full workflow-equivalence verdict is yet available.
+Across completed iterations 2 through 52, all fifty-one normal checkpoints are intermediate, synthetic, and hash-verified; none is a terminal result. Iterations 49–52 completed by CLI in `99.22s`, `98.19s`, `97.11s`, and `97.16s`. Latest ratio is `0.1503332108`, stop=false, peak sampled RSS `0.533 GB`; latest manifest and outputs are under `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0053/`. Ratios do not decrease monotonically: they peaked at `0.1706269979` at iteration 3 and continue to vary near `0.15`. The selected source convergence stop has not occurred. No ribbon-quality or full workflow-equivalence verdict is yet available.
 
 These are synthetic execution and source-reference test results, not full workflow equivalence or real-MRI validation. The ribbon audit remains pending until the selected loop reaches a terminal result and the complete workflow manifest is available.
 
