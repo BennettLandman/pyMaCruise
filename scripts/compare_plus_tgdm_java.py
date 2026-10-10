@@ -14,8 +14,8 @@ from skimage.measure import marching_cubes
 
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
-NAMES = ("initial_level_set", "initial_inner", "central", "inner", "outer")
-SURFACES = ("central", "inner", "outer")
+NAMES = ("initial_level_set", "smoothed_initial", "initial_inner", "central", "inner", "outer")
+SURFACES = ("smoothed_initial", "initial_inner", "central", "inner", "outer")
 
 
 def main() -> None:
@@ -38,7 +38,10 @@ def main() -> None:
     for name in NAMES:
         with gzip.open(args.reference_dir / f"java/{name}.raw.gz", "rb") as stream:
             java = np.frombuffer(stream.read(), dtype=">f4").astype(np.float32).reshape(shape)
-        python = np.load(args.reference_dir / f"python-{name}.npy").astype(np.float32)
+        python_path = args.reference_dir / (
+            "python-smoothed_initial.npy" if name == "smoothed_initial" else f"python-{name}.npy"
+        )
+        python = np.load(python_path).astype(np.float32)
         diff = np.abs(java.astype(np.float64) - python.astype(np.float64))
         item = {
             "exact": bool(np.array_equal(java, python)),

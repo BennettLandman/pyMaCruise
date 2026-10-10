@@ -88,6 +88,7 @@ public final class PlusTGDMReferenceHarness {
             ImageDataFloat outer=tgdm.solveOuterSurface(
                     central,null,gray,null,thin,1.0f,0.0f,1.0f,0.4f,7);
             writeVolume(output.resolve("initial_level_set.raw.gz"),initialLevel.toArray3d());
+            writeVolume(output.resolve("smoothed_initial.raw.gz"),smoothed.toArray3d());
             writeVolume(output.resolve("initial_inner.raw.gz"),firstInner.toArray3d());
             writeVolume(output.resolve("central.raw.gz"),central.toArray3d());
             writeVolume(output.resolve("inner.raw.gz"),inner.toArray3d());

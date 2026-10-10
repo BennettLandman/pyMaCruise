@@ -34,7 +34,7 @@
   "coordinate_system": "RAS",
   "full_workflow_run_signature": "efe43fffd20fdd2e63c0b0d4dd0940973544dbd1ea729cc28831ba9f52210c85",
   "implementation_signature": null,
-  "java_peak_sampled_rss_gb": 0.538,
+  "java_peak_sampled_rss_gb": 0.622,
   "java_rss_limit_gb": 8,
   "outputs": {
     "central": {
@@ -54,11 +54,19 @@
       "voxel_count": 418509
     },
     "initial_inner": {
+      "candidate_to_reference_mean_mm": 0.0005084507980787364,
       "changed_voxels": 186228,
+      "dice_at_zero": 0.9999341484294401,
       "exact": false,
+      "hausdorff_mm": 1.374462493638867,
       "maximum_absolute_voxel_error": 0.6580016762018204,
+      "mean_absolute_distance_mm": 0.0003583901360863052,
       "mean_absolute_voxel_error": 4.8451175472203636e-05,
+      "n_candidate_vertices": 21504,
+      "n_reference_vertices": 21500,
+      "reference_to_candidate_mean_mm": 0.00020832947409387407,
       "sign_changed_voxels": 3,
+      "thresholds_pass": false,
       "voxel_count": 418509
     },
     "initial_level_set": {
@@ -99,6 +107,22 @@
       "reference_to_candidate_mean_mm": 0.0003681609921406536,
       "sign_changed_voxels": 3,
       "thresholds_pass": false,
+      "voxel_count": 418509
+    },
+    "smoothed_initial": {
+      "candidate_to_reference_mean_mm": 0.00018943334948808965,
+      "changed_voxels": 333622,
+      "dice_at_zero": 0.9999863094341689,
+      "exact": false,
+      "hausdorff_mm": 0.06412757613663107,
+      "maximum_absolute_voxel_error": 0.26018232107162476,
+      "mean_absolute_distance_mm": 0.00019015502030475209,
+      "mean_absolute_voxel_error": 0.00011570757608279584,
+      "n_candidate_vertices": 18149,
+      "n_reference_vertices": 18149,
+      "reference_to_candidate_mean_mm": 0.00019087669112141453,
+      "sign_changed_voxels": 1,
+      "thresholds_pass": true,
       "voxel_count": 418509
     }
   },

@@ -20,15 +20,26 @@ the agreed Hausdorff limit is **1 mm**, and the measured distances exceed it:
 
 | Surface | Sign-different voxels | Dice at zero | Mean surface distance | Hausdorff | Gate |
 |---|---:|---:|---:|---:|---|
+| Smoothed initial | 1 | 0.999986 | 0.000190 mm | 0.064 mm | Pass |
+| Initial inner | 3 | 0.999934 | 0.000358 mm | 1.374 mm | Fail |
 | Central | 3 | 0.999935 | 0.000371 mm | 1.345 mm | Fail |
 | Inner | 3 | 0.999934 | 0.000375 mm | 1.374 mm | Fail |
 | Outer | 3 | 0.999935 | 0.000510 mm | 1.347 mm | Fail |
 
-The same three coordinates already differ in sign in the first inner surface,
-so the final-surface Hausdorff miss is inherited from that early TGDM stage.
-This is a small but source-visible topology-sensitive discrepancy; it cannot be
-reported as passing the Java gate or hidden by the Dice result. The independent
-ribbon-quality audit still fails its tissue-support and thickness criteria.
+The smoothed initial surface differs in sign at one voxel
+`(29, 37, 26)` (Java `0.000082`, Python `-0.000670`), while its measured
+surface distances still pass. The first inner surface is the first stage to
+miss the source gate; its three sign disagreements persist in all later
+surfaces. This is a small but source-visible topology-sensitive discrepancy;
+it cannot be reported as passing the Java gate or hidden by the Dice result.
+The independent ribbon-quality audit still fails its tissue-support and
+thickness criteria.
+
+The comparison harness now saves `smoothed_initial` and the comparator measures
+it and `initial_inner`, making this failure location reproducible. An
+exploratory run with float32 rounding enabled for signed-distance updates did
+not change the sign-disagreement counts, so that precision option is not
+recorded as a correction.
 
 ## Reproduction
 

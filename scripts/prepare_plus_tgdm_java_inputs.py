@@ -19,6 +19,8 @@ from pymacruise.plus_pipeline import (
 )
 from pymacruise.plus_topology_composition import run_plus_topology_and_tgdm
 from pymacruise.boundary import multi_atlas_csf_boundary_image
+from pymacruise.ace import _signed_distance_fmm
+from pymacruise.tgdm import _SMOOTHING_PROFILE_SETTINGS, tgdm_evolve
 
 INPUT_ORDER = (
     "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm",
@@ -93,7 +95,21 @@ def main() -> None:
             result.gvf.vector_field,
         )
         boundary = result.boundary
+        smoothed_initial = result.tgdm.execution.smoothed_initial.level_set
         java_input_mode = "initial_membership"
+    if args.use_saved_tgdm_outputs:
+        # The workflow manifest intentionally persists only delivered TGDM
+        # products. Rebuild the intermediate smoothing surface separately so
+        # source comparisons can localize where a later surface mismatch starts.
+        smoothing_input = _signed_distance_fmm(tgdm_initial_membership, max_distance=8.0)
+        smoothed_initial = tgdm_evolve(
+            smoothing_input,
+            profile="central",
+            curvature_force=-1.0,
+            pressure_force=0.0,
+            outer_iterations=6,
+            settings=_SMOOTHING_PROFILE_SETTINGS,
+        ).level_set
     held = (
         np.asarray(tgdm_initial_membership.dataobj if hasattr(tgdm_initial_membership, "dataobj") else tgdm_initial_membership, dtype=np.float32),
         np.asarray(tissue_wm.dataobj, dtype=np.float32),
@@ -154,6 +170,7 @@ def main() -> None:
     np.save(args.output_dir/"python-gvf-vector.npy",np.asarray(gvf_field.dataobj,dtype=np.float32))
     for name in OUTPUT_NAMES:
         np.save(args.output_dir / f"python-{name}.npy", python_outputs[name])
+    np.save(args.output_dir / "python-smoothed_initial.npy", smoothed_initial)
     full_manifest_path = (
         args.context_manifest.resolve()
         if args.context_manifest is not None
