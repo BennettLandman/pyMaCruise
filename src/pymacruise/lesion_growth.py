@@ -1129,6 +1129,8 @@ def process_lesion_toads_growing_event(
     use_lesion_max: bool = False,
     empty_label: int = -1,
     zero: float = 1.0e-10,
+    _in_place: bool = False,
+    _prevalidated: bool = False,
 ) -> LesionToadsGrowingEvent:
     """Apply one selected ``LesionToadSegmentation.propagateGrowing`` pop.
 
@@ -1166,19 +1168,24 @@ def process_lesion_toads_growing_event(
         raise ValueError("ordering and class volumes must match the image and classes")
     if lesion_mems.shape != labels.shape or black_hole_mems.shape != labels.shape:
         raise ValueError("lesion and black-hole memberships must match segmentation")
-    for name, values in (
-        ("memberships", mems),
-        ("ordering", orderings),
-        ("class_volume", volumes),
-        ("lesion_membership", lesion_mems),
-        ("black_hole_membership", black_hole_mems),
+    if not isinstance(_in_place, (bool, np.bool_)) or not isinstance(
+        _prevalidated, (bool, np.bool_)
     ):
-        if not np.isfinite(values).all():
-            raise ValueError(f"{name} must contain only finite values")
-    if np.any(labels < 0) or np.any(labels >= classes):
-        raise ValueError("segmentation labels must be valid class indices")
-    if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
-        raise ValueError("skeleton labels must be valid class indices or empty_label")
+        raise TypeError("internal in-place and prevalidated flags must be boolean")
+    if not _prevalidated:
+        for name, values in (
+            ("memberships", mems),
+            ("ordering", orderings),
+            ("class_volume", volumes),
+            ("lesion_membership", lesion_mems),
+            ("black_hole_membership", black_hole_mems),
+        ):
+            if not np.isfinite(values).all():
+                raise ValueError(f"{name} must contain only finite values")
+        if np.any(labels < 0) or np.any(labels >= classes):
+            raise ValueError("segmentation labels must be valid class indices")
+        if np.any((skel != empty_label) & ((skel < 0) | (skel >= classes))):
+            raise ValueError("skeleton labels must be valid class indices or empty_label")
     if not isinstance(lesion_class, (int, np.integer)) or not -1 <= lesion_class < classes:
         raise ValueError("lesion_class must be -1 or a valid class index")
     zero_value = np.float32(zero)
@@ -1198,22 +1205,23 @@ def process_lesion_toads_growing_event(
         and 0 <= label < classes
     ):
         raise ValueError("queue item must have an interior coordinate and valid class")
-    border = np.zeros(labels.shape, dtype=np.bool_)
-    for axis in range(3):
-        edge = [slice(None)] * 3
-        edge[axis] = 0
-        border[tuple(edge)] = True
-        edge[axis] = -1
-        border[tuple(edge)] = True
-    if np.any(avail[border]):
-        raise ValueError("border availability must be false for safe source neighbor updates")
+    if not _prevalidated:
+        border = np.zeros(labels.shape, dtype=np.bool_)
+        for axis in range(3):
+            edge = [slice(None)] * 3
+            edge[axis] = 0
+            border[tuple(edge)] = True
+            edge[axis] = -1
+            border[tuple(edge)] = True
+        if np.any(avail[border]):
+            raise ValueError("border availability must be false for safe source neighbor updates")
 
     popped = queue.pop_first()
-    updated_labels = labels.astype(np.int16, copy=True)
-    updated_skeleton = skel.astype(np.int16, copy=True)
-    updated_available = avail.copy()
-    updated_ordering = orderings.copy()
-    updated_volumes = volumes.copy()
+    updated_labels = labels.astype(np.int16, copy=not _in_place)
+    updated_skeleton = skel.astype(np.int16, copy=not _in_place)
+    updated_available = avail.copy() if not _in_place else avail
+    updated_ordering = orderings.copy() if not _in_place else orderings
+    updated_volumes = volumes.copy() if not _in_place else volumes
     topology_accepted: bool | None = None
     inserted: list[ToadsHeapItem] = []
 
@@ -1337,6 +1345,7 @@ def propagate_lesion_toads_growing(
     current_ordering = orderings.copy()
     current_volume = volumes.copy()
     events: list[LesionToadsGrowingEvent | LesionToadsGrowingTraceEvent] = []
+    inputs_prevalidated = False
     while initialized.queue:
         event = process_lesion_toads_growing_event(
             current_labels,
@@ -1353,7 +1362,10 @@ def propagate_lesion_toads_growing(
             use_lesion_max=use_lesion_max,
             empty_label=empty_label,
             zero=zero,
+            _in_place=not retain_event_states,
+            _prevalidated=inputs_prevalidated and not retain_event_states,
         )
+        inputs_prevalidated = True
         if retain_event_states:
             events.append(event)
         else:
