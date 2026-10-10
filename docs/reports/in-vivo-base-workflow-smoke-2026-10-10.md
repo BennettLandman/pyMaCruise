@@ -79,6 +79,8 @@ The new profile did **not** pass the agreed ribbon-quality criteria:
 - Symmetric closest-surface thickness mean: **2.851 mm** (SD **0.962 mm**). Level-set subtraction thickness mean: **4.455 mm** (SD **1.269 mm**).
 - MaSeg labels **208 (91,275 voxels)** and **209 (24,715 voxels)** remain outside the selected label groups through 207; their anatomy/role is not inferred.
 
+An internal comparison against the earlier source-selected core (which reused the bounded upstream outputs) shows the fuller upstream profile did not improve tissue support: GM changed from 81.84% to **79.00%** (−2.84 percentage points), WM from 83.15% to **82.72%** (−0.43 points), while inner-outside-central nesting improved from five voxels to **one**. The largest per-label support loss was label 161 (71.4% to **44.3%**, −27.2 points), followed by labels 135 (−17.7 points), 125 (−12.2), and 122 (−11.8). This profile comparison is diagnostic only; it is not a source-output comparison and does not identify the anatomical label names.
+
 These are in-vivo integration and quality measurements, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
 
 The audit is reproducible with:
@@ -89,6 +91,7 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scrip
   --maseg build/invivo-base-2026-10-10-inputs/ras-grid/orig_target_seg_ras_uint16.nii.gz \\
   --brain-mask build/invivo-base-2026-10-10-inputs/ras-grid/T1_bet_mask_ras.nii.gz \\
   --watchdog-log build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/logs/cruise-core-second-toads.log \\
+  --comparison-core-dir build/invivo-base-2026-10-10-ras-grid/source-selected-core \\
   --report build/invivo-base-2026-10-10-ras-grid/source-selected-full-toads-core-audit.json
 ```
 

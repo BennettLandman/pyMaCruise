@@ -92,6 +92,7 @@ def main() -> None:
     parser.add_argument("--brain-mask", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--watchdog-log", type=Path)
+    parser.add_argument("--comparison-core-dir", type=Path)
     args = parser.parse_args()
     core = args.core_dir.resolve()
     surface_dir = core / "surface-thickness"
@@ -156,11 +157,78 @@ def main() -> None:
         "wm_inside_inner_fraction": float(np.count_nonzero(wm & inner) / max(1, wm_count)),
         "inner_outside_brain_mask_voxels": int(np.count_nonzero(inner & ~(np.asarray(brain_mask.dataobj) > 0))),
     }
+    label_support: dict[str, dict[str, int | float | None]] = {}
+    for label in sorted(GM_LABELS | WM_LABELS):
+        label_mask = labels == label
+        voxel_count = int(np.count_nonzero(label_mask))
+        if voxel_count == 0:
+            continue
+        if label in GM_LABELS:
+            supported_count = int(np.count_nonzero(label_mask & ~inner & outer))
+            region = "gm_between_inner_outer"
+        else:
+            supported_count = int(np.count_nonzero(label_mask & inner))
+            region = "wm_inside_inner"
+        label_support[str(label)] = {
+            "region": region,
+            "voxels": voxel_count,
+            "supported_voxels": supported_count,
+            "support_fraction": supported_count / voxel_count,
+        }
     meshes = {
         name: mesh_topology(surface_dir / f"{name}_surface.vtk")
         for name in ("inner", "central", "outer")
     }
     thickness = json.loads((surface_dir / "thickness_summary.json").read_text(encoding="utf-8"))
+    comparison = None
+    if args.comparison_core_dir is not None:
+        comparison_root = args.comparison_core_dir.resolve()
+        prior_inner_image = nib.load(str(comparison_root / "inner.nii.gz"))
+        prior_outer_image = nib.load(str(comparison_root / "outer.nii.gz"))
+        for name, image in (("prior inner", prior_inner_image), ("prior outer", prior_outer_image)):
+            if image.shape != reference.shape or not np.allclose(
+                image.affine, reference.affine, rtol=0, atol=1e-4
+            ):
+                raise ValueError(f"{name} does not share the current inner level-set grid")
+        prior_inner = np.asarray(prior_inner_image.dataobj) <= 0
+        prior_outer = np.asarray(prior_outer_image.dataobj) <= 0
+        prior_gm = int(np.count_nonzero(gm))
+        prior_wm = int(np.count_nonzero(wm))
+        prior_gm_support = int(np.count_nonzero(gm & ~prior_inner & prior_outer)) / max(1, prior_gm)
+        prior_wm_support = int(np.count_nonzero(wm & prior_inner)) / max(1, prior_wm)
+        deltas = []
+        for label_text, current in label_support.items():
+            label = int(label_text)
+            mask = labels == label
+            if current["region"] == "gm_between_inner_outer":
+                prior_fraction = float(np.count_nonzero(mask & ~prior_inner & prior_outer) / current["voxels"])
+            else:
+                prior_fraction = float(np.count_nonzero(mask & prior_inner) / current["voxels"])
+            deltas.append({
+                "label": label,
+                "region": current["region"],
+                "prior_support_fraction": prior_fraction,
+                "current_support_fraction": current["support_fraction"],
+                "delta_percentage_points": 100.0 * (current["support_fraction"] - prior_fraction),
+            })
+        comparison = {
+            "core_dir": str(comparison_root),
+            "comparison_type": "internal profile comparison, not a source-reference comparison",
+            "prior_gm_between_inner_outer_fraction": prior_gm_support,
+            "prior_wm_inside_inner_fraction": prior_wm_support,
+            "current_minus_prior_gm_percentage_points": 100.0 * (
+                support["gm_between_inner_outer_fraction"] - prior_gm_support
+            ),
+            "current_minus_prior_wm_percentage_points": 100.0 * (
+                support["wm_inside_inner_fraction"] - prior_wm_support
+            ),
+            "largest_per_label_losses": sorted(
+                deltas, key=lambda item: item["delta_percentage_points"]
+            )[:10],
+            "largest_per_label_gains": sorted(
+                deltas, key=lambda item: item["delta_percentage_points"], reverse=True
+            )[:10],
+        }
     log_metrics = None
     if args.watchdog_log is not None:
         log = args.watchdog_log.read_text(encoding="utf-8")
@@ -179,6 +247,8 @@ def main() -> None:
             str(value): int(np.count_nonzero(labels == value)) for value in (208, 209)
         },
         "quality": {**support, **nesting},
+        "label_support_by_label": label_support,
+        "comparison": comparison,
         "meshes": meshes,
         "thickness": thickness,
         "watchdog": log_metrics,
