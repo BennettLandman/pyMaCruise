@@ -37,14 +37,27 @@ it cannot be reported as passing the Java gate or hidden by the Dice result.
 The independent ribbon-quality audit still fails its tissue-support and
 thickness criteria.
 
-As a diagnostic, Python was also run on the exact Java smoothed level set.
-That initial-inner output had **zero sign differences**, Dice **1.0**, and
-Hausdorff **0.0016 mm** against Java. This localizes the amplified mismatch to
-the smoothing output passed into the inner stage. The explicit Java
+As a diagnostic, Python was rerun from the exact Java smoothed level set through
+the initial inner, central, recomputed inner, and outer stages. All four
+surfaces pass the Java thresholds with zero sign differences and Dice 1.0:
+
+| Surface | Mean surface distance | Hausdorff |
+|---|---:|---:|
+| Initial inner | 0.00000066 mm | 0.001588 mm |
+| Central | 0.00000524 mm | 0.003462 mm |
+| Inner | 0.00000344 mm | 0.099665 mm |
+| Outer | 0.00000516 mm | 0.002890 mm |
+
+This diagnostic deliberately substitutes a Java intermediate and is not an
+end-to-end Python-vs-Java result. It localizes the amplified mismatch to the
+Python smoothing output passed into the inner stage. The explicit Java
 multiply/divide order for curvature magnitude is now encoded in the vectorized
 kernel; a full replay still reproduced all six saved Python products exactly,
 and the held-fixed comparison metrics did not change. The focused TGDM suite
-passed **26 tests** after this arithmetic alignment.
+passed **26 tests** after this arithmetic alignment. The downstream diagnostic
+is reproducible with the committed
+[comparison script](../../scripts/compare_plus_surfaces_from_java_smoothing.py)
+and its [machine-readable report](plus-aligned-fine-grid-java-smoothing-downstream-diagnostic-2026-10-10.json).
 
 The comparison harness now saves `smoothed_initial` and the comparator measures
 it and `initial_inner`, making this failure location reproducible. An
@@ -82,6 +95,10 @@ javac -d build/plus-vandy-atlas-aligned-fine/java-reference/classes \
   --workflow-root build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006/plus-surfaces \
   --reference-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
   --report docs/reports/plus-aligned-fine-grid-tgdm-java-2026-10-10.json
+
+./.venv/bin/python scripts/compare_plus_surfaces_from_java_smoothing.py \
+  --reference-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
+  --report docs/reports/plus-aligned-fine-grid-java-smoothing-downstream-diagnostic-2026-10-10.json
 ```
 
 The complete measurements and hashes are in the adjacent machine-readable

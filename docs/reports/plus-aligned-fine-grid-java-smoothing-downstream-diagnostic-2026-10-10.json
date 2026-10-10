@@ -1,0 +1,106 @@
+{
+  "affine_ras": [
+    [
+      2.00390625,
+      0.0,
+      0.0,
+      -252.4921875
+    ],
+    [
+      0.0,
+      2.015625,
+      0.0,
+      13.468887329101562
+    ],
+    [
+      0.0,
+      0.0,
+      2.010690689086914,
+      -242.499267578125
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "comparison": "selected Java TGDM outputs vs Python downstream evolution with Java smoothed_initial substituted",
+  "coordinate_system": "RAS",
+  "diagnostic_only": true,
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 5.249846037917256e-06,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 0.0034619377514957432,
+      "mean_absolute_distance_mm": 5.24013172193189e-06,
+      "n_candidate_vertices": 22237,
+      "n_reference_vertices": 22237,
+      "reference_to_candidate_mean_mm": 5.230417405946523e-06,
+      "sign_differences": 0,
+      "thresholds_pass": true
+    },
+    "initial_inner": {
+      "candidate_to_reference_mean_mm": 6.238565344454563e-07,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 0.001587726488651242,
+      "mean_absolute_distance_mm": 6.558423591831471e-07,
+      "n_candidate_vertices": 21500,
+      "n_reference_vertices": 21500,
+      "reference_to_candidate_mean_mm": 6.878281839208379e-07,
+      "sign_differences": 0,
+      "thresholds_pass": true
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 1.3581161501493729e-06,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 0.09966480731964111,
+      "mean_absolute_distance_mm": 3.443277548766191e-06,
+      "n_candidate_vertices": 21390,
+      "n_reference_vertices": 21390,
+      "reference_to_candidate_mean_mm": 5.528438947383009e-06,
+      "sign_differences": 0,
+      "thresholds_pass": true
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 5.219687477136892e-06,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 0.0028899106898123226,
+      "mean_absolute_distance_mm": 5.164839810441102e-06,
+      "n_candidate_vertices": 22182,
+      "n_reference_vertices": 22182,
+      "reference_to_candidate_mean_mm": 5.109992143745311e-06,
+      "sign_differences": 0,
+      "thresholds_pass": true
+    }
+  },
+  "scope": "tests stages after initial smoothing only; it is not an end-to-end Python-vs-Java result",
+  "settings": {
+    "central_curvature": 0.15,
+    "central_external": 1.0,
+    "central_iterations": 7,
+    "central_pressure": 1.5,
+    "central_shrink_iterations": 1,
+    "gray_matter_iso": 0.4,
+    "initial_curvature": 1.0,
+    "initial_iso_level": 126.9,
+    "initial_iterations": 6,
+    "inner_curvature": 0.2,
+    "inner_external": 0.0,
+    "inner_iterations": 4,
+    "inner_pressure": 1.0,
+    "outer_curvature": 1.0,
+    "outer_external": 0.0,
+    "outer_iterations": 7,
+    "outer_pressure": 1.0,
+    "white_matter_iso": 0.5
+  },
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "surface_thresholds_pass": true,
+  "synthetic_only": true,
+  "workflow_run_signature": "135969d6955c4c234d1830a9307bc04a5148c3a627e1619eeac85d74e7173c8b"
+}
