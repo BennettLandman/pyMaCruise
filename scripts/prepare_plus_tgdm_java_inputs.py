@@ -48,6 +48,11 @@ def main() -> None:
         action="store_true",
         help="reuse saved TGDM products and rebuild only held-fixed upstream arrays",
     )
+    parser.add_argument(
+        "--allow-python-stage-differences",
+        action="store_true",
+        help="record, rather than abort on, replay differences from saved Python TGDM products",
+    )
     args = parser.parse_args()
     root = args.workflow_root.resolve()
     manifest_path = root / "run.json"
@@ -60,6 +65,7 @@ def main() -> None:
     saved_stage = root / "stages/topology_ace_gvf_tgdm" / manifest["stages"]["topology_ace_gvf_tgdm"]["attempt"]
     saved_stage_outputs = manifest["stages"]["topology_ace_gvf_tgdm"]["outputs"]
     python_outputs: dict[str, np.ndarray] = {}
+    saved_stage_differences: dict[str, int] = {}
     if args.use_saved_tgdm_outputs:
         # Rebuild only TGDM's held-fixed input fields. The terminal stage has
         # already persisted the five output arrays, and repeating nested TGDM
@@ -77,6 +83,7 @@ def main() -> None:
         tgdm_initial_membership = python_outputs["initial_level_set"]
         tissue_wm, tissue_gm = tissue.wm, tissue.gm
         ace_gm, ace_skeleton, gvf_field = ace.enhanced_gray_matter, ace.thinned_skeleton, gvf.vector_field
+        ace_full_skeleton = ace.skeleton
         java_input_mode = "precomputed_initial_level_set"
     else:
         result = run_plus_topology_and_tgdm(*(inputs[name] for name in INPUT_ORDER), options=options)
@@ -85,7 +92,9 @@ def main() -> None:
             saved = np.asarray(nib.load(saved_stage / f"{name}.nii.gz").dataobj)
             if not np.array_equal(actual, saved):
                 changed = int(np.count_nonzero(actual != saved))
-                raise SystemExit(f"Python replay differs from saved workflow stage {name}: {changed} voxels")
+                saved_stage_differences[name] = changed
+                if not args.allow_python_stage_differences:
+                    raise SystemExit(f"Python replay differs from saved workflow stage {name}: {changed} voxels")
             python_outputs[name] = actual.astype(np.float32, copy=False)
         tgdm_initial_membership = result.tgdm_initial_membership
         tissue_wm, tissue_gm = result.tissue.wm, result.tissue.gm
@@ -94,6 +103,7 @@ def main() -> None:
             result.ace.thinned_skeleton,
             result.gvf.vector_field,
         )
+        ace_full_skeleton = result.ace.skeleton
         boundary = result.boundary
         smoothed_initial = result.tgdm.execution.smoothed_initial.level_set
         java_input_mode = "initial_membership"
@@ -165,7 +175,7 @@ def main() -> None:
     with gvf_input_path.open("wb") as stream:
         stream.write(struct.pack(">III",*shape))
         stream.write(np.asarray(ace_gm.dataobj,dtype=">f4").tobytes(order="C"))
-    for name,array in (("ace-enhanced",ace_gm),("ace-skeleton",ace.skeleton),("ace-thinned-skeleton",ace_skeleton)):
+    for name,array in (("ace-enhanced",ace_gm),("ace-skeleton",ace_full_skeleton),("ace-thinned-skeleton",ace_skeleton)):
         np.save(args.output_dir/f"python-{name}.npy",np.asarray(array.dataobj))
     np.save(args.output_dir/"python-gvf-vector.npy",np.asarray(gvf_field.dataobj,dtype=np.float32))
     for name in OUTPUT_NAMES:
@@ -198,7 +208,10 @@ def main() -> None:
         "affine_ras": np.asarray(nib.load(str(saved_stage_outputs["inner"]["path"])).affine).tolist(),
         "settings": options.as_dict(),
         "crop_inputs": input_records,
-        "replayed_saved_outputs_exactly": [] if args.use_saved_tgdm_outputs else list(OUTPUT_NAMES),
+        "replayed_saved_outputs_exactly": (
+            [] if args.use_saved_tgdm_outputs else [name for name in OUTPUT_NAMES if name not in saved_stage_differences]
+        ),
+        "saved_stage_difference_voxels": saved_stage_differences,
         "ace_gvf_parameters": {"csf_merge_mode":3,"gvf_lambda":0.2,"gvf_iterations":200,"gvf_normalize":False},
         "held_fixed_input_binary_sha256": sha256(input_path),
         "ace_input_binary_sha256": sha256(ace_input_path),

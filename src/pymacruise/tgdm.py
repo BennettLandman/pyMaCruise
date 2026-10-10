@@ -887,7 +887,16 @@ def tgdm_force(
     if vector.shape != gradient.shape or not np.isfinite(vector).all():
         raise ValueError("advection must be a finite three-component TGDM field")
 
-    grad_magnitude = np.linalg.norm(gradient, axis=-1)
+    # GenericTGDM stores three scalar gradient fields in a Vecmath Vector3d and
+    # calls Vector3d.length(), whose source expression is sqrt(x*x + y*y + z*z).
+    # Keep that operation order explicit; np.linalg.norm can use a different
+    # reduction path, and tiny changes can flip a topology-protected update at
+    # a near-zero level-set value.
+    grad_magnitude = np.sqrt(
+        gradient[..., 0] * gradient[..., 0]
+        + gradient[..., 1] * gradient[..., 1]
+        + gradient[..., 2] * gradient[..., 2]
+    )
     if profile == "inner":
         denominator = grad_magnitude + 0.001
         normalized_mean = mean / denominator**3
@@ -915,11 +924,13 @@ def tgdm_force(
         nonzero_gradient = grad_magnitude > 1e-5
         normalized_mean = np.zeros_like(mean)
         normalized_gaussian = np.zeros_like(gaussian)
+        grad_squared = grad_magnitude * grad_magnitude
         normalized_mean[nonzero_gradient] = (
-            mean[nonzero_gradient] / grad_magnitude[nonzero_gradient] ** 3
+            mean[nonzero_gradient]
+            / (grad_squared[nonzero_gradient] * grad_magnitude[nonzero_gradient])
         )
         normalized_gaussian[nonzero_gradient] = (
-            gaussian[nonzero_gradient] / grad_magnitude[nonzero_gradient] ** 4
+            gaussian[nonzero_gradient] / (grad_squared[nonzero_gradient] * grad_squared[nonzero_gradient])
         )
         discriminant = normalized_mean**2 - 2.0 * normalized_gaussian
         positive = nonzero_gradient & (discriminant > 0)

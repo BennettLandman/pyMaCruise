@@ -34,7 +34,7 @@
   "coordinate_system": "RAS",
   "full_workflow_run_signature": "efe43fffd20fdd2e63c0b0d4dd0940973544dbd1ea729cc28831ba9f52210c85",
   "implementation_signature": null,
-  "java_peak_sampled_rss_gb": 0.622,
+  "java_peak_sampled_rss_gb": 0.604,
   "java_rss_limit_gb": 8,
   "outputs": {
     "central": {
@@ -70,10 +70,10 @@
       "voxel_count": 418509
     },
     "initial_level_set": {
-      "changed_voxels": 0,
-      "exact": true,
-      "maximum_absolute_voxel_error": 0.0,
-      "mean_absolute_voxel_error": 0.0,
+      "changed_voxels": 22982,
+      "exact": false,
+      "maximum_absolute_voxel_error": 9.5367431640625e-07,
+      "mean_absolute_voxel_error": 2.1398390628560233e-08,
       "sign_changed_voxels": 0,
       "voxel_count": 418509
     },
@@ -134,6 +134,6 @@
   ],
   "surface_thresholds_pass": false,
   "synthetic_only": true,
-  "tgdm_input_mode": "precomputed_initial_level_set",
+  "tgdm_input_mode": "initial_membership",
   "workflow_run_signature": "135969d6955c4c234d1830a9307bc04a5148c3a627e1619eeac85d74e7173c8b"
 }

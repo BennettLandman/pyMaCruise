@@ -5,17 +5,19 @@
 This is a held-fixed comparison of the selected `MaGenericTGDM` wrapper with
 the saved Python TGDM outputs from the iteration-6 checkpoint of the labeled
 81×101×77 (~2 mm) synthetic plus case. The comparison is on the workflow's
-73×91×63 RAS crop. Hash-checked crop inputs were used to
-reconstruct the tissue, ACE, and GVF fields; the saved initial signed-distance
-level set was reused exactly. TOADS/LesionTOADS and all upstream stages remain
-held fixed. The Java process peaked at **0.538 GB sampled RSS** under an 8 GB
-watchdog. It is synthetic source-comparison evidence, not full-workflow
-equivalence or real-MRI validation.
+73×91×63 RAS crop. Hash-checked crop inputs were used to reconstruct the
+tissue, ACE, and GVF fields. Java and Python start from the same held-fixed
+initial-membership array and independently construct the signed-distance
+seed. The resulting seed fields have identical signs and a maximum absolute
+difference of `9.54e-7`. TOADS/LesionTOADS and all other upstream stages remain
+held fixed. The Java process peaked at **0.604 GB sampled RSS** under an 8 GB
+watchdog. This is synthetic component source-comparison evidence, not
+full-workflow equivalence or real-MRI validation.
 
 ## Results
 
-The saved Python and Java initial level sets match exactly. The three final
-surface masks each differ at only three voxels, with Dice ≥0.99993. However,
+The Java and Python initial level sets have no sign differences. The three
+final surface masks each differ at only three voxels, with Dice ≥0.99993. However,
 the agreed Hausdorff limit is **1 mm**, and the measured distances exceed it:
 
 | Surface | Sign-different voxels | Dice at zero | Mean surface distance | Hausdorff | Gate |
@@ -35,6 +37,15 @@ it cannot be reported as passing the Java gate or hidden by the Dice result.
 The independent ribbon-quality audit still fails its tissue-support and
 thickness criteria.
 
+As a diagnostic, Python was also run on the exact Java smoothed level set.
+That initial-inner output had **zero sign differences**, Dice **1.0**, and
+Hausdorff **0.0016 mm** against Java. This localizes the amplified mismatch to
+the smoothing output passed into the inner stage. The explicit Java
+multiply/divide order for curvature magnitude is now encoded in the vectorized
+kernel; a full replay still reproduced all six saved Python products exactly,
+and the held-fixed comparison metrics did not change. The focused TGDM suite
+passed **26 tests** after this arithmetic alignment.
+
 The comparison harness now saves `smoothed_initial` and the comparator measures
 it and `initial_inner`, making this failure location reproducible. An
 exploratory run with float32 rounding enabled for signed-distance updates did
@@ -52,8 +63,7 @@ mkdir -p build/plus-vandy-atlas-aligned-fine/java-reference/classes
 ./.venv/bin/python scripts/prepare_plus_tgdm_java_inputs.py \
   --workflow-root build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006/plus-surfaces \
   --context-manifest build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006/synthetic-plus-checkpoint-surface-composition.json \
-  --output-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
-  --use-saved-tgdm-outputs
+  --output-dir build/plus-vandy-atlas-aligned-fine/java-inputs
 
 javac -d build/plus-vandy-atlas-aligned-fine/java-reference/classes \
   -sourcepath tests/java_reference/stubs:tests/java_reference/upstream \
@@ -66,7 +76,6 @@ javac -d build/plus-vandy-atlas-aligned-fine/java-reference/classes \
   PlusTGDMReferenceHarness \
   build/plus-vandy-atlas-aligned-fine/java-inputs/arrays.bin \
   build/plus-vandy-atlas-aligned-fine/java-inputs/java \
-  precomputed_initial_level_set \
   > build/plus-vandy-atlas-aligned-fine/java-inputs/java-watchdog.log 2>&1
 
 ./.venv/bin/python scripts/compare_plus_tgdm_java.py \
