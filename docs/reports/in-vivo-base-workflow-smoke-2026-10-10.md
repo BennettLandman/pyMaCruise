@@ -62,6 +62,38 @@ A follow-up spatial audit of the inner mesh found that **1,872 of 1,876 vertices
 
 The machine-readable audit and source-profile outputs are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-core-audit.json` and `build/invivo-base-2026-10-10-ras-grid/source-selected-core/`.
 
+## Source-selected full-resolution continuation
+
+After the first source-selected ACE/TGDM follow-up, the same prepared in-vivo case was carried through the higher-iteration upstream stages and a fresh CRUISE core/tail. The first TOADS pass reused the natural 22-iteration result from the complete base smoke workflow. The second Dura evolution ran five configured iterations using the source-selected Dura parameters, and the second TOADS loop then naturally converged in **40 iterations** with terminal energy ratio **`7.55981964e-05`**; it did not reach the 50-iteration cap. Its full stage log and products are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/`. The Dura reference-gradient and non-flipping TGDM vectorizations added for this run were checked against their scalar/source implementations on code commit `73922eb`: `PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/pytest -q tests/test_tgdm.py tests/test_toads_dura.py` — **55 passed**, two expected RAS warnings, 25.81 seconds.
+
+The source-selected continuation’s computational code was commit `73922eb`; commit `c42a1a6` changed only README/plan documentation while the surface job was running.
+
+The fresh CRUISE core used ACE diffusion 25, GVF 200, and TGDM initial/inner/central iterations 6/4/7, with the selected MaSeg cerebellum removal and a two-voxel crop edge. Source-faithful MaSeg refinement completed, and the source-derived JIST connectivity-18 surfaces plus thickness products were generated. The full-resolution core took substantially longer than the earlier profile; its direct runner peak sampled RSS was **2.827 GB** under a 12 GB watchdog. The new audit inventory contains **22 hashed products**, including **13 finite RAS NIfTIs**; no invalid or non-RAS NIfTI was found.
+
+The new profile did **not** pass the agreed ribbon-quality criteria:
+
+- GM MaSeg label support between inner and outer surfaces: **507,392 / 642,291 (79.0%)**, below the 97% minimum.
+- WM MaSeg label support inside the inner surface: **354,294 / 428,303 (82.7%)**, below the 97% minimum.
+- Nested regions: **1** inner voxel outside central; **0** central voxels outside outer.
+- Each surface is edge-watertight with no open or nonmanifold edges, but each has **207 connected components**, including **205 components under 100 vertices**. The largest component Euler characteristic is **−2** for all three meshes.
+- Symmetric closest-surface thickness mean: **2.851 mm** (SD **0.962 mm**). Level-set subtraction thickness mean: **4.455 mm** (SD **1.269 mm**).
+- MaSeg labels **208 (91,275 voxels)** and **209 (24,715 voxels)** remain outside the selected label groups through 207; their anatomy/role is not inferred.
+
+These are in-vivo integration and quality measurements, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
+
+The audit is reproducible with:
+
+```sh
+PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scripts/audit_in_vivo_base_products.py \\
+  build/invivo-base-2026-10-10-ras-grid/source-selected-full-toads-core \\
+  --maseg build/invivo-base-2026-10-10-inputs/ras-grid/orig_target_seg_ras_uint16.nii.gz \\
+  --brain-mask build/invivo-base-2026-10-10-inputs/ras-grid/T1_bet_mask_ras.nii.gz \\
+  --watchdog-log build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/logs/cruise-core-second-toads.log \\
+  --report build/invivo-base-2026-10-10-ras-grid/source-selected-full-toads-core-audit.json
+```
+
+Audit output and all derived images remain under ignored `build/`; no human image data were committed.
+
 ## Evidence limits and follow-up
 
 This is one in-vivo integration experiment with a documented oblique-grid resampling step. It is not comparison against the historical Singularity output: `sample-macruise/output` contained no reference products at inspection. It is also not Java equivalence, source-default execution, clinical validation, or a test of MaCRUISEplus.
