@@ -2,104 +2,111 @@
   "comparison": "selected Java SmoothCortexProfile pass outputs vs Python TGDM smoother",
   "coordinate_system": "RAS",
   "diagnostic_only": true,
-  "first_sign_mismatch": {
-    "pass": 2,
-    "stage": "curvature_update"
+  "final_surface": {
+    "candidate_to_reference_mean_mm": 1.0664323771263912e-07,
+    "dice_at_zero": 1.0,
+    "hausdorff_mm": 1.367680798796804e-05,
+    "mean_absolute_distance_mm": 1.0529711660627698e-07,
+    "n_candidate_vertices": 18148,
+    "n_reference_vertices": 18148,
+    "reference_to_candidate_mean_mm": 1.0395099549991483e-07,
+    "thresholds_pass": true
   },
+  "first_sign_mismatch": null,
   "initial_reinitialization": {
-    "changed_voxels": 25494,
-    "maximum_absolute_voxel_error": 9.5367431640625e-07,
-    "mean_absolute_voxel_error": 2.1633813230735388e-08,
+    "changed_voxels": 111,
+    "maximum_absolute_voxel_error": 4.76837158203125e-07,
+    "mean_absolute_voxel_error": 1.2647021822839383e-10,
     "sign_differences": 0
   },
   "passes": [
     {
       "after_reinitialization": {
-        "changed_voxels": 39117,
-        "maximum_absolute_voxel_error": 0.025084853172302246,
-        "mean_absolute_voxel_error": 8.435851924097617e-06,
+        "changed_voxels": 16482,
+        "maximum_absolute_voxel_error": 2.2351741790771484e-06,
+        "mean_absolute_voxel_error": 4.3579483901642775e-09,
         "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 57263,
-        "maximum_absolute_voxel_error": 5.53131103515625e-05,
-        "mean_absolute_voxel_error": 4.237470021493529e-08,
+        "changed_voxels": 31470,
+        "maximum_absolute_voxel_error": 3.0040740966796875e-05,
+        "mean_absolute_voxel_error": 1.3255151528572534e-08,
         "sign_differences": 0
       },
       "pass": 1
     },
     {
       "after_reinitialization": {
-        "changed_voxels": 100335,
-        "maximum_absolute_voxel_error": 0.23657476902008057,
-        "mean_absolute_voxel_error": 1.4242673716788677e-05,
-        "sign_differences": 1
+        "changed_voxels": 23758,
+        "maximum_absolute_voxel_error": 5.841255187988281e-06,
+        "mean_absolute_voxel_error": 7.601379254586763e-09,
+        "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 89779,
-        "maximum_absolute_voxel_error": 0.11707448959350586,
-        "mean_absolute_voxel_error": 1.1398629415246986e-05,
-        "sign_differences": 1
+        "changed_voxels": 37428,
+        "maximum_absolute_voxel_error": 5.173683166503906e-05,
+        "mean_absolute_voxel_error": 1.8367013707840767e-08,
+        "sign_differences": 0
       },
       "pass": 2
     },
     {
       "after_reinitialization": {
-        "changed_voxels": 116244,
-        "maximum_absolute_voxel_error": 0.023447692394256592,
-        "mean_absolute_voxel_error": 2.0995529679338515e-05,
+        "changed_voxels": 29554,
+        "maximum_absolute_voxel_error": 3.8057565689086914e-05,
+        "mean_absolute_voxel_error": 1.5373330072443605e-08,
         "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 113824,
-        "maximum_absolute_voxel_error": 0.11616945266723633,
-        "mean_absolute_voxel_error": 2.202909198601547e-05,
+        "changed_voxels": 41323,
+        "maximum_absolute_voxel_error": 7.891654968261719e-05,
+        "mean_absolute_voxel_error": 2.355169832678122e-08,
         "sign_differences": 0
       },
       "pass": 3
     },
     {
       "after_reinitialization": {
-        "changed_voxels": 117013,
-        "maximum_absolute_voxel_error": 0.2597106099128723,
-        "mean_absolute_voxel_error": 3.496426302622053e-05,
-        "sign_differences": 2
+        "changed_voxels": 32560,
+        "maximum_absolute_voxel_error": 1.1205673217773438e-05,
+        "mean_absolute_voxel_error": 1.7115563711705295e-08,
+        "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 119458,
-        "maximum_absolute_voxel_error": 0.11986953020095825,
-        "mean_absolute_voxel_error": 2.4715460440184115e-05,
-        "sign_differences": 2
+        "changed_voxels": 44306,
+        "maximum_absolute_voxel_error": 8.249282836914062e-05,
+        "mean_absolute_voxel_error": 2.977543483841697e-08,
+        "sign_differences": 0
       },
       "pass": 4
     },
     {
       "after_reinitialization": {
-        "changed_voxels": 116574,
-        "maximum_absolute_voxel_error": 0.0328829288482666,
-        "mean_absolute_voxel_error": 3.892172867925849e-05,
+        "changed_voxels": 34811,
+        "maximum_absolute_voxel_error": 9.834766387939453e-06,
+        "mean_absolute_voxel_error": 1.9110596261356332e-08,
         "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 118438,
-        "maximum_absolute_voxel_error": 0.13868707418441772,
-        "mean_absolute_voxel_error": 3.7186817644254236e-05,
+        "changed_voxels": 45047,
+        "maximum_absolute_voxel_error": 7.295608520507812e-05,
+        "mean_absolute_voxel_error": 3.0522262854524224e-08,
         "sign_differences": 0
       },
       "pass": 5
     },
     {
       "after_reinitialization": {
-        "changed_voxels": 333622,
-        "maximum_absolute_voxel_error": 0.26018232107162476,
-        "mean_absolute_voxel_error": 0.00011570757608279584,
-        "sign_differences": 1
+        "changed_voxels": 47038,
+        "maximum_absolute_voxel_error": 1.1861324310302734e-05,
+        "mean_absolute_voxel_error": 5.289064891837974e-08,
+        "sign_differences": 0
       },
       "before_reinitialization": {
-        "changed_voxels": 116690,
-        "maximum_absolute_voxel_error": 0.023120582103729248,
-        "mean_absolute_voxel_error": 3.887814490095974e-05,
-        "sign_differences": 1
+        "changed_voxels": 36135,
+        "maximum_absolute_voxel_error": 1.146271824836731e-05,
+        "mean_absolute_voxel_error": 2.032133067978301e-08,
+        "sign_differences": 0
       },
       "pass": 6
     }
@@ -110,6 +117,7 @@
     "final_delta_t": 0.01,
     "final_internal_iterations": 30,
     "final_max_signed_distance": 20.0,
+    "fmm_backend": "source ordered indexed heap, unit speed, float32 image values",
     "internal_iterations": 30,
     "max_signed_distance": 6.2,
     "outer_iterations": 6

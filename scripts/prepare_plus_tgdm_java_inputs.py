@@ -19,7 +19,7 @@ from pymacruise.plus_pipeline import (
 )
 from pymacruise.plus_topology_composition import run_plus_topology_and_tgdm
 from pymacruise.boundary import multi_atlas_csf_boundary_image
-from pymacruise.ace import _signed_distance_fmm
+from pymacruise.ace import _tgdm_signed_distance_fmm
 from pymacruise.tgdm import _SMOOTHING_PROFILE_SETTINGS, tgdm_evolve
 
 INPUT_ORDER = (
@@ -111,7 +111,7 @@ def main() -> None:
         # The workflow manifest intentionally persists only delivered TGDM
         # products. Rebuild the intermediate smoothing surface separately so
         # source comparisons can localize where a later surface mismatch starts.
-        smoothing_input = _signed_distance_fmm(tgdm_initial_membership, max_distance=8.0)
+        smoothing_input = _tgdm_signed_distance_fmm(tgdm_initial_membership, max_distance=8.0)
         smoothed_initial = tgdm_evolve(
             smoothing_input,
             profile="central",

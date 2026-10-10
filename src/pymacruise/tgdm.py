@@ -185,7 +185,7 @@ def tgdm_evolve(
     reinitialization schedule here follow selected VandyCRUISE `GenericTGDM`
     source behavior, not a parameter prescription from the paper.
     """
-    from pymacruise.ace import _signed_distance_fmm
+    from pymacruise.ace import _tgdm_signed_distance_fmm
 
     phi = np.asarray(level_set, dtype=np.float32).copy()
     if phi.ndim != 3 or any(size < 2 for size in phi.shape):
@@ -350,10 +350,9 @@ def tgdm_evolve(
 
         if record_passes:
             pre_reinitialization_level_sets.append(phi.copy())
-        phi = _signed_distance_fmm(
+        phi = _tgdm_signed_distance_fmm(
             phi,
             max_distance=max_signed_distance,
-            round_updates_to_float32=round_reinitialization_updates_to_float32,
         )
         phi = _apply_level_set_bounds(
             phi, inner, outer, narrow_only=True, band=max_signed_distance
@@ -381,7 +380,7 @@ def tgdm_initial_membership_level_set(
     max_distance: float = 8.0,
 ) -> np.ndarray:
     """Create the source signed-distance seed from a membership image."""
-    from pymacruise.ace import _signed_distance_fmm
+    from pymacruise.ace import _tgdm_signed_distance_fmm
 
     values = np.asarray(membership, dtype=np.float32)
     if values.ndim != 3 or any(size < 2 for size in values.shape):
@@ -390,7 +389,7 @@ def tgdm_initial_membership_level_set(
         raise ValueError("membership and distance parameters must be finite")
     if max_distance <= 0:
         raise ValueError("max_distance must be positive")
-    return _signed_distance_fmm(np.float32(iso_level) - values, max_distance)
+    return _tgdm_signed_distance_fmm(np.float32(iso_level) - values, max_distance)
 
 
 def tgdm_tissue_sign_field(
@@ -559,9 +558,9 @@ def tgdm_nested_arrays(
     # MaGenericTGDM.solveSmoothSurface runs DistanceField once more before
     # entering its profile loop, even though this wrapper seed is already a
     # signed-distance image.
-    from pymacruise.ace import _signed_distance_fmm
+    from pymacruise.ace import _tgdm_signed_distance_fmm
 
-    smoothing_input = _signed_distance_fmm(initial, max_distance=8.0)
+    smoothing_input = _tgdm_signed_distance_fmm(initial, max_distance=8.0)
     # SmoothCortexProfile passes 5f, but ProfileTGDM never stores that argument.
     smoothed = tgdm_evolve(
         smoothing_input,

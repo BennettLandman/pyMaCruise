@@ -341,9 +341,9 @@ def test_tgdm_nested_array_adapter_routes_tissues_and_supports_zero_iteration_sm
     assert result.initial_level_set[5, 5, 5] < 0
     assert result.tissue_sign.dtype == np.uint8
     assert result.tissue_sign[5, 5, 5] == 254
-    from pymacruise.ace import _signed_distance_fmm
+    from pymacruise.ace import _tgdm_signed_distance_fmm
 
-    zero_step_seed = _signed_distance_fmm(result.initial_level_set, max_distance=8.0)
+    zero_step_seed = _tgdm_signed_distance_fmm(result.initial_level_set, max_distance=8.0)
     for stage in (
         result.smoothed_initial,
         result.initial_inner,

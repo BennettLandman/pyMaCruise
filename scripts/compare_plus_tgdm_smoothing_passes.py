@@ -8,9 +8,12 @@ import json
 from pathlib import Path
 
 import numpy as np
+import nibabel as nib
 
-from pymacruise.ace import _signed_distance_fmm
+from pymacruise.ace import _tgdm_signed_distance_fmm
+from pymacruise.surfaces import extract_levelset_surface
 from pymacruise.tgdm import _SMOOTHING_PROFILE_SETTINGS, tgdm_evolve
+from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
 
 def _read_java(path: Path, shape: tuple[int, int, int]) -> np.ndarray:
@@ -35,20 +38,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument(
-        "--source-float-rounding", action="store_true",
-        help="round fast-marching values to float32 at Java image/heap writes",
-    )
     args = parser.parse_args()
     root = args.reference_dir.resolve()
     provenance = json.loads((root / "input-provenance.json").read_text())
     shape = tuple(provenance["shape_xyz"])
+    affine = np.asarray(provenance["affine_ras"], dtype=np.float64)
     initial = np.load(root / "python-initial_level_set.npy").astype(np.float32)
-    smoothing_input = _signed_distance_fmm(
-        initial,
-        max_distance=8.0,
-        round_updates_to_float32=args.source_float_rounding,
-    )
+    smoothing_input = _tgdm_signed_distance_fmm(initial, max_distance=8.0)
     java_smoothing_input = _read_java(root / "java/smoothing_input.raw.gz", shape)
     input_metrics = _metrics(java_smoothing_input, smoothing_input)
     python = tgdm_evolve(
@@ -58,7 +54,6 @@ def main() -> None:
         pressure_force=0.0,
         outer_iterations=6,
         settings=_SMOOTHING_PROFILE_SETTINGS,
-        round_reinitialization_updates_to_float32=args.source_float_rounding,
         record_passes=True,
     )
     passes = []
@@ -72,6 +67,23 @@ def main() -> None:
             "before_reinitialization": _metrics(java_pre, pre),
             "after_reinitialization": _metrics(java_post, post),
         })
+    java_final = _read_java(root / "java/smoothed_initial.raw.gz", shape)
+    java_surface = extract_levelset_surface(nib.Nifti1Image(java_final, affine))
+    python_surface = extract_levelset_surface(nib.Nifti1Image(python.level_set, affine))
+    final_surface = {
+        "dice_at_zero": dice_coefficient(java_final <= 0, python.level_set <= 0),
+        **mesh_surface_distance_metrics(
+            java_surface.vertices,
+            java_surface.faces,
+            python_surface.vertices,
+            python_surface.faces,
+        ),
+    }
+    final_surface["thresholds_pass"] = bool(
+        final_surface["dice_at_zero"] >= 0.97
+        and final_surface["mean_absolute_distance_mm"] <= 0.01
+        and final_surface["hausdorff_mm"] <= 1.0
+    )
     first_mismatch = next(
         (
             {"pass": item["pass"], "stage": stage}
@@ -100,15 +112,18 @@ def main() -> None:
             "final_delta_t": 0.01,
             "max_signed_distance": 6.2,
             "final_max_signed_distance": 20.0,
-            "round_distance_updates_to_float32": args.source_float_rounding,
+            "fmm_backend": "source ordered indexed heap, unit speed, float32 image values",
         },
         "initial_reinitialization": input_metrics,
         "passes": passes,
         "first_sign_mismatch": first_mismatch,
+        "final_surface": final_surface,
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2))
+    if not final_surface["thresholds_pass"]:
+        raise SystemExit("TGDM smoothing surface missed the selected Java acceptance thresholds")
 
 
 if __name__ == "__main__":

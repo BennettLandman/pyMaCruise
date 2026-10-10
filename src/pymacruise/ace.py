@@ -1035,6 +1035,31 @@ def _distance_and_characteristic_fmm(
     return np.asarray(time, dtype=np.float32), np.asarray(characteristic, dtype=np.float32)
 
 
+def _tgdm_signed_distance_fmm(
+    level_set: np.ndarray, max_distance: float = 1000.0
+) -> np.ndarray:
+    """Reinitialize TGDM fields with the selected JIST ordered-heap FMM.
+
+    TGDM's Java wrapper delegates reinitialization to ``DistanceField``. The
+    existing indexed-heap implementation in :func:`_distance_and_characteristic_fmm`
+    follows the selected JIST scan, neighbor, heap, and float32 image semantics.
+    Unit speed gives the same signed distance; clipping the completed field is
+    equivalent to Java's early stop followed by assigning ``maxDistance`` to
+    unaccepted voxels. The characteristic output is unused here.
+    """
+    values = np.asarray(level_set, dtype=np.float32)
+    if not np.isfinite(max_distance) or max_distance <= 0:
+        raise ValueError("TGDM signed-distance maximum must be finite and positive")
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
+        raise ValueError("TGDM signed distance requires a 3D grid with dimensions >= 2")
+    if not np.isfinite(values).all():
+        raise ValueError("TGDM signed-distance input must be finite")
+    distance, _ = _distance_and_characteristic_fmm(
+        values, np.ones(values.shape, dtype=np.float32)
+    )
+    return np.clip(distance, -max_distance, max_distance).astype(np.float32, copy=False)
+
+
 def _same_ras_grid(
     reference: nib.spatialimages.SpatialImage,
     candidate: nib.spatialimages.SpatialImage,

@@ -8,33 +8,35 @@ the saved Python TGDM outputs from the iteration-6 checkpoint of the labeled
 73×91×63 RAS crop. Hash-checked crop inputs were used to reconstruct the
 tissue, ACE, and GVF fields. Java and Python start from the same held-fixed
 initial-membership array and independently construct the signed-distance
-seed. The resulting seed fields have identical signs and a maximum absolute
-difference of `9.54e-7`. TOADS/LesionTOADS and all other upstream stages remain
-held fixed. The Java process peaked at **0.604 GB sampled RSS** under an 8 GB
+seed. The seed fields have identical signs and differ by at most `4.77e-7`.
+TOADS/LesionTOADS and all other upstream stages remain held fixed. The Java
+process peaked at **0.55 GB sampled RSS** under an 8 GB
 watchdog. This is synthetic component source-comparison evidence, not
 full-workflow equivalence or real-MRI validation.
 
 ## Results
 
-The Java and Python initial level sets have no sign differences. The three
-final surface masks each differ at only three voxels, with Dice ≥0.99993. Production distances below use the source-matched JIST connectivity-18 extractor used by PyMaCRUISE. Marching-cubes values are retained in the JSON as diagnostics only. The agreed Hausdorff limit is **1 mm**, and the initial-inner and later surfaces exceed it:
+The production TGDM replay now uses the source-ordered indexed-heap fast-marching
+routine for signed-distance reinitialization. The Java and Python outputs have
+zero sign differences at every compared stage. Production distances below use
+the source-matched JIST connectivity-18 extractor; marching-cubes values are
+retained in the JSON as diagnostics only. All five surfaces pass Dice ≥0.97,
+mean distance ≤0.01 mm, and Hausdorff ≤1 mm:
 
 | Surface | Sign-different voxels | Dice at zero | Mean surface distance | Hausdorff | Gate |
 |---|---:|---:|---:|---:|---|
-| Smoothed initial | 1 | 0.999986 | 0.000184 mm | 0.313 mm | Pass |
-| Initial inner | 3 | 0.999934 | 0.000334 mm | 1.411 mm | Fail |
-| Central | 3 | 0.999935 | 0.000343 mm | 1.414 mm | Fail |
-| Inner | 3 | 0.999934 | 0.000335 mm | 1.412 mm | Fail |
-| Outer | 3 | 0.999935 | 0.000406 mm | 1.415 mm | Fail |
+| Smoothed initial | 0 | 1.000000 | 0.000000105 mm | 0.0000137 mm | Pass |
+| Initial inner | 0 | 1.000000 | 0.000000010 mm | 0.0000119 mm | Pass |
+| Central | 0 | 1.000000 | 0.000000008 mm | 0.0000076 mm | Pass |
+| Inner | 0 | 1.000000 | 0.000000009 mm | 0.0000133 mm | Pass |
+| Outer | 0 | 1.000000 | 0.000000010 mm | 0.0000221 mm | Pass |
 
-The smoothed initial surface differs in sign at one voxel
-`(29, 37, 26)` (Java `0.000082`, Python `-0.000670`), while its measured
-surface distances still pass. The first inner surface is the first stage to
-miss the source gate; its three sign disagreements persist in all later
-surfaces. This is a small but source-visible topology-sensitive discrepancy;
-it cannot be reported as passing the Java gate or hidden by the Dice result.
-The independent ribbon-quality audit still fails its tissue-support and
-thickness criteria.
+The level-set arrays are not bit-identical, but the largest voxel error among
+these final surfaces is `1.97e-5` level-set units, and every zero-level mask
+matches Java exactly. This clears the selected TGDM component gates on the
+held-fixed crop. It does not establish full MaCRUISEplus parity, final ribbon
+quality, or real-MRI performance; the labeled full-plus checkpoint still needs
+to be regenerated with this corrected fast-marching backend and re-audited.
 
 As a diagnostic, Python was rerun from the exact Java smoothed level set through
 the initial inner, central, recomputed inner, and outer stages. All four surfaces pass the Java thresholds with zero sign differences and Dice 1.0 using production JIST surfaces:
@@ -46,30 +48,24 @@ the initial inner, central, recomputed inner, and outer stages. All four surface
 | Inner | 0.00000058 mm | 0.000453 mm |
 | Outer | 0.00000437 mm | 0.002890 mm |
 
-The diagnostic uses source-matched JIST mesh extraction for its primary gate; marching-cubes values remain secondary diagnostics. It deliberately substitutes a Java intermediate and is not an
-end-to-end Python-vs-Java result. It localizes the amplified mismatch to the
-Python smoothing output passed into the inner stage. The explicit Java
-multiply/divide order for curvature magnitude is now encoded in the vectorized
-kernel; a full replay still reproduced all six saved Python products exactly,
-and the held-fixed comparison metrics did not change. The focused TGDM suite
-passed **26 tests** after this arithmetic alignment. The downstream diagnostic
-is reproducible with the committed
+The diagnostic uses source-matched JIST mesh extraction for its primary gate;
+marching-cubes values remain secondary diagnostics. It deliberately substitutes
+a Java intermediate and is not an end-to-end Python-vs-Java result. The normal
+held-fixed replay already passes the same four downstream stages, so this
+control adds consistency evidence only. The focused TGDM and Dura reference
+regressions passed **27 tests** after the source-ordered fast-marching change.
+The downstream diagnostic is reproducible with the committed
 [comparison script](../../scripts/compare_plus_surfaces_from_java_smoothing.py)
 and its [machine-readable report](plus-aligned-fine-grid-java-smoothing-downstream-diagnostic-2026-10-10.json).
 
-The comparison harness now saves `smoothed_initial` and the comparator measures
-it and `initial_inner`, making this failure location reproducible. An
-exploratory run with float32 rounding enabled for signed-distance updates did
-not change the sign-disagreement counts, so that precision option is not
-recorded as a correction.
-
-Per-pass pre/post-reinitialization snapshots narrow the drift further: the
-initial distance fields agree in sign, pass 1 remains sign-identical through
-reinitialization, and the first sign disagreement appears during the pass-2
-curvature update. Source-style float32 distance rounding tightens the initial
-field error but does not remove that discrepancy or change the final surface
-gate. See the [pass-localization report](plus-aligned-fine-grid-tgdm-smoothing-pass-localization-2026-10-10.md)
-and its default/float32 machine-readable results.
+Per-pass pre/post-reinitialization snapshots showed that the prior heapq-based
+FMM path first diverged in sign during the pass-2 curvature update. Reusing the
+existing source-ordered indexed-heap FMM implementation for unit-speed TGDM
+reinitialization removes that mismatch: all six passes now have zero sign
+differences, and the final smoothed surface has Dice 1.0, mean distance
+`1.05e-7 mm`, and Hausdorff `1.37e-5 mm`. See the
+[pass-localization report](plus-aligned-fine-grid-tgdm-smoothing-pass-localization-2026-10-10.md)
+and current [machine-readable pass report](plus-aligned-fine-grid-tgdm-smoothing-passes-2026-10-10.json).
 
 ## Reproduction
 
@@ -82,7 +78,8 @@ mkdir -p build/plus-vandy-atlas-aligned-fine/java-reference/classes
 ./.venv/bin/python scripts/prepare_plus_tgdm_java_inputs.py \
   --workflow-root build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006/plus-surfaces \
   --context-manifest build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006/synthetic-plus-checkpoint-surface-composition.json \
-  --output-dir build/plus-vandy-atlas-aligned-fine/java-inputs
+  --output-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
+  --allow-python-stage-differences
 
 javac -d build/plus-vandy-atlas-aligned-fine/java-reference/classes \
   -sourcepath tests/java_reference/stubs:tests/java_reference/upstream \

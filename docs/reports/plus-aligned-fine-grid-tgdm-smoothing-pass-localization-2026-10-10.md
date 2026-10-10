@@ -6,35 +6,37 @@ This diagnostic uses the held-fixed 73×91×63 RAS crop from the labeled
 81×101×77 synthetic MaCRUISEplus case. It compares pre- and post-reinitialization
 fields after each of the six source-selected `SmoothCortexProfile` passes. The
 Java harness captures each pass after `GenericTGDM.endNarrowBand`; Python records
-the corresponding checkpoints. This is synthetic source-comparison evidence,
-not a production algorithm change or real-MRI validation.
+the corresponding checkpoints. This is synthetic selected-source comparison,
+not real-MRI validation or complete MaCRUISEplus parity.
 
-The initial Java and Python distance fields agree in sign at all 418,509 voxels
-(maximum absolute error `9.54e-7`). Their mean error is `2.16e-8` without
-float32 update rounding and `1.26e-10` with rounding. At the end of pass 1,
-before fast-marching reinitialization, signs still agree and the maximum field
-error is `5.53e-5`. Reinitialization retains the signs but produces a maximum
-field difference of `0.0251` level-set units. The first sign disagreement appears in the
-curvature update on pass 2. It persists at pass 4 and pass 6; intervening pass
-snapshots can temporarily return to equal signs.
+The earlier TGDM replay used the ACE signed-distance routine's binary heapq
+path. Its initial distance field was close to Java, but small field differences
+grew during reinitialization and the first sign difference appeared in the
+curvature update on pass 2. Rounding those updates to float32 did not clear the
+surface gate. See the preserved [heapq baseline](plus-aligned-fine-grid-tgdm-smoothing-passes-heapq-legacy-2026-10-10.json)
+and [float32 heapq diagnostic](plus-aligned-fine-grid-tgdm-smoothing-passes-float32-heapq-diagnostic-2026-10-10.json).
 
-| Pass | Sign differences before reinitialization | Sign differences after reinitialization | Maximum field error after reinitialization (level-set units) |
+TGDM now reuses the repository's existing source-ordered indexed-heap FMM
+implementation at unit speed and applies the Java distance cap. This uses the
+same six-neighbor scan order, heap value precision, and image update semantics
+as the selected Java `DistanceField`, without adding a second FMM port. The
+initial distance fields now agree with Java at all 418,509 voxels by sign, with
+mean absolute error `1.26e-10` and maximum `4.77e-7`.
+
+| Pass | Sign differences before reinitialization | Sign differences after reinitialization | Maximum post-reinitialization field error (level-set units) |
 |---:|---:|---:|---:|
-| 1 | 0 | 0 | 0.025085 |
-| 2 | 1 | 1 | 0.236575 |
-| 3 | 0 | 0 | 0.023448 |
-| 4 | 2 | 2 | 0.259711 |
-| 5 | 0 | 0 | 0.032883 |
-| 6 | 1 | 1 | 0.260182 |
+| 1 | 0 | 0 | 0.00000224 |
+| 2 | 0 | 0 | 0.00000584 |
+| 3 | 0 | 0 | 0.00003806 |
+| 4 | 0 | 0 | 0.00001121 |
+| 5 | 0 | 0 | 0.00000983 |
+| 6 | 0 | 0 | 0.00001186 |
 
-Rounding each fast-marching value to float32, as Java does when writing the
-image and heap keys, improves the initial field agreement and changes the
-number of differing voxels. It does not remove the pass-2 sign difference or
-change the final JIST surface gate: Dice `0.999986`, symmetric mean distance
-`0.000184 mm`, Hausdorff `0.313 mm`. This experiment therefore does not justify
-changing the current production numerical mode. The remaining source discrepancy
-spans repeated evolution and distance reinitialization; its root operation is
-still open.
+All six post-reinitialization fields now have identical sign masks. The final
+smoothed surface passes the production JIST gate: Dice `1.0`, symmetric mean
+distance `1.05e-7 mm`, Hausdorff `1.37e-5 mm`. The full held-fixed TGDM
+comparison also passes for initial-inner, central, recomputed inner, and outer
+surfaces; see the [Java comparison report](plus-aligned-fine-grid-tgdm-java-2026-10-10.md).
 
 ## Reproduction
 
@@ -45,13 +47,7 @@ comparison report](plus-aligned-fine-grid-tgdm-java-2026-10-10.md), then run:
 ./.venv/bin/python scripts/compare_plus_tgdm_smoothing_passes.py \
   --reference-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
   --report docs/reports/plus-aligned-fine-grid-tgdm-smoothing-passes-2026-10-10.json
-
-./.venv/bin/python scripts/compare_plus_tgdm_smoothing_passes.py \
-  --reference-dir build/plus-vandy-atlas-aligned-fine/java-inputs \
-  --source-float-rounding \
-  --report docs/reports/plus-aligned-fine-grid-tgdm-smoothing-passes-float32-diagnostic-2026-10-10.json
 ```
 
-See the [default-mode JSON](plus-aligned-fine-grid-tgdm-smoothing-passes-2026-10-10.json)
-and [float32-rounding JSON](plus-aligned-fine-grid-tgdm-smoothing-passes-float32-diagnostic-2026-10-10.json)
-for all per-pass voxel metrics.
+The [machine-readable result](plus-aligned-fine-grid-tgdm-smoothing-passes-2026-10-10.json)
+contains all per-pass voxel metrics and the final surface measurements.
