@@ -106,7 +106,7 @@ def main() -> None:
     plus = run_plus_file_workflow(
         t1_reference_path=args.t1,
         segmentation_path=args.maseg,
-        dura_csf_path=dura.outputs["csf"],
+        dura_csf_path=native.outputs["csf"],
         dura_gm_path=native.outputs["gm"],
         dura_wm_fill_path=native.outputs["wm_fill"],
         dura_wm_mask_path=native.outputs["wm_mask"],
