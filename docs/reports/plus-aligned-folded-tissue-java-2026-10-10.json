@@ -1,0 +1,36 @@
+{
+  "all_outputs_exact": true,
+  "comparison": "preserved selected Java CombineMAandTOADS.execute() vs Python combine_multi_atlas_toads on workflow crop inputs",
+  "coordinate_system": "RAS",
+  "outputs": {
+    "gm": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 234000
+    },
+    "mask": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 234000
+    },
+    "wm": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 234000
+    }
+  },
+  "scope": "held-fixed six atlas/TOADS input images from the saved plus run; selected default ErodeMethod=3D and GMconfident=0.001",
+  "shape_xyz": [
+    60,
+    75,
+    52
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "4a7997390113cc109ce28ac1fb3905a34e47ab5467d1cf95c716ca144f11114e"
+}

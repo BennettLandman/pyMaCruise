@@ -1,0 +1,39 @@
+{
+  "all_outputs_exact": false,
+  "comparison": "selected Java AlgorithmTopologyCorrection + MASImorph refinement vs plus Python topology_correct",
+  "coordinate_system": "RAS",
+  "java_peak_sampled_rss_gb": null,
+  "java_rss_limit_gb": 8,
+  "outputs": {
+    "mawm_eroded": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 234000
+    },
+    "mawm_refined": {
+      "changed_voxels": 14,
+      "exact": false,
+      "maximum_absolute_error": 0.8006600737571716,
+      "mean_absolute_error": 4.430999740576133e-05,
+      "voxel_count": 234000
+    },
+    "topology_corrected": {
+      "changed_voxels": 14,
+      "exact": false,
+      "maximum_absolute_error": 0.8006600737571716,
+      "mean_absolute_error": 4.430999740576133e-05,
+      "voxel_count": 234000
+    }
+  },
+  "rss_measurement_note": "The watchdog returned less than 0.01 GB for this short JVM run; treated as below measurement resolution, not a reliable peak.",
+  "scope": "selected Java topology correction compares the corrected scalar image; the MaWM erosion and Refine_Topo_by_MA post-step are separately compared using the preserved MASImorph source.",
+  "shape_xyz": [
+    60,
+    75,
+    52
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "4a7997390113cc109ce28ac1fb3905a34e47ab5467d1cf95c716ca144f11114e"
+}
