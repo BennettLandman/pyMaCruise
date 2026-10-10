@@ -207,6 +207,7 @@ def continue_plus_lesion_registered_loop(
     correction_polynomial_degree: int | None = None,
     initial_correction_degree: int | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    stage_progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Hydrate P41k and run the next selected registered P39 iteration.
 
@@ -363,6 +364,7 @@ def continue_plus_lesion_registered_loop(
     return run_lesion_toads_descriptor_loop(
         branch, registration, starting_iteration=starting_iteration,
         options=options, max_passes=max_passes, progress_callback=progress_callback,
+        stage_progress_callback=stage_progress_callback,
     )
 
 
@@ -501,12 +503,17 @@ def persist_plus_lesion_registered_loop_checkpoint(
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "status": "running",
         "events": [],
+        "phases": [],
     }
     progress["attempts"].append(attempt)
     _json(progress_path, progress)
 
     def record_progress(event: dict[str, Any]) -> None:
         attempt["events"].append(event)
+        _json(progress_path, progress)
+
+    def record_stage_progress(event: dict[str, Any]) -> None:
+        attempt["phases"].append(event)
         _json(progress_path, progress)
 
     try:
@@ -521,6 +528,7 @@ def persist_plus_lesion_registered_loop_checkpoint(
             correction_polynomial_degree=settings["correction_polynomial_degree"],
             initial_correction_degree=settings["initial_correction_degree"],
             progress_callback=record_progress,
+            stage_progress_callback=record_stage_progress,
         )
     except BaseException as exc:
         attempt["status"] = "failed" if isinstance(exc, Exception) else "interrupted"

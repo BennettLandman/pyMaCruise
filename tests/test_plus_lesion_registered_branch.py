@@ -359,6 +359,18 @@ def test_registered_loop_checkpoint_persists_resumes_and_continues(tmp_path: Pat
     assert progress["attempts"][0]["status"] == "complete"
     assert [event["iteration"] for event in progress["attempts"][0]["events"]] == [2]
     assert progress["attempts"][0]["events"][0]["stage_order"]
+    phases = progress["attempts"][0]["phases"]
+    assert [phase["stage"] for phase in phases] == [
+        stage
+        for stage in (
+            "registered_shape_priors",
+            "continuing_segmentation_statistics_memberships",
+            "registration_and_branching",
+        )
+        for _ in ("started", "completed")
+    ]
+    assert [phase["status"] for phase in phases] == ["started", "completed"] * 3
+    assert all(phase["elapsed_seconds"] >= 0 for phase in phases if "elapsed_seconds" in phase)
     assert nib.aff2axcodes(nib.load(str(loop.segmentation_path)).affine) == ("R", "A", "S")
     direct_loop = captured_loop["result"]
     refreshed = direct_loop.final_distance_maps

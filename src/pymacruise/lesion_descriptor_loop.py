@@ -118,6 +118,7 @@ def run_lesion_toads_descriptor_loop(
     options: LesionToadsDescriptorLoopOptions,
     max_passes: int | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    stage_progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> LesionToadsDescriptorLoopResult:
     """Run registered 13-class updates until source convergence or loop cap.
 
@@ -136,6 +137,8 @@ def run_lesion_toads_descriptor_loop(
         raise TypeError("options must be LesionToadsDescriptorLoopOptions")
     if progress_callback is not None and not callable(progress_callback):
         raise TypeError("progress_callback must be callable when supplied")
+    if stage_progress_callback is not None and not callable(stage_progress_callback):
+        raise TypeError("stage_progress_callback must be callable when supplied")
     if isinstance(starting_iteration, (bool, np.bool_)) or not isinstance(
         starting_iteration, (int, np.integer)
     ) or starting_iteration < 1:
@@ -213,6 +216,13 @@ def run_lesion_toads_descriptor_loop(
         maximum, int(starting_iteration) + int(max_passes)
     )
     for iteration in range(int(starting_iteration) + 1, last_iteration + 1):
+        phase_started = perf_counter()
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "registered_shape_priors",
+                "status": "started",
+            })
         shape_values = transform_registered_lesion_shape_priors(
             shape_registration,
             options.atlas_shape_priors,
@@ -220,9 +230,23 @@ def run_lesion_toads_descriptor_loop(
             image_resolutions_mm=options.image_resolutions_mm,
             template_resolutions_mm=options.template_resolutions_mm,
         )
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "registered_shape_priors",
+                "status": "completed",
+                "elapsed_seconds": float(perf_counter() - phase_started),
+            })
         relation_state = branch.relations
         assert relation_state is not None
         relation_table = relation_state.relation_membership[relation_state.relation_map]
+        phase_started = perf_counter()
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "continuing_segmentation_statistics_memberships",
+                "status": "started",
+            })
         transition = run_lesion_toads_descriptor_continuing_iteration(
             branch,
             images,
@@ -259,6 +283,13 @@ def run_lesion_toads_descriptor_loop(
             correction_degree=correction_degree,
             correction_max_distance=options.max_distance,
         )
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "continuing_segmentation_statistics_memberships",
+                "status": "completed",
+                "elapsed_seconds": float(perf_counter() - phase_started),
+            })
         if transition.inhomogeneity is not None:
             correction_degree = transition.inhomogeneity.degree
             current_fields = np.stack(transition.inhomogeneity.fields, axis=-1)
@@ -269,6 +300,13 @@ def run_lesion_toads_descriptor_loop(
             brainstem_distances = final_distance_maps.brainstem
         elif final_distance_maps is None:
             final_distance_maps = options.initial_distance_maps
+        phase_started = perf_counter()
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "registration_and_branching",
+                "status": "started",
+            })
         registered = register_and_branch_lesion_toads_descriptor_iteration(
             transition,
             options.atlas_shape_priors,
@@ -290,6 +328,13 @@ def run_lesion_toads_descriptor_loop(
             use_lesion_max=options.use_lesion_max,
             retain_growth_event_states=options.retain_growth_event_states,
         )
+        if stage_progress_callback is not None:
+            stage_progress_callback({
+                "iteration": int(iteration),
+                "stage": "registration_and_branching",
+                "status": "completed",
+                "elapsed_seconds": float(perf_counter() - phase_started),
+            })
         passes.append(
             LesionToadsDescriptorLoopPass(
                 iteration=iteration,
