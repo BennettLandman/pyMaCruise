@@ -47,17 +47,19 @@ Subsequent phase-timed checkpoints on the same fixture show practical progress. 
 
 The same-input growth optimization was measured with phase telemetry. Instrumentation commit `3913450` reported iteration 10 at `241.03s` total; growing-frontier propagation took `146.70s`, while shape optimization took `18.48s` and the thirteen support-bound scans together were below `0.2s`. Growth-state reuse, committed as `dd1f7b3`, passed 11 focused growth tests in `25.37s`. A replay from the exact same input matched all nine registered output hashes, reducing growth to `3.18s` and total pass time to `97.13s` (peak sampled RSS `0.546 GB`). Normal continuation completed iteration 10 at `227.51s` (ratio `0.1504013836`, stop=false, peak RSS `0.570 GB`), iteration 11 at `100.60s` (ratio `0.1505227834`, stop=false, peak RSS `0.558 GB`), iteration 12 at `99.11s` (ratio `0.1502629817`), iteration 13 at `100.54s` (ratio `0.1488814503`), iteration 14 at `98.34s` (ratio `0.1489115208`), and iteration 15 at `98.57s` (ratio `0.1502705514`). All remain stop=false. The current output is a complete hash-checked checkpoint at `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0016/lesion-registered-loop.json`.
 
-Iteration 16 was run through the public CLI with the selected 99-iteration limit, one-pass restart boundary, 1000 thinning limit, and finite zero-variance handling. It completed in `97.90s`, energy ratio `0.1502189785`, stop=false, peak sampled RSS `0.587 GB`; output segmentation is `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0017/registered_segmentation.nii.gz`, with manifest `.../lesion-registered-loop.json`. Reproducible continuation command:
+Iterations 16 through 22 completed through the public CLI with the selected 99-iteration limit, one-pass restart boundary, 1000 thinning limit, and finite zero-variance handling. Their pass times ranged from `96.84–99.40s`; all remained stop=false, with ratios near `0.1502` and a latest ratio of `0.1503161490` at iteration 21. The latest checkpoint from that set is `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0023/lesion-registered-loop.json`.
+
+Iteration 23 completed in `99.40s`, energy ratio `0.1482383013`, stop=false, and peak sampled RSS `0.605 GB`; output segmentation is `build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0024/registered_segmentation.nii.gz`, with manifest `.../lesion-registered-loop.json`. Reproducible continuation command:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
-  --registered-checkpoint-manifest build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0016/lesion-registered-loop.json \
+  --registered-checkpoint-manifest build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0023/lesion-registered-loop.json \
   --atlas-descriptor tests/data/synthetic/plus_vandy_atlas_aligned/cruise-atlas-12obj-lesiontoads2012.txt \
-  --output-dir build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0017 \
+  --output-dir build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0024 \
   --iterations 99 --thinning-limit 1000 --max-passes 1 --finite-zero-variance
 ```
 
-Across completed iterations 2 through 16, all fifteen normal checkpoints are intermediate, synthetic, and hash-verified; none is a terminal result. Iteration 16 was completed by the public CLI in `97.90s` at ratio `0.1502189785`, stop=false, peak sampled RSS `0.587 GB`. Ratios do not decrease monotonically: they ranged from `0.0261176303` at iteration 2 to `0.1706269979` at iteration 3 and have remained near `0.15` in later passes. The selected source convergence stop has not occurred. No ribbon-quality or full workflow-equivalence verdict is yet available.
+Across completed iterations 2 through 23, all twenty-two normal checkpoints are intermediate, synthetic, and hash-verified; none is a terminal result. Iteration 23 was completed by the public CLI in `99.40s` at ratio `0.1482383013`, stop=false, peak sampled RSS `0.605 GB`. Ratios do not decrease monotonically: they ranged from `0.0261176303` at iteration 2 to `0.1706269979` at iteration 3 and have remained near `0.15` in later passes. The selected source convergence stop has not occurred. No ribbon-quality or full workflow-equivalence verdict is yet available.
 
 These are synthetic execution and source-reference test results, not full workflow equivalence or real-MRI validation. The ribbon audit remains pending until the selected loop reaches a terminal result and the complete workflow manifest is available.
 
