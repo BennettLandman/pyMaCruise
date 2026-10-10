@@ -43,6 +43,7 @@ public final class PlusTopologyReferenceHarness {
         source.setData(volume);
         BitSet paint=new BitSet(volume.length);
         for(int i=0;i<paintValues.length;i++) if(paintValues[i]>0.5f) paint.set(i);
+        // Matches MaCRUISE's run_TopoCorrect_jist.m inRegularize=1.0E-4.
         AlgorithmTopologyCorrection algorithm=new AlgorithmTopologyCorrection(
                 destination,source,"scalar_image",1.0e-4f,3,6,18,"paint_mask",paint,
                 0.0f,1.0f,true,"object->background");
