@@ -15,6 +15,20 @@ ATLAS = ROOT.parents[3] / "data/atlases/lesionToads-atlas-2012"
 DESCRIPTOR = ATLAS / "cruise-atlas-12obj-lesiontoads2012.txt"
 TARGET = (65, 81, 62)
 TOPOLOGY = "brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz"
+TOPOLOGY_TO_MASEG = {
+    5: 5,
+    6: 5,
+    15: 100,
+    25: 44,
+    26: 44,
+    27: 44,
+    14: 75,
+    16: 75,
+    17: 75,
+    18: 75,
+    22: 75,
+    24: 75,
+}
 
 
 def _resample(values: np.ndarray, target: tuple[int, int, int], order: int) -> np.ndarray:
@@ -23,6 +37,14 @@ def _resample(values: np.ndarray, target: tuple[int, int, int], order: int) -> n
         indexing="ij",
     )
     return map_coordinates(values, coordinates, order=order, mode="nearest", prefilter=order > 1)
+
+
+def _maseg_from_topology(topology: np.ndarray) -> np.ndarray:
+    """Map only cerebral cortex/white matter to the cortical MaSeg labels."""
+    maseg = np.zeros(topology.shape, dtype=np.uint16)
+    for topology_label, maseg_label in TOPOLOGY_TO_MASEG.items():
+        maseg[topology == topology_label] = maseg_label
+    return maseg
 
 
 def main() -> None:
@@ -35,19 +57,17 @@ def main() -> None:
     affine = topo_image.affine.copy()
     affine[:3, :3] = topo_image.affine[:3, :3] @ np.diag(scale)
 
-    # Map source atlas regions to the explicit tissue labels used by the
-    # project synthetic quality gates: 5=CSF, 44=WM, 100=GM.
-    maseg = np.zeros(TARGET, dtype=np.uint16)
-    maseg[topology == 5] = 5
-    maseg[topology == 6] = 5
-    maseg[np.isin(topology, [14, 15, 16, 17, 18, 22])] = 100
-    maseg[np.isin(topology, [24, 25, 26, 27])] = 44
+    # Preserve the descriptor's cortical distinction: Cerebrum-GM (15) is
+    # cortical GM; cerebral WM classes (25-27) are cortical WM. Cerebellar
+    # and subcortical/brainstem classes remain additional brain tissue (75),
+    # rather than being mislabeled as cortical GM/WM in the surface checks.
+    maseg = _maseg_from_topology(topology)
     brain = (topology != 1).astype(np.uint8)
     t1 = np.zeros(TARGET, dtype=np.float32)
     flair = np.full(TARGET, 80.0, dtype=np.float32)
-    t1[maseg == 5], flair[maseg == 5] = 20.0, 90.0
-    t1[maseg == 44], flair[maseg == 44] = 130.0, 180.0
-    t1[maseg == 100], flair[maseg == 100] = 90.0, 150.0
+    t1[np.isin(topology, [5, 6])], flair[np.isin(topology, [5, 6])] = 20.0, 90.0
+    t1[np.isin(topology, [24, 25, 26, 27])], flair[np.isin(topology, [24, 25, 26, 27])] = 130.0, 180.0
+    t1[np.isin(topology, [14, 15, 16, 17, 18, 22])], flair[np.isin(topology, [14, 15, 16, 17, 18, 22])] = 90.0, 150.0
 
     output_files: dict[str, np.ndarray] = {
         TOPOLOGY: topology,
@@ -91,7 +111,8 @@ def main() -> None:
         "description": "compact source-atlas-aligned synthetic plus case",
         "source_atlas": "data/atlases/lesionToads-atlas-2012",
         "target_shape": list(TARGET),
-        "label_mapping": {"0": "background", "5": "sulcal/ventricular CSF", "44": "white matter", "100": "gray matter"},
+        "label_mapping": {"0": "background", "5": "CSF", "44": "cerebral white matter", "75": "additional noncortical brain tissue", "100": "cerebral gray matter"},
+        "topology_to_maseg": {str(key): value for key, value in TOPOLOGY_TO_MASEG.items()},
         "synthetic_intensity_values": {"T1": {"background": 0, "CSF": 20, "GM": 90, "WM": 130}, "FLAIR": {"background": 80, "CSF": 90, "GM": 150, "WM": 180}},
         "images": records,
     }, indent=2, sort_keys=True) + "\n", encoding="utf-8")

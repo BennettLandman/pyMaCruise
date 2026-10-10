@@ -83,6 +83,35 @@ PYTHONPATH=src .venv/bin/python scripts/audit_plus_ribbon_quality.py \
 
 The composition records the default selected `PlusPipelineOptions` and `TGDMBaselineParameters`, child-stage manifests, RAS inputs, output hashes, and stop reason. It is explicit that these persisted stages were composed from a checkpoint, rather than executed by one uninterrupted `plus-full-run` call. The audit verifies those hashes and evaluates finite RAS grids, label support, mesh topology, nesting, and surface/level-set thickness.
 
+## Terminal result and ribbon audit (2026-10-10)
+
+The saved registered loop reached iteration 99 and stopped at the configured
+iteration limit; its energy ratio remained about 0.1503. It did not converge
+naturally. The terminal composition completed from the persisted registered
+checkpoint through Dura outputs, native-space transfer, MaSeg separation, and
+the selected plus surface workflow. Its manifest records the exact selected
+surface options, hashes, RAS convention, and run signature. This is restartable
+checkpoint composition, not one uninterrupted `plus-full-run` execution.
+
+The fixture labels were corrected to follow the bundled atlas descriptor:
+class 15 alone maps to cortical GM 100; classes 25–27 map to cortical WM 44;
+CSF classes 5–6 map to 5; cerebellar/subcortical/brainstem classes map to
+additional tissue 75. T1 and FLAIR file hashes did not change, preserving the
+loop input identity. The fixture mapping regression passed **2/2 in 0.31s**.
+
+The audit passed RAS/grid consistency, label presence, voxel nesting, and
+watertight closure. It failed WM/GM support, connected genus-zero topology, and
+thickness. WM-inside-inner support was 52.47%, GM-between-surfaces support was
+0%, and CSF-outside-outer support was 99.92%. Each mesh had 3 components and
+Euler characteristic −46. Production closest-point thickness had median
+0.470 mm (p05 0.011, p95 0.810); level-set subtraction mean was 0.821 mm over
+246 crossings, against nominal 5 mm criteria. Full evidence is in the
+[terminal ribbon report](plus-aligned-folded-ribbon-quality-2026-10-10.md) and
+[machine-readable metrics](plus-aligned-folded-ribbon-quality-2026-10-10.json).
+This is a substantive synthetic integration failure, not a source-equivalence
+or real-data result. The next diagnostic is to compare intermediate plus/TGDM
+surfaces with the selected Java outputs on these same saved inputs.
+
 ## Acceptance checks after completion
 
 Run the committed quality audit against the completed terminal workflow manifest:

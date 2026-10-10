@@ -674,7 +674,7 @@
         "S"
       ],
       "dtype": "uint16",
-      "sha256": "f2348159b74aec32dc1c28af2e34491dd4b08040f7004cad05f9b5fad1880317",
+      "sha256": "9e706707144b3b5ab9b020aed80680b054a34abaccdfdcd0c67bc92a967ad7a6",
       "shape": [
         65,
         81,
@@ -724,9 +724,10 @@
   },
   "label_mapping": {
     "0": "background",
-    "100": "gray matter",
-    "44": "white matter",
-    "5": "sulcal/ventricular CSF"
+    "100": "cerebral gray matter",
+    "44": "cerebral white matter",
+    "5": "CSF",
+    "75": "additional noncortical brain tissue"
   },
   "source_atlas": "data/atlases/lesionToads-atlas-2012",
   "synthetic_intensity_values": {
@@ -747,5 +748,11 @@
     65,
     81,
     62
-  ]
+  ],
+  "topology_to_maseg": {
+    "14,16,17,18,22,24": 75,
+    "15": 100,
+    "25,26,27": 44,
+    "5,6": 5
+  }
 }
