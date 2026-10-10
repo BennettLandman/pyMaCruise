@@ -248,7 +248,11 @@ def tgdm_evolve(
         narrow = np.abs(phi) <= cfg.max_distance
         points = np.argwhere(narrow)
         landmine_points = np.argwhere(narrow & (np.abs(phi) > cfg.how_close))
-        landmine_signs = np.asarray([_level_sign(phi[tuple(p)]) for p in landmine_points])
+        if landmine_points.size:
+            landmine_values = phi[tuple(landmine_points.T)]
+            landmine_signs = np.where(landmine_values > 0, -1, 1).astype(np.int8)
+        else:
+            landmine_signs = np.empty(0, dtype=np.int8)
         mine_hit = False
 
         for _ in range(steps):
@@ -279,14 +283,52 @@ def tgdm_evolve(
                 lower = np.zeros(3, dtype=np.int64)
                 force = None
             next_phi = phi.copy()
+            # GenericTGDM computes the candidate for every narrow-band voxel,
+            # but topology decisions are needed only when its sign changes.
+            # Compute the unchanged-sign majority in NumPy, then process sign
+            # flips in the same x/y/z order as the Java loop so accepted flips
+            # update the topology state seen by later candidates.
+            flip_positions = np.empty(0, dtype=np.int64)
+            flip_flags = np.empty(0, dtype=np.bool_)
+            proposed_values = np.empty(0, dtype=np.float64)
+            old_values = np.empty(0, dtype=np.float64)
+            trace_positions = np.empty(0, dtype=np.int64)
+            if points.size:
+                point_coordinates = tuple(points.T)
+                old_values = np.asarray(phi[point_coordinates], dtype=np.float64)
+                local_points = points - lower
+                local_coordinates = tuple(local_points.T)
+                proposed_values = old_values - time_step * np.asarray(
+                    force[local_coordinates], dtype=np.float64
+                )
+                flips = ((old_values > 0) & (proposed_values <= 0)) | (
+                    (old_values <= 0) & (proposed_values > 0)
+                )
+                flip_flags = flips
+                flip_positions = np.flatnonzero(flips)
+                next_phi[point_coordinates] = proposed_values.astype(np.float32)
+
+                if trace_point_set:
+                    point_flat = np.ravel_multi_index(points.T, phi.shape)
+                    trace_flat = np.asarray(
+                        [np.ravel_multi_index(point, phi.shape) for point in trace_point_set],
+                        dtype=np.int64,
+                    )
+                    candidates = np.searchsorted(point_flat, trace_flat)
+                    in_bounds = candidates < point_flat.size
+                    candidates = candidates[in_bounds]
+                    trace_positions = candidates[
+                        point_flat[candidates] == trace_flat[in_bounds]
+                    ]
+            selected_positions = np.union1d(flip_positions, trace_positions)
             # Java visits points in x/y/z array order and stores candidates
             # until the entire narrow-band update has been validated.
-            for point_array in points:
+            for position in selected_positions:
+                point_array = points[position]
                 point = tuple(int(v) for v in point_array)
-                old_value = float(phi[point])
-                local_point = tuple(int(v - start) for v, start in zip(point, lower))
-                proposed = float(old_value - time_step * float(force[local_point]))
-                flips = (old_value > 0 and proposed <= 0) or (old_value <= 0 and proposed > 0)
+                old_value = float(old_values[position])
+                proposed = float(proposed_values[position])
+                flips = bool(flip_flags[position])
                 event_reason = "no_sign_change"
                 event_simple: bool | None = None
                 event_neighborhood: tuple[int, ...] = ()
@@ -322,14 +364,14 @@ def tgdm_evolve(
                         else:
                             signs[point] = -signs[point]
                             event_reason = "topology_accepted"
-                next_phi[point] = np.float32(proposed)
+                    next_phi[point] = np.float32(proposed)
                 if point in trace_point_set:
                     point_event_trace.append(
                         TGDMPointUpdateTrace(
                             iteration=completed_steps + 1,
                             point=point,
                             old_value=old_value,
-                            proposed_value=float(old_value - time_step * float(force[local_point])),
+                            proposed_value=proposed,
                             accepted_value=float(next_phi[point]),
                             reason=event_reason,
                             simple_point=event_simple,
@@ -345,7 +387,8 @@ def tgdm_evolve(
             if trace_points:
                 point_trace.append(tuple(float(phi[point]) for point in trace_points))
             if landmine_points.size:
-                current_signs = np.asarray([_level_sign(phi[tuple(p)]) for p in landmine_points])
+                current_values = phi[tuple(landmine_points.T)]
+                current_signs = np.where(current_values > 0, -1, 1).astype(np.int8)
                 mine_hit = bool(np.any(current_signs != landmine_signs))
 
         if record_passes:
