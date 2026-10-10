@@ -179,6 +179,7 @@ def process_next_lesion_toads_thinning_item(
     empty_label: int = -1,
     source_faithful_nan: bool = False,
     _in_place: bool = False,
+    _prevalidated: bool = False,
 ) -> LesionToadsThinningQueueStep:
     """Apply one popped item, its topology-constrained update, and scheduling.
 
@@ -224,11 +225,13 @@ def process_next_lesion_toads_thinning_item(
         raise ValueError("queue must be a TOADS max heap")
     if not queue:
         raise ValueError("cannot process an empty LesionTOADS thinning queue")
+    if not isinstance(_prevalidated, (bool, np.bool_)):
+        raise TypeError("_prevalidated must be boolean")
     numeric_inputs = (mems, lesion_mems, black_mems, shapes, order_map, volumes, minimums)
     if source_faithful_nan:
         if any(np.isinf(array).any() for array in numeric_inputs):
             raise ValueError("source_faithful_nan permits NaN values, not infinities")
-    elif not all(np.isfinite(array).all() for array in numeric_inputs):
+    elif not _prevalidated and not all(np.isfinite(array).all() for array in numeric_inputs):
         raise ValueError("all membership, ordering, and volume values must be finite")
 
     updated_labels = labels.astype(np.int16, copy=not _in_place)
@@ -304,6 +307,7 @@ def process_next_lesion_toads_thinning_item(
                 limit,
                 use_lesion_max=use_lesion_max,
                 _in_place=_in_place,
+                _prevalidated=not source_faithful_nan,
             )
             updated_available = scheduled.available
             inserted = scheduled.inserted_items
@@ -332,6 +336,7 @@ def run_lesion_toads_thinning_queue(
     use_lesion_max: bool = False,
     empty_label: int = -1,
     source_faithful_nan: bool = False,
+    _prevalidated: bool = False,
 ) -> LesionToadsThinningQueueRun:
     """Run the selected ``propagateThinning`` outer heap/limit loop.
 
@@ -350,6 +355,8 @@ def run_lesion_toads_thinning_queue(
         raise ValueError("queue must be a TOADS max heap")
     if not isinstance(source_faithful_nan, (bool, np.bool_)):
         raise TypeError("source_faithful_nan must be boolean")
+    if not isinstance(_prevalidated, (bool, np.bool_)):
+        raise TypeError("_prevalidated must be boolean")
     limit32 = np.float32(limit)
     if not np.isfinite(limit32) or limit32 < np.float32(0.0):
         raise ValueError("limit must be finite and nonnegative")
@@ -360,6 +367,7 @@ def run_lesion_toads_thinning_queue(
     volumes = np.asarray(class_volume, dtype=np.float32).copy()
     previous_priority = np.float32(0.0)
     events: list[LesionToadsThinningQueueEvent] = []
+    inputs_prevalidated = _prevalidated
     while queue and previous_priority > np.float32(-limit32):
         step = process_next_lesion_toads_thinning_item(
             labels,
@@ -380,7 +388,9 @@ def run_lesion_toads_thinning_queue(
             empty_label=empty_label,
             source_faithful_nan=source_faithful_nan,
             _in_place=True,
+            _prevalidated=inputs_prevalidated and not source_faithful_nan,
         )
+        inputs_prevalidated = True
         summary = step.transition
         events.append(
             LesionToadsThinningQueueEvent(
@@ -497,6 +507,7 @@ def schedule_lesion_toads_thinning_neighbors(
     use_lesion_max: bool = False,
     zero: float = 1.0e-10,
     _in_place: bool = False,
+    _prevalidated: bool = False,
 ) -> LesionToadsThinningSchedule:
     """Schedule eligible face neighbors using LesionTOADS membership scores.
 
@@ -521,7 +532,9 @@ def schedule_lesion_toads_thinning_neighbors(
         raise ValueError("lesion and black-hole membership maps must match memberships")
     if state.shape != (*spatial, mems.shape[-1]) or state.dtype != np.bool_:
         raise ValueError("available must be a boolean grid matching memberships")
-    if not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)):
+    if not isinstance(_prevalidated, (bool, np.bool_)):
+        raise TypeError("_prevalidated must be boolean")
+    if not _prevalidated and not all(np.isfinite(array).all() for array in (mems, lesion_mems, black_hole_mems)):
         raise ValueError("membership arrays must be finite")
     if not isinstance(queue, ToadsPriorityHeap4D) or queue.mode != "max":
         raise ValueError("queue must be a TOADS max heap")
