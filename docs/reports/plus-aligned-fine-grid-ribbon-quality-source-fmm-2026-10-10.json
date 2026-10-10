@@ -1,0 +1,111 @@
+{
+  "checkpoint_audit": true,
+  "checks": {
+    "explicit_maseg_wm_gm_csf_labels_present": true,
+    "labeled_tissue_regions_agree_with_surfaces": false,
+    "levelset_mean_thickness_within_bounds": false,
+    "nested_voxel_regions": true,
+    "production_surface_thickness_within_bounds": false,
+    "surfaces_closed_connected_euler_two": false
+  },
+  "completed_iteration": 6,
+  "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+  "label_surface_consistency": {
+    "disagreement_voxel_counts": {
+      "csf_voxels_inside_outer": 12,
+      "gm_voxels_inside_inner": 3,
+      "gm_voxels_outside_outer": 67674,
+      "wm_voxels_outside_inner": 15152
+    },
+    "minimum_required_support": 0.97,
+    "support_fractions": {
+      "csf_outside_outer": 0.9997694435905318,
+      "gm_between_inner_and_outer": 0.0,
+      "wm_inside_inner": 0.5980795246558264
+    }
+  },
+  "levelset_subtraction_thickness": {
+    "crossing_voxel_count": 289,
+    "maximum_mm": 2.0328845977783203,
+    "mean_mm": 0.8072777810703099,
+    "minimum_mm": 0.16683495044708252,
+    "stdev_mm": 0.45263249462881244
+  },
+  "loop_energy_ratio": 0.13159732520580292,
+  "manifest": "build/plus-vandy-atlas-aligned-fine/surface-checkpoint-0006-source-fmm/synthetic-plus-checkpoint-surface-composition.json",
+  "manifest_run_signature": "a6fd5a7f8a8cbb70980b0b0a442d73d31e214ba0816d34ad4c0a34038a1f463a",
+  "maseg_labels": {
+    "counts": {
+      "0": 455818,
+      "100": 67677,
+      "44": 37699,
+      "5": 52048,
+      "75": 16695
+    },
+    "present": [
+      0,
+      5,
+      44,
+      75,
+      100
+    ]
+  },
+  "nesting_voxel_counts": {
+    "central_outside_outer_voxels": 0,
+    "inner_outside_central_voxels": 0
+  },
+  "orientation": "RAS",
+  "passed": false,
+  "quality_bounds": {
+    "levelset_mean_tolerance_mm": 1.0,
+    "minimum_label_support": 0.97,
+    "nominal_ribbon_mm": 5.0,
+    "surface_median_tolerance_mm": 1.0,
+    "surface_p05_minimum_mm": 2.0,
+    "surface_p95_maximum_mm": 8.0
+  },
+  "shape": [
+    81,
+    101,
+    77
+  ],
+  "stop_reason": null,
+  "surface_closest_point_thickness": {
+    "mean_mm": 0.38515596975369615,
+    "median_mm": 0.3716291501236283,
+    "p05_mm": 0.15014277924585845,
+    "p95_mm": 0.6408531020683265,
+    "sample_count": 21302,
+    "stdev_mm": 0.1440655683401798
+  },
+  "surface_meshes": {
+    "central": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -20,
+      "faces": 44484,
+      "nonmanifold_edges": 0,
+      "vertices": 22222,
+      "watertight": true
+    },
+    "inner": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -20,
+      "faces": 42820,
+      "nonmanifold_edges": 0,
+      "vertices": 21390,
+      "watertight": true
+    },
+    "outer": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -20,
+      "faces": 44376,
+      "nonmanifold_edges": 0,
+      "vertices": 22168,
+      "watertight": true
+    }
+  },
+  "workflow_terminal": false
+}
