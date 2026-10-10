@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.GZIPOutputStream;
 
+import edu.jhu.ece.iacl.algorithms.tgdm.ProfileTGDM;
 import edu.jhu.ece.iacl.algorithms.topology.ConnectivityRule;
 import edu.jhu.ece.iacl.algorithms.volume.DistanceField;
 import edu.jhu.ece.iacl.jist.structures.image.ImageDataFloat;
@@ -19,6 +20,30 @@ import edu.vanderbilt.masi.plugins.CRUISE.tgdm.MaGenericTGDM;
  * the MaCRUISEplus workflow or its upstream TOADS/MaSeg stages.
  */
 public final class PlusTGDMReferenceHarness {
+    private static final class CheckpointTGDM extends MaGenericTGDM {
+        private final Path output;
+        private int pass;
+
+        CheckpointTGDM(Path output) {
+            super(ConnectivityRule.CONNECT_18_6);
+            this.output = output;
+        }
+
+        @Override
+        protected void endNarrowBand(ProfileTGDM profile) {
+            int currentPass = ++pass;
+            try {
+                writeVolume(output.resolve(String.format("smoothed_pre_reinit_pass_%02d.raw.gz", currentPass)),
+                        implicitLevelSet);
+                super.endNarrowBand(profile);
+                writeVolume(output.resolve(String.format("smoothed_pass_%02d.raw.gz", currentPass)),
+                        implicitLevelSet);
+            } catch (Exception error) {
+                throw new RuntimeException("failed to write TGDM pass checkpoint", error);
+            }
+        }
+    }
+
     private static float[][][] readVolume(DataInputStream in, int nx, int ny, int nz)
             throws Exception {
         float[][][] a = new float[nx][ny][nz];
@@ -63,7 +88,10 @@ public final class PlusTGDMReferenceHarness {
                     initial[x][y][z]=126.9f-initial[x][y][z];
                 initialLevel=new DistanceField().solve(new ImageDataFloat(initial),8.0);
             }
-            MaGenericTGDM tgdm=new MaGenericTGDM(ConnectivityRule.CONNECT_18_6);
+            CheckpointTGDM tgdm=new CheckpointTGDM(output);
+            ImageDataFloat smoothingInput=new DistanceField(tgdm).solve(
+                    new ImageDataFloat(initialLevel),8.0);
+            writeVolume(output.resolve("smoothing_input.raw.gz"),smoothingInput.toArray3d());
             ImageDataFloat smoothed=tgdm.solveSmoothSurface(initialLevel,1.0f,6);
             ImageDataFloat white=new ImageDataFloat(wm), gray=new ImageDataFloat(gm);
             ImageDataFloat ace=new ImageDataFloat(aceGm), thin=new ImageDataFloat(skeleton);

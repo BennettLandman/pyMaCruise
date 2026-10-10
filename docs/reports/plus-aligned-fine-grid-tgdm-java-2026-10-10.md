@@ -63,6 +63,14 @@ exploratory run with float32 rounding enabled for signed-distance updates did
 not change the sign-disagreement counts, so that precision option is not
 recorded as a correction.
 
+Per-pass pre/post-reinitialization snapshots narrow the drift further: the
+initial distance fields agree in sign, pass 1 remains sign-identical through
+reinitialization, and the first sign disagreement appears during the pass-2
+curvature update. Source-style float32 distance rounding tightens the initial
+field error but does not remove that discrepancy or change the final surface
+gate. See the [pass-localization report](plus-aligned-fine-grid-tgdm-smoothing-pass-localization-2026-10-10.md)
+and its default/float32 machine-readable results.
+
 ## Reproduction
 
 The held-fixed inputs and Java products are generated under ignored `build/`

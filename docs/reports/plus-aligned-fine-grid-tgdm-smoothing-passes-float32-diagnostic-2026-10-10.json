@@ -1,0 +1,125 @@
+{
+  "comparison": "selected Java SmoothCortexProfile pass outputs vs Python TGDM smoother",
+  "coordinate_system": "RAS",
+  "diagnostic_only": true,
+  "first_sign_mismatch": {
+    "pass": 2,
+    "stage": "curvature_update"
+  },
+  "initial_reinitialization": {
+    "changed_voxels": 111,
+    "maximum_absolute_voxel_error": 4.76837158203125e-07,
+    "mean_absolute_voxel_error": 1.2647021822839383e-10,
+    "sign_differences": 0
+  },
+  "passes": [
+    {
+      "after_reinitialization": {
+        "changed_voxels": 27307,
+        "maximum_absolute_voxel_error": 0.025084853172302246,
+        "mean_absolute_voxel_error": 8.42756445240605e-06,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 31470,
+        "maximum_absolute_voxel_error": 3.0040740966796875e-05,
+        "mean_absolute_voxel_error": 1.3255151528572534e-08,
+        "sign_differences": 0
+      },
+      "pass": 1
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 98226,
+        "maximum_absolute_voxel_error": 0.23657464981079102,
+        "mean_absolute_voxel_error": 1.4240365233081118e-05,
+        "sign_differences": 1
+      },
+      "before_reinitialization": {
+        "changed_voxels": 83781,
+        "maximum_absolute_voxel_error": 0.11707401275634766,
+        "mean_absolute_voxel_error": 1.1388216187628663e-05,
+        "sign_differences": 1
+      },
+      "pass": 2
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 115898,
+        "maximum_absolute_voxel_error": 0.023447692394256592,
+        "mean_absolute_voxel_error": 2.0989816103948423e-05,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 112725,
+        "maximum_absolute_voxel_error": 0.11616945266723633,
+        "mean_absolute_voxel_error": 2.2025759954683486e-05,
+        "sign_differences": 0
+      },
+      "pass": 3
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 116850,
+        "maximum_absolute_voxel_error": 0.2597106099128723,
+        "mean_absolute_voxel_error": 3.4960623977533824e-05,
+        "sign_differences": 2
+      },
+      "before_reinitialization": {
+        "changed_voxels": 119369,
+        "maximum_absolute_voxel_error": 0.11986953020095825,
+        "mean_absolute_voxel_error": 2.4710982909677504e-05,
+        "sign_differences": 2
+      },
+      "pass": 4
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 116568,
+        "maximum_absolute_voxel_error": 0.0328829288482666,
+        "mean_absolute_voxel_error": 3.8915974467562804e-05,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 118393,
+        "maximum_absolute_voxel_error": 0.13868707418441772,
+        "mean_absolute_voxel_error": 3.718216147367294e-05,
+        "sign_differences": 0
+      },
+      "pass": 5
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 333572,
+        "maximum_absolute_voxel_error": 0.2601824402809143,
+        "mean_absolute_voxel_error": 0.0001156846564775333,
+        "sign_differences": 1
+      },
+      "before_reinitialization": {
+        "changed_voxels": 116708,
+        "maximum_absolute_voxel_error": 0.023120462894439697,
+        "mean_absolute_voxel_error": 3.887229147878015e-05,
+        "sign_differences": 1
+      },
+      "pass": 6
+    }
+  ],
+  "scope": "isolates input fast marching, per-pass curvature updates, and per-pass fast-marching reinitialization; does not alter production outputs",
+  "settings": {
+    "delta_t": 0.1,
+    "final_delta_t": 0.01,
+    "final_internal_iterations": 30,
+    "final_max_signed_distance": 20.0,
+    "internal_iterations": 30,
+    "max_signed_distance": 6.2,
+    "outer_iterations": 6,
+    "round_distance_updates_to_float32": true
+  },
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "135969d6955c4c234d1830a9307bc04a5148c3a627e1619eeac85d74e7173c8b"
+}

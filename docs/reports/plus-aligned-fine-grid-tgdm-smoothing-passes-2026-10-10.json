@@ -1,0 +1,124 @@
+{
+  "comparison": "selected Java SmoothCortexProfile pass outputs vs Python TGDM smoother",
+  "coordinate_system": "RAS",
+  "diagnostic_only": true,
+  "first_sign_mismatch": {
+    "pass": 2,
+    "stage": "curvature_update"
+  },
+  "initial_reinitialization": {
+    "changed_voxels": 25494,
+    "maximum_absolute_voxel_error": 9.5367431640625e-07,
+    "mean_absolute_voxel_error": 2.1633813230735388e-08,
+    "sign_differences": 0
+  },
+  "passes": [
+    {
+      "after_reinitialization": {
+        "changed_voxels": 39117,
+        "maximum_absolute_voxel_error": 0.025084853172302246,
+        "mean_absolute_voxel_error": 8.435851924097617e-06,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 57263,
+        "maximum_absolute_voxel_error": 5.53131103515625e-05,
+        "mean_absolute_voxel_error": 4.237470021493529e-08,
+        "sign_differences": 0
+      },
+      "pass": 1
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 100335,
+        "maximum_absolute_voxel_error": 0.23657476902008057,
+        "mean_absolute_voxel_error": 1.4242673716788677e-05,
+        "sign_differences": 1
+      },
+      "before_reinitialization": {
+        "changed_voxels": 89779,
+        "maximum_absolute_voxel_error": 0.11707448959350586,
+        "mean_absolute_voxel_error": 1.1398629415246986e-05,
+        "sign_differences": 1
+      },
+      "pass": 2
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 116244,
+        "maximum_absolute_voxel_error": 0.023447692394256592,
+        "mean_absolute_voxel_error": 2.0995529679338515e-05,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 113824,
+        "maximum_absolute_voxel_error": 0.11616945266723633,
+        "mean_absolute_voxel_error": 2.202909198601547e-05,
+        "sign_differences": 0
+      },
+      "pass": 3
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 117013,
+        "maximum_absolute_voxel_error": 0.2597106099128723,
+        "mean_absolute_voxel_error": 3.496426302622053e-05,
+        "sign_differences": 2
+      },
+      "before_reinitialization": {
+        "changed_voxels": 119458,
+        "maximum_absolute_voxel_error": 0.11986953020095825,
+        "mean_absolute_voxel_error": 2.4715460440184115e-05,
+        "sign_differences": 2
+      },
+      "pass": 4
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 116574,
+        "maximum_absolute_voxel_error": 0.0328829288482666,
+        "mean_absolute_voxel_error": 3.892172867925849e-05,
+        "sign_differences": 0
+      },
+      "before_reinitialization": {
+        "changed_voxels": 118438,
+        "maximum_absolute_voxel_error": 0.13868707418441772,
+        "mean_absolute_voxel_error": 3.7186817644254236e-05,
+        "sign_differences": 0
+      },
+      "pass": 5
+    },
+    {
+      "after_reinitialization": {
+        "changed_voxels": 333622,
+        "maximum_absolute_voxel_error": 0.26018232107162476,
+        "mean_absolute_voxel_error": 0.00011570757608279584,
+        "sign_differences": 1
+      },
+      "before_reinitialization": {
+        "changed_voxels": 116690,
+        "maximum_absolute_voxel_error": 0.023120582103729248,
+        "mean_absolute_voxel_error": 3.887814490095974e-05,
+        "sign_differences": 1
+      },
+      "pass": 6
+    }
+  ],
+  "scope": "isolates input fast marching, per-pass curvature updates, and per-pass fast-marching reinitialization; does not alter production outputs",
+  "settings": {
+    "delta_t": 0.1,
+    "final_delta_t": 0.01,
+    "final_internal_iterations": 30,
+    "final_max_signed_distance": 20.0,
+    "internal_iterations": 30,
+    "max_signed_distance": 6.2,
+    "outer_iterations": 6
+  },
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "135969d6955c4c234d1830a9307bc04a5148c3a627e1619eeac85d74e7173c8b"
+}
