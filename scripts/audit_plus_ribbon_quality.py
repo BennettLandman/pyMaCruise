@@ -29,18 +29,57 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="completed plus-full-workflow.json")
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument(
+        "--allow-checkpoint",
+        action="store_true",
+        help="audit a complete nonterminal checkpoint and mark it as nonterminal evidence",
+    )
     args = parser.parse_args()
     manifest_path = args.manifest.resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if (
         manifest.get("status") != "complete"
-        or manifest.get("terminal") is not True
         or manifest.get("stage") not in {
             "plus-full-workflow",
             "synthetic-plus-terminal-surface-composition",
+            "synthetic-plus-checkpoint-surface-composition",
         }
     ):
-        raise ValueError("ribbon audit requires a completed terminal plus or terminal-surface-composition manifest")
+        raise ValueError("ribbon audit requires a complete plus workflow manifest")
+    if manifest.get("terminal") is not True and not args.allow_checkpoint:
+        raise ValueError(
+            "nonterminal plus checkpoints require --allow-checkpoint; the report will retain their nonterminal status"
+        )
+    loop_summary = None
+    stage_records = manifest.get("stages", {})
+    loop_record = stage_records.get("registered_loop", {})
+    if loop_record.get("path") is None:
+        workflow_loop = stage_records.get("lesion_workflow", {}).get("manifest", {})
+        if workflow_loop:
+            workflow_path = Path(workflow_loop.get("path", "")).resolve()
+            if (
+                not workflow_path.is_file()
+                or hashlib.sha256(workflow_path.read_bytes()).hexdigest() != workflow_loop.get("sha256")
+            ):
+                raise ValueError("LesionTOADS workflow manifest is missing or fails its parent hash")
+            workflow_state = json.loads(workflow_path.read_text(encoding="utf-8"))
+            loop_record = workflow_state.get("stages", {}).get("registered_loop", {}).get("manifest", {})
+    if loop_record:
+        loop_path = Path(loop_record.get("path", "")).resolve()
+        if (
+            not loop_path.is_file()
+            or hashlib.sha256(loop_path.read_bytes()).hexdigest() != loop_record.get("sha256")
+        ):
+            raise ValueError("registered-loop manifest is missing or fails its parent hash")
+        loop_manifest = json.loads(loop_path.read_text(encoding="utf-8"))
+        summary_record = loop_manifest.get("outputs", {}).get("summary", {})
+        summary_path = Path(summary_record.get("path", "")).resolve()
+        if (
+            not summary_path.is_file()
+            or hashlib.sha256(summary_path.read_bytes()).hexdigest() != summary_record.get("sha256")
+        ):
+            raise ValueError("registered-loop summary is missing or fails its manifest hash")
+        loop_summary = json.loads(summary_path.read_text(encoding="utf-8"))
     outputs = manifest["final_outputs"]
     image_names = ("plus_inner_level_set", "plus_central_level_set", "plus_outer_level_set")
     images = {}
@@ -171,6 +210,16 @@ def main() -> None:
     }
     report = {
         "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+        "workflow_terminal": bool(manifest.get("terminal")),
+        "checkpoint_audit": bool(manifest.get("terminal") is not True),
+        "completed_iteration": (
+            manifest.get("completed_iteration")
+            if loop_summary is None else loop_summary.get("completed_iteration")
+        ),
+        "loop_energy_ratio": None if loop_summary is None else loop_summary.get("energy_ratio"),
+        "stop_reason": (
+            manifest.get("stop_reason") if loop_summary is None else loop_summary.get("stop_reason")
+        ),
         "manifest": str(manifest_path.relative_to(ROOT))
         if manifest_path.is_relative_to(ROOT) else str(manifest_path),
         "manifest_run_signature": manifest["run_signature"],

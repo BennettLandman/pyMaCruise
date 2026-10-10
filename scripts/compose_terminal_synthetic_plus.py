@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the terminal, source-selected plus surface stages from saved checkpoints.
+"""Run source-selected plus surface stages from saved loop checkpoints.
 
 This composes the persisted LesionTOADS loop result with the existing Dura,
 native-space transfer, MaSeg separation, and plus surface APIs. It does not
@@ -61,6 +61,11 @@ def main() -> None:
     parser.add_argument("--brain-mask", required=True, type=Path)
     parser.add_argument("--maseg", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument(
+        "--allow-checkpoint",
+        action="store_true",
+        help="compose surfaces from a nonterminal registered-loop checkpoint",
+    )
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
@@ -77,8 +82,11 @@ def main() -> None:
     if not summary_path.is_file() or _sha256(summary_path) != summary_record.get("sha256"):
         raise ValueError("registered-loop summary is missing or fails its checkpoint hash")
     loop_summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    if loop_summary.get("stop") is not True:
-        raise ValueError("source-selected plus surface stages require a terminal loop checkpoint")
+    terminal = loop_summary.get("stop") is True
+    if not terminal and not args.allow_checkpoint:
+        raise ValueError(
+            "nonterminal loop state requires --allow-checkpoint; outputs will remain marked nonterminal"
+        )
     recrop_record = loop.get("inputs", {}).get("registered_recrop_manifest", {})
     recrop_path = Path(recrop_record.get("path", "")).resolve()
     if not recrop_path.is_file() or _sha256(recrop_path) != recrop_record.get("sha256"):
@@ -145,9 +153,13 @@ def main() -> None:
         "tgdm_surface_evolution": asdict(TGDMBaselineParameters()),
         "file_workflow_run_manifest": _record(plus.manifest_path),
     }
+    composition_stage = (
+        "synthetic-plus-terminal-surface-composition"
+        if terminal else "synthetic-plus-checkpoint-surface-composition"
+    )
     signature_data = {
         "schema_version": 1,
-        "stage": "synthetic-plus-terminal-surface-composition",
+        "stage": composition_stage,
         "spatial_convention": "RAS",
         "stop_reason": loop_summary.get("stop_reason"),
         "completed_iteration": loop_summary.get("completed_iteration"),
@@ -164,15 +176,15 @@ def main() -> None:
         **signature_data,
         "run_signature": run_signature,
         "status": "complete",
-        "terminal": True,
-        "workflow_scope": (
-            "source-selected terminal synthetic plus surface composition from hash-checked "+
-            "registered-loop state; these checkpoint stages were not run by one uninterrupted plus-full-run call"
-        ),
+        "terminal": bool(terminal),
+        "workflow_scope": "source-selected plus surface composition from hash-checked registered-loop state; "
+        + ("terminal; stages were composed from checkpoints, not one uninterrupted plus-full-run invocation"
+           if terminal else "nonterminal checkpoint audit; stages were composed from saved loop outputs"),
     }
-    manifest_path = output_root / "synthetic-plus-terminal-surface-composition.json"
+    manifest_path = output_root / f"{composition_stage}.json"
     _write_json(manifest_path, manifest)
-    print(f"Terminal synthetic plus surface composition: {manifest_path}")
+    label = "Terminal" if terminal else "Nonterminal checkpoint"
+    print(f"{label} synthetic plus surface composition: {manifest_path}")
     print(f"Stop reason: {manifest['stop_reason']}")
     print(f"Completed loop iteration: {manifest['completed_iteration']}")
 
