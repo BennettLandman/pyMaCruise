@@ -66,7 +66,8 @@ def main() -> None:
     report = {
         "synthetic_only": True,
         "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
-        "scope": "TGDM only; upstream topology, ACE, GVF, TOADS, and LesionTOADS were held fixed at replayed Python outputs",
+        "scope": "TGDM only; the source signed-distance seed is reused from the hash-checked Python stage, tissue/ACE/GVF inputs are reconstructed on the same crop grid, and TOADS/LesionTOADS remain held fixed",
+        "tgdm_input_mode": provenance.get("tgdm_input_mode", "initial_membership"),
         "workflow_run_signature": provenance["workflow_run_signature"],
         "full_workflow_run_signature": provenance["full_workflow_run_signature"],
         "implementation_signature": provenance["implementation_signature"],

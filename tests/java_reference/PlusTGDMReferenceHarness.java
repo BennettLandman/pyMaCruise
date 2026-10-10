@@ -36,7 +36,9 @@ public final class PlusTGDMReferenceHarness {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) throw new IllegalArgumentException("usage: INPUT_BIN OUTPUT_DIR");
+        if (args.length < 2 || args.length > 3) throw new IllegalArgumentException("usage: INPUT_BIN OUTPUT_DIR [precomputed_initial_level_set]");
+        boolean precomputedInitial = args.length == 3 && args[2].equals("precomputed_initial_level_set");
+        if (args.length == 3 && !precomputedInitial) throw new IllegalArgumentException("unknown input mode: " + args[2]);
         Path output = Path.of(args[1]); Files.createDirectories(output);
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(
                 new FileInputStream(args[0]), 1 << 20))) {
@@ -51,11 +53,16 @@ public final class PlusTGDMReferenceHarness {
                 for (int c=0;c<3;c++) gvf[x][y][z][c]=in.readFloat();
             if (in.read() != -1) throw new IllegalArgumentException("unexpected trailing bytes");
 
-            ImageDataFloat initialMembership=new ImageDataFloat(membership);
-            float[][][] initial=initialMembership.toArray3d();
-            for (int x=0;x<nx;x++) for (int y=0;y<ny;y++) for (int z=0;z<nz;z++)
-                initial[x][y][z]=126.9f-initial[x][y][z];
-            ImageDataFloat initialLevel=new DistanceField().solve(new ImageDataFloat(initial),8.0);
+            ImageDataFloat initialLevel;
+            if (precomputedInitial) {
+                initialLevel = new ImageDataFloat(membership);
+            } else {
+                ImageDataFloat initialMembership=new ImageDataFloat(membership);
+                float[][][] initial=initialMembership.toArray3d();
+                for (int x=0;x<nx;x++) for (int y=0;y<ny;y++) for (int z=0;z<nz;z++)
+                    initial[x][y][z]=126.9f-initial[x][y][z];
+                initialLevel=new DistanceField().solve(new ImageDataFloat(initial),8.0);
+            }
             MaGenericTGDM tgdm=new MaGenericTGDM(ConnectivityRule.CONNECT_18_6);
             ImageDataFloat smoothed=tgdm.solveSmoothSurface(initialLevel,1.0f,6);
             ImageDataFloat white=new ImageDataFloat(wm), gray=new ImageDataFloat(gm);

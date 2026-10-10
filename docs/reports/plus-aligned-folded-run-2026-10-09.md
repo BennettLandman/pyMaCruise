@@ -112,6 +112,14 @@ This is a substantive synthetic integration failure, not a source-equivalence
 or real-data result. The next diagnostic is to compare intermediate plus/TGDM
 surfaces with the selected Java outputs on these same saved inputs.
 
+That comparison completed on 2026-10-10. On the same crop, held-fixed Java and
+Python TGDM surface Dice was 1.0 for central/inner/outer; symmetric mean
+distances were 0.0000754/0.0000211/0.0000764 mm and Hausdorff distances were
+0.1008/0.0463/0.1008 mm. All three meet the agreed Java surface thresholds.
+The Java RSS watchdog measured 0.409 GB peak. This narrows the unresolved
+quality issue upstream to the tissue/atlas inputs or synthetic anatomy; it does
+not change the failed ribbon-quality result. See the [held-fixed TGDM report](plus-aligned-folded-tgdm-java-2026-10-10.md).
+
 ## Acceptance checks after completion
 
 Run the committed quality audit against the completed terminal workflow manifest:
