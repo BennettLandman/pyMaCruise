@@ -1,0 +1,115 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "affine_ras": [
+    [
+      2.00390625,
+      0.0,
+      0.0,
+      -252.4921875
+    ],
+    [
+      0.0,
+      2.015625,
+      0.0,
+      13.468887329101562
+    ],
+    [
+      0.0,
+      0.0,
+      2.010690689086914,
+      -242.499267578125
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
+  "coordinate_system": "RAS",
+  "full_workflow_run_signature": "efe43fffd20fdd2e63c0b0d4dd0940973544dbd1ea729cc28831ba9f52210c85",
+  "implementation_signature": null,
+  "java_peak_sampled_rss_gb": 0.538,
+  "java_rss_limit_gb": 8,
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 0.0005143718782360293,
+      "changed_voxels": 139896,
+      "dice_at_zero": 0.999934761335218,
+      "exact": false,
+      "hausdorff_mm": 1.345202440374115,
+      "maximum_absolute_voxel_error": 0.6696057403460145,
+      "mean_absolute_distance_mm": 0.000371459790586254,
+      "mean_absolute_voxel_error": 4.4255437788440186e-05,
+      "n_candidate_vertices": 22241,
+      "n_reference_vertices": 22237,
+      "reference_to_candidate_mean_mm": 0.00022854770293647872,
+      "sign_changed_voxels": 3,
+      "thresholds_pass": false,
+      "voxel_count": 418509
+    },
+    "initial_inner": {
+      "changed_voxels": 186228,
+      "exact": false,
+      "maximum_absolute_voxel_error": 0.6580016762018204,
+      "mean_absolute_voxel_error": 4.8451175472203636e-05,
+      "sign_changed_voxels": 3,
+      "voxel_count": 418509
+    },
+    "initial_level_set": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_voxel_error": 0.0,
+      "mean_absolute_voxel_error": 0.0,
+      "sign_changed_voxels": 0,
+      "voxel_count": 418509
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 0.0005209176482094778,
+      "changed_voxels": 188353,
+      "dice_at_zero": 0.9999340035638076,
+      "exact": false,
+      "hausdorff_mm": 1.374464592647196,
+      "maximum_absolute_voxel_error": 0.6581789386691526,
+      "mean_absolute_distance_mm": 0.0003750631372716273,
+      "mean_absolute_voxel_error": 5.8058513798347074e-05,
+      "n_candidate_vertices": 21394,
+      "n_reference_vertices": 21390,
+      "reference_to_candidate_mean_mm": 0.00022920862633377676,
+      "sign_changed_voxels": 3,
+      "thresholds_pass": false,
+      "voxel_count": 418509
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.0006511793542198188,
+      "changed_voxels": 139033,
+      "dice_at_zero": 0.9999348321928967,
+      "exact": false,
+      "hausdorff_mm": 1.3470226510091987,
+      "maximum_absolute_voxel_error": 0.6710170321166515,
+      "mean_absolute_distance_mm": 0.0005096701731802363,
+      "mean_absolute_voxel_error": 5.13383315657505e-05,
+      "n_candidate_vertices": 22186,
+      "n_reference_vertices": 22182,
+      "reference_to_candidate_mean_mm": 0.0003681609921406536,
+      "sign_changed_voxels": 3,
+      "thresholds_pass": false,
+      "voxel_count": 418509
+    }
+  },
+  "scope": "TGDM only; the source signed-distance seed is reused from the hash-checked Python stage, tissue/ACE/GVF inputs are reconstructed on the same crop grid, and TOADS/LesionTOADS remain held fixed",
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "surface_thresholds_pass": false,
+  "synthetic_only": true,
+  "tgdm_input_mode": "precomputed_initial_level_set",
+  "workflow_run_signature": "135969d6955c4c234d1830a9307bc04a5148c3a627e1619eeac85d74e7173c8b"
+}
