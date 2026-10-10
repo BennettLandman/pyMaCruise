@@ -71,7 +71,7 @@ Once the registered loop reports a terminal stop, compose its saved checkpoint w
 
 ```sh
 PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
-  --loop-manifest build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0099/lesion-registered-loop.json \
+  --loop-manifest build/plus-vandy-atlas-aligned-v3/loop-chunks/iteration-0100/lesion-registered-loop.json \
   --t1 tests/data/synthetic/plus_vandy_atlas_aligned/t1.nii.gz \
   --brain-mask tests/data/synthetic/plus_vandy_atlas_aligned/brain-mask.nii.gz \
   --maseg tests/data/synthetic/plus_vandy_atlas_aligned/maseg.nii.gz \
