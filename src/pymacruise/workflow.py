@@ -118,12 +118,13 @@ def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, An
         "ace_diffusion_iterations", "gvf_iterations", "tgdm_iterations",
         "tgdm_initial_iterations", "tgdm_inner_iterations", "tgdm_central_iterations",
         "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement",
+        "regrid_inputs",
     }
     plus_fields = {
         "crop_padding", "init_align_iterations", "pyramid_levels",
         "lesion_iterations", "first_thinning_limit", "first_thinning_volume_ratio",
         "source_zero_variance_nan", "max_distance", "loop_convergence_threshold",
-        "n_iter_max", "loop_thinning_limit", "max_passes",
+        "n_iter_max", "loop_thinning_limit", "max_passes", "regrid_inputs",
     }
     registration_fields = {
         "transform_type", "metric", "metric_bins", "sampling_rate", "iterations",

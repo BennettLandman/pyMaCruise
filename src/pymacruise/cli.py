@@ -368,7 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     base_run = commands.add_parser(
         "base-run",
-        help="execute the restartable base MaCRUISE stage chain on a native input grid",
+        help="execute the restartable base MaCRUISE chain with optional RAS regridding",
     )
     base_run.add_argument("--t1", required=True, type=Path, help="input T1 .nii.gz")
     base_run.add_argument("--brain-mask", required=True, type=Path, help="same-grid brain mask .nii.gz")
@@ -376,6 +376,12 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--maseg", required=True, type=Path, help="same-grid MaSeg labels for cleanup and surface refinement")
     base_run.add_argument("--output-dir", required=True, type=Path)
     base_run.add_argument("--resume", action="store_true", help="resume from verified stage outputs in run.json")
+    base_run.add_argument(
+        "--regrid-inputs",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="resample oblique RAS inputs to an orthogonal grid (default: enabled)",
+    )
     base_run.add_argument("--registration-levels", type=int, default=1)
     base_run.add_argument("--registration-iterations", type=int, default=1)
     base_run.add_argument("--post-refresh-registration-iterations", type=int, default=1)
@@ -565,6 +571,12 @@ def build_parser() -> argparse.ArgumentParser:
     plus_full.add_argument("--maseg", required=True, type=Path)
     plus_full.add_argument("--atlas-descriptor", required=True, type=Path)
     plus_full.add_argument("--output-dir", required=True, type=Path)
+    plus_full.add_argument(
+        "--regrid-inputs",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="resample oblique RAS T1, mask, and MaSeg to an orthogonal grid (default: enabled)",
+    )
     plus_full.add_argument("--registration-iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
     plus_full.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
     plus_full.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
@@ -716,6 +728,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output_dir,
             resume=args.resume,
             options=BaseRunOptions(
+                regrid_inputs=args.regrid_inputs,
                 registration_levels=args.registration_levels,
                 registration_iterations=args.registration_iterations,
                 post_refresh_registration_iterations=args.post_refresh_registration_iterations,
@@ -735,7 +748,7 @@ def main(argv: list[str] | None = None) -> int:
                 source_faithful_refinement=args.source_faithful_refinement,
             ),
         )
-        print(f"Base run complete: {manifest_path} (synthetic/native-grid route; inspect stage checks and TOADS stop metadata)")
+        print(f"Base run complete: {manifest_path} (inspect stage checks and TOADS stop metadata)")
     elif args.command == "base-resume-from-toads":
         from pymacruise.base_resume_workflow import run_base_resume_from_toads
 
@@ -959,6 +972,7 @@ def main(argv: list[str] | None = None) -> int:
             n_iter_max=args.n_iter_max,
             loop_thinning_limit=args.loop_thinning_limit,
             max_passes=args.max_passes,
+            regrid_inputs=args.regrid_inputs,
             resume=args.resume,
         )
         verb = "Verified and resumed" if result.resumed else "Completed"

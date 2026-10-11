@@ -80,6 +80,32 @@ scikit-image Lewiner marching cubes is an explicit substitute for JIST
 surface closest-point and level-set thickness operations are described in
 [`thickness-port.md`](thickness-port.md).
 
+## `pymacruise base-run`
+
+```text
+pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
+  --maseg MaSeg.nii.gz --atlas-descriptor ATLAS.txt --output-dir RUN_DIR \
+  [--regrid-inputs | --no-regrid-inputs] [--resume]
+```
+
+The default resamples an oblique RAS grid to an orthogonal RAS grid at the T1
+voxel spacing. T1 uses linear interpolation; the binary mask and MaSeg labels
+use nearest-neighbor interpolation. The shared regridded inputs and hashes are
+recorded under the run's `resources` directory and manifest. Axis-aligned RAS
+inputs are left unchanged. Use `--no-regrid-inputs` to preserve a pre-aligned
+orthogonal grid; TOADS currently rejects oblique grids when regridding is off.
+The run uses the required user-provided T1-grid mask and does not invoke BET or
+SPECTRE.
+
+## `pymacruise plus-full-run`
+
+The full plus workflow accepts the same `[--regrid-inputs | --no-regrid-inputs]`
+option, enabled by default. When T1 is oblique, it creates a shared orthogonal
+RAS grid for T1, brain mask, and MaSeg under `resources/regridded-inputs`;
+T1 uses linear interpolation and the discrete inputs use nearest neighbor.
+FLAIR stays on its input grid and is registered by the plus preprocessing
+stage. Disabling regridding requires an axis-aligned RAS T1 grid.
+
 ## `pymacruise base-surface-thickness`
 
 ```text

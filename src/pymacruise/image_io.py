@@ -7,6 +7,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+from nibabel.processing import resample_from_to, resample_to_output
 
 
 class ImageGeometryError(ValueError):
@@ -59,6 +60,72 @@ def normalize_image_to_ras(
     if nib.aff2axcodes(normalized.affine) != ("R", "A", "S"):
         raise ImageGeometryError(f"{source_name} could not be normalized to RAS")
     return normalized
+
+
+def is_axis_aligned_ras_grid(image: nib.spatialimages.SpatialImage) -> bool:
+    """Return whether a 3-D image uses positive, axis-aligned RAS voxel axes."""
+    if len(image.shape) != 3 or nib.aff2axcodes(image.affine) != ("R", "A", "S"):
+        return False
+    spacing = nib.affines.voxel_sizes(image.affine)
+    directions = np.asarray(image.affine[:3, :3], dtype=np.float64) / spacing[np.newaxis, :]
+    return bool(np.allclose(directions, np.eye(3), rtol=0, atol=1e-6))
+
+
+def regrid_to_orthogonal_ras(
+    image: nib.spatialimages.SpatialImage,
+    *,
+    reference: nib.spatialimages.SpatialImage | None = None,
+    interpolation_order: int = 1,
+) -> nib.spatialimages.SpatialImage:
+    """Resample a 3-D image onto an axis-aligned RAS grid.
+
+    When ``reference`` is omitted, an orthogonal RAS grid covering ``image``
+    is created at the input voxel spacing. Labels and masks should use order 0;
+    continuous intensity images should use order 1. An already suitable image
+    is returned unchanged when it defines its own reference.
+    """
+    if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)) or len(image.shape) != 3:
+        raise ValueError("Regridding requires a 3D scalar NIfTI image")
+    if interpolation_order not in (0, 1, 3):
+        raise ValueError("Regridding interpolation order must be 0, 1, or 3")
+    source = normalize_image_to_ras(image, source_name="regrid input")
+    if reference is None and is_axis_aligned_ras_grid(source):
+        return source
+    if reference is None:
+        spacing = nib.affines.voxel_sizes(source.affine)
+        target = resample_to_output(
+            source,
+            voxel_sizes=tuple(float(value) for value in spacing),
+            order=interpolation_order,
+            mode="constant",
+            cval=0.0,
+        )
+        return normalize_image_to_ras(target, source_name="regridded output")
+
+    target = normalize_image_to_ras(reference, source_name="regrid reference")
+    if not is_axis_aligned_ras_grid(target):
+        raise ValueError("Regridding reference must use an axis-aligned RAS grid")
+    if source.shape == target.shape and np.allclose(source.affine, target.affine, rtol=0, atol=1e-6):
+        return source
+    sampled = resample_from_to(
+        source,
+        (target.shape, target.affine),
+        order=interpolation_order,
+        mode="constant",
+        cval=0.0,
+    )
+    data = np.asarray(sampled.dataobj)
+    if interpolation_order == 0:
+        data = data.astype(source.get_data_dtype(), copy=False)
+    header = target.header.copy()
+    header.set_data_dtype(data.dtype)
+    header.set_slope_inter(None, None)
+    output = nib.Nifti1Image(data, target.affine, header=header)
+    qform, qcode = target.get_qform(coded=True)
+    _, scode = target.get_sform(coded=True)
+    output.set_qform(qform if qcode else None, code=int(qcode), strip_shears=True)
+    output.set_sform(target.affine, code=int(scode) if scode else 1)
+    return output
 
 
 def load_nifti_ras(

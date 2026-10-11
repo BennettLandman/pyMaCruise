@@ -22,7 +22,12 @@ import numpy as np
 
 from pymacruise.cli import main as cli_main
 from pymacruise.contracts import has_finite_integer_values
-from pymacruise.image_io import normalize_image_to_ras
+from pymacruise.image_io import (
+    is_axis_aligned_ras_grid,
+    normalize_image_to_ras,
+    regrid_to_orthogonal_ras,
+    save_nifti_ras,
+)
 
 
 class _TeeTextIO:
@@ -45,6 +50,7 @@ class _TeeTextIO:
 
 @dataclass(frozen=True)
 class BaseRunOptions:
+    regrid_inputs: bool = True
     registration_levels: int = 1
     registration_iterations: int = 1
     post_refresh_registration_iterations: int = 1
@@ -338,7 +344,8 @@ def run_base_workflow(
     count_values = [
         value for key, value in settings.items()
         if key not in {
-            "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement"
+            "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement",
+            "regrid_inputs",
         }
         and value is not None
     ]
@@ -359,6 +366,8 @@ def run_base_workflow(
         raise ValueError("ACE updated-CSF mode must be one of 0, 1, 2, or 3")
     if not isinstance(options.source_faithful_refinement, bool):
         raise ValueError("source_faithful_refinement must be boolean")
+    if not isinstance(options.regrid_inputs, bool):
+        raise ValueError("regrid_inputs must be boolean")
     signature_payload = {
         "schema_version": 1,
         "spatial_convention": "RAS",
@@ -377,12 +386,56 @@ def run_base_workflow(
     signature = _json_hash(signature_payload)
     implementation_signature = _implementation_signature()
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "run.json"
+    if manifest_path.exists() and not resume:
+        raise FileExistsError(f"Run manifest exists; use --resume to continue: {manifest_path}")
+
+    regridded_resources: list[dict[str, Any]] = []
+    if options.regrid_inputs and not is_axis_aligned_ras_grid(reference):
+        print(
+            "Base workflow: regridding oblique RAS T1, brain mask, and MaSeg "
+            "to an orthogonal RAS grid (intensity linear; mask/labels nearest neighbor)."
+        )
+        orthogonal_t1 = regrid_to_orthogonal_ras(reference, interpolation_order=1)
+        orthogonal_mask = regrid_to_orthogonal_ras(
+            mask, reference=orthogonal_t1, interpolation_order=0
+        )
+        orthogonal_maseg = regrid_to_orthogonal_ras(
+            maseg_image, reference=orthogonal_t1, interpolation_order=0
+        )
+        regridded_dir = output_dir / "resources" / "regridded-inputs"
+        regridded_dir.mkdir(parents=True, exist_ok=True)
+        regridded_paths = {
+            "t1": regridded_dir / "T1.nii.gz",
+            "brain_mask": regridded_dir / "BrainMask.nii.gz",
+            "maseg": regridded_dir / "MaSeg.nii.gz",
+        }
+        for role, image in (
+            ("t1", orthogonal_t1),
+            ("brain_mask", orthogonal_mask),
+            ("maseg", orthogonal_maseg),
+        ):
+            save_nifti_ras(image, regridded_paths[role])
+            regridded_resources.append(
+                {
+                    "path": str(regridded_paths[role]),
+                    "sha256": _sha256(regridded_paths[role]),
+                }
+            )
+        t1_path = regridded_paths["t1"]
+        brain_mask_path = regridded_paths["brain_mask"]
+        maseg_path = regridded_paths["maseg"]
+        reference = normalize_image_to_ras(orthogonal_t1, source_name="regridded base T1")
+        mask = normalize_image_to_ras(orthogonal_mask, source_name="regridded brain mask")
+        maseg_image = normalize_image_to_ras(orthogonal_maseg, source_name="regridded MaSeg")
+    elif not options.regrid_inputs and not is_axis_aligned_ras_grid(reference):
+        raise ValueError(
+            "TOADS requires an axis-aligned RAS grid; regridding is disabled, "
+            "so provide an orthogonal RAS T1 or enable --regrid-inputs"
+        )
     run_atlas = _materialize_dura_atlas(atlas_descriptor, output_dir / "resources" / "dura-atlas")
     materialized_audit = run_atlas.parent / "CONVERSION_AUDIT.json"
-    manifest_path = output_dir / "run.json"
     if manifest_path.exists():
-        if not resume:
-            raise FileExistsError(f"Run manifest exists; use --resume to continue: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest.get("run_signature") != signature:
             legacy_keys = (
@@ -418,9 +471,12 @@ def run_base_workflow(
             "status": "running",
             "stages": {},
             "history": [],
-            "workflow_scope": "restartable base route on a native-grid input; source equivalence not implied",
+            "workflow_scope": (
+                "restartable base route on a regridded or axis-aligned RAS input; source equivalence not implied"
+            ),
             "derived_resources": [
                 {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
+                *regridded_resources,
                 *(
                     [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
                     if materialized_audit.is_file()
@@ -431,6 +487,7 @@ def run_base_workflow(
         _write_manifest(manifest_path, manifest)
     manifest["derived_resources"] = [
         {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
+        *regridded_resources,
         *(
             [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
             if materialized_audit.is_file()

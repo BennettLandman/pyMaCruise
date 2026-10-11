@@ -5,10 +5,16 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
-from pymacruise.cli import main
+from pymacruise.cli import build_parser, main
 from pymacruise import base_workflow as base_workflow_module
-from pymacruise.base_workflow import _implementation_signature, _materialize_dura_atlas
+from pymacruise.base_workflow import (
+    BaseRunOptions,
+    _implementation_signature,
+    _materialize_dura_atlas,
+    run_base_workflow,
+)
 from pymacruise import workflow
 from pymacruise.surfaces import read_legacy_vtk
 
@@ -18,6 +24,17 @@ FIXTURE = ROOT / "data" / "synthetic" / "toads_registered_first_iteration_cycle"
 ATLAS = ROOT / "data" / "synthetic" / "toads_registered_field_refit" / "atlas-11.txt"
 MASEG = ROOT / "data" / "synthetic" / "base_workflow" / "maseg.nii.gz"
 VANDY_ATLAS = ROOT / "data" / "synthetic" / "toads_downsampled_vandy_atlas" / "atlas.txt"
+
+
+def test_base_cli_regridding_defaults_on_and_can_be_disabled() -> None:
+    parser = build_parser()
+    required = [
+        "base-run", "--t1", "T1.nii.gz", "--brain-mask", "mask.nii.gz",
+        "--maseg", "MaSeg.nii.gz", "--atlas-descriptor", "atlas.txt",
+        "--output-dir", "run",
+    ]
+    assert parser.parse_args(required).regrid_inputs is True
+    assert parser.parse_args([*required, "--no-regrid-inputs"]).regrid_inputs is False
 
 
 def test_base_implementation_signature_tracks_python_source_not_notes(tmp_path) -> None:
@@ -57,15 +74,30 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     # fusion stage can be exercised while retaining all eight cleanup labels.
     maseg_values[4:9, 4:9, 4:9] = 100
     maseg_for_run = tmp_path / "maseg-with-cortex.nii.gz"
-    nib.save(nib.Nifti1Image(maseg_values.astype(np.int16), nib.load(str(MASEG)).affine), maseg_for_run)
+    source_t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
+    angle = np.deg2rad(8.0)
+    rotation = np.array(
+        [[np.cos(angle), -np.sin(angle), 0.0],
+         [np.sin(angle), np.cos(angle), 0.0],
+         [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    )
+    oblique_affine = source_t1.affine.copy()
+    oblique_affine[:3, :3] = rotation @ oblique_affine[:3, :3]
+    t1_for_run = tmp_path / "t1-oblique.nii.gz"
+    nib.save(nib.Nifti1Image(np.asarray(source_t1.dataobj), oblique_affine), t1_for_run)
+    mask_source = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
+    mask_for_run = tmp_path / "brain-mask-oblique.nii.gz"
+    nib.save(nib.Nifti1Image(np.asarray(mask_source.dataobj), oblique_affine), mask_for_run)
+    nib.save(nib.Nifti1Image(maseg_values.astype(np.int16), oblique_affine), maseg_for_run)
     config_path.write_text(
         json.dumps(
             {
                 "schema_version": 1,
                 "profile": "base",
-                "t1_path": str(FIXTURE / "t1.nii.gz"),
+                "t1_path": str(t1_for_run),
                 "maseg_path": str(maseg_for_run),
-                "brain_mask_path": str(FIXTURE / "brain-mask.nii.gz"),
+                "brain_mask_path": str(mask_for_run),
                 "output_dir": str(output),
                 "run_options": {
                     "registration_levels": 1,
@@ -114,6 +146,14 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert manifest["converged"] is False
     assert manifest["result_interpretation"] == "stage-run-complete-but-toads-did-not-meet-energy-threshold"
     assert manifest["source_equivalence_claim"] is False
+    regridded = [
+        nib.load(item["path"])
+        for item in manifest["derived_resources"]
+        if "regridded-inputs" in item["path"] and item["path"].endswith(".nii.gz")
+    ]
+    assert len(regridded) == 3
+    assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in regridded)
+    assert all(image.shape == regridded[0].shape for image in regridded)
     assert manifest["stages"]["dura"]["command"][-2:] == [
         "--membership-level", "0.3"
     ]
@@ -143,6 +183,8 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     ))
     preparation_details = json.loads(preparation_provenance_path.read_text())
     assert preparation_details["parameters"]["removed_voxel_counts"] is None
+
+
     assert preparation_details["parameters"]["mask_distinction"]["fusion_mask"] == (
         "MaSeg-derived Atlas_BrainTissueMask"
     )
@@ -173,7 +215,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         assert stop["iteration_limit_reached"] is True
         assert stop["terminal_energy_ratio"] > 0
 
-    reference = nib.load(str(FIXTURE / "t1.nii.gz"))
+    reference = regridded[0]
     final_dir = Path(manifest["final_outputs"][0]["path"]).parent
     for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
         image = nib.load(str(final_dir / filename))
@@ -278,3 +320,34 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         for record in restarted["final_outputs"]
         if Path(record["path"]).name.endswith(".nii.gz")
     } == hashes_before
+
+
+def test_base_run_can_disable_regridding_but_rejects_oblique_grid(tmp_path) -> None:
+    source_t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
+    angle = np.deg2rad(8.0)
+    rotation = np.array(
+        [[np.cos(angle), -np.sin(angle), 0.0],
+         [np.sin(angle), np.cos(angle), 0.0],
+         [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    )
+    affine = source_t1.affine.copy()
+    affine[:3, :3] = rotation @ affine[:3, :3]
+    t1_path = tmp_path / "oblique-t1.nii.gz"
+    mask_path = tmp_path / "oblique-mask.nii.gz"
+    maseg_path = tmp_path / "oblique-maseg.nii.gz"
+    nib.save(nib.Nifti1Image(np.asarray(source_t1.dataobj), affine), t1_path)
+    mask = nib.load(str(FIXTURE / "brain-mask.nii.gz"))
+    nib.save(nib.Nifti1Image(np.asarray(mask.dataobj), affine), mask_path)
+    maseg = nib.load(str(MASEG))
+    nib.save(nib.Nifti1Image(np.asarray(maseg.dataobj), affine), maseg_path)
+
+    with pytest.raises(ValueError, match="regridding is disabled"):
+        run_base_workflow(
+            t1_path=t1_path,
+            brain_mask_path=mask_path,
+            atlas_descriptor=ATLAS,
+            maseg_path=maseg_path,
+            output_dir=tmp_path / "no-regrid",
+            options=BaseRunOptions(regrid_inputs=False),
+        )

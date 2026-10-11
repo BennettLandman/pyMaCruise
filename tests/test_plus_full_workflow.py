@@ -9,7 +9,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from pymacruise.cli import main
+from pymacruise.cli import build_parser, main
 from pymacruise.lesion_dura_outputs import generate_lesion_dura_removal_outputs
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise import workflow
@@ -48,6 +48,74 @@ def _inputs(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     labels[wm] = 4
     nib.save(nib.Nifti1Image(labels, modalities.affine), maseg)
     return t1, flair, mask, maseg
+
+
+def test_plus_full_workflow_regrids_oblique_t1_mask_and_maseg_by_default(
+    tmp_path: Path, monkeypatch
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    original = nib.load(str(t1))
+    affine = original.affine.copy()
+    theta = np.deg2rad(8.0)
+    rotation = np.array(
+        [[np.cos(theta), -np.sin(theta), 0.0],
+         [np.sin(theta), np.cos(theta), 0.0],
+         [0.0, 0.0, 1.0]]
+    )
+    center = nib.affines.apply_affine(affine, (np.asarray(original.shape) - 1) / 2)
+    affine[:3, :3] = rotation @ affine[:3, :3]
+    affine[:3, 3] = center - affine[:3, :3] @ ((np.asarray(original.shape) - 1) / 2)
+    for path in (t1, mask, maseg):
+        image = nib.load(str(path))
+        nib.save(nib.Nifti1Image(np.asarray(image.dataobj), affine), path)
+
+    with pytest.raises(ValueError, match="regridding is disabled"):
+        plus_full_workflow_module.run_plus_full_workflow(
+            t1, flair, mask, maseg, ATLAS, tmp_path / "no-regrid-plus",
+            regrid_inputs=False,
+        )
+    assert not (tmp_path / "no-regrid-plus" / "plus-full-workflow.json").exists()
+
+    def stop_after_preprocessing_inputs(*args, **kwargs):
+        raise RuntimeError("captured regridded inputs")
+
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_preprocessing_checkpoint",
+        stop_after_preprocessing_inputs,
+    )
+    output = tmp_path / "regrid-plus"
+    with pytest.raises(RuntimeError, match="captured regridded inputs"):
+        plus_full_workflow_module.run_plus_full_workflow(
+            t1, flair, mask, maseg, ATLAS, output,
+        )
+
+    manifest = json.loads((output / "plus-full-workflow.json").read_text())
+    resources = manifest["derived_resources"]["regridded_inputs"]
+    assert {item["role"] for item in resources} == {"t1", "brain_mask", "maseg"}
+    assert all(_sha256(Path(item["path"])) == item["sha256"] for item in resources)
+    derived = {item["role"]: Path(item["path"]) for item in resources}
+    images = {role: nib.load(str(path)) for role, path in derived.items()}
+    assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in images.values())
+    assert len({(image.shape, tuple(image.affine.ravel())) for image in images.values()}) == 1
+    assert set(np.unique(np.asarray(images["brain_mask"].dataobj))) <= {0, 1}
+    assert set(np.unique(np.asarray(images["maseg"].dataobj))).issubset(
+        set(np.unique(np.asarray(nib.load(str(maseg)).dataobj)))
+    )
+
+
+def test_plus_full_workflow_regrid_cli_and_config_defaults() -> None:
+    parser = build_parser()
+    required = [
+        "plus-full-run", "--t1", "t1.nii.gz", "--flair", "flair.nii.gz",
+        "--brain-mask", "mask.nii.gz", "--maseg", "maseg.nii.gz",
+        "--atlas-descriptor", str(ATLAS), "--output-dir", "out",
+    ]
+    assert parser.parse_args(required).regrid_inputs is True
+    assert parser.parse_args([*required, "--no-regrid-inputs"]).regrid_inputs is False
+    assert workflow._validate_run_options(
+        workflow.WorkflowProfile.PLUS, {"plus": {"regrid_inputs": False}}
+    )["plus"]["regrid_inputs"] is False
 
 
 def _command(t1: Path, flair: Path, mask: Path, maseg: Path, output: Path, *extra: str) -> list[str]:

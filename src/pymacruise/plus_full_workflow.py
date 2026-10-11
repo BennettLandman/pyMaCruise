@@ -11,7 +11,12 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 
-from pymacruise.image_io import normalize_image_to_ras
+from pymacruise.image_io import (
+    is_axis_aligned_ras_grid,
+    normalize_image_to_ras,
+    regrid_to_orthogonal_ras,
+    save_nifti_ras,
+)
 from pymacruise.lesion_atlas_priors import load_lesion_atlas_topology
 from pymacruise.n4 import N4Config
 from pymacruise.plus_maseg_cortical_checkpoint import run_plus_maseg_cortical_checkpoint
@@ -122,6 +127,7 @@ def run_plus_full_workflow(
     loop_thinning_limit: float = 3.0,
     max_passes: int = 99,
     pipeline_options: PlusPipelineOptions = PlusPipelineOptions(),
+    regrid_inputs: bool = True,
     resume: bool = False,
 ) -> PlusFullWorkflowResult:
     """Run raw inputs through LesionTOADS and terminal CRUISE surface outputs.
@@ -135,6 +141,8 @@ def run_plus_full_workflow(
         raise TypeError("n4_config must be N4Config")
     if not isinstance(pipeline_options, PlusPipelineOptions):
         raise TypeError("pipeline_options must be PlusPipelineOptions")
+    if not isinstance(regrid_inputs, bool):
+        raise TypeError("regrid_inputs must be boolean")
     if not isinstance(resume, bool):
         raise TypeError("resume must be boolean")
     t1 = Path(t1_path).expanduser().resolve()
@@ -143,12 +151,17 @@ def run_plus_full_workflow(
     maseg = Path(maseg_path).expanduser().resolve()
     descriptor = Path(atlas_descriptor_path).expanduser().resolve()
     root = Path(output_dir).expanduser().resolve()
-    # Reject grid mismatches before costly preprocessing/registration. Compare
-    # physical RAS grids after axis reorientation; no interpolation is done.
+    # Reject source-grid mismatches before costly work. Regridding changes only
+    # an oblique T1 grid; its paired mask and MaSeg use nearest-neighbor sampling.
     t1_image = nib.load(str(t1))
     if not isinstance(t1_image, (nib.Nifti1Image, nib.Nifti2Image)) or len(t1_image.shape) != 3:
         raise ValueError("T1 must be a 3-D NIfTI reference image")
     t1_ras = normalize_image_to_ras(t1_image, source_name="T1")
+    if not regrid_inputs and not is_axis_aligned_ras_grid(t1_ras):
+        raise ValueError(
+            "TOADS requires an axis-aligned RAS grid; regridding is disabled, "
+            "so provide an orthogonal RAS T1 or enable --regrid-inputs"
+        )
     for path, name in ((mask, "brain mask"), (maseg, "MaSeg")):
         image = nib.load(str(path))
         if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)) or len(image.shape) != 3:
@@ -187,6 +200,7 @@ def run_plus_full_workflow(
         "n_iter_max": int(n_iter_max),
         "loop_thinning_limit": float(loop_thinning_limit),
         "max_passes": int(max_passes),
+        "regrid_inputs": regrid_inputs,
     }
     signature_data = {
         "schema_version": 1,
@@ -247,9 +261,39 @@ def run_plus_full_workflow(
         stage_root = root
         _write_json(manifest_path, manifest)
 
+    regridded_resources: list[dict[str, str]] = []
+    if regrid_inputs and not is_axis_aligned_ras_grid(t1_ras):
+        print(
+            "Plus workflow: regridding oblique RAS T1, brain mask, and MaSeg "
+            "to an orthogonal RAS grid (T1 linear; mask/labels nearest neighbor)."
+        )
+        orthogonal_t1 = regrid_to_orthogonal_ras(t1_ras, interpolation_order=1)
+        orthogonal_mask = regrid_to_orthogonal_ras(
+            normalize_image_to_ras(nib.load(str(mask)), source_name="brain mask"),
+            reference=orthogonal_t1,
+            interpolation_order=0,
+        )
+        orthogonal_maseg = regrid_to_orthogonal_ras(
+            normalize_image_to_ras(nib.load(str(maseg)), source_name="MaSeg"),
+            reference=orthogonal_t1,
+            interpolation_order=0,
+        )
+        regridded_dir = root / "resources" / "regridded-inputs"
+        regridded_dir.mkdir(parents=True, exist_ok=True)
+        derived = {
+            "t1": (regridded_dir / "T1.nii.gz", orthogonal_t1),
+            "brain_mask": (regridded_dir / "BrainMask.nii.gz", orthogonal_mask),
+            "maseg": (regridded_dir / "MaSeg.nii.gz", orthogonal_maseg),
+        }
+        for role, (path, image) in derived.items():
+            save_nifti_ras(image, path)
+            regridded_resources.append({"role": role, "path": str(path), "sha256": _sha256(path)})
+        t1, mask, maseg = derived["t1"][0], derived["brain_mask"][0], derived["maseg"][0]
+
     stage_root.mkdir(parents=True, exist_ok=True)
     manifest["implementation_signature"] = implementation_signature
     manifest["stage_root"] = str(stage_root)
+    manifest["derived_resources"] = {"regridded_inputs": regridded_resources}
     _write_json(manifest_path, manifest)
 
     stage_paths = {
