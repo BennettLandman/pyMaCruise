@@ -129,13 +129,13 @@ passed **7 tests in 21.85 s**. No full suite was run in this checkpoint.
 
 ## Next work
 
-1. Compare the new fused human TGDM fields against the selected MaCRUISE Java
-   class on held-fixed inputs; distinguish surface parity from label support.
-2. Localize why high-confidence fused tissue still yields low terminal MaSeg
-   ribbon support, without changing source parameters or the 97% target.
-3. Add a restartable human manifest for this corrected preparation/core path
+1. Localize why high-confidence fused tissue still yields low terminal MaSeg
+   ribbon support, without changing source parameters or the 97% target. The
+   held-fixed Java TGDM comparison now passes its terminal surface gates; see
+   the [TGDM comparison report](in-vivo-fused-input-tgdm-held-fixed-java-comparison-2026-10-11.md).
+2. Add a restartable human manifest for this corrected preparation/core path
    while reusing hashed upstream TOADS products; require resume/hash checks.
-4. Continue nonidentity transfer and crop source comparisons before claiming
+3. Continue nonidentity transfer and crop source comparisons before claiming
    general grid equivalence.
 
 See the [TOADS cycle comparison](in-vivo-toads-border-state-2026-10-11.md),
