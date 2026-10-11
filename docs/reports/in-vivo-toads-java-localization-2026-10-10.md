@@ -6,10 +6,29 @@ The supplied human T1 has a direct selected-Java TOADS comparison. It localizes 
 
 - With the same masked, N4-corrected first-pass T1, Java and Python zero-iteration classifications are **byte-for-byte identical** on the `(208, 309, 305)` RAS grid (19,602,960 voxels). Both raw maps have SHA-256 `d38fc4f7168b3fee81b762bf22b3f851ae8c430b8d88c72186a1f7ae19f9c9af`.
 - The four-level registration and post-refresh transforms also match Java at the first pass, including recropped translation `(-4.2854285, -1.3406382, -7.2076693)` mm. Atlas topology and all 11 shape maps were checked against the Java raw assets and were value-exact.
+- After the first TOADS iteration, Java/Python differ at **3,234 voxels** (0.0165%), with minimum label Dice **0.978335** (label 6); all labels still pass the 0.97 threshold.
 - After two TOADS iterations on that same first-pass input, Java/Python differ at **7,057 voxels** (0.0360%). Every label Dice is at least **0.980025** (minimum: label 6); the maps do not match exactly, but all pass the 0.97 label threshold at this short checkpoint.
 - At natural convergence, the full source replay still fails the per-label threshold. Java/Python stopped at iterations **23/22** on first pass and **24/22** on second pass. The first-pass Dice minima are label 6 **0.954809** and label 16 **0.966437**; second-pass minima are label 6 **0.966144** and label 16 **0.966268**. Full voxel differences are 10,809 and 13,762, respectively.
 
-This rules out the atlas conversion, initial Java/Python class assignment, and first-pass rigid registration as the source of the observed gap. It puts the first observed difference inside the evolution/iteration loop. It does not yet isolate which membership, thinning, growth, relation, or registration update introduces it.
+This rules out the atlas conversion, initial Java/Python class assignment, and first-pass rigid registration as the source of the observed gap. It puts the first observed difference inside the first evolving cycle; the disagreement grows across later cycles until two required labels fail. It does not yet isolate which membership, thinning, growth, relation, or registration update introduces it.
+
+## First-iteration label results
+
+| Label | Java voxels | Python voxels | Dice |
+|---:|---:|---:|---:|
+| 1 | 18,254,941 | 18,254,827 | 0.999991 |
+| 5 | 232,511 | 232,631 | 0.996182 |
+| 6 | 3,972 | 3,921 | 0.978335 |
+| 14 | 101,200 | 101,167 | 0.998809 |
+| 15 | 609,726 | 609,617 | 0.998338 |
+| 16 | 3,393 | 3,343 | 0.972981 |
+| 17 | 15,756 | 15,733 | 0.997047 |
+| 18 | 7,937 | 7,958 | 0.997169 |
+| 22 | 20,356 | 20,381 | 0.997864 |
+| 24 | 28,607 | 28,600 | 0.996102 |
+| 25 | 324,561 | 324,782 | 0.998034 |
+
+The Java/Python first-iteration raw output hashes are `713ed9427c1d3572ed4101af07e04e8fad18ad704721356b4b7e89999fae4651` and `040d3228134fcd76a517b206d5a0af10ee79624bc7c85cbf471ab1ce34b8e0b3`, respectively.
 
 ## Two-iteration label results
 
