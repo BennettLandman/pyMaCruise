@@ -46,9 +46,25 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
 
 Result: **13 passed in 9.57 s**. The full suite was not run.
 
-The corrected human checkpoint rerun completed in approximately **6.5
-minutes** with **4.789 GiB peak sampled RSS** under a 12 GiB watchdog. The
-checkpoint reproduction is kept under ignored `build/`:
+The corrected one-iteration human checkpoint rerun completed in approximately
+**6.5 minutes** with **4.789 GiB peak sampled RSS** under a 12 GiB watchdog.
+The corrected two-iteration Python replay completed in approximately **6m40s**
+at **5.771 GiB peak sampled RSS**; it differs from the existing Java
+two-iteration classification at **2,985 of 19,602,960 voxels**. Every label
+has Dice above 0.993; the minimum is label 6 at **0.993825749**. Full label
+metrics are preserved under the ignored two-iteration checkpoint directory.
+
+An instrumented two-iteration Java replay completed in about **35s** at
+**3.519 GiB peak sampled RSS**. Its output is byte-identical to the preserved
+Java baseline, so the baseline remains valid. The first-cycle energy values
+agree at float32 precision. At the second cycle Java reports `Eprev=16610.645`,
+`energy=13595.354`, and ratio **0.1996485**; Python reports ratio
+**0.0643060878**. Thus high label Dice does not mean source-equivalent
+convergence: a second-cycle energy divergence remains. The current evidence
+does not localize that divergence to energy accumulation versus a changed
+membership, growth, or registration state; the next comparison should inspect
+the saved second-cycle components in call order. The checkpoint reproduction
+is kept under ignored `build/`:
 
 ```sh
 PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
@@ -87,9 +103,8 @@ Human data, logs, and intermediate arrays remain ignored and are not committed.
 
 ## Scope
 
-This is a held-fixed first-iteration source comparison on one in-vivo input.
-It does not establish whole-workflow equivalence, natural-convergence parity,
-or clinical validity. The prior two-iteration and natural-convergence
-comparisons used the incorrect Python border initialization and must be rerun
-with this correction before their Dice/stopping differences are considered
-current.
+This is a held-fixed human comparison through two iterations. The first
+iteration matches Java exactly, but iteration two differs by 2,985 voxels and
+its energy ratio differs substantially. Natural-convergence parity still has
+to be rerun from the corrected border state. This does not establish
+whole-workflow equivalence or clinical validity.
