@@ -11,8 +11,10 @@ from dataclasses import dataclass, field
 import math
 
 import numpy as np
+from numba import njit
 
 
+@njit(cache=True, fastmath=False)
 def _jist_triangle_distance_point(point, p1, p2, p3):
     """Float32 transcription of the selected Java ``KdTriangle.distance``."""
     zero = np.float32(0.0)
@@ -170,6 +172,119 @@ def _jist_triangle_distance_point(point, p1, p2, p3):
     return math.sqrt(float(sq)), closest
 
 
+@njit(cache=True, fastmath=False)
+def _jist_box_distance(point, minimum, maximum):
+    """Float32 selected-source distance from a point to one tree bound."""
+    inside = True
+    for axis in range(3):
+        if point[axis] < minimum[axis] or point[axis] > maximum[axis]:
+            inside = False
+    if inside:
+        return -1.0
+    squared = np.float32(0.0)
+    for axis in range(3):
+        reference = point[axis]
+        if reference < minimum[axis]:
+            reference = minimum[axis]
+        elif reference > maximum[axis]:
+            reference = maximum[axis]
+        delta = np.float32(point[axis] - reference)
+        squared = np.float32(squared + np.float32(delta * delta))
+    # javax.vecmath.Point3f.distance squares and sums in float32, then calls
+    # Math.sqrt(double) and narrows its result back to float.  Taking a native
+    # float32 sqrt can differ by one ULP and reorder equal-distance candidates
+    # in PriorityQueue, which changes the selected closest point on shell ties.
+    return float(np.float32(math.sqrt(float(squared))))
+
+
+@njit(cache=True, fastmath=False)
+def _jist_query_many(points, triangles, bounds_min, bounds_max, child_offsets, child_counts, child_indices, face_ids):
+    """JIT traversal preserving the selected Java heap's equal-distance order."""
+    result_points = np.empty((len(points), 3), dtype=np.float64)
+    result_distances = np.empty(len(points), dtype=np.float64)
+    result_face_ids = np.empty(len(points), dtype=np.int64)
+    heap_capacity = len(face_ids)
+    heap_distances = np.empty(heap_capacity, dtype=np.float64)
+    heap_nodes = np.empty(heap_capacity, dtype=np.int32)
+
+    for point_index in range(len(points)):
+        point = points[point_index]
+        heap_size = 1
+        heap_distances[0] = _jist_box_distance(point, bounds_min[0], bounds_max[0])
+        heap_nodes[0] = 0
+        best_distance = 1.0e30
+        best_face = -1
+        best_point = np.empty(3, dtype=np.float32)
+
+        while heap_size:
+            queued_distance = heap_distances[0]
+            current_node = heap_nodes[0]
+            heap_size -= 1
+            if heap_size:
+                heap_distances[0] = heap_distances[heap_size]
+                heap_nodes[0] = heap_nodes[heap_size]
+                index = 0
+                half = heap_size >> 1
+                while index < half:
+                    child = (index << 1) + 1
+                    right = child + 1
+                    if right < heap_size and heap_distances[right] < heap_distances[child]:
+                        child = right
+                    if heap_distances[index] <= heap_distances[child]:
+                        break
+                    distance_swap = heap_distances[index]
+                    heap_distances[index] = heap_distances[child]
+                    heap_distances[child] = distance_swap
+                    node_swap = heap_nodes[index]
+                    heap_nodes[index] = heap_nodes[child]
+                    heap_nodes[child] = node_swap
+                    index = child
+
+            if not queued_distance < best_distance:
+                continue
+            face_id = face_ids[current_node]
+            if face_id >= 0:
+                triangle = triangles[face_id]
+                distance, closest = _jist_triangle_distance_point(
+                    point, triangle[0], triangle[1], triangle[2]
+                )
+                if distance < best_distance:
+                    best_distance = distance
+                    best_point = closest
+                    best_face = face_id
+            else:
+                offset = child_offsets[current_node]
+                for child_offset in range(child_counts[current_node]):
+                    child_node = child_indices[offset + child_offset]
+                    child_distance = _jist_box_distance(
+                        point, bounds_min[child_node], bounds_max[child_node]
+                    )
+                    insert_at = heap_size
+                    heap_distances[insert_at] = child_distance
+                    heap_nodes[insert_at] = child_node
+                    heap_size += 1
+                    while insert_at:
+                        parent = (insert_at - 1) >> 1
+                        if heap_distances[insert_at] >= heap_distances[parent]:
+                            break
+                        distance_swap = heap_distances[insert_at]
+                        heap_distances[insert_at] = heap_distances[parent]
+                        heap_distances[parent] = distance_swap
+                        node_swap = heap_nodes[insert_at]
+                        heap_nodes[insert_at] = heap_nodes[parent]
+                        heap_nodes[parent] = node_swap
+                        insert_at = parent
+
+        if best_face < 0:
+            raise RuntimeError("JIST surface tree found no closest triangle")
+        result_points[point_index, 0] = best_point[0]
+        result_points[point_index, 1] = best_point[1]
+        result_points[point_index, 2] = best_point[2]
+        result_distances[point_index] = best_distance
+        result_face_ids[point_index] = best_face
+    return result_points, result_distances, result_face_ids
+
+
 @dataclass(slots=True)
 class _Face:
     face_id: int
@@ -220,6 +335,45 @@ class JistSurfaceTree:
         ])
         self.root.update()
         self._build(max_depth)
+        self._flatten_tree()
+
+    def _flatten_tree(self) -> None:
+        """Create compact arrays for the source-ordered JIT query kernel."""
+        nodes: list[_Box | _Face] = []
+        node_ids: dict[int, int] = {}
+
+        def visit(node: _Box | _Face) -> int:
+            index = len(nodes)
+            nodes.append(node)
+            node_ids[id(node)] = index
+            if isinstance(node, _Box):
+                for child in node.children:
+                    visit(child)
+            return index
+
+        visit(self.root)
+        self._bounds_min = np.asarray(
+            [node.minimum for node in nodes], dtype=np.float32
+        )
+        self._bounds_max = np.asarray(
+            [node.maximum for node in nodes], dtype=np.float32
+        )
+        self._face_ids = np.asarray(
+            [node.face_id if isinstance(node, _Face) else -1 for node in nodes],
+            dtype=np.int32,
+        )
+        child_offsets = np.zeros(len(nodes), dtype=np.int32)
+        child_counts = np.zeros(len(nodes), dtype=np.int32)
+        child_indices: list[int] = []
+        for index, node in enumerate(nodes):
+            if not isinstance(node, _Box):
+                continue
+            child_offsets[index] = len(child_indices)
+            child_counts[index] = len(node.children)
+            child_indices.extend(node_ids[id(child)] for child in node.children)
+        self._child_offsets = child_offsets
+        self._child_counts = child_counts
+        self._child_indices = np.asarray(child_indices, dtype=np.int32)
 
     @staticmethod
     def _split_position(
@@ -301,15 +455,9 @@ class JistSurfaceTree:
 
     @staticmethod
     def _box_distance(point: np.ndarray, box: _Box | _Face) -> float:
-        point = np.asarray(point, dtype=np.float32)
-        minimum, maximum = box.minimum, box.maximum
-        if np.all(point >= minimum) and np.all(point <= maximum):
-            return -1.0
-        reference = np.maximum(np.minimum(point, maximum), minimum).astype(np.float32)
-        delta = np.subtract(point, reference, dtype=np.float32)
-        squared = np.float32(np.float32(delta[0] * delta[0]) + np.float32(delta[1] * delta[1]))
-        squared = np.float32(squared + np.float32(delta[2] * delta[2]))
-        return float(np.sqrt(squared, dtype=np.float32))
+        return _jist_box_distance(
+            np.asarray(point, dtype=np.float32), box.minimum, box.maximum
+        )
 
     @staticmethod
     def _heap_push(heap: list[tuple[float, int, _Box | _Face]], item: tuple[float, int, _Box | _Face]) -> None:
@@ -373,12 +521,16 @@ class JistSurfaceTree:
 
     def query_many(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         values = np.asarray(points, dtype=np.float32)
-        closest = np.empty((len(values), 3), dtype=np.float64)
-        distances = np.empty(len(values), dtype=np.float64)
-        face_ids = np.empty(len(values), dtype=np.int64)
-        for index, point in enumerate(values):
-            closest[index], distances[index], face_ids[index] = self.query(point)
-        return closest, distances, face_ids
+        return _jist_query_many(
+            values,
+            self.triangles,
+            self._bounds_min,
+            self._bounds_max,
+            self._child_offsets,
+            self._child_counts,
+            self._child_indices,
+            self._face_ids,
+        )
 
     def structure_signature(self) -> list[tuple[object, ...]]:
         """Return path-ordered nodes for direct comparison with the Java tree."""

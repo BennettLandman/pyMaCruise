@@ -46,6 +46,10 @@ def main() -> int:
     parser.add_argument("--report-json", type=Path, default=REPORT)
     parser.add_argument("--report-markdown", type=Path, default=REPORT_MD)
     parser.add_argument("--title", default="Selected JIST closest-point thickness on synthetic meshes")
+    parser.add_argument(
+        "--evidence-class", choices=("synthetic", "in-vivo"), default="synthetic",
+        help="label the source-comparison dataset correctly in the JSON and Markdown reports",
+    )
     args = parser.parse_args()
     mesh_dir = args.mesh_dir.resolve()
     levelset_dir = args.levelset_dir.resolve()
@@ -150,7 +154,8 @@ def main() -> int:
     )
     result = {
         "title": args.title,
-        "synthetic_only": True,
+        "synthetic_only": args.evidence_class == "synthetic",
+        "human_data": args.evidence_class == "in-vivo",
         "method_scope": "Compiles the selected VandyCRUISE ClosestPointThicknessForInner mesh overload and selected JIST tree/intersector sources unchanged. One full-grid Java wrapper execution is compared with the production Python API on identical Java IsoSurfaceOnGrid meshes.",
         "sources": {
             "closest_point_thickness_for_inner_sha256": sha(selected.SELECTED),
@@ -183,7 +188,7 @@ def main() -> int:
             "java_heap_cap_gb": 2,
         },
         "limitations": [
-            "This validates the selected thickness wrapper on held-fixed Java meshes, not the complete workflow or real-MRI behavior.",
+            "This validates the selected thickness wrapper on held-fixed Java meshes, not the complete workflow.",
             "Mesh extraction connectivity and upstream stage equivalence remain separate P37 items.",
             "Python peak RSS is measured for this process; Java heap is capped at 2 GiB, but process RSS is not included.",
         ],
@@ -205,7 +210,7 @@ def main() -> int:
         "",
         f"**Selected wrapper comparison: {'PASS' if result['metrics']['comparison_pass'] else 'FAIL'}.** Maximum physical-field error is `{physical_error:.9g} mm` against the `0.001 mm` scalar gate; central nearest-vertex index mismatches: {index_mismatches}.",
         "",
-        f"The Python API took `{python_seconds:.1f} s` and peaked at `{peak_rss_gb:.3f} GB` process RSS. Java ran with a 2 GiB heap cap. This is selected-source synthetic evidence, not whole-workflow equivalence or real-MRI validation. Mesh extraction connectivity differences remain open. See the [JSON report]({report_json.name}) for source and fixture hashes. Reproduce with `./.venv/bin/python scripts/compare_jist_closest_point_thickness_brain_resolution.py --mesh-dir {mesh_dir} --levelset-dir {levelset_dir} --work-dir {work_dir} --report-json {report_json} --report-markdown {report_markdown}`.",
+        f"The Python API took `{python_seconds:.1f} s` and peaked at `{peak_rss_gb:.3f} GB` process RSS. Java ran with a 2 GiB heap cap. This is selected-source {args.evidence_class} stage evidence, not whole-workflow equivalence. Mesh extraction connectivity differences are addressed separately. See the [JSON report]({report_json.name}) for source and fixture hashes. Reproduce with `./.venv/bin/python scripts/compare_jist_closest_point_thickness_brain_resolution.py --mesh-dir {mesh_dir} --levelset-dir {levelset_dir} --work-dir {work_dir} --report-json {report_json} --report-markdown {report_markdown} --evidence-class {args.evidence_class}`.",
         "",
     ]
     report_markdown.parent.mkdir(parents=True, exist_ok=True)
