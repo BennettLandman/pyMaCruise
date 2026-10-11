@@ -61,6 +61,7 @@ def test_registered_loop_defaults_to_selected_vandy_final_growth() -> None:
     )
 
     assert config.do_growing is True
+    assert config.relation_limit == 3
     assert config.record_growing_events is False
     assert config.retain_iteration_history is False
     assert config.record_thinning_items is False

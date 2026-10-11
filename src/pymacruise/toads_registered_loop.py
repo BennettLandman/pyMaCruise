@@ -102,7 +102,9 @@ class ToadsRegisteredLoopConfig:
     prior_scale: float = 0.2
     maximum_iterations: int = 50
     convergence_threshold: float = 1e-4
-    relation_limit: int = 1
+    # MedicAlgorithmToads08 forwards marchingLimit=3.0; the selected
+    # segmentation engine uses it for relation and closest-label refreshes.
+    relation_limit: int = 3
     # The selected VandyCRUISE AlgorithmMultipleToads constructor enables
     # final-iteration growing unconditionally. Component adapters still accept
     # False for source branch tests and alternate callers.

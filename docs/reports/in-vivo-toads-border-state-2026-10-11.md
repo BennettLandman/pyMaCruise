@@ -48,63 +48,56 @@ Result: **13 passed in 9.57 s**. The full suite was not run.
 
 The corrected one-iteration human checkpoint rerun completed in approximately
 **6.5 minutes** with **4.789 GiB peak sampled RSS** under a 12 GiB watchdog.
-The corrected two-iteration Python replay completed in approximately **6m40s**
-at **5.771 GiB peak sampled RSS**; it differs from the existing Java
-two-iteration classification at **2,985 of 19,602,960 voxels**. Every label
-has Dice above 0.993; the minimum is label 6 at **0.993825749**. Full label
-metrics are preserved under the ignored two-iteration checkpoint directory.
+The previously reported two-iteration Python replay used `relation_limit=1`;
+its 2,985 differing classifications, minimum Dice 0.993825749, and energy
+ratio 0.0643060878 are superseded and are not source-parity evidence. The
+selected Vandy `AlgorithmMultipleToads` wrapper passes `marchingLimit=3.0` to
+`MultipleToadSegmentation`, where `limit` controls relation and closest-label
+diffusion (Vandy `AlgorithmMultipleToads.java:603–606`;
+`MultipleToadSegmentation.java:200, 1409, 1500`). At limit 1, the saved
+post-growth closest-label slots 1–3 differ from Java in 772,852, 1,348,596,
+and 1,051,653 voxels. A held-fixed limit-3 replay matches all four slots
+exactly over all **4,847,040** voxels, with identical per-slot hashes.
 
-An instrumented two-iteration Java replay completed in about **35s** at
-**3.519 GiB peak sampled RSS**. Its output is byte-identical to the preserved
-Java baseline, so the baseline remains valid. The first-cycle energy values
-agree at float32 precision. At the second cycle Java reports `Eprev=16610.645`,
-`energy=13595.354`, and ratio **0.1996485**; Python reports ratio
-**0.0643060878**. Thus high label Dice does not mean source-equivalent
-convergence: a second-cycle energy divergence remains. The current evidence
-does not localize that divergence to energy accumulation versus a changed
-membership, growth, or registration state; the next comparison should inspect
-the saved second-cycle components in call order. The checkpoint reproduction
-is kept under ignored `build/`:
+The corrected two-cycle Python replay used limit 3 and matches Java exactly
+on pre-cycle-2 segmentation, ordering, class volumes, relation map, all 935
+relation-membership entries, translated skeleton labels, all 11 availability
+channels, all 11 boundary-distance channels, all four closest-label channels,
+and terminal cropped classification. The terminal classification SHA-256 is
+`dcadcad78f5a4388cbcd5a4cdee7d210470608a66936c9348c84882646ba24ad` for both
+implementations. Cycle-2 energy ratios are **0.1996484995** in Python and
+**0.1996485** in Java. The corrected replay peaked at **6.280 GiB RSS** under
+the 8 GiB watchdog. Java's instrumented two-cycle replay completed in about
+35s at **3.519 GiB peak sampled RSS** and is byte-identical to the preserved
+Java baseline.
+
+The Python algorithm and all comparison arrays completed; an optional
+post-run statistics exporter then stopped on an invalid attribute name
+(`class_standard_deviations` instead of `standard_deviations`). The report
+uses the arrays saved before that exporter. The config default was corrected
+to relation limit 3, consistent with the selected wrapper and CLI. Its focused
+default test passed **1 test in 0.69 s**. This held-fixed two-cycle result is
+source-equivalence evidence for this human input state, not natural-convergence
+or whole-workflow equivalence. The corrected replay and exact command are
+under ignored `build/`:
 
 ```sh
-PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
+PYTHONPATH=src .venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
   .venv/bin/python \
-  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/python_checkpoint.py
+  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint-localize-iter2/out-limit3/python_localize_iter2.py
 ```
 
-The post-fix run used the repository RSS watchdog:
-
-```sh
-PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
-  .venv/bin/python scripts/run_with_rss_watchdog.py \
-  --limit-gb 12 --interval-seconds 1 --report-interval-seconds 60 -- \
-  .venv/bin/python \
-  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/python_checkpoint.py
-```
-
-The corresponding temporary Java harness invocation used a one-iteration
-ceiling and exported its post-thinning segmentation, skeleton, and ordering
-to
-`build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/out/`.
-Its runnable command was:
-
-```sh
-CP="build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/classes:build/java-reference/toads-selected-wrapper-harness:$(cat build/java-reference/toads-selected-wrapper-harness/classpath.txt)"
-java -Xmx12g \
-  -Dtoads.checkpoint.dir=build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/out \
-  -cp "$CP" ToadsWorkflowSourceHarness \
-  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/first-input-masked.raw \
-  /Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/src/Atlas/cruise-atlas-10obj-toads2008.txt \
-  208 309 305 1 1 1 1 \
-  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/java-reference/checkpoint/out/classification.raw
-```
+The Java two-cycle checkpoint harness and raw comparison arrays are also
+preserved in ignored `build/` under the same `checkpoint-localize-iter2/`
+directory. No human data or checkpoint arrays are committed.
 
 Human data, logs, and intermediate arrays remain ignored and are not committed.
 
 ## Scope
 
-This is a held-fixed human comparison through two iterations. The first
-iteration matches Java exactly, but iteration two differs by 2,985 voxels and
-its energy ratio differs substantially. Natural-convergence parity still has
-to be rerun from the corrected border state. This does not establish
-whole-workflow equivalence or clinical validity.
+This is a held-fixed human comparison through two iterations. The earlier
+cycle-2 discrepancy came from relation limit 1 in the diagnostic replay; the
+selected limit-3 replay matches the two-cycle state and classification exactly.
+Natural-convergence parity still needs a corrected-border run. This does not
+establish whole-workflow equivalence or clinical validity.
