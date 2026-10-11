@@ -535,8 +535,9 @@ def toads_initialize_thinning_queue(
     The source scans only interior voxels, accumulates current-class
     memberships in x/y/z order, detects boundaries from six face neighbors,
     retains the source endpoint test's neighbor-count behavior, and inserts
-    negative membership-ratio priorities into a max heap. Existing border
-    skeleton/availability values are copied through unchanged.
+    negative membership-ratio priorities into a max heap. With no supplied
+    initial skeleton, the border matches Java's zero-initialized constructor
+    array; supplied border skeleton/availability values are copied through.
     """
     labels = np.asarray(segmentation)
     mems = np.asarray(memberships, dtype=np.float32)
@@ -556,7 +557,12 @@ def toads_initialize_thinning_queue(
         raise ValueError("zero_threshold must be finite and nonnegative")
 
     if initial_skeleton is None:
-        skeleton = np.full(labels.shape, empty_label, dtype=np.int16)
+        # MultipleToadSegmentation allocates ``skeleton`` as a Java
+        # byte[][][]; its border is therefore class index zero. The source
+        # initThinningLabels method overwrites only interior voxels. The
+        # removed-voxel sentinel remains ``empty_label`` and is distinct from
+        # this constructor default.
+        skeleton = np.zeros(labels.shape, dtype=np.int16)
     else:
         source_skeleton = np.asarray(initial_skeleton)
         if source_skeleton.shape != labels.shape or not np.issubdtype(source_skeleton.dtype, np.integer):
@@ -811,6 +817,7 @@ def toads_propagate_thinning(
     *,
     empty_label: int = -1,
     zero_threshold: float = 1e-10,
+    initial_skeleton: ArrayLike | None = None,
     record_processed_items: bool = True,
     ordering: ArrayLike | None = None,
 ) -> ToadsThinningPass:
@@ -819,10 +826,12 @@ def toads_propagate_thinning(
     The source fixes its absolute minimum class volume at 100 and combines it
     with ``volume_ratio * initial_volume`` using Java float32 arithmetic.
     ``ordering`` is the source instance's carried array; omitted input means
-    the Java constructor's initial zero-valued array. The returned field must
-    be passed to later growth and then carried through subsequent thinning
-    passes. This composes only the exact-membership thinning path; the larger
-    TOADS iteration remains separate.
+    the Java constructor's initial zero-valued array. Likewise, omitted
+    ``initial_skeleton`` uses the constructor's zero-initialized byte array;
+    callers replaying a pre-seeded Java state can supply its skeleton. The
+    returned fields must be passed to later growth and carried through
+    subsequent thinning passes. This composes only the exact-membership
+    thinning path; the larger TOADS iteration remains separate.
     """
     ratio32 = np.float32(volume_ratio)
     if not np.isfinite(ratio32):
@@ -832,6 +841,7 @@ def toads_propagate_thinning(
         memberships,
         empty_label=empty_label,
         zero_threshold=zero_threshold,
+        initial_skeleton=initial_skeleton,
     )
     minimums = np.maximum(
         np.float32(100.0), np.float32(ratio32 * initialized.class_volumes)

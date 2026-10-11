@@ -49,7 +49,12 @@ def test_initialized_full_thinning_pass_matches_java_source_harness() -> None:
     assert len(reference["processed"]) > 1
 
     segmentation, memberships = _phantom()
-    initialized = toads_initialize_thinning_queue(segmentation, memberships)
+    # This small harness deliberately seeds Java's skeleton with -1 before
+    # initThinningLabels; its border is preserved by the selected source.
+    initial_skeleton = np.full(segmentation.shape, -1, dtype=np.int16)
+    initialized = toads_initialize_thinning_queue(
+        segmentation, memberships, initial_skeleton=initial_skeleton
+    )
     np.testing.assert_array_equal(
         initialized.class_volumes.view(np.int32),
         np.asarray(reference["initial_volumes_bits"], dtype=np.int32),
@@ -62,6 +67,7 @@ def test_initialized_full_thinning_pass_matches_java_source_harness() -> None:
         transformed_shape_values=np.zeros_like(memberships),
         volume_ratio=_from_bits(reference["volume_ratio_bits"]),
         limit=_from_bits(reference["limit_bits"]),
+        initial_skeleton=initial_skeleton,
     )
 
     np.testing.assert_array_equal(
@@ -94,6 +100,7 @@ def test_initialized_full_thinning_pass_matches_java_source_harness() -> None:
         transformed_shape_values=np.zeros_like(memberships),
         volume_ratio=_from_bits(reference["volume_ratio_bits"]),
         limit=_from_bits(reference["limit_bits"]),
+        initial_skeleton=initial_skeleton,
         record_processed_items=False,
     )
     assert compiled.processed_items == ()
@@ -108,3 +115,17 @@ def test_initialized_full_thinning_pass_matches_java_source_harness() -> None:
         item = compiled.queue.pop_first()
         compiled_queue_after.append([_bits(item.value), item.x, item.y, item.z, item.label])
     assert compiled_queue_after == reference["queue_after"]
+
+
+def test_constructor_default_skeleton_border_matches_java_byte_array() -> None:
+    segmentation = np.ones((5, 5, 5), dtype=np.int16)
+    memberships = np.full((5, 5, 5, 2), np.float32(0.5), dtype=np.float32)
+
+    initialized = toads_initialize_thinning_queue(segmentation, memberships)
+
+    border = np.zeros(segmentation.shape, dtype=bool)
+    border[[0, -1], :, :] = True
+    border[:, [0, -1], :] = True
+    border[:, :, [0, -1]] = True
+    assert np.all(initialized.skeleton[border] == 0)
+    assert np.all(initialized.skeleton[~border] == 1)
