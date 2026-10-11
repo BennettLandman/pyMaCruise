@@ -50,8 +50,8 @@ The audit checked finite NIfTIs, geometry, nesting, label support, mesh topology
 - Dura brain mask Dice with the supplied mask: **0.95198** (37,736 Dura-only and 85,349 supplied-only voxels). This is a mask comparison, not the required cortical segmentation Dice.
 - Visual QA overlays show the three surfaces following folded cortical anatomy in sagittal, coronal, and axial views. The separate 3D panels use display-only vertex clustering and do not alter saved surfaces. Files are in `build/qa-human-ribbon-current-attempt-02-2026-10-11/`.
 
-No complete Java/MATLAB output for this same input is available for whole-workflow comparison. The audit therefore records `source_reference_comparison=unavailable`. The agreed minimum Dice `0.97`, Hausdorff `1 mm`, and mean surface distance `0.01 mm` cannot be declared passed from these diagnostics; matching source surfaces/segmentations are still needed.
+The supplied source-run input directory contains the T1, BET output/mask, and MaSeg, but `/Users/landmaba/dev/mipav/sample-macruise/output` currently contains no files. I also found no source-run ribbon products or run logs under the supplied sample directory. Therefore no complete Java/MATLAB output for this same input is currently available for whole-workflow comparison, and the audit records `source_reference_comparison=unavailable`. The agreed minimum Dice `0.97`, Hausdorff `1 mm`, and mean surface distance `0.01 mm` cannot be declared passed from these diagnostics; the source outputs or a separate ground-truth reference are needed.
 
 ## Next work
 
-Use the successful restartable case to compare remaining available JIST stages and diagnose the 136-component ribbon. Then run and validate the plus workflow. Keep synthetic, source-equivalence, and human-data evidence separate. The overall port is not complete.
+Restore/locate the original Singularity output directory if a full source-run comparison is expected. Use this restartable case to diagnose the 136-component ribbon, then run and validate the plus workflow. Keep synthetic, source-equivalence, and human-data evidence separate. The overall port is not complete.
