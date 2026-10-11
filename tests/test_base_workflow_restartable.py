@@ -101,6 +101,9 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert manifest["converged"] is False
     assert manifest["result_interpretation"] == "stage-run-complete-but-toads-did-not-meet-energy-threshold"
     assert manifest["source_equivalence_claim"] is False
+    assert manifest["stages"]["dura"]["command"][-2:] == [
+        "--membership-level", "0.3"
+    ]
     assert set(manifest["stages"]) == {
         "n4", "toads-first", "dura", "toads-second", "cruise-core",
         "maseg-refinement", "surface-thickness",

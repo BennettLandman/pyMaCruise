@@ -313,8 +313,11 @@ def run_base_workflow(
     atlas_conversion_audit = _find_atlas_conversion_audit(atlas_root)
 
     settings = asdict(options)
+    membership_level = settings.pop("dura_membership_level")
     if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in settings.values()):
         raise ValueError("All synthetic base workflow iteration/count options must be positive integers")
+    if not np.isfinite(membership_level) or not 0.0 <= membership_level <= 1.0:
+        raise ValueError("Dura membership level must be finite and in [0, 1]")
     signature_payload = {
         "schema_version": 1,
         "spatial_convention": "RAS",
