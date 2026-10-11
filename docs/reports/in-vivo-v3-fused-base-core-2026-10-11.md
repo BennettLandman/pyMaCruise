@@ -22,10 +22,13 @@ The source-selected fusion stage matches the selected Java
 voxels per map. Fusion support covers 642,290/642,291 MaSeg GM voxels
 (99.9998%) and 428,290/428,303 MaSeg WM voxels (99.9970%). This high fusion
 coverage does not carry through to the final ribbon. The terminal surface
-regions support 525,899/642,291 GM voxels (81.8786%) and 367,582/428,303 WM
-voxels (85.8229%). Against the source-faithful refined segmentation, support is
-525,899/588,915 GM (89.2996%) and 367,582/379,771 WM (96.7904%). These are
-below the agreed 97% target.
+regions contain 525,899/642,291 input MaSeg GM voxels (81.8786%) and
+367,582/428,303 input WM voxels (85.8229%). Source-faithful refinement leaves
+these supported counts unchanged; the higher reported fractions against edited
+labels (89.2996% GM, 96.7904% WM) come only from smaller denominators. These
+containment fractions are not the user-agreed segmentation Dice against a
+historical reference, which is unavailable. See the [support localization
+report](in-vivo-maseg-support-localization-2026-10-11.md).
 
 All 23 audited NIfTI files are finite and RAS. The three surfaces are
 watertight by edge incidence but each has 158 connected components; the largest
