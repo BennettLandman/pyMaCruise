@@ -86,13 +86,15 @@ regression group (**17 passed, 0 failed, 0 skipped in 0.86 s**) on the
 corrected code. These new source comparisons are standalone harness results,
 not a full pytest run.
 
-## Next checkpoint
+## Follow-up
 
-Use `Atlas_BrainTissueMask` instead of the WM-only `Atlas_Mask` in the Python
-PLUS fusion input, matching the Java wrapper. First hold the current crop and
-other fusion inputs fixed and compare Java/Python fusion products and branch
-counts; then invalidate and resume the PLUS stages that depend on that input,
-and recheck ribbon quality. Preserve the current case and thresholds as
-diagnostics; do not relax them. A small two-parcel boundary fixture (labels 100
-and 101, plus a paired lower-label suppression case) can separately validate
-nontrivial source boundary behavior.
+The fusion mask was changed to `Atlas_BrainTissueMask`; held-fixed Java/Python
+comparison is bitwise exact for fused GM, WM, and mask. The corrected
+iteration-6 checkpoint composition raises GM support from 0% to 0.099%, but
+does not meet the 0.97 tissue-support target and retains disconnected surfaces,
+submillimeter ribbon thickness, and a nonterminal loop. See [the mask-fix
+report](p41z-brain-tissue-mask-fix-2026-10-11.md). Next, trace the remaining
+support and topology failures through the corrected fused map, TGDM seed, and
+surface evolution. Keep acceptance thresholds unchanged. A small two-parcel
+boundary fixture (labels 100 and 101, plus a paired lower-label suppression
+case) can separately validate nontrivial raw-boundary behavior.

@@ -1,0 +1,55 @@
+{
+  "all_outputs_exact": true,
+  "brain_mask_override_source": "/Users/landmaba/dev/mipav/pymacruise/build/p41z-case-normalization/iteration-0006-surfaces/maseg-cortical-separation/Atlas_BrainTissueMask.nii.gz",
+  "comparison": "preserved selected Java CombineMAandTOADS.execute() vs Python combine_multi_atlas_toads on workflow crop inputs",
+  "coordinate_system": "RAS",
+  "fusion_method_source_commit": "2c28ad12",
+  "implementation_signature": "not embedded by the selected-method comparison harness",
+  "label_100_diagnostics": {
+    "atlas_gm_support_voxels": 67677,
+    "branch_counts": {
+      "confident_gm": 293,
+      "confident_wm": 0,
+      "fallback": 67384,
+      "outside_mask": 0
+    },
+    "fused_gm_nonzero_voxels": 67672,
+    "fused_wm_nonzero_voxels": 67384,
+    "fusion_mask_support_voxels": 67677,
+    "toads_gm_nonzero_voxels": 67672,
+    "toads_wm_fill_nonzero_voxels": 67677,
+    "voxel_count": 67677
+  },
+  "outputs": {
+    "gm": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    },
+    "mask": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    },
+    "wm": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    }
+  },
+  "scope": "held-fixed six atlas/TOADS input images from the saved plus run; selected default ErodeMethod=3D and GMconfident=0.001",
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "synthetic_only": true,
+  "workflow_mask_wiring_fix_status": "working-tree fix; focused regression passed before commit",
+  "workflow_run_signature": "0a3c4e823e865c205f9e3b34aae7b2c3145e03d260f4ff34a715bb38e3ddb3c0"
+}

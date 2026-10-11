@@ -357,7 +357,7 @@ def run_plus_full_workflow(
                     dura_wm_mask_path=native.outputs["wm_mask"],
                     multi_atlas_gm_path=cortical.outputs["Atlas_GM"],
                     multi_atlas_wm_path=cortical.outputs["Atlas_WM"],
-                    multi_atlas_mask_path=cortical.outputs["Atlas_Mask"],
+                    multi_atlas_mask_path=cortical.outputs["Atlas_BrainTissueMask"],
                     brain_mask_path=mask,
                     output_dir=stage_root / "plus-surface",
                     options=pipeline_options,

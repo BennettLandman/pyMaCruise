@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import nibabel as nib
 import numpy as np
@@ -63,6 +64,92 @@ def _command(t1: Path, flair: Path, mask: Path, maseg: Path, output: Path, *extr
         "--loop-convergence-threshold", "0", "--n-iter-max", "2",
         "--loop-thinning-limit", "1000", "--finite-zero-variance", *extra,
     ]
+
+
+def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+
+    def artifact(name: str) -> Path:
+        path = tmp_path / "stub-artifacts" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(name, encoding="utf-8")
+        return path
+
+    def result(name: str, **attributes: object) -> SimpleNamespace:
+        attributes.setdefault("manifest_path", artifact(f"{name}.json"))
+        return SimpleNamespace(**attributes)
+
+    monkeypatch.setattr(plus_full_workflow_module, "_verify_stage", lambda *_args: {})
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_preprocessing_checkpoint",
+        lambda *_args, **_kwargs: result("preprocessing", modalities_path=artifact("modalities.nii.gz")),
+    )
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_crop_checkpoint",
+        lambda *_args, **_kwargs: result(
+            "crop", normalized_path=artifact("normalized.nii.gz"),
+            cropped_path=artifact("cropped.nii.gz"),
+        ),
+    )
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_initial_atlas_alignment_checkpoint",
+        lambda *_args, **_kwargs: result("alignment"),
+    )
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_registered_recrop_checkpoint",
+        lambda *_args, **_kwargs: result("recrop"),
+    )
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_loop_workflow",
+        lambda *_args, **_kwargs: result(
+            "lesion-loop", registered_loop_manifest=artifact("registered-loop.json"),
+            classification_path=None, lesion_subtype_path=None,
+        ),
+    )
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_dura_output_checkpoint",
+        lambda *_args, **_kwargs: result("dura", outputs={"gm": artifact("dura-gm.nii.gz")}),
+    )
+    native_outputs = {
+        name: artifact(f"native-{name}.nii.gz")
+        for name in ("csf", "gm", "wm_fill", "wm_mask")
+    }
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_native_dura_transfer",
+        lambda *_args, **_kwargs: result("native-dura", outputs=native_outputs),
+    )
+    cortical_outputs = {
+        name: artifact(f"{name}.nii.gz")
+        for name in ("Atlas_GM", "Atlas_WM", "Atlas_Mask", "Atlas_BrainTissueMask")
+    }
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_maseg_cortical_checkpoint",
+        lambda *_args, **_kwargs: result("cortical", outputs=cortical_outputs),
+    )
+    captured: dict[str, object] = {}
+
+    def capture_plus_surface(**kwargs: object) -> SimpleNamespace:
+        captured.update(kwargs)
+        return result("plus-surface", outputs={})
+
+    monkeypatch.setattr(plus_full_workflow_module, "run_plus_file_workflow", capture_plus_surface)
+
+    plus_full_workflow_module.run_plus_full_workflow(
+        t1, flair, mask, maseg, ATLAS, tmp_path / "full-workflow"
+    )
+
+    assert captured["multi_atlas_mask_path"] == cortical_outputs["Atlas_BrainTissueMask"]
+    assert captured["multi_atlas_mask_path"] != cortical_outputs["Atlas_Mask"]
 
 
 def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_path: Path) -> None:
