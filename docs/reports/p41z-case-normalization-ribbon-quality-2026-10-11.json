@@ -1,0 +1,131 @@
+{
+  "checkpoint_audit": true,
+  "checks": {
+    "explicit_maseg_wm_gm_csf_labels_present": true,
+    "labeled_tissue_regions_agree_with_surfaces": false,
+    "levelset_mean_thickness_within_bounds": false,
+    "nested_voxel_regions": true,
+    "production_surface_thickness_within_bounds": false,
+    "surfaces_closed_connected_euler_two": false
+  },
+  "completed_iteration": 6,
+  "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+  "label_surface_consistency": {
+    "disagreement_voxel_counts": {
+      "csf_voxels_inside_outer": 9,
+      "gm_voxels_inside_inner": 3,
+      "gm_voxels_outside_outer": 67674,
+      "wm_voxels_outside_inner": 15168
+    },
+    "minimum_required_support": 0.97,
+    "support_fractions": {
+      "csf_outside_outer": 0.9998270826928989,
+      "gm_between_inner_and_outer": 0.0,
+      "wm_inside_inner": 0.5976551102151251
+    }
+  },
+  "levelset_subtraction_thickness": {
+    "crossing_voxel_count": 291,
+    "maximum_mm": 2.0328845977783203,
+    "mean_mm": 0.8105721173110286,
+    "minimum_mm": 0.1669648438692093,
+    "stdev_mm": 0.452364481271355
+  },
+  "loop_energy_ratio": 0.13159732520580292,
+  "manifest": "build/p41z-case-normalization/iteration-0006-surfaces/synthetic-plus-checkpoint-surface-composition.json",
+  "manifest_run_signature": "52afcce0be11cc5bb2eaea698680d10b8dbfa0281e1fe3a7ffb7d9004530b622",
+  "maseg_labels": {
+    "counts": {
+      "0": 455818,
+      "100": 67677,
+      "44": 37699,
+      "5": 52048,
+      "75": 16695
+    },
+    "present": [
+      0,
+      5,
+      44,
+      75,
+      100
+    ]
+  },
+  "nesting_voxel_counts": {
+    "central_outside_outer_voxels": 0,
+    "inner_outside_central_voxels": 0
+  },
+  "orientation": "RAS",
+  "passed": false,
+  "quality_bounds": {
+    "levelset_mean_tolerance_mm": 1.0,
+    "minimum_label_support": 0.97,
+    "nominal_ribbon_mm": 5.0,
+    "surface_median_tolerance_mm": 1.0,
+    "surface_p05_minimum_mm": 2.0,
+    "surface_p95_maximum_mm": 8.0
+  },
+  "shape": [
+    81,
+    101,
+    77
+  ],
+  "stop_reason": null,
+  "surface_closest_point_thickness": {
+    "mean_mm": 0.3864861322008075,
+    "median_mm": 0.37254613154601524,
+    "p05_mm": 0.1643572023294743,
+    "p95_mm": 0.6414703610579812,
+    "sample_count": 21246,
+    "stdev_mm": 0.14291051984689754
+  },
+  "surface_meshes": {
+    "central": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -16,
+      "faces": 44352,
+      "nonmanifold_edges": 0,
+      "vertices": 22160,
+      "watertight": true
+    },
+    "inner": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -16,
+      "faces": 42672,
+      "nonmanifold_edges": 0,
+      "vertices": 21320,
+      "watertight": true
+    },
+    "outer": {
+      "boundary_edges": 0,
+      "connected_components": 2,
+      "euler_characteristic": -16,
+      "faces": 44244,
+      "nonmanifold_edges": 0,
+      "vertices": 22106,
+      "watertight": true
+    }
+  },
+  "workflow_terminal": false,
+  "source_commit": "0929c81f",
+  "loop_manifest_sha256": "37c60dbce40bfa75f6ec8529e4f92db2ba469d7dd463228d41d6cab4f6a3ebec",
+  "surface_composition_manifest_sha256": "cd8575e48c00218205fbcaac92595ac8b712505c4d6b4f06a10db827636670ed",
+  "registered_segmentation_sha256": "2015676af97c1f64e3544b87edc23227c6edfb97ba6108e8c835b6c37de8cd88",
+  "loop_runtime_seconds": 181.58834179199766,
+  "loop_peak_sampled_rss_gb": 0.782,
+  "comparison_to_pre_fix_iteration6": {
+    "prior_checkpoint": "build/plus-vandy-atlas-aligned-fine/loop-chunks/iteration-0006",
+    "segmentation_voxels_different": 1306,
+    "skeleton_voxels_different": 1306,
+    "membership_values_different": 105653,
+    "membership_max_absolute_difference": 2.384185791015625e-07,
+    "ordering_voxels_different": 3462,
+    "relation_map_voxels_different": 3818,
+    "availability_values_different": 0,
+    "growing_events_before": 254397,
+    "growing_events_after": 254394,
+    "objective_before_and_after": 3267.361083984375,
+    "energy_ratio_before_and_after": 0.13159732520580292
+  }
+}
