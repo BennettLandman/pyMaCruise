@@ -51,13 +51,20 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
 ) -> None:
     output = tmp_path / "base-run"
     config_path = tmp_path / "base-workflow.json"
+    maseg_values = np.asanyarray(nib.load(str(MASEG)).dataobj).copy()
+    # This older workflow fixture only contains brainstem/cerebellum labels.
+    # Add a compact MaSeg cortical support so the source-selected base crop and
+    # fusion stage can be exercised while retaining all eight cleanup labels.
+    maseg_values[4:9, 4:9, 4:9] = 100
+    maseg_for_run = tmp_path / "maseg-with-cortex.nii.gz"
+    nib.save(nib.Nifti1Image(maseg_values.astype(np.int16), nib.load(str(MASEG)).affine), maseg_for_run)
     config_path.write_text(
         json.dumps(
             {
                 "schema_version": 1,
                 "profile": "base",
                 "t1_path": str(FIXTURE / "t1.nii.gz"),
-                "maseg_path": str(MASEG),
+                "maseg_path": str(maseg_for_run),
                 "brain_mask_path": str(FIXTURE / "brain-mask.nii.gz"),
                 "output_dir": str(output),
                 "run_options": {
@@ -105,12 +112,28 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         "--membership-level", "0.3"
     ]
     assert set(manifest["stages"]) == {
-        "n4", "toads-first", "dura", "toads-second", "cruise-core",
+        "n4", "toads-first", "dura", "toads-second", "base-tissue-preparation", "cruise-core",
         "maseg-refinement", "surface-thickness",
     }
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
     assert manifest["stages"]["toads-first"]["attempt"] == 2
     assert all(stage["outputs"] and stage["dependency_signature"] for stage in manifest["stages"].values())
+    preparation_stage = manifest["stages"]["base-tissue-preparation"]
+    assert len(preparation_stage["outputs"]) == 19  # 17 RAS maps, provenance, stage log
+    assert "--remove-cerebellum" not in preparation_stage["command"]
+    preparation_provenance_path = Path(next(
+        item["path"] for item in preparation_stage["outputs"]
+        if Path(item["path"]).name == "provenance.json"
+    ))
+    preparation_details = json.loads(preparation_provenance_path.read_text())
+    assert preparation_details["parameters"]["removed_voxel_counts"] is None
+    assert preparation_details["parameters"]["mask_distinction"]["fusion_mask"] == (
+        "MaSeg-derived Atlas_BrainTissueMask"
+    )
+    core_stage = manifest["stages"]["cruise-core"]
+    assert "--remove-cerebellum" not in core_stage["command"]
+    assert "--base-preparation-provenance" in core_stage["command"]
+    assert any("fused_gm.nii.gz" in value for value in core_stage["command"])
     toads_log = output / "stages" / "toads-first" / "attempt-02" / "stage.log"
     assert toads_log.is_file()
     toads_log_text = toads_log.read_text()
@@ -148,8 +171,8 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         if Path(item["path"]).name == "provenance.json"
     ))
     core_details = json.loads(core_provenance.read_text())
-    assert core_details["parameters"]["remove_cerebellum"] is True
-    assert core_details["parameters"]["removed_voxel_counts"] == [8, 8, 8]
+    assert core_details["parameters"]["remove_cerebellum"] is False
+    assert core_details["parameters"]["removed_voxel_counts"] is None
 
     surface_stage = manifest["stages"]["surface-thickness"]
     surface_files = {Path(item["path"]).name: Path(item["path"]) for item in surface_stage["outputs"]}
@@ -180,7 +203,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     }
     assert main([*arguments, "--resume"]) == 0
     resumed_summary = capsys.readouterr().out
-    assert resumed_summary.count("Resume: verified") == 7
+    assert resumed_summary.count("Resume: verified") == 8
     updated = json.loads(manifest_path.read_text())
     assert {
         Path(record["path"]).name: record["sha256"]
@@ -194,7 +217,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert main([*arguments, "--resume"]) == 0
     code_change_summary = capsys.readouterr().out
     assert "Resume: verified" not in code_change_summary
-    assert code_change_summary.count("Stage check passed:") == 7
+    assert code_change_summary.count("Stage check passed:") == 8
     code_changed = json.loads(manifest_path.read_text())
     assert code_changed["implementation_signature"] == "f" * 64
     assert code_changed["previous_implementation_signature"] == manifest["implementation_signature"]
@@ -207,7 +230,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
 
     assert main([*arguments, "--resume"]) == 0
     code_resume_summary = capsys.readouterr().out
-    assert code_resume_summary.count("Resume: verified") == 7
+    assert code_resume_summary.count("Resume: verified") == 8
     updated = json.loads(manifest_path.read_text())
 
     # Simulate interruption/corruption at a checkpoint: a damaged CRUISE output
@@ -220,7 +243,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     damaged_inner.write_bytes(damaged_inner.read_bytes() + b"interrupted-output")
     assert main([*arguments, "--resume"]) == 0
     restart_summary = capsys.readouterr().out
-    assert restart_summary.count("Resume: verified") == 4
+    assert restart_summary.count("Resume: verified") == 5
     assert "Stage check passed: cruise-core" in restart_summary
     assert "Stage check passed: maseg-refinement" in restart_summary
     assert "Stage check passed: surface-thickness" in restart_summary

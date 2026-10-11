@@ -220,6 +220,20 @@ def build_parser() -> argparse.ArgumentParser:
     cruise_inputs.add_argument("--output-dir", required=True, type=Path)
     _add_provenance_option(cruise_inputs)
 
+    base_tissue = commands.add_parser(
+        "base-tissue-preparation",
+        help="transfer, crop, and fuse MaSeg atlas masks with second-pass TOADS maps",
+    )
+    base_tissue.add_argument("--maseg", required=True, type=Path, help="MaSeg labels and reference grid .nii.gz")
+    base_tissue.add_argument("--gm", required=True, type=Path, help="second-pass TOADS GM .nii.gz")
+    base_tissue.add_argument("--wm-fill", required=True, type=Path, help="second-pass TOADS WM-fill .nii.gz")
+    base_tissue.add_argument("--wm-mask", required=True, type=Path, help="second-pass TOADS WM-mask .nii.gz")
+    base_tissue.add_argument("--remove-cerebellum", action="store_true")
+    base_tissue.add_argument("--edge-width", type=int, default=5)
+    base_tissue.add_argument("--gm-confident-level", type=float, default=0.001)
+    base_tissue.add_argument("--output-dir", required=True, type=Path)
+    base_tissue.add_argument("--provenance", type=Path, required=True)
+
     cruise_core = commands.add_parser(
         "toads-cruise-core",
         help="run second-pass preparation, ACE, GVF, and nested TGDM",
@@ -229,6 +243,11 @@ def build_parser() -> argparse.ArgumentParser:
     cruise_core.add_argument("--wm-mask", required=True, type=Path)
     cruise_core.add_argument("--segmentation", type=Path)
     cruise_core.add_argument("--remove-cerebellum", action="store_true")
+    cruise_core.add_argument(
+        "--base-preparation-provenance",
+        type=Path,
+        help="reuse the recorded MaSeg-derived crop for already-fused base maps",
+    )
     cruise_core.add_argument("--edge-width", type=int, default=5)
     cruise_core.add_argument("--ace-diffusion-iterations", type=int, default=25)
     cruise_core.add_argument("--gvf-lambda", type=float, default=1.0)
@@ -350,7 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--toads-iterations", type=int, default=2)
     base_run.add_argument("--dura-iterations", type=int, default=1)
     base_run.add_argument("--dura-membership-level", type=float, default=0.3)
-    base_run.add_argument("--crop-edge-width", type=int, default=2)
+    base_run.add_argument("--crop-edge-width", type=int, default=5)
     base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
     base_run.add_argument("--gvf-iterations", type=int, default=200)
     base_run.add_argument("--tgdm-iterations", type=int, default=1)
@@ -1062,6 +1081,64 @@ def main(argv: list[str] | None = None) -> int:
         outputs = cortical_separation(image, args.output_dir)
         for name in outputs:
             print(f"Wrote {args.output_dir / f'{name}.nii.gz'}")
+    elif args.command == "base-tissue-preparation":
+        from pymacruise.base_tissue_preparation import prepare_base_tissue_maps
+
+        result = prepare_base_tissue_maps(
+            _load_nifti_gz(args.maseg),
+            _load_nifti_gz(args.gm),
+            _load_nifti_gz(args.wm_fill),
+            _load_nifti_gz(args.wm_mask),
+            crop_edge_width=args.edge_width,
+            gm_confident_level=args.gm_confident_level,
+            remove_cerebellum=args.remove_cerebellum,
+        )
+        images = {
+            "atlas_gm": result.atlas_gm,
+            "atlas_wm": result.atlas_wm,
+            "atlas_mask": result.atlas_mask,
+            "atlas_brain_tissue_mask": result.atlas_brain_tissue_mask,
+            "toads_gm_transferred": result.transferred_toads_gm,
+            "toads_wmfill_transferred": result.transferred_toads_wm_fill,
+            "toads_mask_transferred": result.transferred_toads_mask,
+            "atlas_gm_cropped": result.cropped_atlas_gm,
+            "atlas_wm_cropped": result.cropped_atlas_wm,
+            "atlas_mask_cropped": result.cropped_atlas_mask,
+            "atlas_brain_tissue_mask_cropped": result.cropped_atlas_brain_tissue_mask,
+            "toads_gm_cropped": result.cropped_toads_gm,
+            "toads_wmfill_cropped": result.cropped_toads_wm_fill,
+            "toads_mask_cropped": result.cropped_toads_mask,
+            "fused_gm": result.gray_matter,
+            "fused_wmfill": result.white_matter,
+            "fused_mask": result.mask,
+        }
+        output_paths = {name: args.output_dir / f"{name}.nii.gz" for name in images}
+        collisions = [path for path in [*output_paths.values(), args.provenance] if path.exists()]
+        if collisions:
+            raise FileExistsError(
+                "Refusing to overwrite base tissue preparation output(s): "
+                + ", ".join(str(path) for path in collisions)
+            )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        for name, image in images.items():
+            _save_nifti_gz(image, output_paths[name])
+            print(f"Wrote {output_paths[name]} (RAS)")
+        parameters = {
+            **result.provenance,
+            "stage_order": list(result.stage_order),
+        }
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={
+                "maseg": args.maseg,
+                "toads_gm": args.gm,
+                "toads_wm_fill": args.wm_fill,
+                "toads_mask": args.wm_mask,
+            },
+            parameters=parameters,
+            outputs=output_paths,
+        )
     elif args.command == "calculate":
         _require_nifti_gz_output(args.output)
         effective_operation = args.operation.strip().upper()
@@ -1479,6 +1556,32 @@ def main(argv: list[str] | None = None) -> int:
             outputs=output_paths,
         )
     elif args.command == "toads-cruise-core":
+        prepared_crop_parameters = None
+        if args.base_preparation_provenance is not None:
+            if args.remove_cerebellum or args.segmentation is not None:
+                raise ValueError(
+                    "base preparation already performed cerebellum removal; do not repeat it in TGDM core"
+                )
+            provenance = json.loads(args.base_preparation_provenance.read_text(encoding="utf-8"))
+            crop = provenance.get("parameters", {}).get("crop", {})
+            from pymacruise.cropping import CropParameters
+
+            try:
+                prepared_crop_parameters = CropParameters(
+                    original_shape=tuple(int(value) for value in crop["original_shape"]),
+                    bounds=tuple(
+                        tuple(int(value) for value in bound)
+                        for bound in crop["bounds_inclusive"]
+                    ),
+                    background=0.0,
+                    original_affine=np.asarray(crop["original_affine"], dtype=float),
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    "base preparation provenance lacks valid MaSeg crop geometry"
+                ) from exc
+        elif args.remove_cerebellum and args.segmentation is None:
+            raise ValueError("--segmentation is required with --remove-cerebellum")
         core_parameters = TGDMBaselineParameters(
             white_matter_iso=0.6,
             initial_iterations=args.tgdm_initial_iterations,
@@ -1502,6 +1605,7 @@ def main(argv: list[str] | None = None) -> int:
             gvf_iterations=args.gvf_iterations,
             gvf_solver_tolerance=args.gvf_solver_tolerance,
             tgdm_parameters=core_parameters,
+            prepared_crop_parameters=prepared_crop_parameters,
         )
         args.output_dir.mkdir(parents=True, exist_ok=True)
         images = {
@@ -1529,6 +1633,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote {output_paths[name]} (RAS)")
         core_options = {
             "remove_cerebellum": args.remove_cerebellum,
+            "base_preparation_provenance": (
+                None if args.base_preparation_provenance is None
+                else str(args.base_preparation_provenance.resolve())
+            ),
             "removed_voxel_counts": result.preparation.removed_voxel_counts,
             "crop_edge_width": args.edge_width,
             "crop_bounds": [list(axis) for axis in result.preparation.crop_parameters.bounds],

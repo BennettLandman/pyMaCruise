@@ -51,7 +51,7 @@ class BaseRunOptions:
     toads_iterations: int = 2
     dura_iterations: int = 1
     dura_membership_level: float = 0.3
-    crop_edge_width: int = 2
+    crop_edge_width: int = 5
     ace_diffusion_iterations: int = 1
     gvf_iterations: int = 200
     tgdm_iterations: int = 1
@@ -452,8 +452,24 @@ def run_base_workflow(
             print(stdout_buffer.getvalue(), end="")
             records = _output_records(
                 [*attempt_outputs, log_path], reference,
-                require_reference_grid=name != "cruise-core",
+                require_reference_grid=name not in {"cruise-core", "base-tissue-preparation"},
             )
+            if name == "base-tissue-preparation":
+                cropped_names = (
+                    "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz",
+                    "atlas_mask_cropped.nii.gz", "atlas_brain_tissue_mask_cropped.nii.gz",
+                    "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
+                    "toads_mask_cropped.nii.gz", "fused_gm.nii.gz",
+                    "fused_wmfill.nii.gz", "fused_mask.nii.gz",
+                )
+                by_name = {Path(item["path"]).name: Path(item["path"]) for item in records}
+                cropped_images = [nib.load(str(by_name[filename])) for filename in cropped_names]
+                if any(
+                    image.shape != cropped_images[0].shape
+                    or not np.allclose(image.affine, cropped_images[0].affine, rtol=0, atol=1e-4)
+                    for image in cropped_images[1:]
+                ):
+                    raise RuntimeError("MaSeg/TOADS cropped preparation maps do not share one RAS grid")
             if name == "cruise-core":
                 by_name = {Path(item["path"]).name: Path(item["path"]) for item in records}
                 for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
@@ -592,17 +608,47 @@ def run_base_workflow(
     second_gm = next(path for name, path in second_files.items() if name.endswith("_gm.nii.gz"))
     second_wm = next(path for name, path in second_files.items() if name.endswith("_wmfill.nii.gz"))
     second_wmmask = next(path for name, path in second_files.items() if name.endswith("_wmmask.nii.gz"))
-    maseg_args = ["--segmentation", str(maseg_path), "--remove-cerebellum"]
-    core_dependencies = [second_gm, second_wm, second_wmmask]
-    core_dependencies.append(maseg_path)
+    prep_dependencies = [maseg_path, second_gm, second_wm, second_wmmask]
+    prep_output_names = (
+        "atlas_gm.nii.gz", "atlas_wm.nii.gz", "atlas_mask.nii.gz",
+        "atlas_brain_tissue_mask.nii.gz", "toads_gm_transferred.nii.gz",
+        "toads_wmfill_transferred.nii.gz", "toads_mask_transferred.nii.gz",
+        "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz",
+        "atlas_mask_cropped.nii.gz", "atlas_brain_tissue_mask_cropped.nii.gz",
+        "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
+        "toads_mask_cropped.nii.gz", "fused_gm.nii.gz", "fused_wmfill.nii.gz",
+        "fused_mask.nii.gz", "provenance.json",
+    )
+    prep_outputs = [
+        active_output("base-tissue-preparation", name, prep_dependencies)
+        for name in prep_output_names
+    ]
+    run_stage("base-tissue-preparation", prep_outputs, [
+        "base-tissue-preparation", "--maseg", str(maseg_path),
+        "--gm", str(second_gm), "--wm-fill", str(second_wm),
+        # The selected V3 run_Toads_pipeline path does not enable the optional
+        # brainstem/cerebellum removal used by a separate TOADS-Cruise route.
+        "--wm-mask", str(second_wmmask),
+        "--edge-width", str(options.crop_edge_width),
+        "--gm-confident-level", "0.001", "--output-dir", "{STAGE}",
+        "--provenance", "{STAGE}/provenance.json",
+    ], prep_dependencies)
+    prepared_gm = active_output("base-tissue-preparation", "fused_gm.nii.gz", prep_dependencies)
+    prepared_wm = active_output("base-tissue-preparation", "fused_wmfill.nii.gz", prep_dependencies)
+    prepared_mask = active_output("base-tissue-preparation", "fused_mask.nii.gz", prep_dependencies)
+    preparation_provenance = active_output(
+        "base-tissue-preparation", "provenance.json", prep_dependencies
+    )
+    core_dependencies = [prepared_gm, prepared_wm, prepared_mask, preparation_provenance]
     core_outputs = [active_output("cruise-core", f"{name}.nii.gz", core_dependencies) for name in (
         "gm_cropped", "wmfill_cropped", "wmmask_cropped", "wmfill_topology_corrected",
         "ace_enhanced_gm", "ace_skeleton", "ace_thinned_skeleton", "gvf", "inner", "central", "outer"
     )]
     core_outputs.append(active_output("cruise-core", "provenance.json", core_dependencies))
     run_stage("cruise-core", core_outputs, [
-        "toads-cruise-core", "--gm", str(second_gm), "--wm-fill", str(second_wm), "--wm-mask", str(second_wmmask),
-        *maseg_args, "--edge-width", str(options.crop_edge_width),
+        "toads-cruise-core", "--gm", str(prepared_gm), "--wm-fill", str(prepared_wm),
+        "--wm-mask", str(prepared_mask), "--base-preparation-provenance",
+        str(preparation_provenance), "--edge-width", str(options.crop_edge_width),
         "--ace-diffusion-iterations", str(options.ace_diffusion_iterations),
         "--gvf-iterations", str(options.gvf_iterations),
         "--tgdm-initial-iterations", str(options.tgdm_iterations),

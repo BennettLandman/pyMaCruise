@@ -10,6 +10,10 @@ from pymacruise.contracts import (
     validate_workflow_inputs,
 )
 from pymacruise.cortical_separation import cortical_separation
+from pymacruise.base_tissue_preparation import (
+    BaseTissuePreparationResult,
+    prepare_base_tissue_maps,
+)
 from pymacruise.boundary import (
     clean_csf_boundary,
     clean_csf_boundary_image,
@@ -245,6 +249,8 @@ __all__ = [
     "apply_transforms_to_points_ras",
     "apply_transforms_to_surface_ras",
     "cortical_separation",
+    "BaseTissuePreparationResult",
+    "prepare_base_tissue_maps",
     "clean_csf_boundary",
     "clean_csf_boundary_image",
     "combine_multi_atlas_toads",
