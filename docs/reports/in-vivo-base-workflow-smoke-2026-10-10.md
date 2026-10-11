@@ -62,11 +62,13 @@ A follow-up spatial audit of the inner mesh found that **1,872 of 1,876 vertices
 
 The machine-readable audit and source-profile outputs are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-core-audit.json` and `build/invivo-base-2026-10-10-ras-grid/source-selected-core/`.
 
-## Source-selected full-resolution continuation
+## Earlier full-resolution exploratory continuation (Dura membership 0.4)
+
+**Correction made 2026-10-10:** this continuation was previously described as source-selected, but its Dura CLI used membership 0.4. The MaCRUISE wrapper `run_RemoveDura_jist.m` selects `-inTarget 0.3`; therefore the continuation results below are an exploratory profile and cannot support a source-profile acceptance claim. The CLI and base-workflow mapping were corrected in commit `286616d`, and focused validation passed 28 tests.
 
 After the first source-selected ACE/TGDM follow-up, the same prepared in-vivo case was carried through the higher-iteration upstream stages and a fresh CRUISE core/tail. The first TOADS pass reused the natural 22-iteration result from the complete base smoke workflow. The second Dura evolution ran five configured iterations using the source-selected Dura parameters, and the second TOADS loop then naturally converged in **40 iterations** with terminal energy ratio **`7.55981964e-05`**; it did not reach the 50-iteration cap. Its full stage log and products are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/`. The Dura reference-gradient and non-flipping TGDM vectorizations added for this run were checked against their scalar/source implementations on code commit `73922eb`: `PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/pytest -q tests/test_tgdm.py tests/test_toads_dura.py` — **55 passed**, two expected RAS warnings, 25.81 seconds.
 
-The source-selected continuation’s computational code was commit `73922eb`; commit `c42a1a6` changed only README/plan documentation while the surface job was running.
+The exploratory continuation’s computational code was commit `73922eb`; commit `c42a1a6` changed only README/plan documentation while the surface job was running.
 
 The fresh CRUISE core used ACE diffusion 25, GVF 200, and TGDM initial/inner/central iterations 6/4/7, with the selected MaSeg cerebellum removal and a two-voxel crop edge. Source-faithful MaSeg refinement completed, and the source-derived JIST connectivity-18 surfaces plus thickness products were generated. The full-resolution core took substantially longer than the earlier profile; its direct runner peak sampled RSS was **2.827 GB** under a 12 GB watchdog. The new audit inventory contains **22 hashed products**, including **13 finite RAS NIfTIs**; no invalid or non-RAS NIfTI was found.
 
@@ -85,7 +87,13 @@ An upstream diagnostic shows the five-iteration Dura mask has **1,185,356** voxe
 
 The 206 non-dominant components on the new inner mesh contain **1,752 vertices**; **1,748** nearest-map inside the supplied brain mask. Of those in-grid shell vertices, **1,452** map to MaSeg label 209, 252 to label 11, 15 to label 35, 6 each to labels 122 and 208, and 21 to background. The same earlier shell audit also concentrated most small components at label 209. Label 209 is not named in the historical MaCRUISE label-name table, so its anatomy and whether these islands should be included remain unresolved.
 
-These are in-vivo integration and quality measurements, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
+These are in-vivo integration and quality measurements from the 0.4 exploratory Dura profile, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
+
+## Corrected source-profile Dura and TOADS rerun
+
+The wrapper-selected Dura membership is 0.3. The prior Python base workflow had hard-coded 0.4, so the in-vivo Dura stage and all downstream results depending on it needed to be rerun. Commit `286616d` exposes the membership in the CLI, sets the standalone wrapper and base workflow defaults to 0.3, and passes it explicitly from `base-run`. It also makes the selected TGDM signed-distance reinitialization stop at the source-selected maximum distance instead of marching the whole volume and clipping afterward; a focused test confirms exact equality with full-field clipping on a folded synthetic level set.
+
+The corrected five-iteration Dura stage completed under a 12 GB RSS watchdog (peak sampled runner RSS 3.203 GB). Its brain mask contains 1,253,285 voxels and has Dice 0.9515397 against the supplied mask (1,305,385 voxels), compared with 1,185,356 voxels and Dice 0.9355409 for membership 0.4. The separate corrected run artifacts are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/`. A full second TOADS pass has been started from these corrected Dura products with the four-level, 50-iteration registration profile and 50-iteration natural-convergence cap; its status and downstream CRUISE run will be added here after completion. This Dura mask comparison is an integration diagnostic, not a source-reference comparison.
 
 The audit is reproducible with:
 
