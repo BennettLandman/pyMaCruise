@@ -215,14 +215,14 @@ not supplied are omitted.
 pymacruise n4 --input T1.nii.gz --output T1-n4.nii.gz \
   [--shrink-factor N] [--iterations N [N ...]] \
   [--convergence-tolerance VALUE] [--spline-mesh X Y Z] \
-  [--rescale-intensities] [--provenance RUN.json]
+  [--rescale-intensities | --no-rescale-intensities] [--provenance RUN.json]
 ```
 
 Reads a finite, non-negative 3D intensity image and writes its N4-corrected
 image as `.nii.gz` in RAS orientation. The defaults match the selected
 wrapper's unadorned ANTs N4 command: shrink factor 4, four 50-iteration
 levels, zero convergence tolerance, a 1×1×1 spline mesh, and intensity
-rescaling off. ANTsPy is optional; install PyMaCRUISE with its `ants` extra
+rescaling on (disable with `--no-rescale-intensities`). ANTsPy is optional; install PyMaCRUISE with its `ants` extra
 to run this command. The N4 estimation itself is provided by ANTsPy/ANTs.
 
 ### `pymacruise ace`

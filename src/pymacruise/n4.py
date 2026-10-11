@@ -26,15 +26,16 @@ class N4Config:
 
     The MATLAB wrapper calls ``N4BiasFieldCorrection -i input -o output``.
     The ANTs command-line defaults are 50 iterations at four levels, zero
-    convergence threshold, shrink factor 4, and one B-spline mesh element per
-    axis. ANTsPy's tolerance default differs, so it is set explicitly here.
+    convergence threshold, shrink factor 4, one B-spline mesh element per
+    axis, and intensity rescaling enabled. ANTsPy's tolerance and rescaling
+    defaults differ, so both are set explicitly here.
     """
 
     shrink_factor: int = 4
     iterations: tuple[int, ...] = (50, 50, 50, 50)
     convergence_tolerance: float = 0.0
     spline_mesh: tuple[int, int, int] = (1, 1, 1)
-    rescale_intensities: bool = False
+    rescale_intensities: bool = True
 
     def __post_init__(self) -> None:
         if self.shrink_factor < 1:

@@ -69,7 +69,7 @@ def test_n4_cli_matches_api_and_writes_ras_provenance(tmp_path: Path) -> None:
         "iterations": [3],
         "convergence_tolerance": 0.0,
         "spline_mesh": [1, 1, 1],
-        "rescale_intensities": False,
+        "rescale_intensities": True,
     }
     assert provenance["outputs"] == {"corrected_image": str(output_path.resolve())}
 
@@ -87,6 +87,7 @@ def test_n4_cli_help_and_missing_ants_guidance_without_eager_import(tmp_path: Pa
     assert help_result.returncode == 0
     assert "--shrink-factor" in help_result.stdout
     assert "--iterations" in help_result.stdout
+    assert "--no-rescale-intensities" in help_result.stdout
     assert "--provenance" in help_result.stdout
     root_help = _run_cli("--help")
     assert root_help.returncode == 0

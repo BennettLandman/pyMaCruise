@@ -158,7 +158,12 @@ def build_parser() -> argparse.ArgumentParser:
     n4.add_argument("--iterations", type=int, nargs="+", default=[50, 50, 50, 50])
     n4.add_argument("--convergence-tolerance", type=float, default=0.0)
     n4.add_argument("--spline-mesh", type=int, nargs=3, default=[1, 1, 1])
-    n4.add_argument("--rescale-intensities", action="store_true")
+    n4.add_argument(
+        "--rescale-intensities",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="rescale corrected values to the input range (default: enabled, matching ANTs CLI)",
+    )
     _add_provenance_option(n4)
 
     tgdm = commands.add_parser("tgdm", help="run supported nested CRUISE/TGDM stages")
