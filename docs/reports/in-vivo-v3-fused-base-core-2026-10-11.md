@@ -137,8 +137,9 @@ passed **7 tests in 21.85 s**. No full suite was run in this checkpoint.
    source-preserved small components. The 97% MaSeg support target remains
    unmet; localize that support gap without changing source parameters. See the
    [topology correction comparison](in-vivo-fused-core-topology-held-fixed-java-comparison-2026-10-11.md),
-   [seed-component audit](in-vivo-current-seed-components-2026-10-11.md), and
-   [TGDM comparison](in-vivo-fused-input-tgdm-held-fixed-java-comparison-2026-10-11.md).
+   [seed-component audit](in-vivo-current-seed-components-2026-10-11.md),
+   [TGDM comparison](in-vivo-fused-input-tgdm-held-fixed-java-comparison-2026-10-11.md),
+   and [surface-extraction comparison](in-vivo-jist-surface-extraction-held-fixed-2026-10-11.md).
 2. Add a restartable human manifest for this corrected preparation/core path
    while reusing hashed upstream TOADS products; require resume/hash checks.
 3. Continue nonidentity transfer and crop source comparisons before claiming
