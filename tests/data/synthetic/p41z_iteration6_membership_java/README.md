@@ -20,11 +20,20 @@ The source method's class loop is guarded by `if (shape[k] > 0)`; its later
 `else` clears the skipped class membership, while the class-energy slot and
 lesion auxiliary maps remain untouched. The harness follows that behavior.
 The wrapper ratio step is now included after the exact membership objective.
-Because this fixture does not preserve the preceding iteration's objective,
-the Java/Python ratio comparison uses an explicit synthetic previous objective
-of `3.25`; it validates the selected float32 expression and its wiring, not a
-reconstructed iteration-5-to-6 energy change. Registration and growth remain
-outside this held-fixed comparison.
+Its previous objective, `3727.62158203125`, comes from the hash-verified
+iteration-5 integration summary recorded in `case.json`; it is the preceding
+synthetic run's saved objective, not an independently Java-validated energy.
+Registration now runs against the 13 bundled atlas priors and matches the
+selected Java single-rigid optimizer trace and positive-support bounds.
+The selected wrapper branch and energy ratio also match the Java reference.
+Its isolated branch check uses an empty skeleton, so it is not growth evidence.
+
+The saved thinned segmentation's `computeRelations` map and relation table
+match the selected Java method for a 14-pass diffusion. This relation check is
+pre-growth. The fixture does not include the matching pre-growth ordering and
+class-volume arrays needed to run source-faithful `initGrowingLabels` and
+`propagateGrowing`; the saved registered ordering/volumes are post-growth and
+cannot substitute for those inputs without inventing stage history.
 
 ## Run
 

@@ -163,7 +163,7 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
         raise RuntimeError(f"upstream statistics comparison failed: {stats_report['difference_diagnostics']}")
     arrays, stats, stats_case = _stats_from_fixture()
     spatial = arrays["images"].shape[:3]
-    previous_objective = float(stats_case["wrapper_ratio_synthetic_previous_objective"])
+    previous_objective = float(stats_case["wrapper_ratio_previous_objective"])
     with tempfile.TemporaryDirectory(prefix="p41z-iter6-membership-java-") as temporary:
         work = Path(temporary)
         in_path, out_path = work / "input.bin", work / "output.bin"
@@ -225,7 +225,8 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
         "statistics_exact_first": stats_report["all_exact"],
         "compared_stage_order": [*stats.stage_order, "computeMemberships:GMflag=true"],
         "energy_ratio_checked": True,
-        "synthetic_previous_objective": previous_objective,
+        "previous_objective": previous_objective,
+        "previous_objective_provenance": "hash-verified iteration-5 synthetic integration summary",
         "java_energy_ratio_bits": int(np.asarray(expected_ratio).view(np.uint32)),
         "python_energy_ratio_bits": int(np.asarray(result.energy_ratio.energy_ratio, np.float32).view(np.uint32)),
         "nan_counts": nan_counts,

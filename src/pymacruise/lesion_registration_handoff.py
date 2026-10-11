@@ -45,28 +45,8 @@ def _bounds_for_transform(
     template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
     image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
     rotation = _rotation_matrix(transform[:3], java_float32_norm=True)
-    matrix = np.empty((3, 4), dtype=np.float32)
     centers = np.asarray(image_dims, dtype=np.float32) / np.float32(2.0)
     template_centers = np.asarray(values.shape, dtype=np.float32) / np.float32(2.0)
-    for axis in range(3):
-        for source_axis in range(3):
-            matrix[axis, source_axis] = np.float32(
-                np.float32(rotation[axis, source_axis] * image_res[source_axis])
-                / template_res[axis]
-            )
-        translated = np.float32(0.0)
-        for source_axis in range(3):
-            term = np.float32(
-                np.float32(
-                    np.float32(rotation[axis, source_axis] * np.float32(-centers[source_axis]))
-                    * image_res[source_axis]
-                )
-            )
-            translated = np.float32(translated + term)
-        translated = np.float32(translated + transform[axis + 3])
-        translated = np.float32(translated / template_res[axis])
-        matrix[axis, 3] = np.float32(translated + template_centers[axis])
-
     lower = list(image_dims)
     upper = [0, 0, 0]
     support_count = 0
@@ -75,15 +55,24 @@ def _bounds_for_transform(
     y_grid, z_grid = np.meshgrid(y_indices, z_indices, indexing="ij")
     coordinates = np.empty((image_dims[1], image_dims[2], 3), dtype=np.float32)
     for x in range(image_dims[0]):
+        image_x = np.float32(np.float32(x - centers[0]) * image_res[0])
+        image_y = np.float32((y_grid - centers[1]) * image_res[1])
+        image_z = np.float32((z_grid - centers[2]) * image_res[2])
         for axis in range(3):
-            coordinate = np.float32(matrix[axis, 0] * np.float32(x))
+            # Match ParametricTransform.imageToTemplate's float expression:
+            # rotate physical offsets, add translation, divide by template
+            # resolution, then add the template center. Precomputed affine
+            # coefficients alter float32 rounding at positive-support edges.
+            coordinate = np.float32(rotation[axis, 0] * image_x)
             coordinate = np.float32(
-                coordinate + np.float32(matrix[axis, 1] * y_grid)
+                coordinate + np.float32(rotation[axis, 1] * image_y)
             )
             coordinate = np.float32(
-                coordinate + np.float32(matrix[axis, 2] * z_grid)
+                coordinate + np.float32(rotation[axis, 2] * image_z)
             )
-            coordinates[..., axis] = np.float32(coordinate + matrix[axis, 3])
+            coordinate = np.float32(coordinate + transform[axis + 3])
+            coordinate = np.float32(coordinate / template_res[axis])
+            coordinates[..., axis] = np.float32(coordinate + template_centers[axis])
         sampled = _linear_interpolation_default_grid(
             values, coordinates, np.float32(0.0)
         )

@@ -46,14 +46,14 @@ The comparator now continues through the wrapper's next source expression in
 `AlgorithmLesionToads.calcSegmentation()` (membership objective update and
 `Eratio = Numerics.abs(2.0f*(Eprev-energy)/(Eprev+energy))`, around source
 lines 687–706). `Numerics.abs(float)` is the source comparison-and-negation
-implementation (`a > 0 ? a : -a`). The fixture does not include the true
-previous objective, so both Java and Python receive an explicit synthetic
-`Eprev=3.25`; this isolates and validates the loop expression and its
-float32 wiring without claiming an iteration-5-to-6 objective history.
+implementation (`a > 0 ? a : -a`). The previous objective is now recovered as
+`3727.62158203125` from the hash-verified iteration-5 synthetic integration
+summary (`f03d9f0d...`). It is the prior Python integration checkpoint value;
+it has not been independently reproduced by a Java iteration-5 run.
 
 For the 71×89×67 fixture, refreshed statistics, all membership/energy outputs,
 the objective, and the ratio match Java bit-for-bit. Java/Python ratio bits are
-both `1073708481`, objective bits are both `1162622407`, and both NaN counts
+both `1040630131`, objective bits are both `1162622407`, and both NaN counts
 are zero. The fixed-volume comparator completed under a 4 GB watchdog with
 0.445 GB peak sampled RSS. The compact regression is:
 
@@ -73,6 +73,73 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
 ```
 
 This closes only the source-faithful energy-ratio expression after the held-
-fixed membership pass. P41z registered atlas update and subsequent growth,
-relation refresh, and iteration-to-iteration state carry remain open; no
-full registered iteration or human-data equivalence is claimed.
+fixed membership pass. Registration and a selected wrapper transition are now
+also compared below; growth on this state and iteration-to-iteration carry
+remain open, and no full registered iteration or human-data equivalence is
+claimed.
+
+## Registration and nonterminal wrapper branch
+
+The next selected boundary uses the exact iteration-6 membership update and
+the 13 bundled RAS atlas priors. The P41z source-excerpt harness implements
+the active single-rigid `LesionToadAtlas.registerAllShapes()` sequence using
+the supplied `ParametricTransform` and `ImageFunctions`; Python and Java agree
+bit-for-bit on each trial transform and energy, accepted/rejected trial counts,
+energy change, lambda, final transform, and all 13 positive-support bounds and
+counts. The initial transform and previous objective are taken from the
+hash-verified iteration-5 integration checkpoint. That checkpoint is Python
+integration evidence, not Java iteration-5 evidence.
+
+The wrapper's `calcSegmentation()` energy-ratio/convergence branch is compared
+to the selected Java expression: the ratio bits match, it continues, enters
+growth, and refreshes relations. This test deliberately supplied an empty
+skeleton so it isolates branch decisions; its empty growth queue is not growth
+evidence.
+
+During the Java comparison, the old vectorized affine-coordinate construction
+produced a different positive-support count. Python bounds mapping now
+evaluates image physical offsets, rotation, translation, template-resolution
+division, and template-center addition in the float32 order used by
+`ParametricTransform.imageToTemplate()`. The 71×89×67 comparison and a compact
+nonidentity-transform phantom both match Java support bounds/counts exactly.
+
+The fixed-state relation method is also compared on the saved thinned
+segmentation, independently of growth: `computeRelations()` produces an exact
+relation map, relation-membership table, and 14 diffusion passes for limit 3.
+This is a held-fixed pre-growth segmentation comparison, not evidence for the
+post-growth relation output.
+
+The bundled iteration-6 fixture has the thinned segmentation and skeleton,
+and the current membership update can be source-compared. It does not contain
+the matching post-thinning `ordering` field or per-class `class_volume` state
+that `initGrowingLabels()`/`propagateGrowing()` consume. The iteration-6 saved
+`registered_ordering` and `class_volume` are outputs after growth, so feeding
+them back would invent the missing history. Therefore actual P41z growth and
+the relation refresh after that growth remain unvalidated. Next evidence
+requires those two pre-growth arrays from the same checkpoint or a replayable
+earlier stage that regenerates them.
+
+Focused evidence (no full suite):
+
+- Registration + wrapper branch: **1 passed in 148.09s**, peak sampled RSS
+  **0.499 GB** under a 4 GB watchdog.
+- Saved thinned-state relation comparison: **1 passed in 4.67s**.
+- Compact transform-rounding/support-bound comparison: **1 passed in 1.29s**.
+
+The long comparison is opt-in and reproducible with:
+
+```sh
+PYMACRUISE_RUN_P41Z_ITER6_REGISTRATION_BRANCH=1 PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
+.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 4 \
+  --interval-seconds 1 --report-interval-seconds 30 -- \
+  .venv/bin/pytest -q --tb=short \
+  tests/test_p41z_iteration6_registration_branch_java.py::test_p41z_iteration6_registration_and_wrapper_branch_match_references
+```
+
+The relation and compact bounds comparisons are:
+
+```sh
+PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl .venv/bin/pytest -q --tb=short \
+  tests/test_p41z_iteration6_registration_branch_java.py::test_p41z_saved_thinned_state_relation_refresh_matches_selected_java \
+  tests/test_p41z_iteration6_registration_branch_java.py::test_shape_bounds_transform_rounding_matches_java_on_compact_phantom
+```

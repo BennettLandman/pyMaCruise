@@ -208,7 +208,8 @@
     "iteration6_thinned_segmentation_sha256": "a3408886d212c6832a25718fca795e71cdfbd743a016e6c779640a46cc825a90",
     "iteration6_thinned_skeleton_sha256": "9cb5360baffe8583dafcd55f9a256871ccde4f0249a0e20c81d08b22b12b1327",
     "registered_recrop_t1_flair_sha256": "86249a9c9c0019708670a325f6f34fdbc13ebbcc7f53f8c7054cb8c593622119",
-    "relation_recovery": "direct relations are relation_membership[retained relation_map] from iteration-5 registered loop summary; they are not inferred from iteration-6 thinning labels"
+    "relation_recovery": "direct relations are relation_membership[retained relation_map] from iteration-5 registered loop summary; they are not inferred from iteration-6 thinning labels",
+    "iteration6_summary_sha256": "09fc04910d97a72eb2d2bb81cf76d803903ef7c2f579af88e580cda2f4b015a1"
   },
   "selected_java_source": {
     "file": "VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java",
@@ -402,5 +403,198 @@
       ]
     }
   },
-  "wrapper_ratio_synthetic_previous_objective": 3.25
+  "wrapper_ratio_synthetic_previous_objective": 3.25,
+  "wrapper_ratio_previous_objective": 3727.62158203125,
+  "registration_initial_transform_iteration5": [
+    0.0,
+    0.0,
+    0.0,
+    -4.0078125,
+    0.0,
+    -8.042762756347656
+  ],
+  "registration_reference_iteration6": {
+    "source": "prior PyMaCRUISE selected-loop integration checkpoint; regression only, not independent Java evidence",
+    "summary_sha256": "09fc04910d97a72eb2d2bb81cf76d803903ef7c2f579af88e580cda2f4b015a1",
+    "transform": [
+      0.0,
+      0.0,
+      0.0,
+      -4.0078125,
+      0.0,
+      -8.042762756347656
+    ],
+    "transition_objective": 3267.361083984375,
+    "shape_bounds": [
+      {
+        "lower_xyz": [
+          0,
+          0,
+          0
+        ],
+        "support_count": 409262,
+        "upper_xyz": [
+          70,
+          88,
+          66
+        ]
+      },
+      {
+        "lower_xyz": [
+          0,
+          0,
+          0
+        ],
+        "support_count": 285106,
+        "upper_xyz": [
+          70,
+          88,
+          66
+        ]
+      },
+      {
+        "lower_xyz": [
+          14,
+          7,
+          16
+        ],
+        "support_count": 31282,
+        "upper_xyz": [
+          55,
+          72,
+          48
+        ]
+      },
+      {
+        "lower_xyz": [
+          3,
+          4,
+          0
+        ],
+        "support_count": 53571,
+        "upper_xyz": [
+          68,
+          46,
+          39
+        ]
+      },
+      {
+        "lower_xyz": [
+          0,
+          0,
+          3
+        ],
+        "support_count": 244264,
+        "upper_xyz": [
+          70,
+          88,
+          66
+        ]
+      },
+      {
+        "lower_xyz": [
+          25,
+          35,
+          22
+        ],
+        "support_count": 13324,
+        "upper_xyz": [
+          53,
+          70,
+          47
+        ]
+      },
+      {
+        "lower_xyz": [
+          19,
+          30,
+          22
+        ],
+        "support_count": 12452,
+        "upper_xyz": [
+          52,
+          57,
+          45
+        ]
+      },
+      {
+        "lower_xyz": [
+          16,
+          36,
+          19
+        ],
+        "support_count": 14152,
+        "upper_xyz": [
+          55,
+          67,
+          43
+        ]
+      },
+      {
+        "lower_xyz": [
+          21,
+          23,
+          0
+        ],
+        "support_count": 15264,
+        "upper_xyz": [
+          50,
+          51,
+          35
+        ]
+      },
+      {
+        "lower_xyz": [
+          9,
+          6,
+          2
+        ],
+        "support_count": 30855,
+        "upper_xyz": [
+          62,
+          46,
+          32
+        ]
+      },
+      {
+        "lower_xyz": [
+          0,
+          1,
+          22
+        ],
+        "support_count": 169991,
+        "upper_xyz": [
+          70,
+          88,
+          66
+        ]
+      },
+      {
+        "lower_xyz": [
+          27,
+          31,
+          24
+        ],
+        "support_count": 7931,
+        "upper_xyz": [
+          48,
+          66,
+          46
+        ]
+      },
+      {
+        "lower_xyz": [
+          0,
+          1,
+          6
+        ],
+        "support_count": 84253,
+        "upper_xyz": [
+          70,
+          88,
+          34
+        ]
+      }
+    ]
+  }
 }
