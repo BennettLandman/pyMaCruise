@@ -93,9 +93,24 @@ These are in-vivo integration and quality measurements from the 0.4 exploratory 
 
 The wrapper-selected Dura membership is 0.3. The prior Python base workflow had hard-coded 0.4, so the in-vivo Dura stage and all downstream results depending on it needed to be rerun. Commit `286616d` exposes the membership in the CLI, sets the standalone wrapper and base workflow defaults to 0.3, and passes it explicitly from `base-run`. It also makes the selected TGDM signed-distance reinitialization stop at the source-selected maximum distance instead of marching the whole volume and clipping afterward; a focused test confirms exact equality with full-field clipping on a folded synthetic level set.
 
-The corrected five-iteration Dura stage completed under a 12 GB RSS watchdog (peak sampled runner RSS 3.203 GB). Its brain mask contains 1,253,285 voxels and has Dice 0.9515397 against the supplied mask (1,305,385 voxels), compared with 1,185,356 voxels and Dice 0.9355409 for membership 0.4. The separate corrected run artifacts are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/`. A full second TOADS pass has been started from these corrected Dura products with the four-level, 50-iteration registration profile and 50-iteration natural-convergence cap; its status and downstream CRUISE run will be added here after completion. This Dura mask comparison is an integration diagnostic, not a source-reference comparison.
+The corrected five-iteration Dura stage completed under a 12 GB RSS watchdog (peak sampled runner RSS 3.203 GB). Its brain mask contains 1,253,285 voxels and has Dice 0.9515397 against the supplied mask (1,305,385 voxels), compared with 1,185,356 voxels and Dice 0.9355409 for membership 0.4. This Dura mask comparison is an integration diagnostic, not a source-reference comparison.
 
-The audit is reproducible with:
+The corrected second TOADS pass used four registration levels, 50 registration iterations, the wrapper-selected five post-refresh registrations, and a 50-iteration natural-convergence cap. It stopped naturally after **22 iterations**, at energy ratio **`8.35069732e-05`**, with **7.364 GB** peak sampled RSS under the 12 GB watchdog. The full CRUISE core then completed with ACE 25, GVF 200, and TGDM initial/inner/central/outer iterations 6/4/7/7; peak sampled RSS was **2.777 GB**. Source-faithful MaSeg refinement completed, followed by connectivity-18 inner/central/outer surface extraction and both surface and level-set thickness calculations; the surface stage peak was **0.905 GB**.
+
+The corrected profile audit hashed **19 files**, found **13 finite RAS NIfTIs**, and found no invalid or non-RAS images. It still fails the agreed ribbon-quality criteria:
+
+- GM support between inner and outer surfaces: **526,441 / 642,291 (81.96%)**, below the 97% minimum.
+- WM support inside the inner surface: **356,577 / 428,303 (83.25%)**, below the 97% minimum.
+- Nesting: **7** inner voxels outside central; **0** central voxels outside outer; **0** inner voxels outside the supplied brain mask.
+- Each surface has **209 connected components**, including 207 components under 100 vertices; there are no boundary or nonmanifold edges. The largest component Euler characteristic is **−6**.
+- Mean symmetric closest-surface thickness is **2.850 mm** (SD **0.950 mm**); mean level-set subtraction thickness is **4.568 mm** (SD **1.364 mm**).
+- The 208 non-dominant inner components contain 1,766 vertices, all inside the supplied brain mask; 1,463 map to nearest MaSeg label 209 and 240 to label 11. Label 209 remains unnamed in the historical label table.
+
+Compared with the earlier 0.4 exploratory core, GM support improved **2.97 percentage points** and WM support improved **0.53 points**; nesting changed from one to seven voxels, while the mesh component count changed from 207 to 209. These are internal profile comparisons, not Java/MATLAB reference comparisons. This corrected human run proves full-resolution executable integration and exposes the remaining quality gap; it does not pass the 97% support checks or establish the agreed Dice/Hausdorff/surface-position tolerances.
+
+The separate corrected run artifacts are in ignored `build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/`; no human images were added to Git.
+
+The prior 0.4 exploratory audit is reproducible with:
 
 ```sh
 PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scripts/audit_in_vivo_base_products.py \\
@@ -112,10 +127,27 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scrip
 
 Audit output and all derived images remain under ignored `build/`; no human image data were committed.
 
+The corrected 0.3 profile audit is reproducible with:
+
+```sh
+PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scripts/audit_in_vivo_base_products.py \
+  build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/cruise-core \
+  --maseg build/invivo-base-2026-10-10-inputs/ras-grid/orig_target_seg_ras_uint16.nii.gz \
+  --brain-mask build/invivo-base-2026-10-10-inputs/ras-grid/T1_bet_mask_ras.nii.gz \
+  --watchdog-log build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/logs/cruise-core-watchdog.log \
+  --comparison-core-dir build/invivo-base-2026-10-10-ras-grid/source-selected-full-toads-core \
+  --toads-gm build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/toads-second/dura-inputs/stripped_t1_gm.nii.gz \
+  --comparison-toads-gm build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/toads-second/dura-inputs/stripped_t1_gm.nii.gz \
+  --dura-brain-mask build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/brain_mask.nii.gz \
+  --report build/invivo-base-2026-10-10-ras-grid/source-selected-dura03/audit.json
+```
+
+This audits products already generated by the preceding Dura, TOADS, core, refinement, and surface/thickness commands; those products are preserved under ignored `build/`.
+
 ## Evidence limits and follow-up
 
 This is one in-vivo integration experiment with a documented oblique-grid resampling step. It is not comparison against the historical Singularity output: `sample-macruise/output` contained no reference products at inspection. It is also not Java equivalence, source-default execution, clinical validation, or a test of MaCRUISEplus.
 
-The source-selected CRUISE core/tail follow-up is complete. A same-settings resume of the original seven-stage workflow verified and skipped all seven stages. Remaining in-vivo validation needs a reference run/output for per-label Dice and symmetric surface-distance comparison, plus investigation of the extra surface shells and Euler characteristic.
+The corrected source-profile base chain is complete from the prepared T1, supplied mask, and MaSeg through second TOADS, CRUISE, refinement, surfaces, and thickness. A same-settings resume of the earlier seven-stage workflow verified and skipped all seven stages. Remaining in-vivo validation needs a matching historical run/output for per-label Dice and symmetric surface-distance comparison, plus investigation of the low tissue support, extra surface shells, and Euler characteristic.
 
 The RSS watchdog used by the smoke command samples its direct workflow-runner process, not the full process tree. System-wide `memory_pressure` reported 66–69% free during/after the run; the 7.053 GB runner RSS peak must not be interpreted as total process-tree peak RSS.

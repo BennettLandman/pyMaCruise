@@ -131,5 +131,9 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
     assert interrupted.resumed_stages == ("transfer_crop", "topology_ace_gvf_tgdm")
     assert json.loads(interrupted.manifest_path.read_text())["status"] == "complete"
 
-    with pytest.raises(ValueError, match="inputs or settings differ"):
-        run_plus_file_workflow(**inputs, crop_edge_width=4, resume=True)
+    changed_settings = run_plus_file_workflow(**inputs, crop_edge_width=4, resume=True)
+    assert changed_settings.resumed_stages == ()
+    changed_manifest = json.loads(changed_settings.manifest_path.read_text())
+    assert changed_manifest["status"] == "complete"
+    assert changed_manifest["previous_run_signature"] != changed_manifest["run_signature"]
+    assert changed_manifest["settings"]["crop_edge_width"] == 4
