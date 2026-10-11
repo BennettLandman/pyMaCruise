@@ -69,7 +69,9 @@ public final class ToadsNextDefaultMembershipReferenceHarness {
     private static String queueResult(float volumeRatio,float limit){
         float[] volume=new float[K];for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++){int k=segmentation[x][y][z];if(x>0&&x<nx-1&&y>0&&y<ny-1&&z>0&&z<nz-1)volume[k]+=initial[x][y][z][k];}
         float[] minimum=new float[K];for(int k=0;k<K;k++)minimum[k]=Math.max(100.0f,volumeRatio*volume[k]);
-        skeleton=new short[nx][ny][nz];available=new boolean[nx][ny][nz][K];for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)skeleton[x][y][z]=-1;
+        // Java carries the evolving skeleton between wrapper iterations;
+        // initThinningLabels replaces only the interior labels below.
+        available=new boolean[nx][ny][nz][K];
         int[] count=new int[K];
         for(int x=1;x<nx-1;x++)for(int y=1;y<ny-1;y++)for(int z=1;z<nz-1;z++){int k=segmentation[x][y][z];skeleton[x][y][z]=(short)k;available[x][y][z][k]=true;}
         BinaryHeap4D queue=new BinaryHeap4D(nx*ny+ny*nz+nz*nx,BinaryHeap4D.MAXTREE);
@@ -85,6 +87,6 @@ public final class ToadsNextDefaultMembershipReferenceHarness {
     private static int[] toBits(float[] a){int[] out=new int[a.length];for(int i=0;i<a.length;i++)out[i]=Float.floatToIntBits(a[i]);return out;}
     private static int[] bits(short[][][] a){int[] out=new int[nx*ny*nz];int p=0;for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)out[p++]=a[x][y][z];return out;}
     private static boolean[][] readAdj(String path)throws Exception{java.util.Scanner sc=new java.util.Scanner(new java.io.File(path));boolean[][] a=new boolean[K][K];int i=0;while(sc.hasNextLine()){String[] v=sc.nextLine().trim().split(",");for(int j=0;j<K;j++)a[i][j]=v[j].equals("1");i++;}sc.close();if(i!=K)throw new IllegalArgumentException("adjacency must be 11x11");return a;}
-    public static void main(String[] args)throws Exception{if(args.length!=9)throw new IllegalArgumentException("args: images field psf memberships shapes closest segmentation adjacency volumeRatio");ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();image=readF4(args[0],NC);field=readF4(args[1],NC);bias=readF4(args[2],NC);initial=readF4(args[3],K);shapes=readF4(args[4],K);labels=readS4(args[5],4);segmentation=readS3(args[6]);adjacency=readAdj(args[7]);float volumeRatio=Float.parseFloat(args[8]),limit=1.0f; // selected fixture pins the wrapper's thinning limit
+    public static void main(String[] args)throws Exception{if(args.length!=10)throw new IllegalArgumentException("args: images field psf memberships shapes closest segmentation adjacency skeleton volumeRatio");ToadsHomeomorphicChangeReferenceHarness.initializeReferenceLut();image=readF4(args[0],NC);field=readF4(args[1],NC);bias=readF4(args[2],NC);initial=readF4(args[3],K);shapes=readF4(args[4],K);labels=readS4(args[5],4);segmentation=readS3(args[6]);adjacency=readAdj(args[7]);skeleton=readS3(args[8]);float volumeRatio=Float.parseFloat(args[9]),limit=1.0f; // selected fixture pins the wrapper's thinning limit
         float[][][][] energy=dataEnergy();float[][][] den=new float[nx][ny][nz];float[] obj={0};float[][][][] mem=membership(energy,den,obj);StringBuilder s=new StringBuilder("{\"algorithm_source_sha256\":\"").append(TOADS_SHA).append("\",\"queue\":").append(queueResult(volumeRatio,limit)).append(",\"class_energy_bits\":");append(s,bits(energy));s.append(",\"membership_bits\":");append(s,bits(mem));s.append(",\"denominator_bits\":");append(s,bits(den));s.append(",\"objective_bits\":").append(Float.floatToIntBits(obj[0])).append('}');System.out.println(s);}
 }

@@ -37,22 +37,37 @@ def _sha(values: np.ndarray) -> str:
     return hashlib.sha256(np.asarray(values, dtype="<f4").tobytes(order="C")).hexdigest()
 
 
-def _labels(values: str, shape: tuple[int, int, int]) -> np.ndarray:
+def _labels(values: str, shape: tuple[int, int, int], *, skeleton: bool = False) -> np.ndarray:
     out = np.empty(len(values), dtype=np.int8)
     for i, value in enumerate(values):
-        out[i] = int(value) if value.isdigit() else ord(value.lower()) - ord("a") + 10
+        if skeleton and value == ".":
+            out[i] = -1
+        else:
+            out[i] = int(value) if value.isdigit() else ord(value.lower()) - ord("a") + 10
     return out.reshape(shape)
 
 
-def _thinning_input(labels: np.ndarray, memberships: np.ndarray, shapes: np.ndarray, adjacency: np.ndarray) -> bytes:
+def _encode_skeleton(values: np.ndarray) -> str:
+    output = []
+    for value in np.asarray(values).ravel():
+        number = int(value)
+        output.append("." if number < 0 else (str(number) if number < 10 else chr(ord("a") + number - 10)))
+    return "".join(output)
+
+
+def _thinning_input(
+    labels: np.ndarray,
+    memberships: np.ndarray,
+    shapes: np.ndarray,
+    adjacency: np.ndarray,
+    initial_skeleton: np.ndarray,
+) -> bytes:
     return b"".join((
         np.asarray(labels, dtype=np.int8).tobytes(order="C"),
         np.asarray(memberships, dtype=">f4").tobytes(order="C"),
         np.asarray(shapes, dtype=">f4").tobytes(order="C"),
         np.asarray(adjacency, dtype=np.uint8).tobytes(order="C"),
-        # This low-level API call deliberately uses its constructor-equivalent
-        # zero default rather than a wrapper-carried skeleton.
-        np.zeros(labels.shape, dtype=np.int8).tobytes(order="C"),
+        np.asarray(initial_skeleton, dtype=np.int8).tobytes(order="C"),
     ))
 
 
@@ -170,10 +185,16 @@ def test_shape_growth_relation_refresh_flows_through_next_thinning_fields_and_me
     np.testing.assert_array_equal(refreshed_closest, refresh.closest_labels)
     adjacency = refresh.relation.class_adjacency
 
-    # Selected wrapper returns to the next loop at propagateThinning; its default shape, volume ratio and limit apply.
-    thinning = toads_propagate_thinning(grown, memberships, adjacency, shapes, volume_ratio=.5, limit=3.0)
+    # Continue the same Java object state: propagateGrowing returns a skeleton
+    # that initThinningLabels preserves at the border while replacing its interior.
+    carried_skeleton = _labels(growth_java["post_growth_skeleton"], grown.shape, skeleton=True)
+    assert _encode_skeleton(carried_skeleton) == growth_java["post_growth_skeleton"]
+    thinning = toads_propagate_thinning(
+        grown, memberships, adjacency, shapes, volume_ratio=.5, limit=3.0,
+        initial_skeleton=carried_skeleton,
+    )
     thinning_input = tmp_path / "p18czp_thinning_input.bin"
-    thinning_input.write_bytes(_thinning_input(grown, memberships, shapes, adjacency))
+    thinning_input.write_bytes(_thinning_input(grown, memberships, shapes, adjacency, carried_skeleton))
     java_thin = json.loads(subprocess.run(
         ["sh", str(THINNING_HARNESS), str(thinning_input), *(str(v) for v in grown.shape), "11"],
         check=True, capture_output=True, text=True,
@@ -182,6 +203,7 @@ def test_shape_growth_relation_refresh_flows_through_next_thinning_fields_and_me
     assert java_thin["segmentation"] == "".join(
         str(int(v)) if v < 10 else chr(ord("a") + int(v) - 10) for v in thinning.segmentation.ravel()
     )
+    assert _labels(java_thin["skeleton"], grown.shape, skeleton=True).tolist() == thinning.skeleton.tolist()
     assert java_thin["processed"] == [
         [int(np.asarray(i.value, dtype=np.float32).view(np.int32)), i.x, i.y, i.z, i.label]
         for i in thinning.processed_items

@@ -128,6 +128,7 @@ def main() -> None:
     _save("current_transform_shapes.nii.gz", result.transformed_shapes, subject.affine)
     _save("refreshed_closest_labels.nii.gz", branch.relations.closest_labels.astype(np.int16), subject.affine)
     _save("grown_segmentation.nii.gz", branch.growing.segmentation.astype(np.int16), subject.affine)
+    _save("grown_skeleton.nii.gz", branch.growing.skeleton.astype(np.int16), subject.affine)
     _save("channel_field.nii.gz", data["field"], subject.affine)
     _save("psf_bias.nii.gz", data["psf_bias"], subject.affine)
     adjacency = branch.relations.relation.class_adjacency
@@ -161,6 +162,7 @@ def main() -> None:
                 str(HERE / "refreshed_closest_labels.nii.gz"),
                 str(HERE / "grown_segmentation.nii.gz"),
                 str(HERE / "refreshed_class_adjacency.csv"),
+                str(HERE / "grown_skeleton.nii.gz"),
                 str(VOLUME_RATIO),
             ],
             text=True,
