@@ -20,9 +20,9 @@ provenance records the source labels, overlooked labels, strict cleanup
 thresholds, order, and ACE merge position. The restartable `base-run` and
 `base-resume-from-toads` routes both include the final boundary as a hashed
 core-stage dependency and pass it to ACE. Core input-grid checks accept only
-the matching cropped grid or its full reference grid. Selected base CLI runs
-that provide preparation provenance reject ACE mode 2 when the boundary is
-omitted.
+the matching cropped grid or its full reference grid. Selected base CLI runs that provide preparation provenance reject ACE
+mode 2 when the boundary is omitted, and the core API now also rejects any
+mode-2 call without a boundary.
 
 ## Synthetic validation
 
@@ -38,7 +38,7 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
   tests/test_base_resume_workflow.py
 ```
 
-Result: **18 passed in 16.02 seconds**. Synthetic checks cover boundary
+Result: **19 passed in 26.36 seconds**. Synthetic checks cover boundary
 creation and ordered cleanup, exact cropped-grid alignment, handoff into
 MaACE mode 2, CLI input provenance, and both restartable workflow routes.
 These tests establish synthetic integration only; they do not establish

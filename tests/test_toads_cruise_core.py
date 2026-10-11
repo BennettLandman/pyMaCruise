@@ -5,6 +5,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.cli import main
 from pymacruise.tgdm import TGDMBaselineParameters
@@ -104,3 +105,11 @@ def test_cruise_core_default_iteration_path_runs_on_compact_synthetic_maps() -> 
         values = np.asarray(image.dataobj)
         assert np.isfinite(values).all()
         assert image.shape == (13, 12, 11)
+
+
+def test_cruise_core_rejects_boundary_free_ace_mode_two() -> None:
+    with pytest.raises(ValueError, match="ACE mode 2 requires.*boundary_csf"):
+        run_toads_cruise_core(
+            *_inputs(),
+            ace_use_updated_csf_in_ace=2,
+        )

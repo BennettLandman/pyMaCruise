@@ -70,6 +70,8 @@ def run_toads_cruise_core(
     passes the V3 values explicitly. Native-grid TGDM outputs use the JIST
     uncrop's 20-valued exterior and legacy exclusive high-bound behavior.
     """
+    if ace_use_updated_csf_in_ace == 2 and boundary_csf is None:
+        raise ValueError("ACE mode 2 requires the cleaned MaSeg boundary_csf image")
     if prepared_crop_parameters is None:
         prepared = prepare_toads_cruise_inputs(
             gray_matter,

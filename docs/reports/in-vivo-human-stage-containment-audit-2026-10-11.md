@@ -1,5 +1,11 @@
 # Human MaSeg Stage-Containment Audit
 
+> **Historical, preliminary audit.** Its source run selected ACE mode 2 but
+> omitted the V3 cleaned MaSeg boundary input. Use the corrected metrics and
+> boundary evidence in [the boundary-enabled human tail report](in-vivo-base-tail-with-v3-boundary-2026-10-11.md)
+> and its ignored `build/invivo-base-source-v3-human-boundary-2026-10-11/`
+> outputs for current human tail results.
+
 Evidence: **read-only in-vivo stage-boundary localization; not source equivalence, clinical validation, or causal proof**.
 
 Run: `build/invivo-base-source-v3-human-rasgrid-2026-10-11`; status `complete`.

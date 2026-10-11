@@ -1,5 +1,12 @@
 # Full-chain human MaCRUISE base run — 2026-10-11
 
+> **Superseded for V3 ACE-boundary behavior.** A later source audit found
+> that this run selected ACE mode 2 without supplying the cleaned MaSeg CSF
+> boundary, so the mode-2 merge was inactive. Treat the support, ACE, and mesh
+> metrics below as historical diagnostics, not accepted corrected V3 output.
+> The corrected tail run and current metrics are in the [boundary-enabled
+> human report](in-vivo-base-tail-with-v3-boundary-2026-10-11.md).
+
 ## Result and interpretation
 
 The restartable `base-run` chain completed all eight stages on the supplied
