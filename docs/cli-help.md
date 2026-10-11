@@ -480,7 +480,8 @@ and thickness outputs are not generated.
 pymacruise plus-run --t1-reference T1.nii.gz --segmentation MaSeg.nii.gz \
   --dura-csf CSF.nii.gz --dura-gm GM.nii.gz --dura-wm-fill WMFill.nii.gz \
   --dura-wm-mask WMMask.nii.gz --multi-atlas-gm AtlasGM.nii.gz \
-  --multi-atlas-wm AtlasWM.nii.gz --multi-atlas-mask AtlasMask.nii.gz \
+  --multi-atlas-wm AtlasWM.nii.gz \
+  --multi-atlas-mask Atlas_BrainTissueMask.nii.gz \
   --brain-mask BrainMask.nii.gz --output-dir plus-run [--resume] \
   [--crop-edge-width 5] [--gvf-lambda 0.2] [--wm-iso-level 0.5] \
   [--refine-topology-by-maseg | --no-refine-topology-by-maseg]
@@ -494,6 +495,11 @@ requires the same input hashes and settings. Verified stages are skipped; an
 invalid stage is recomputed in a new attempt directory. Outputs include RAS
 `.nii.gz` level sets and thickness, RAS+ millimetre VTK surfaces, thickness
 metrics, and `run.json`.
+
+`--multi-atlas-mask` must be the MaSeg-derived `Atlas_BrainTissueMask.nii.gz`
+(GM, WM, and additional brain-tissue labels). It must not be the WM-only
+`Atlas_Mask.nii.gz`; that WM-only product remains distinct in
+`pymacruise cortical-separation` outputs.
 
 The command does not run FLAIR registration, atlas registration, TOADS, or
 LesionTOADS. Use `pymacruise plus-register-flair` for the separate ANTsPy rigid

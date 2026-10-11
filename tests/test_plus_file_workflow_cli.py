@@ -7,6 +7,19 @@ import pymacruise.cli as cli
 import pymacruise.plus_file_workflow as plus_file_workflow
 
 
+def test_plus_run_help_identifies_brain_tissue_fusion_mask(capsys) -> None:
+    try:
+        cli.main(["plus-run", "--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    else:
+        raise AssertionError("argparse --help should exit")
+
+    output = capsys.readouterr().out
+    assert "Atlas_BrainTissueMask" in output
+    assert "not the WM-only Atlas_Mask" in output
+
+
 def test_plus_run_cli_routes_all_file_inputs_and_options(tmp_path: Path, monkeypatch, capsys) -> None:
     captured = {}
 

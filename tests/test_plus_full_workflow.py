@@ -335,9 +335,13 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     assert metrics["spatial_convention"] == "RAS"
     assert metrics["surface_units"] == "mm"
     assert np.isfinite(metrics["surface"]["mean_mm"])
-    assert metrics["volume"]["crossing_voxel_count"] == 0
-    assert metrics["volume"]["available"] is False
-    assert metrics["volume"]["mean_mm"] is None
+    # The source-correct Atlas_BrainTissueMask now preserves tissue through
+    # fusion, so this workflow fixture has actual inner/outer sign crossings.
+    # Validate that the reported volume statistics are present and finite;
+    # anatomical ribbon-quality acceptance is measured by the dedicated audit.
+    assert metrics["volume"]["crossing_voxel_count"] > 0
+    assert metrics["volume"]["available"] is True
+    assert np.isfinite(metrics["volume"]["mean_mm"])
 
     native_tail = Path(native_manifest["outputs"]["gm"]["path"])
     native_tail.write_bytes(b"corrupt native transfer")

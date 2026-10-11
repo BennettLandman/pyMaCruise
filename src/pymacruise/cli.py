@@ -594,7 +594,15 @@ def build_parser() -> argparse.ArgumentParser:
     plus_run.add_argument("--dura-wm-mask", required=True, type=Path)
     plus_run.add_argument("--multi-atlas-gm", required=True, type=Path)
     plus_run.add_argument("--multi-atlas-wm", required=True, type=Path)
-    plus_run.add_argument("--multi-atlas-mask", required=True, type=Path)
+    plus_run.add_argument(
+        "--multi-atlas-mask",
+        required=True,
+        type=Path,
+        help=(
+            "MaSeg Atlas_BrainTissueMask (.nii.gz; GM+WM+other brain tissue), "
+            "not the WM-only Atlas_Mask"
+        ),
+    )
     plus_run.add_argument("--brain-mask", required=True, type=Path)
     plus_run.add_argument("--output-dir", required=True, type=Path)
     plus_run.add_argument("--resume", action="store_true")

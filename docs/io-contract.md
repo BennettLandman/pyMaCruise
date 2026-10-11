@@ -32,6 +32,15 @@ The two profiles must be explicit configuration choices. Do not infer plus mode 
   - **Atlas_BrainTissueMask:** GM labels plus WM labels plus `31, 32, 47, 48, 49, 50, 75, 76`.
 - For base and plus segmentation, MaSeg is the spatial reference for cortical-separation products and for transferring TOADS results back to the segmentation space. Geometry differences must be resolved explicitly; same array shape alone is not sufficient evidence of alignment.
 
+### `pymacruise plus-run` fusion mask
+
+The standalone `plus-run` continuation accepts `--multi-atlas-mask` as its
+fusion support mask. Supply the MaSeg-derived `Atlas_BrainTissueMask.nii.gz`
+(GM labels, WM labels, and the additional brain-tissue labels listed above).
+Do not pass `Atlas_Mask.nii.gz` to this option: that separate output contains
+only the WM label set and is not the fusion support mask. The CLI flag name is
+retained for compatibility with existing invocations.
+
 ## Output contract
 
 Outputs are written beneath a caller-selected output directory. Every volume and surface output is reported in RAS (RAS-oriented NIfTI voxel axes; RAS+ physical coordinates in millimetres for surface geometry). Non-RAS input images/surfaces are reoriented before use with a visible warning, and the source frame/orientation plus conversion are recorded. The Python package should provide a deterministic manifest with profile, input paths and hashes, software/dependency versions, configuration, asset paths, coordinate frames/transforms, and output paths.
