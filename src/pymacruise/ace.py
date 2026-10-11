@@ -1053,23 +1053,13 @@ def _tgdm_signed_distance_fmm(
     """Reinitialize TGDM fields with the selected JIST ordered-heap FMM.
 
     TGDM's Java wrapper delegates reinitialization to ``DistanceField``. The
-    existing indexed-heap implementation in :func:`_distance_and_characteristic_fmm`
-    follows the selected JIST scan, neighbor, heap, and float32 image semantics.
-    Unit speed gives the same signed distance; clipping the completed field is
-    equivalent to Java's early stop followed by assigning ``maxDistance`` to
-    unaccepted voxels. The characteristic output is unused here.
+    Numba kernel preserves the selected JIST scan, neighbor, heap-tie, and
+    float32 storage semantics while avoiding Python work in the voxel and heap
+    loops. The weighted ACE FMM remains a separate implementation.
     """
-    values = np.asarray(level_set, dtype=np.float32)
-    if not np.isfinite(max_distance) or max_distance <= 0:
-        raise ValueError("TGDM signed-distance maximum must be finite and positive")
-    if values.ndim != 3 or any(size < 2 for size in values.shape):
-        raise ValueError("TGDM signed distance requires a 3D grid with dimensions >= 2")
-    if not np.isfinite(values).all():
-        raise ValueError("TGDM signed-distance input must be finite")
-    distance, _ = _distance_and_characteristic_fmm(
-        values, np.ones(values.shape, dtype=np.float32), max_distance=max_distance
-    )
-    return distance.astype(np.float32, copy=False)
+    from pymacruise.tgdm_fmm import tgdm_signed_distance_fmm
+
+    return tgdm_signed_distance_fmm(level_set, max_distance)
 
 
 def _same_ras_grid(
