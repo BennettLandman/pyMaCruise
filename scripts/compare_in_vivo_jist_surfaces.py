@@ -299,7 +299,7 @@ def main() -> int:
         "- This directly replays the Java `IsoSurfaceOnGrid` algorithm source, not the complete JIST runtime, VTK serializer, or historical full MaCRUISE pipeline.",
         "- Both extractors consume fixed saved human fields. Agreement validates this extractor stage only; it does not fix low GM/WM support or the fragmented output seen in the human quality audit.",
         "- Distances use the user's symmetric nearest-surface limits of 0.01 mm mean and 1 mm Hausdorff; topology agreement is reported independently and is not inferred from distance agreement.",
-        f"- The machine-readable full output, hashes, crop bounds, and runtime are in `{report_path.relative_to(ROOT)}` (ignored build output). The reproducible runner is [`compare_in_vivo_jist_surfaces.py`](../../scripts/compare_in_vivo_jist_surfaces.py).",
+        f"- The machine-readable full output, hashes, crop bounds, and runtime are in `{os.path.relpath(report_path, ROOT)}` (ignored build output). The reproducible runner is [`compare_in_vivo_jist_surfaces.py`](../../scripts/compare_in_vivo_jist_surfaces.py).",
         "",
     ])
     REPORT.parent.mkdir(parents=True, exist_ok=True)
