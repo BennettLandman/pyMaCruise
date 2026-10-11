@@ -1,0 +1,72 @@
+{
+  "case": "P41z fine-grid synthetic LesionTOADS Dura outputs",
+  "class_names": [
+    "Background",
+    "Sulcal-CSF",
+    "Ventricles",
+    "Cerebellum-GM",
+    "Cerebrum-GM",
+    "Caudate",
+    "Thalamus",
+    "Putamen",
+    "Brainstem",
+    "Cerebellum-WM",
+    "OuterVentricular-WM",
+    "InterVentricular-WM",
+    "Frontal-WM"
+  ],
+  "completed_iteration": 6,
+  "energy_ratio": 0.13159732520580292,
+  "files": {
+    "memberships_15ch": {
+      "path": "memberships_15ch.nii.gz",
+      "sha256": "9fa94ec52ae6d973f2a44d4f88255972c841a4a0394ab6d14dbf2a44eb7718c1"
+    },
+    "python_csf": {
+      "path": "lesion_toads_csf.nii.gz",
+      "sha256": "71ee0ed3847d131f1c1654c57e98089773dd6fafa71a7a42a1f0114bb08c6132"
+    },
+    "python_gm": {
+      "path": "lesion_toads_gm.nii.gz",
+      "sha256": "94696bbecc9a2753d49b409e098550392e8810307b9792a5cdc5b622e62eec50"
+    },
+    "python_wm_fill": {
+      "path": "lesion_toads_wm_fill.nii.gz",
+      "sha256": "0b0758e0f931e7cdacba298e5e169c43b4cf08cd1ebc8417d9331ef37cf4a701"
+    },
+    "python_wm_mask": {
+      "path": "lesion_toads_wm_mask.nii.gz",
+      "sha256": "223fb59ed8c0dc56f23258d64e5de1526f359097e6befa8ac3ad8469f59739d1"
+    },
+    "segmentation": {
+      "path": "segmentation.nii.gz",
+      "sha256": "9f7034d1e5a84d21259fd0f10ea400f90684e44ad92eac9524c834e2cff59562"
+    }
+  },
+  "membership_layout": {
+    "black_hole_membership": 14,
+    "classes": [
+      0,
+      12
+    ],
+    "lesion_membership": 13,
+    "only_channels_saved": 15
+  },
+  "shape_xyz": [
+    71,
+    89,
+    67
+  ],
+  "selected_java_source": "VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java:generateDuraRemovalOutputs",
+  "selected_java_source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+  "source_checkpoint": {
+    "dura_manifest_sha256": "764384703f22c0ad2d19c7e11fc5509ea8b325e296e23edfc4dd084a613a4abf",
+    "loop_manifest_sha256": "661a3451590c64c3324ab027d4d9de50f46ac3bcbdf99af1286dda94894aa928",
+    "registered_memberships_sha256": "ee0ddac4e93ddeb1320cdf8f1e2471a4ee887445a3f217268047077afa0c3e7b",
+    "registered_recrop_manifest_sha256": "39db6ec6e851be2f4c74e6f2730bc1f5eb91956e3ff8dc8e42a99c9f1388de33",
+    "registered_recrop_summary_sha256": "a74ebac1b2d69d24d56f615b17078cfcfe4b908812b651f5b389c7344ea32ae4",
+    "registered_segmentation_sha256": "50e348c60c55aab25b525684b3372c01c75bd13727c6accc395708ad9ee890b7"
+  },
+  "spatial_convention": "RAS",
+  "synthetic_only": true
+}
