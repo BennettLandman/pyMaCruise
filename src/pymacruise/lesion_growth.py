@@ -34,6 +34,14 @@ _ZERO = np.float32(1.0e-10)
 _LESION_OBJECT_TYPES = {"lesion", "blackhole"}
 
 
+def _normalize_object_types(object_types: tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    """Normalize source descriptor type names for case-insensitive dispatch."""
+    types = tuple(object_types)
+    if not all(isinstance(value, str) and value for value in types):
+        raise ValueError("object_types must contain nonempty strings")
+    return tuple(value.lower() for value in types)
+
+
 @dataclass(frozen=True)
 class LesionToadsGrowingInitialization:
     """Availability and min-heap entries after ``initGrowingLabels``."""
@@ -520,7 +528,7 @@ def schedule_lesion_toads_thinning_neighbors(
     lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
     state = np.asarray(available)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
     if mems.ndim != 4 or mems.shape[-1] < 2 or mems.shape[-1] > 128:
         raise ValueError("memberships must be 4-D with 2 to 128 classes")
     if len(types) != mems.shape[-1]:
@@ -621,7 +629,7 @@ def lesion_toads_thinning_voxel_transition(
     volumes = np.asarray(class_volume, dtype=np.float32)
     minimums = np.asarray(minimum_class_volume, dtype=np.float32)
     available = np.asarray(available_at_center)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
     if labels.shape != (3, 3, 3) or skeleton.shape != (3, 3, 3):
         raise ValueError("segmentation and skeleton neighborhoods must have shape (3, 3, 3)")
     if not np.issubdtype(labels.dtype, np.integer) or not np.issubdtype(skeleton.dtype, np.integer):
@@ -855,7 +863,7 @@ def initialize_lesion_toads_thinning_frontier(
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
     skeleton = np.asarray(initial_skeleton)
     available = np.asarray(initial_available)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
     if not isinstance(source_faithful_nan, (bool, np.bool_)):
         raise TypeError("source_faithful_nan must be boolean")
     if labels.ndim != 3 or any(size < 3 for size in labels.shape):
@@ -1014,7 +1022,7 @@ def initialize_lesion_toads_growing_frontier(
     orderings = np.asarray(ordering, dtype=np.float32)
     lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
 
     if skel.ndim != 3 or any(size < 3 for size in skel.shape):
         raise ValueError("skeleton must be a 3-D grid with every dimension at least 3")
@@ -1148,7 +1156,7 @@ def process_lesion_toads_growing_event(
     volumes = np.asarray(class_volume, dtype=np.float32)
     lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
     if labels.ndim != 3 or not np.issubdtype(labels.dtype, np.integer):
         raise ValueError("segmentation must be a 3-D integer grid")
     if any(size < 3 for size in labels.shape):
@@ -1325,7 +1333,7 @@ def propagate_lesion_toads_growing(
     volumes = np.asarray(class_volume, dtype=np.float32)
     lesion_mems = np.asarray(lesion_membership, dtype=np.float32)
     black_hole_mems = np.asarray(black_hole_membership, dtype=np.float32)
-    types = tuple(object_types)
+    types = _normalize_object_types(object_types)
     if not isinstance(retain_event_states, (bool, np.bool_)):
         raise TypeError("retain_event_states must be boolean")
     initialized = initialize_lesion_toads_growing_frontier(

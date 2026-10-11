@@ -22,6 +22,10 @@ from pymacruise.lesion_registration_handoff import register_lesion_membership_ha
 from pymacruise.lesion_registration_handoff import _bounds_for_transform
 from pymacruise.lesion_relations import lesion_compute_relations
 from pymacruise.lesion_growth import propagate_lesion_toads_growing
+from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
+from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
+from pymacruise.lesion_post_registration import LesionToadsPostRegistrationBranch
+from pymacruise.lesion_relations import LesionRelationList
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
 
 
@@ -330,7 +334,7 @@ def test_shape_bounds_transform_rounding_matches_java_on_compact_phantom(tmp_pat
     reason="set PYMACRUISE_RUN_P41Z_ITER6_GROWTH=1 for full synthetic thinning/growth Java replay",
 )
 def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Path) -> None:
-    """Replay saved iteration-5 thinning inputs, then compare iteration-6 growth and relations."""
+    """Compare iteration-6 growth and the registered-shape/iteration-7 thinning handoff."""
     if shutil.which("java") is None or shutil.which("javac") is None:
         pytest.skip("Java runtime and compiler are required for selected-source comparison")
     thin_result = json.loads((THINNING_RESULT / "result.json").read_text())
@@ -369,6 +373,35 @@ def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Pa
         outlier_energy=0.1, lesion_power_exponent=1.2, spread=0.5,
         source_zero_variance_nan=True,
     )
+    # Reconstruct the same selected registration used by the iteration-6
+    # comparison. Its transform and support bounds are independently compared
+    # with the Java registration harness in the sibling opt-in test.
+    shape_priors = tuple(
+        np.asarray(nib.load(str(ATLAS / f"atlas_{name}.nii.gz")).dataobj, dtype=np.float32)
+        for name in ATLAS_NAMES
+    )
+    image_resolutions = tuple(float(v) for v in nib.load(
+        str(FIXTURE / "images_t1_flair.nii.gz")
+    ).header.get_zooms()[:3])
+    template_resolutions = tuple(float(v) for v in nib.load(
+        str(ATLAS / "atlas_Background.nii.gz")
+    ).header.get_zooms()[:3])
+    registration = register_lesion_membership_handoff(
+        update,
+        shape_priors,
+        case["registration_initial_transform_iteration5"],
+        image_resolutions_mm=image_resolutions,
+        template_resolutions_mm=template_resolutions,
+        align_shapes=True,
+        init_align_iter=10,
+    )
+    registered_shapes = transform_registered_lesion_shape_priors(
+        registration,
+        shape_priors,
+        image_dimensions_xyz=tuple(int(v) for v in update.membership.class_memberships.shape[:3]),
+        image_resolutions_mm=image_resolutions,
+        template_resolutions_mm=template_resolutions,
+    )
     growing = propagate_lesion_toads_growing(
         pre_growth_segmentation, pre_growth_skeleton, update.membership.class_memberships,
         pre_growth_ordering, pre_growth_class_volume, STANDARD13_TYPES,
@@ -382,15 +415,23 @@ def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Pa
         upstream / "structures/BinaryHeap4D.java",
         upstream / "structures/CriticalPointLUT.java",
         upstream / "utilities/Numerics.java",
+        upstream / "structures/RotationMatrix.java",
+        upstream / "methods/ParametricTransform.java",
+        upstream / "libraries/ImageFunctions.java",
+        REFERENCE_ROOT / "stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java",
         GROWTH_HARNESS,
         OUTPUT_HARNESS,
+        ROOT / "java_reference/P41zRegisteredShapeVolumeReferenceHarness.java",
+        ROOT / "java_reference/Lesion13ClassNextThinningReferenceHarness.java",
     )
     classes_dir = tmp_path / "classes"
     classes_dir.mkdir()
     growth_input = tmp_path / "growth.bin"
     growth_output = tmp_path / "growth-java.bin"
     type_codes = {"lesion": 1, "blackhole": 2}
-    kinds = bytes(type_codes.get(name, 0) for name in STANDARD13_TYPES)
+    normalized_types = tuple(name.lower() for name in STANDARD13_TYPES)
+    kinds = bytes(type_codes.get(name, 0) for name in normalized_types)
+    assert kinds[10] == 1  # standard-13 LESION is the source's lesion class
     growth_input.write_bytes(b"".join((
         struct.pack(">6i", *p41z_seg.shape, 13, 10, 0), kinds,
         np.asarray(pre_growth_segmentation, dtype=np.int8).ravel(order="C").tobytes(),
@@ -432,13 +473,42 @@ def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Pa
             python_output.extend(event_item(inserted))
     assert growth_output.read_bytes() == bytes(python_output)
 
-    # Relation refresh occurs after growth. Reuse the selected terminal-output
-    # Java excerpt for map and relation-membership parity on that exact output.
+    # Validate the shape maps sampled after registration for iteration 7.
+    # Java uses the same pinned ParametricTransform/ImageFunctions sources;
+    # registration transform and bounds were compared at the preceding seam.
+    shape_dims = tuple(int(v) for v in update.membership.class_memberships.shape[:3])
+    shape_input = tmp_path / "iteration7-shapes.bin"
+    shape_output = tmp_path / "iteration7-shapes-java.bin"
+    template_dims = tuple(int(v) for v in shape_priors[0].shape)
+    shape_input.write_bytes(b"".join((
+        struct.pack(">7i", *shape_dims, *template_dims, len(shape_priors)),
+        struct.pack(">6f", *image_resolutions, *template_resolutions),
+        np.asarray(registration.transform, dtype=">f4").tobytes(),
+        b"".join(
+            struct.pack(">6i", *bounds.lower_xyz, *bounds.upper_xyz)
+            for bounds in registration.shape_bounds
+        ),
+        b"".join(
+            np.asarray(prior, dtype=">f4").ravel(order="C").tobytes()
+            for prior in shape_priors
+        ),
+    )))
+    subprocess.run(
+        ["java", "-Xmx2g", "-cp", str(classes_dir),
+         "P41zRegisteredShapeVolumeReferenceHarness", str(shape_input), str(shape_output)],
+        check=True, capture_output=True, text=True,
+    )
+    assert shape_output.read_bytes() == np.asarray(registered_shapes, dtype=">f4").ravel(
+        order="C"
+    ).tobytes()
+
+    # Carry the validated growth state, iteration-6 memberships, transform,
+    # and refreshed relations into the actual next-iteration thinning adapter.
     relation_input = tmp_path / "growth-relations.bin"
     blank_classification = np.zeros(growing.segmentation.shape, dtype=np.int8)
-    shape = growing.segmentation.shape
     relation_input.write_bytes(b"".join((
-        struct.pack(">6i", *shape, 13, 10, 3), np.arange(13, dtype=np.int8).tobytes(),
+        struct.pack(">6i", *growing.segmentation.shape, 13, 10, 3),
+        np.arange(13, dtype=np.int8).tobytes(),
         np.asarray(growing.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
         blank_classification.ravel(order="C").tobytes(),
         np.asarray(update.membership.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
@@ -455,4 +525,106 @@ def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Pa
     np.testing.assert_array_equal(
         relations.relation_membership.ravel(),
         np.asarray(relation_output["relation_membership"], dtype=np.bool_),
+    )
+    prior_branch = LesionToadsPostRegistrationBranch(
+        membership_result=update,
+        registration_handoff=registration,
+        energy_ratio=np.float32(update.energy_ratio.energy_ratio),
+        convergence_stop=False,
+        iteration_limit_stop=False,
+        stop=False,
+        stop_reason=None,
+        run_growing=True,
+        growing=growing,
+        segmentation=growing.segmentation,
+        final_classification=None,
+        relations=LesionRelationList(
+            relations.relation_map,
+            relations.relation_membership,
+            relations.diffusion_iterations,
+        ),
+        stage_order=("propagateGrowing", "computeRelations"),
+    )
+    thin_case = json.loads((ROOT / "data/synthetic/plus_iteration_6_thinning/provenance.json").read_text())
+    thin_parameters = thin_case["parameters"]
+    # Snapshot the exact pre-call state so Java receives the same inputs even
+    # if a Python stage mutates an array while carrying state forward.
+    iteration7_inputs = {
+        "segmentation": np.asarray(prior_branch.segmentation).copy(),
+        "skeleton": np.asarray(growing.skeleton).copy(),
+        "memberships": np.asarray(update.membership.class_memberships).copy(),
+        "lesion_membership": np.asarray(update.membership.lesion_membership).copy(),
+        "black_hole_membership": np.asarray(update.membership.black_hole_membership).copy(),
+        "registered_shapes": np.asarray(registered_shapes).copy(),
+        "availability": np.asarray(growing.available).copy(),
+        "ordering": np.asarray(growing.ordering).copy(),
+    }
+    next_thinning = run_lesion_toads_next_iteration_thinning(
+        prior_branch,
+        iteration7_inputs["registered_shapes"],
+        object_types=STANDARD13_TYPES,
+        lesion_class=10,
+        volume_ratio=float(thin_parameters["volume_ratio"]),
+        limit=float(thin_parameters["limit"]),
+        use_lesion_max=False,
+    )
+    thinning_input = tmp_path / "iteration7-thinning.bin"
+    thinning_output = tmp_path / "iteration7-thinning-java.bin"
+    thinning_input.write_bytes(b"".join((
+        struct.pack(">5i2f", *shape_dims, 13, 10,
+                    thin_parameters["volume_ratio"], thin_parameters["limit"]),
+        bytes(type_codes.get(name, 0) for name in normalized_types),
+        np.asarray(iteration7_inputs["segmentation"], dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["skeleton"], dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["memberships"], dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["lesion_membership"], dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["black_hole_membership"], dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["registered_shapes"], dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["availability"], dtype=np.uint8).ravel(order="C").tobytes(),
+        np.asarray(iteration7_inputs["ordering"], dtype=">f4").ravel(order="C").tobytes(),
+    )))
+    subprocess.run(
+        ["java", "-Xmx2g", "-cp", str(classes_dir),
+         "Lesion13ClassNextThinningReferenceHarness", str(thinning_input), str(thinning_output)],
+        check=True, capture_output=True, text=True,
+    )
+
+    def item_bytes(item) -> bytes:
+        return struct.pack(">fiiii", float(item.value), item.x, item.y, item.z, item.label)
+
+    expected_thinning = bytearray()
+    expected_thinning.extend(np.asarray(next_thinning.initialization.class_volume, dtype=">f4").tobytes())
+    expected_thinning.extend(np.asarray(next_thinning.minimum_class_volume, dtype=">f4").tobytes())
+    expected_thinning.extend(struct.pack(">i", len(next_thinning.initialization.inserted_items)))
+    for item in next_thinning.initialization.inserted_items:
+        expected_thinning.extend(item_bytes(item))
+    expected_thinning.extend(struct.pack(">i", len(next_thinning.run.events)))
+    for event in next_thinning.run.events:
+        candidate = -1 if event.candidate_label is None else int(event.candidate_label)
+        topology = -1 if event.topology_accepted is None else int(event.topology_accepted)
+        expected_thinning.extend(item_bytes(event.popped_item))
+        expected_thinning.extend(struct.pack(">bibi", int(event.processed), candidate, topology,
+                                             len(event.inserted_neighbors)))
+        for item in event.inserted_neighbors:
+            expected_thinning.extend(item_bytes(item))
+    expected_thinning.extend(np.asarray(next_thinning.run.segmentation, dtype=np.int8).ravel(order="C").tobytes())
+    expected_thinning.extend(np.asarray(next_thinning.run.skeleton, dtype=np.int8).ravel(order="C").tobytes())
+    expected_thinning.extend(np.asarray(next_thinning.run.available, dtype=np.uint8).ravel(order="C").tobytes())
+    expected_thinning.extend(np.asarray(next_thinning.run.ordering, dtype=">f4").ravel(order="C").tobytes())
+    expected_thinning.extend(np.asarray(next_thinning.run.class_volume, dtype=">f4").tobytes())
+    remaining = []
+    while next_thinning.run.queue:
+        remaining.append(next_thinning.run.queue.pop_first())
+    expected_thinning.extend(struct.pack(">i", len(remaining)))
+    for item in remaining:
+        expected_thinning.extend(item_bytes(item))
+    java_thinning = thinning_output.read_bytes()
+    java_initial_queue_count = struct.unpack_from(">i", java_thinning, 2 * len(STANDARD13_TYPES) * 4)[0]
+    assert java_initial_queue_count == len(next_thinning.initialization.inserted_items)
+    initializer_bytes = 2 * len(STANDARD13_TYPES) * 4 + 4 + java_initial_queue_count * 20
+    assert java_thinning[:initializer_bytes] == bytes(expected_thinning[:initializer_bytes]), (
+        "iteration-7 initThinningLabels serialization differs from Java before queue propagation"
+    )
+    assert java_thinning == bytes(expected_thinning), (
+        "iteration-7 propagateThinning output differs from selected Java reference"
     )

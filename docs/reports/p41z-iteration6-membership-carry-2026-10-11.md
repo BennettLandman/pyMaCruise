@@ -115,10 +115,13 @@ recovered from the later post-growth registration-loop outputs.
 
 With the current iteration-6 membership update and that source-matched
 pre-growth state, Python growth matches the selected Java harness byte for
-byte. The comparison covers each popped heap item, topology decision, inserted
-neighbor and priority, final segmentation, skeleton, availability, ordering,
-and class volumes. `computeRelations()` after that grown segmentation also
-matches the selected Java relation map and membership table. This validates
+byte. The comparison lowercases uppercase standard-13 descriptor names for
+Java's lesion/black-hole kind codes and Python's scoring dispatch. It covers
+each popped heap item, topology decision, inserted neighbor and priority,
+final segmentation, skeleton, availability, ordering, and class volumes.
+`computeRelations()` after that grown segmentation also matches the selected
+Java relation map and membership table. A regression test confirms uppercase
+and lowercase object type names produce identical Python state. This validates
 these held-fixed synthetic operations; it does not establish a complete
 iteration workflow or human-MRI equivalence.
 
@@ -126,8 +129,12 @@ Focused evidence (no full suite):
 
 - Registration + wrapper branch: **1 passed in 148.09s**, peak sampled RSS
   **0.499 GB** under a 4 GB watchdog.
-- Growth + post-growth relation refresh: **1 passed in 116.56s**, peak sampled
-  RSS **0.700 GB** under a 4 GB watchdog.
+- Growth + post-growth relations + registered-shape/next-thinning handoff:
+  **1 passed in 200.71s**, peak sampled RSS **0.936 GB** under a 4 GB watchdog.
+  Iteration-7 thinning matches the complete serialized Java output, including
+  **97,920** initial queue entries and **267,637** pop events.
+- Uppercase/lowercase lesion descriptor regression: **1 passed in 1.04s**.
+- Related lesion-growth and thinning regression group: **17 passed, 0 failed, 0 skipped in 0.86s**.
 - Saved thinned-state relation comparison: **1 passed in 4.67s**.
 - Compact transform-rounding/support-bound comparison: **1 passed in 1.29s**.
 
@@ -158,3 +165,35 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl .venv/bin/pytest -q --tb
   tests/test_p41z_iteration6_registration_branch_java.py::test_p41z_saved_thinned_state_relation_refresh_matches_selected_java \
   tests/test_p41z_iteration6_registration_branch_java.py::test_shape_bounds_transform_rounding_matches_java_on_compact_phantom
 ```
+
+## Iteration-6 growth to iteration-7 thinning handoff (2026-10-11)
+
+The opt-in P41z comparison now carries the selected growth result through
+relation refresh, registered atlas-shape sampling, and iteration-7 thinning.
+The Java shape harness accepts the different image and atlas grids (71×89×67
+and 81×101×77); all **5,503,849** transformed-shape values match exactly.
+
+The first handoff test exposed a comparator setup error: the Python standard-13
+type names are uppercase, but the Java harness compared those names to
+lowercase strings without normalizing them. It therefore encoded `LESION` as
+an ordinary class. Python's growing entry point also failed to normalize the
+descriptor names, so those incorrect Java codes happened to match the Python
+bug. The selected-source execution now lowercases type names at the public
+thinning and growth operation boundaries; the Java fixture encodes the
+standard-13 lesion slot correctly. Uppercase/lowercase regression coverage
+passes, as do the corrected growth, relation, registered-shape, and
+iteration-7 thinning comparisons.
+
+Iteration-7 thinning is byte-for-byte equal to the selected Java harness over
+the full serialized result: **97,920** initial boundary entries and **267,637**
+pop events, plus final segmentation, skeleton, availability, ordering, class
+volumes, and remaining queue. The focused handoff test passed **1 test in
+200.71s**, peak sampled RSS **0.936 GB** under a **4 GB** watchdog. The focused
+uppercase/lowercase regression passed **1 test in 1.04s**. No full suite was
+run after the type-normalization change.
+
+This closes the selected iteration-6 growth→iteration-7 thinning handoff on
+this committed synthetic fixture. It does not prove a complete live Java
+LesionTOADS loop or explain why the complete plus workflow remains nonterminal
+at energy ratio 0.131597 versus 0.0001. The prior objective remains from the
+Python iteration-5 checkpoint. No real-MRI plus validation is available.

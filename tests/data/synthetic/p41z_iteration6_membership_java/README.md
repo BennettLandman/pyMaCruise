@@ -38,6 +38,20 @@ and post-growth relation refresh also match their selected Java references
 byte for byte. The empty-skeleton branch test isolates wrapper control flow;
 it is not the evidence for growth.
 
+The opt-in growth test now also attempts the next loop entry: it transforms
+the atlas priors from the matched iteration-6 registration, then carries the
+matched growth state through the iteration-7 thinning adapter. Since this
+fixture's image grid (71×89×67) differs from its atlas grid (81×101×77), that
+comparison uses the separate `P41zRegisteredShapeVolumeReferenceHarness`
+rather than the equal-grid registered-shape harness used by smaller fixtures.
+All 5,503,849 transformed-shape values match selected Java exactly. The
+corrected iteration-7 thinning full-output comparison also matches byte for
+byte, including 97,920 initializer queue entries and 267,637 popped events.
+The earlier failed comparison used an incorrect Java class-type encoding;
+the report records that setup correction and the Python uppercase-type fix.
+See the [iteration-6 comparison report](../../../../docs/reports/p41z-iteration6-membership-carry-2026-10-11.md)
+for focused runtime, memory, and scope limitations.
+
 ## Run
 
 The full volume is opt-in. Run it under the 16 GB RSS watchdog:

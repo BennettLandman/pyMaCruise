@@ -126,4 +126,26 @@ def test_folded_lesion_growing_pass_matches_java_through_queue_exhaustion() -> N
         assert compact.events
         assert all(not hasattr(event, "segmentation") for event in compact.events)
 
+        # MaCRUISE's standard-13 descriptor stores uppercase names. They must
+        # select the same lesion scoring as the lowercase source type names.
+        uppercase = propagate_lesion_toads_growing(
+            segmentation,
+            skeleton,
+            memberships,
+            ordering,
+            np.asarray([1, 2, 3, 4], dtype=np.float32),
+            tuple(value.upper() for value in ("obj", "lesion", "blackhole", "optimized_lesion")),
+            lesion,
+            black_hole,
+            lesion_class=1,
+            use_lesion_max=bool(case["use_lesion_max"]),
+            retain_event_states=False,
+        )
+        assert _event_trace(uppercase.events) == _event_trace(compact.events)
+        assert np.array_equal(uppercase.segmentation, compact.segmentation)
+        assert np.array_equal(uppercase.skeleton, compact.skeleton)
+        assert np.array_equal(uppercase.available, compact.available)
+        assert np.array_equal(uppercase.ordering, compact.ordering)
+        assert np.array_equal(uppercase.class_volume, compact.class_volume)
+
     assert not np.array_equal(reference["cases"][0]["volume_bits"], reference["cases"][1]["volume_bits"])
