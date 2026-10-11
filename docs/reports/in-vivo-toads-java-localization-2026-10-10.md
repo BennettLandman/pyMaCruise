@@ -30,6 +30,8 @@ This rules out the atlas conversion, initial Java/Python class assignment, and f
 
 The Java/Python first-iteration raw output hashes are `713ed9427c1d3572ed4101af07e04e8fad18ad704721356b4b7e89999fae4651` and `040d3228134fcd76a517b206d5a0af10ee79624bc7c85cbf471ab1ce34b8e0b3`, respectively.
 
+The first-iteration Python state was composed from the existing unity-field startup, first exact-membership update, selected registration control, post-registration branch, and `uncrop_toads_buffer`. Per-event thinning traces were disabled, matching the production configuration. The Java run used the same harness invocation above with the iteration argument changed from `2` to `1` and an output path of `first-classification-java-one-iteration.raw`.
+
 ## Two-iteration label results
 
 | Label | Java voxels | Python voxels | Dice |
