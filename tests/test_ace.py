@@ -189,6 +189,19 @@ def test_ace_speed_weighted_fmm_scales_plane_distance_and_has_characteristics() 
     assert not np.any(empty_char)
 
 
+def test_fast_marching_distance_band_matches_full_field_clipping() -> None:
+    x = np.arange(24, dtype=np.float32)[:, None, None]
+    y = np.arange(21, dtype=np.float32)[None, :, None]
+    z = np.arange(18, dtype=np.float32)[None, None, :]
+    phi = np.sqrt((x - 11.2) ** 2 + (y - 9.4) ** 2 + (z - 8.1) ** 2) - 5.7
+    speed = np.ones(phi.shape, dtype=np.float32)
+
+    full, _ = _distance_and_characteristic_fmm(phi, speed)
+    limited, _ = _distance_and_characteristic_fmm(phi, speed, max_distance=3.0)
+
+    np.testing.assert_array_equal(limited, np.clip(full, -3.0, 3.0))
+
+
 def test_ace_array_pipeline_is_deterministic_and_clears_volume_borders() -> None:
     gray = np.asarray(nib.load(ACE_PHANTOM / "gray_matter.nii.gz").dataobj)
     white = np.asarray(nib.load(ACE_PHANTOM / "white_matter.nii.gz").dataobj)

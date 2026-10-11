@@ -27,7 +27,8 @@ def test_dura_cli_runs_one_active_outer_pass_and_matches_api(tmp_path: Path) -> 
     nib.save(nib.Nifti1Image(t1_values, wm.affine), t1_path)
 
     expected = run_dura_removal(
-        nib.load(t1_path), wm, gm, mask, max_iterations=1
+        nib.load(t1_path), wm, gm, mask, max_iterations=1,
+        membership_level=0.3,
     )
     output_dir = tmp_path / "outputs"
     provenance_path = tmp_path / "provenance.json"
@@ -48,6 +49,8 @@ def test_dura_cli_runs_one_active_outer_pass_and_matches_api(tmp_path: Path) -> 
         str(output_dir),
         "--max-iterations",
         "1",
+        "--membership-level",
+        "0.3",
         "--provenance",
         str(provenance_path),
     ]
@@ -83,6 +86,7 @@ def test_dura_cli_runs_one_active_outer_pass_and_matches_api(tmp_path: Path) -> 
     assert provenance["command"] == "dura"
     assert provenance["spatial_convention"] == "RAS"
     assert provenance["parameters"]["max_iterations"] == 1
+    assert provenance["parameters"]["membership_level"] == 0.3
     assert provenance["inputs"] == {
         "t1": str(t1_path.resolve()),
         "white_matter": str(wm_path.resolve()),

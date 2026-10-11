@@ -50,6 +50,7 @@ class BaseRunOptions:
     registration_max_iterations: int = 1
     toads_iterations: int = 2
     dura_iterations: int = 1
+    dura_membership_level: float = 0.3
     crop_edge_width: int = 2
     ace_diffusion_iterations: int = 1
     gvf_iterations: int = 200
@@ -566,6 +567,7 @@ def run_base_workflow(
         "dura", "--t1", str(n4), "--white", str(first_wm), "--gray", str(first_gm),
         "--white-mask", str(first_wmmask), "--output-dir", "{STAGE}",
         "--max-iterations", str(options.dura_iterations),
+        "--membership-level", str(options.dura_membership_level),
     ], [n4, first_wm, first_gm, first_wmmask])
     stripped = active_output("dura", "stripped_t1.nii.gz", dura_dependencies)
     brain = active_output("dura", "brain_mask.nii.gz", dura_dependencies)

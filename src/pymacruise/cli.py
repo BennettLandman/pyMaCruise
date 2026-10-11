@@ -179,6 +179,10 @@ def build_parser() -> argparse.ArgumentParser:
     dura.add_argument("--white-mask", required=True, type=Path)
     dura.add_argument("--output-dir", required=True, type=Path)
     dura.add_argument("--max-iterations", type=int, default=5)
+    dura.add_argument(
+        "--membership-level", type=float, default=0.3,
+        help="target membership (MaCRUISE run_RemoveDura_jist.m selects 0.3)",
+    )
     _add_provenance_option(dura)
 
     cerebellum = commands.add_parser(
@@ -345,6 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--registration-max-iterations", type=int, default=1)
     base_run.add_argument("--toads-iterations", type=int, default=2)
     base_run.add_argument("--dura-iterations", type=int, default=1)
+    base_run.add_argument("--dura-membership-level", type=float, default=0.3)
     base_run.add_argument("--crop-edge-width", type=int, default=2)
     base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
     base_run.add_argument("--gvf-iterations", type=int, default=200)
@@ -656,6 +661,7 @@ def main(argv: list[str] | None = None) -> int:
                 registration_max_iterations=args.registration_max_iterations,
                 toads_iterations=args.toads_iterations,
                 dura_iterations=args.dura_iterations,
+                dura_membership_level=args.dura_membership_level,
                 crop_edge_width=args.crop_edge_width,
                 ace_diffusion_iterations=args.ace_diffusion_iterations,
                 gvf_iterations=args.gvf_iterations,
@@ -1299,7 +1305,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "dura":
         dura_parameters = {
-            "membership_level": 0.4,
+            "membership_level": args.membership_level,
             "curvature_force": 0.5,
             "alignment_force": 1.0,
             "pressure_force": 0.5,

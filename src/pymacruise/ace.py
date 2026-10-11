@@ -887,7 +887,7 @@ def narrow_band_ace(
 
 
 def _distance_and_characteristic_fmm(
-    level_set: np.ndarray, speed: np.ndarray
+    level_set: np.ndarray, speed: np.ndarray, *, max_distance: float | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute the CSF-weighted Eikonal travel time and characteristic field.
 
@@ -905,6 +905,10 @@ def _distance_and_characteristic_fmm(
         raise ValueError("weighted fast-marching inputs must be finite with non-negative speed")
     if any(size < 2 for size in phi.shape):
         raise ValueError("weighted fast marching requires dimensions >= 2")
+    if max_distance is not None and (
+        not np.isfinite(max_distance) or max_distance <= 0
+    ):
+        raise ValueError("fast-marching maximum distance must be finite and positive")
 
     shape = phi.shape
     time = np.full(shape, np.inf, dtype=np.float32)
@@ -1014,6 +1018,12 @@ def _distance_and_characteristic_fmm(
 
     while heap:
         value, point = heap.pop()
+        # DistanceField stops accepting voxels beyond its configured band.
+        # Because the indexed heap is ordered by travel time, every remaining
+        # voxel is at least this far away; assigning the limit below therefore
+        # matches computing the full field and clipping it afterward.
+        if max_distance is not None and value > max_distance:
+            break
         time[point] = value
         state[point] = 2
         for offset in neighbors:
@@ -1031,6 +1041,8 @@ def _distance_and_characteristic_fmm(
                 state[candidate] = 1
                 heap.set(candidate, tentative)
 
+    if max_distance is not None:
+        time[state != 2] = np.float32(max_distance)
     time[phi < 0] *= -1
     return np.asarray(time, dtype=np.float32), np.asarray(characteristic, dtype=np.float32)
 
@@ -1055,9 +1067,9 @@ def _tgdm_signed_distance_fmm(
     if not np.isfinite(values).all():
         raise ValueError("TGDM signed-distance input must be finite")
     distance, _ = _distance_and_characteristic_fmm(
-        values, np.ones(values.shape, dtype=np.float32)
+        values, np.ones(values.shape, dtype=np.float32), max_distance=max_distance
     )
-    return np.clip(distance, -max_distance, max_distance).astype(np.float32, copy=False)
+    return distance.astype(np.float32, copy=False)
 
 
 def _same_ras_grid(
