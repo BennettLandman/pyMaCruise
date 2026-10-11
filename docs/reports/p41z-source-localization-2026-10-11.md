@@ -15,7 +15,7 @@ report rather than by those machine-readable signatures.
 | ACE mode 3 | Enhanced GM, skeleton, and thinned skeleton bitwise exact over 418,509 voxels each; peak 0.250 GB under 8 GB | No mismatch in the selected ACE outputs. |
 | GVF, 200 iterations | Mean absolute error 1.89e-8; max 1.86e-7; peak 0.309 GB under 8 GB | Within the pre-existing Java comparison limits (mean ≤1e-5, max ≤5e-5). |
 | TGDM fields | All six fields have zero sign changes; five surface Dice scores are 1.0; surface mean distances are 7.58e-9–1.09e-7 mm and Hausdorff distances 7.62e-6–4.42e-5 mm | All agreed per-surface thresholds pass on the exact P41z crop. Values differ at some voxels only by small floating-point rounding. |
-| Raw MaCRUISEplus boundary | Java equals Python, but both produce zero foreground voxels on the saved P41z crop | Exact but trivial for this case; not a useful nontrivial boundary validation. The companion folded-boundary fixture has incompatible dimensions/affine for this workflow. |
+| Raw MaCRUISEplus boundary | Java equals Python, but both produce zero foreground voxels on the saved P41z crop | Exact but trivial for this case; it says nothing about the subsequent WM cleanup/routing. A separate source audit found the file workflow passes WM fill where Java uses the hard TOADS WM mask; a nonempty-boundary regression is in progress. |
 
 Machine-readable reports: [topology](p41z-topology-java-comparison-2026-10-11.json),
 [ACE/GVF](p41z-ace-gvf-java-comparison-2026-10-11.json),
@@ -43,21 +43,17 @@ labels. The empty one-parcel boundary is also expected because the source
 suppresses candidate boundaries touching labels 1–99. Neither is evidence of
 an implementation defect.
 
-The zero fused `tissue_sign` is explained by a wiring mismatch upstream of
-TGDM. Source MaCRUISE crops and passes `Atlas_BrainTissueMask` to
-`CombineMAandTOADS`; this includes GM, WM, and other brain tissue. Python
-`plus_full_workflow.py` currently passes `Atlas_Mask`, the WM-only mask. In
-this saved crop all 67,677 label-100 voxels have zero fusion-mask support, even
-though atlas GM is 255 at all of them and transferred TOADS GM is nonzero at
-67,672. Consequently all 67,677 voxels take the outside-mask fusion branch;
-none take confident-WM, confident-GM, or fallback branches, and fused GM/WM
-are zero there. The selected topology, ACE, GVF, and TGDM method comparisons
-above show no mismatch on their held-fixed inputs, but they cannot validate
-the incorrect whole-workflow fusion input. The current run's surfaces remain
-disconnected (2 components per
-mesh, Euler −16) and too thin (median closest-point triangle gap 0.3725 mm;
-level-set mean 0.8106 mm over 291 crossings). The 0.8106-mm statistic is sparse
-and must not be treated as dense ribbon thickness.
+This report was written before the fusion-mask fix; its prior TGDM pass and
+boundary-cleanup validation are superseded/incomplete. Source MaCRUISE crops and passes `Atlas_BrainTissueMask` to
+`CombineMAandTOADS`; both Python plus workflow entry points now pass that
+GM+WM+brain-tissue mask. The corrected held-fixed fusion matches Java exactly
+on GM, WM, and mask. It restores the expected label-100 tissue support through
+fusion, but downstream corrected iteration-6 surfaces still fail the ribbon
+checks. The corrected Java comparison also finds two TGDM sign changes per
+output with large Hausdorff outliers; see the [corrected comparison](p41z-mask-corrected-tgdm-java-comparison-2026-10-11.json).
+These corrected-input results supersede the earlier TGDM pass statement in
+this report. The old crop's sparse thickness statistic and disconnected meshes
+remain evidence for that pre-fix run only.
 
 The corrected registered loop was also continued from iteration 6 to 7. It
 completed in **184.25 s** at **0.780 GB** peak sampled RSS, with energy ratio

@@ -4,9 +4,16 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 workflow_root=${1:-"$repo_root/build/plus-pyramid-source-current/natural-run/plus-surface"}
 reference_dir=${2:-"$repo_root/build/plus-tgdm-current-java-2026-10-08"}
 report=${3:-"$repo_root/docs/reports/plus-tgdm-current-run-java-comparison-2026-10-08.json"}
+context_manifest=${4:-}
 mkdir -p "$reference_dir/java" "$reference_dir/classes"
-PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/prepare_plus_tgdm_java_inputs.py" \
-  --workflow-root "$workflow_root" --output-dir "$reference_dir"
+if [ -n "$context_manifest" ]; then
+  PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/prepare_plus_tgdm_java_inputs.py" \
+    --workflow-root "$workflow_root" --output-dir "$reference_dir" \
+    --context-manifest "$context_manifest" --allow-python-stage-differences
+else
+  PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/prepare_plus_tgdm_java_inputs.py" \
+    --workflow-root "$workflow_root" --output-dir "$reference_dir"
+fi
 reference_root="$repo_root/tests/java_reference"
 javac -d "$reference_dir/classes" \
   -sourcepath "$reference_root/stubs:$reference_root/upstream" \

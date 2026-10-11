@@ -347,11 +347,11 @@ def run_plus_file_workflow(
         manifest["history"].append({"stage": "topology_ace_gvf_tgdm", "status": "running", "attempt": root_attempt.name})
         _write_json(manifest_path, manifest)
         cropped = {name: _load(Path(crop_record["outputs"][name]["path"]), name) for name in (
-            "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm", "multi_atlas_mask", "toads_gm", "toads_wm_fill", "toads_wm_mask"
+            "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm", "multi_atlas_mask", "toads_gm", "toads_wm_mask"
         )}
         composed = run_plus_topology_and_tgdm(
             cropped["segmentation"],
-            cropped["toads_wm_fill"],
+            cropped["toads_wm_mask"],
             cropped["multi_atlas_gm"],
             cropped["multi_atlas_wm"],
             cropped["multi_atlas_mask"],
