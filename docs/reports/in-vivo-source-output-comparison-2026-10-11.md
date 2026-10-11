@@ -30,6 +30,14 @@ The mismatch is not explained by orientation, scaling, or the supplied BET mask.
 
 The Python tissue masks compared by the script reconstruct to 642,437 GM and 428,225 WM voxels. Against the downloaded cached masks, binary Dice is 0.9891 for GM, 0.9935 for `Atlas_BrainTissueMask`, and 1.0 for both WM and `Atlas_Mask`.
 
+## Saved TGDM inputs and replay limitation
+
+The downloaded `TGDMinputs` directory contains same-grid NIfTIs for initial membership, WM, GM, ACE GM, ACE skeleton, and GVF. The V3 wrapper defaults are available in source: initial smoothing 6 iterations, inner 4, central 7, outer set from the central-iteration option (also 7 by default), GM iso 0.4, and WM iso 0.6. These settings are recorded for a future held-fixed replay.
+
+The saved GVF file, `TGDMinputs/target_image_GVFimg_uc_invcp_refspace.nii.gz`, is a scalar 3D `(184, 256, 256)` image with NIfTI `dim[0]=3`. The supplied JIST `MaTGDMcrop` source declares this input as a 3-component vector volume. The Python TGDM adapter likewise requires a component-last three-vector and correctly rejects the scalar file; it does not reinterpret a scalar as a vector. No other GVF component files were found in the downloaded output/input trees. Thus the source's exact full TGDM input state cannot be reconstructed from these exports.
+
+As a diagnostic only, I ran the Python TGDM sequence on the saved same-grid inputs while omitting GVF. This is **not** a source-equivalence comparison because it omits a source-declared input. Final sign-mask Dice was 0.9721 inner, 0.8479 central, and 0.9934 outer; this does not resolve the level-set mismatch and is not an acceptance result. The native-grid run completed under an 8 GB watchdog at 3.418 GB peak sampled RSS. A valid full replay needs the original three-component GVF (or a documented, source-faithful way to rebuild it) and the exact source input/settings provenance.
+
 ## Reproducibility
 
 The comparison script is [`scripts/compare_human_source_output.py`](../../scripts/compare_human_source_output.py). Run it from the repository root with the downloaded source output and input directories available at their current locations:
