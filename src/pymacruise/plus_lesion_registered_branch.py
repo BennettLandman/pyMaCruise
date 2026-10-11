@@ -320,6 +320,7 @@ def run_plus_lesion_registered_branch_checkpoint(
             centroid_options={
                 "mode": "none",
                 "modalities": ("T1_MPRAGE", "FLAIR"),
+                "optimized_csf_all_modalities": True,
                 "lesion_power_exponents": (0.4, 1.2),
                 "tissue_power_exponents": np.ones((2, 13), dtype=np.float32),
             },

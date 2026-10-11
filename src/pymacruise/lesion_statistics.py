@@ -1047,6 +1047,7 @@ def compute_lesion_toads_centroids(
     prior_centroids: ArrayLike | None = None,
     tissue_power_exponents: ArrayLike | None = None,
     modalities: tuple[str, ...] | list[str] | None = None,
+    optimized_csf_all_modalities: bool = False,
     lesion_power_exponents: ArrayLike | None = None,
     optimized_auxiliary_power_exponents: ArrayLike | None = None,
     zero_threshold: float = 1.0e-10,
@@ -1122,6 +1123,8 @@ def compute_lesion_toads_centroids(
             raise ValueError("tissue_power_exponents must have shape (channels, classes)")
         if modality_names is None or len(modality_names) != channels or any(not isinstance(name, str) for name in modality_names):
             raise ValueError("modalities must provide one string per image channel")
+    if not isinstance(optimized_csf_all_modalities, bool):
+        raise ValueError("optimized_csf_all_modalities must be a boolean")
     ordinary_auxiliary = any(kind in {"lesion", "blackhole"} for kind in types)
     lesion_powers = None if lesion_power_exponents is None else np.asarray(lesion_power_exponents, dtype=np.float32)
     if ordinary_auxiliary and (lesion_powers is None or lesion_powers.shape != (channels,)):
@@ -1196,7 +1199,16 @@ def compute_lesion_toads_centroids(
         for class_index, kind in enumerate(types):
             tissue_factor = None
             if kind in optimized_tissue_types:
-                table_applies = kind != "optimized_csf" or modality_names[channel] == "T1_MPRAGE"
+                # The P41z VandyCRUISE source applies powercsf[c] to every
+                # OPTIMIZED_CSF channel. Older selected-source harnesses used
+                # a T1_MPRAGE-only policy, retained as the default for those
+                # comparisons. The P41z caller opts into the active-source
+                # behavior explicitly.
+                table_applies = (
+                    kind != "optimized_csf"
+                    or modality_names[channel] == "T1_MPRAGE"
+                    or optimized_csf_all_modalities
+                )
                 if table_applies:
                     residual = np.asarray(corrected - initial[channel, class_index], dtype=np.float32)
                     distance = np.asarray(residual * residual, dtype=np.float32)

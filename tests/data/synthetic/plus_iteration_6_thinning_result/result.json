@@ -1,0 +1,81 @@
+{
+  "case": "P41z synthetic iteration-6 source-selected thinning result",
+  "class_volume": [
+    107771.109375,
+    13725.5146484375,
+    468.0538330078125,
+    3941.467529296875,
+    25474.66796875,
+    199.56210327148438,
+    642.4388427734375,
+    408.7213134765625,
+    964.5764770507812,
+    864.4410400390625,
+    14276.572265625,
+    99.63182067871094,
+    1575.638671875
+  ],
+  "event_count": 267638,
+  "files": {
+    "availability_13ch": {
+      "path": "availability_13ch.nii.gz",
+      "sha256": "734634355ad4dce146ccfa05bcc3ff3240649973b09a2a53fe0bd108ce5f1c06",
+      "shape": [
+        71,
+        89,
+        67,
+        13
+      ]
+    },
+    "ordering": {
+      "path": "ordering.nii.gz",
+      "sha256": "44c85c48eba7522cee877173b2ebe3d17e0749777a5eab46ef9dc1995522667f",
+      "shape": [
+        71,
+        89,
+        67
+      ]
+    },
+    "segmentation": {
+      "path": "segmentation.nii.gz",
+      "sha256": "a3408886d212c6832a25718fca795e71cdfbd743a016e6c779640a46cc825a90",
+      "shape": [
+        71,
+        89,
+        67
+      ]
+    },
+    "skeleton": {
+      "path": "skeleton.nii.gz",
+      "sha256": "9cb5360baffe8583dafcd55f9a256871ccde4f0249a0e20c81d08b22b12b1327",
+      "shape": [
+        71,
+        89,
+        67
+      ]
+    }
+  },
+  "initial_boundary_count": 98325,
+  "input_provenance_sha256": "36b04ad73e24bb065b316f62d9e52f34ad8009501179ea7880a0ef985ed8888c",
+  "java_reference_harness_sha256": "101aa12bfe874d937b4a0f8f208471dfe38139aff739f2f1d61cda16a159b83f",
+  "minimum_class_volume": [
+    107771.8828125,
+    13725.609375,
+    468.5809631347656,
+    3941.99365234375,
+    25475.0546875,
+    200.01473999023438,
+    642.5396118164062,
+    408.734619140625,
+    964.6111450195312,
+    865.0142211914062,
+    14277.193359375,
+    100.0,
+    1576.2537841796875
+  ],
+  "remaining_queue_count": 0,
+  "selected_lesion_toad_source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+  "spatial_convention": "RAS",
+  "synthetic_only": true,
+  "validated_against": "Lesion13ClassNextThinningReferenceHarness"
+}

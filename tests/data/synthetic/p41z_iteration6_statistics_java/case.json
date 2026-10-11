@@ -1,0 +1,266 @@
+{
+  "case": "P41z held-fixed synthetic iteration-6 post-thinning statistics",
+  "spatial_convention": "RAS",
+  "modalities": [
+    "T1_MPRAGE",
+    "FLAIR"
+  ],
+  "class_names": [
+    "Background",
+    "Sulcal-CSF",
+    "Ventricles",
+    "Cerebellum-GM",
+    "Cerebrum-GM",
+    "Caudate",
+    "Thalamus",
+    "Putamen",
+    "Brainstem",
+    "Cerebellum-WM",
+    "OuterVentricular-WM",
+    "InterVentricular-WM",
+    "Frontal-WM"
+  ],
+  "object_types": [
+    "mask",
+    "optimized_csf",
+    "optimized_csf",
+    "object",
+    "object",
+    "object",
+    "object",
+    "object",
+    "object",
+    "object",
+    "lesion",
+    "object",
+    "object"
+  ],
+  "membership_channels": {
+    "class": [
+      0,
+      12
+    ],
+    "lesion": 13,
+    "black_hole": 14,
+    "outlier": 15,
+    "relation_unused": 16
+  },
+  "initial_class_centroids": [
+    [
+      1.0241313574965716e-08,
+      0.9079282879829407,
+      0.15590617060661316,
+      0.6922556161880493,
+      0.6921905875205994,
+      0.6924393177032471,
+      0.6924784779548645,
+      0.692344605922699,
+      0.6919001936912537,
+      0.9998738765716553,
+      0.9998934268951416,
+      0.9950058460235596,
+      0.9998322129249573
+    ],
+    [
+      2.5921666590988934e-08,
+      0.47446244955062866,
+      0.5414555072784424,
+      0.7010500431060791,
+      0.7129185795783997,
+      0.6429075002670288,
+      0.7408624291419983,
+      0.7732377052307129,
+      0.7209580540657043,
+      0.8311939835548401,
+      0.8206452131271362,
+      0.4809580445289612,
+      0.8432855010032654
+    ]
+  ],
+  "initial_lesion_centroids": [
+    0.9594557285308838,
+    0.8746423721313477
+  ],
+  "initial_black_hole_centroids": [
+    0.0,
+    0.0
+  ],
+  "tissue_power_exponents": [
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  ],
+  "lesion_power_exponents": [
+    0.4,
+    1.2
+  ],
+  "centroid_mode": "none",
+  "norm_type": "Identity",
+  "outlier_distance": 0.1,
+  "use_lesion_weight": false,
+  "fields": null,
+  "source_zero_variance_nan": true,
+  "synthetic_only": true,
+  "source_checkpoint_sha256": {
+    "iteration5_manifest": "b8ba863db06c0d1082e115ffef60b381f1f96a7f17f153fcdc2aa0512d526f06",
+    "iteration5_summary": "f03d9f0d0831022335a3296bd084e229f172ff49d86645827ec05199eb46aac0",
+    "iteration5_memberships_17ch": "c6204097d018f4ac1dbcd291304878715a055a2bc2b4a8651bf4f0af30ce077a",
+    "iteration6_thinning_result_json": "a8ca967c7c39715037cc3485d3762c065167d99d2959a7988e76b17a8c69c01c",
+    "iteration6_thinned_segmentation": "a3408886d212c6832a25718fca795e71cdfbd743a016e6c779640a46cc825a90",
+    "iteration6_thinned_skeleton": "9cb5360baffe8583dafcd55f9a256871ccde4f0249a0e20c81d08b22b12b1327",
+    "registered_recrop_t1_flair": "86249a9c9c0019708670a325f6f34fdbc13ebbcc7f53f8c7054cb8c593622119",
+    "iteration5_checkpoint_manifest_recorded": "b8ba863db06c0d1082e115ffef60b381f1f96a7f17f153fcdc2aa0512d526f06",
+    "registered_recrop_manifest_recorded": "39db6ec6e851be2f4c74e6f2730bc1f5eb91956e3ff8dc8e42a99c9f1388de33"
+  },
+  "selected_java_source": {
+    "file": "VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java",
+    "source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+    "methods": [
+      "computeCentroids",
+      "computeVariances",
+      "computeChannelWeights"
+    ],
+    "wrapper_file": "VandyCRUISE/src/edu/jhmi/rad/medic/algorithms/AlgorithmLesionToads.java",
+    "wrapper_sha256": "556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb",
+    "harness": "tests/java_reference/LesionNextIterationStatisticsReferenceHarness.java",
+    "harness_sha256": "12a76122c62b059b2a966d00619a0284dd7b44230b576f59c463a1813dcb89c0"
+  },
+  "fixture_files": {
+    "black_hole_membership.nii.gz": {
+      "sha256": "ba8185ae54aff69b7824d3337c0592ca10dd6a1e284672f410c661b8a3ce56bf",
+      "shape": [
+        71,
+        89,
+        67
+      ],
+      "dtype": "float32",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "class_memberships_13ch.nii.gz": {
+      "sha256": "5a39878dd360cdd51816a986085065fc7d635fe192dd8bf81cd63c465f022542",
+      "shape": [
+        71,
+        89,
+        67,
+        13
+      ],
+      "dtype": "float32",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "images_t1_flair.nii.gz": {
+      "sha256": "86249a9c9c0019708670a325f6f34fdbc13ebbcc7f53f8c7054cb8c593622119",
+      "shape": [
+        71,
+        89,
+        67,
+        2
+      ],
+      "dtype": "float32",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "lesion_membership.nii.gz": {
+      "sha256": "404ef1baa552022fc98f9ed4dc5c1c9e86abf1752252009b923029f227333bce",
+      "shape": [
+        71,
+        89,
+        67
+      ],
+      "dtype": "float32",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "outlier_membership.nii.gz": {
+      "sha256": "5e2a62a3de5f1d5dbb4197536117b25a22ee0a009ba64bddf66f45734b898724",
+      "shape": [
+        71,
+        89,
+        67
+      ],
+      "dtype": "float32",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "thinned_segmentation.nii.gz": {
+      "sha256": "a3408886d212c6832a25718fca795e71cdfbd743a016e6c779640a46cc825a90",
+      "shape": [
+        71,
+        89,
+        67
+      ],
+      "dtype": "int16",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    },
+    "thinned_skeleton.nii.gz": {
+      "sha256": "9cb5360baffe8583dafcd55f9a256871ccde4f0249a0e20c81d08b22b12b1327",
+      "shape": [
+        71,
+        89,
+        67
+      ],
+      "dtype": "int16",
+      "axcodes": [
+        "R",
+        "A",
+        "S"
+      ]
+    }
+  },
+  "input_files": {
+    "images": "images_t1_flair.nii.gz",
+    "memberships": "class_memberships_13ch.nii.gz",
+    "segmentation": "thinned_segmentation.nii.gz",
+    "lesion_membership": "lesion_membership.nii.gz",
+    "black_hole_membership": "black_hole_membership.nii.gz",
+    "outlier_membership": "outlier_membership.nii.gz"
+  },
+  "optimized_csf_all_modalities": true
+}
