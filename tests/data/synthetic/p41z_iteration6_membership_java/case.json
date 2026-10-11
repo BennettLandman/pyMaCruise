@@ -222,7 +222,7 @@
     "statistics_harness": "tests/java_reference/LesionNextIterationStatisticsReferenceHarness.java",
     "statistics_harness_sha256": "12a76122c62b059b2a966d00619a0284dd7b44230b576f59c463a1813dcb89c0",
     "membership_harness": "tests/java_reference/LesionNextIterationMembershipReferenceHarness.java",
-    "membership_harness_sha256": "d25f3d28b678c8bb908ded3b36db5904dd01302ac279ff289df2dc2b39e17d80",
+    "membership_harness_sha256": "642618d688f65385db44f8feedb2a92578eef11822fbb30a6f4584250b85c0df",
     "harness": "tests/java_reference/LesionNextIterationStatisticsReferenceHarness.java",
     "harness_sha256": "12a76122c62b059b2a966d00619a0284dd7b44230b576f59c463a1813dcb89c0",
     "source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"

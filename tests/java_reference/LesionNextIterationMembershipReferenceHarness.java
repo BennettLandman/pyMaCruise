@@ -157,7 +157,10 @@ public final class LesionNextIterationMembershipReferenceHarness {
             float sum=other+ls+bs;
             float term=raw+(smoothingPriors[k]*SMOOTH)*sum;
             float e=raw+((0.5f*smoothingPriors[k])*SMOOTH)*sum;
-            float termL=rawLesion, eL=0.0f;
+            // Source assigns lesion_energy = numL before spatial smoothing
+            // and prior terms, so the raw lesion data energy is part of the
+            // carried energy state as well as the membership denominator.
+            float termL=rawLesion, eL=rawLesion;
             if (k==LESION) {
                 float lsFor=other+self+bs;
                 termL+=(smoothingPriors[k]*SMOOTH)*lsFor;
