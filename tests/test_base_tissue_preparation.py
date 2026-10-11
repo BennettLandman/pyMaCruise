@@ -44,7 +44,10 @@ def test_base_preparation_uses_maseg_crop_transfer_and_selected_fusion() -> None
         "corticalSeparationFromMaSeg",
         "nearestNeighborTransferToMaSegReference",
         "sharedCropFromPositiveMaSegGM",
+        "deriveMaSegCSFBoundary",
+        "cleanBoundaryBySecondPassToadsWM",
         "combineMaSegAtlasAndTOADS",
+        "cleanBoundaryByUpdatedWM",
     )
     assert result.crop_parameters.bounds == ((-2, 12), (-2, 12), (-2, 12))
     assert result.crop_parameters.cropped_shape == (15, 15, 15)
@@ -135,7 +138,10 @@ def test_base_preparation_removes_selected_labels_before_transfer_and_crop() -> 
         "removeBrainstemAndCerebellumBeforeTransfer",
         "nearestNeighborTransferToMaSegReference",
         "sharedCropFromPositiveMaSegGM",
+        "deriveMaSegCSFBoundary",
+        "cleanBoundaryBySecondPassToadsWM",
         "combineMaSegAtlasAndTOADS",
+        "cleanBoundaryByUpdatedWM",
     )
     assert result.removed_voxel_counts is not None
     assert result.removed_voxel_counts[0] >= 1
@@ -185,7 +191,8 @@ def test_base_preparation_cli_persists_ras_maps_and_provenance(tmp_path) -> None
         "toads_gm_transferred", "toads_wmfill_transferred", "toads_mask_transferred",
         "atlas_gm_cropped", "atlas_wm_cropped", "atlas_mask_cropped",
         "atlas_brain_tissue_mask_cropped", "toads_gm_cropped", "toads_wmfill_cropped",
-        "toads_mask_cropped", "fused_gm", "fused_wmfill", "fused_mask",
+        "toads_mask_cropped", "boundary_csf_raw", "boundary_csf_toads_cleaned",
+        "boundary_csf", "fused_gm", "fused_wmfill", "fused_mask",
     }
     for name, path in document["outputs"].items():
         image = nib.load(path)

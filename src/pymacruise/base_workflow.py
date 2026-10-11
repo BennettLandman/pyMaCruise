@@ -499,7 +499,9 @@ def run_base_workflow(
                     "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz",
                     "atlas_mask_cropped.nii.gz", "atlas_brain_tissue_mask_cropped.nii.gz",
                     "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
-                    "toads_mask_cropped.nii.gz", "fused_gm.nii.gz",
+                    "toads_mask_cropped.nii.gz", "boundary_csf_raw.nii.gz",
+                    "boundary_csf_toads_cleaned.nii.gz", "boundary_csf.nii.gz",
+                    "fused_gm.nii.gz",
                     "fused_wmfill.nii.gz", "fused_mask.nii.gz",
                 )
                 by_name = {Path(item["path"]).name: Path(item["path"]) for item in records}
@@ -659,7 +661,9 @@ def run_base_workflow(
         "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz",
         "atlas_mask_cropped.nii.gz", "atlas_brain_tissue_mask_cropped.nii.gz",
         "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
-        "toads_mask_cropped.nii.gz", "fused_gm.nii.gz", "fused_wmfill.nii.gz",
+        "toads_mask_cropped.nii.gz", "boundary_csf_raw.nii.gz",
+        "boundary_csf_toads_cleaned.nii.gz", "boundary_csf.nii.gz",
+        "fused_gm.nii.gz", "fused_wmfill.nii.gz",
         "fused_mask.nii.gz", "provenance.json",
     )
     prep_outputs = [
@@ -679,10 +683,15 @@ def run_base_workflow(
     prepared_gm = active_output("base-tissue-preparation", "fused_gm.nii.gz", prep_dependencies)
     prepared_wm = active_output("base-tissue-preparation", "fused_wmfill.nii.gz", prep_dependencies)
     prepared_mask = active_output("base-tissue-preparation", "fused_mask.nii.gz", prep_dependencies)
+    prepared_boundary = active_output(
+        "base-tissue-preparation", "boundary_csf.nii.gz", prep_dependencies
+    )
     preparation_provenance = active_output(
         "base-tissue-preparation", "provenance.json", prep_dependencies
     )
-    core_dependencies = [prepared_gm, prepared_wm, prepared_mask, preparation_provenance]
+    core_dependencies = [
+        prepared_gm, prepared_wm, prepared_mask, prepared_boundary, preparation_provenance
+    ]
     core_outputs = [active_output("cruise-core", f"{name}.nii.gz", core_dependencies) for name in (
         "gm_cropped", "wmfill_cropped", "wmmask_cropped", "wmfill_topology_corrected",
         "ace_enhanced_gm", "ace_skeleton", "ace_thinned_skeleton", "gvf", "inner", "central", "outer"
@@ -690,6 +699,7 @@ def run_base_workflow(
     core_outputs.append(active_output("cruise-core", "provenance.json", core_dependencies))
     run_stage("cruise-core", core_outputs, [
         "toads-cruise-core", "--gm", str(prepared_gm), "--wm-fill", str(prepared_wm),
+        "--boundary-csf", str(prepared_boundary),
         "--wm-mask", str(prepared_mask), "--base-preparation-provenance",
         str(preparation_provenance), "--edge-width", str(options.crop_edge_width),
         "--ace-diffusion-iterations", str(options.ace_diffusion_iterations),

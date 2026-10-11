@@ -241,6 +241,10 @@ def build_parser() -> argparse.ArgumentParser:
     cruise_core.add_argument("--gm", required=True, type=Path)
     cruise_core.add_argument("--wm-fill", required=True, type=Path)
     cruise_core.add_argument("--wm-mask", required=True, type=Path)
+    cruise_core.add_argument(
+        "--boundary-csf", type=Path,
+        help="V3 MaSeg CSF boundary cleaned by TOADS and updated WM for ACE mode 2",
+    )
     cruise_core.add_argument("--segmentation", type=Path)
     cruise_core.add_argument("--remove-cerebellum", action="store_true")
     cruise_core.add_argument(
@@ -1149,6 +1153,9 @@ def main(argv: list[str] | None = None) -> int:
             "toads_gm_cropped": result.cropped_toads_gm,
             "toads_wmfill_cropped": result.cropped_toads_wm_fill,
             "toads_mask_cropped": result.cropped_toads_mask,
+            "boundary_csf_raw": result.raw_boundary_csf,
+            "boundary_csf_toads_cleaned": result.toads_cleaned_boundary_csf,
+            "boundary_csf": result.boundary_csf,
             "fused_gm": result.gray_matter,
             "fused_wmfill": result.white_matter,
             "fused_mask": result.mask,
@@ -1597,6 +1604,14 @@ def main(argv: list[str] | None = None) -> int:
             outputs=output_paths,
         )
     elif args.command == "toads-cruise-core":
+        if (
+            args.base_preparation_provenance is not None
+            and args.use_updated_csf_in_ace == 2
+            and args.boundary_csf is None
+        ):
+            raise ValueError(
+                "ACE mode 2 in the selected base workflow requires --boundary-csf"
+            )
         prepared_crop_parameters = None
         if args.base_preparation_provenance is not None:
             if args.remove_cerebellum or args.segmentation is not None:
@@ -1642,6 +1657,9 @@ def main(argv: list[str] | None = None) -> int:
             remove_cerebellum=args.remove_cerebellum,
             crop_edge_width=args.edge_width,
             ace_diffusion_iterations=args.ace_diffusion_iterations,
+            boundary_csf=(
+                None if args.boundary_csf is None else _load_nifti_gz(args.boundary_csf)
+            ),
             ace_use_updated_csf_in_ace=args.use_updated_csf_in_ace,
             gvf_lambda=args.gvf_lambda,
             gvf_iterations=args.gvf_iterations,
@@ -1688,6 +1706,10 @@ def main(argv: list[str] | None = None) -> int:
                 "gaussian_alpha": 1.8,
                 "diffusion_iterations": args.ace_diffusion_iterations,
                 "updated_multi_atlas_csf_mode": args.use_updated_csf_in_ace,
+                "multi_atlas_csf_boundary": (
+                    None if args.boundary_csf is None else str(args.boundary_csf.resolve())
+                ),
+                "multi_atlas_csf_boundary_supplied": args.boundary_csf is not None,
             },
             "gvf": {
                 "lambda": args.gvf_lambda,
@@ -1712,6 +1734,7 @@ def main(argv: list[str] | None = None) -> int:
                 "gm": args.gm,
                 "wm_fill": args.wm_fill,
                 "wm_mask": args.wm_mask,
+                "boundary_csf": args.boundary_csf,
                 "segmentation": args.segmentation,
             },
             parameters=core_options,

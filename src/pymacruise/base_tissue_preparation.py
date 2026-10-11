@@ -15,7 +15,11 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 
-from .boundary import combine_multi_atlas_toads_images
+from .boundary import (
+    clean_csf_boundary_image,
+    combine_multi_atlas_toads_images,
+    multi_atlas_csf_boundary_image,
+)
 from .cortical_separation import cortical_separation
 from .cropping import CropParameters, crop_image, find_crop_parameters
 from .image_io import normalize_image_to_ras
@@ -41,6 +45,9 @@ class BaseTissuePreparationResult:
     cropped_toads_gm: nib.spatialimages.SpatialImage
     cropped_toads_wm_fill: nib.spatialimages.SpatialImage
     cropped_toads_mask: nib.spatialimages.SpatialImage
+    raw_boundary_csf: nib.spatialimages.SpatialImage
+    toads_cleaned_boundary_csf: nib.spatialimages.SpatialImage
+    boundary_csf: nib.spatialimages.SpatialImage
     gray_matter: nib.spatialimages.SpatialImage
     white_matter: nib.spatialimages.SpatialImage
     mask: nib.spatialimages.SpatialImage
@@ -112,7 +119,14 @@ def prepare_base_tissue_maps(
         transfer_to_reference_space(image, maseg_ras, cval=0.0)
         for image in toads_inputs
     )
-    stages.extend(("nearestNeighborTransferToMaSegReference", "sharedCropFromPositiveMaSegGM", "combineMaSegAtlasAndTOADS"))
+    stages.extend((
+        "nearestNeighborTransferToMaSegReference",
+        "sharedCropFromPositiveMaSegGM",
+        "deriveMaSegCSFBoundary",
+        "cleanBoundaryBySecondPassToadsWM",
+        "combineMaSegAtlasAndTOADS",
+        "cleanBoundaryByUpdatedWM",
+    ))
 
     crop_parameters = find_crop_parameters(
         atlas["Atlas_GM"], threshold=0.0, edge_width=crop_edge_width, background=0.0
@@ -124,7 +138,14 @@ def prepare_base_tissue_maps(
     toads_gm, toads_wm, toads_mask_crop = (
         crop_image(image, crop_parameters) for image in transferred
     )
+    cropped_maseg = crop_image(maseg_ras, crop_parameters)
 
+    # The V3 wrapper extracts and TOADS-cleans this boundary before tissue-map
+    # update; only the final updated-WM cleanup follows the fusion stage.
+    raw_boundary = multi_atlas_csf_boundary_image(cropped_maseg)
+    toads_cleaned_boundary = clean_csf_boundary_image(
+        raw_boundary, toads_mask_crop, mode="toads_wm"
+    )
     fused = combine_multi_atlas_toads_images(
         atlas_gm,
         atlas_wm,
@@ -133,6 +154,10 @@ def prepare_base_tissue_maps(
         toads_wm,
         toads_mask_crop,
         gm_confident_level=gm_confident_level,
+    )
+    # V3's ACE mode 2 uses the twice-cleaned MaSeg boundary after diffusion.
+    cleaned_boundary = clean_csf_boundary_image(
+        toads_cleaned_boundary, fused[1], mode="updated_wm"
     )
     order = tuple(stages)
     provenance: dict[str, Any] = {
@@ -156,6 +181,13 @@ def prepare_base_tissue_maps(
             "erosion": "3D center plus six neighbors",
             "gm_confident_level": float(gm_confident_level),
         },
+        "boundary_csf": {
+            "source": "cropped MaSeg labels",
+            "overlooked_labels": [120, 121, 202, 203, 156, 157],
+            "cleanup_order": ["toads_wm_gt_0.01", "updated_wm_gt_25.5"],
+            "ace_updated_csf_mode": 2,
+            "merge_location": "after diffusion, before Gaussian smoothing",
+        },
         "mask_distinction": {
             "fusion_mask": "MaSeg-derived Atlas_BrainTissueMask",
             "skull_stripping_mask": "external matched skull-stripping mask; not consumed by this stage",
@@ -176,6 +208,9 @@ def prepare_base_tissue_maps(
         cropped_toads_gm=toads_gm,
         cropped_toads_wm_fill=toads_wm,
         cropped_toads_mask=toads_mask_crop,
+        raw_boundary_csf=raw_boundary,
+        toads_cleaned_boundary_csf=toads_cleaned_boundary,
+        boundary_csf=cleaned_boundary,
         gray_matter=fused[0],
         white_matter=fused[1],
         mask=fused[2],

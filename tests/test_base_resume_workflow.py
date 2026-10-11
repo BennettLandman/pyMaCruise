@@ -146,7 +146,9 @@ def _install_fake_cli(monkeypatch, t1_path: Path) -> list[list[str]]:
             crop_names = (
                 "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz", "atlas_mask_cropped.nii.gz",
                 "atlas_brain_tissue_mask_cropped.nii.gz", "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
-                "toads_mask_cropped.nii.gz", "fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz",
+                "toads_mask_cropped.nii.gz", "boundary_csf_raw.nii.gz",
+                "boundary_csf_toads_cleaned.nii.gz", "boundary_csf.nii.gz",
+                "fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz",
             )
             for name in full_names:
                 _save(output_dir / name, np.ones(shape, dtype=np.float32), affine)
@@ -219,6 +221,7 @@ def test_tail_imports_hashed_upstream_and_resumes_verified_stages(tmp_path, monk
     core_command = manifest["stages"]["cruise-core"]["command"]
     assert core_command[core_command.index("--ace-diffusion-iterations") + 1] == "25"
     assert core_command[core_command.index("--use-updated-csf-in-ace") + 1] == "2"
+    assert core_command[core_command.index("--boundary-csf") + 1].endswith("boundary_csf.nii.gz")
     assert core_command[core_command.index("--wm-iso-level") + 1] == "0.5"
     assert manifest["options"]["ace_use_updated_csf_in_ace"] == 2
     assert manifest["options"]["wm_iso_level"] == 0.5

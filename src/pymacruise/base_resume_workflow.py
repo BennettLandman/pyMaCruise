@@ -676,11 +676,12 @@ def run_base_resume_from_toads(
             outputs = [stage_dir / rel for rel in relative_outputs]
             records = _output_records([*outputs, log_path], reference, require_reference_grid=name not in {"base-tissue-preparation", "cruise-core"})
             if name == "base-tissue-preparation":
-                full_names = [n for n in relative_outputs if n.endswith(".nii.gz") and "_cropped" not in n and n not in {"fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz"}]
+                full_names = [n for n in relative_outputs if n.endswith(".nii.gz") and "_cropped" not in n and not n.startswith("boundary_csf") and n not in {"fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz"}]
                 full_images = [nib.load(str(stage_dir / n)) for n in full_names]
                 if any(im.shape != reference.shape or not np.allclose(im.affine, reference.affine, rtol=0, atol=1e-4) for im in full_images):
                     raise RuntimeError("Full-grid MaSeg/TOADS preparation maps do not match source T1")
                 crop_names = [n for n in relative_outputs if n.endswith("_cropped.nii.gz")]
+                crop_names.extend(n for n in ("boundary_csf_raw.nii.gz", "boundary_csf_toads_cleaned.nii.gz", "boundary_csf.nii.gz") if n in relative_outputs)
                 crop_names.extend(n for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz") if n in relative_outputs)
                 images = [nib.load(str(stage_dir / n)) for n in crop_names]
                 if not images or any(im.shape != images[0].shape or not np.allclose(im.affine, images[0].affine, rtol=0, atol=1e-4) for im in images[1:]):
@@ -726,7 +727,8 @@ def run_base_resume_from_toads(
         "toads_gm_transferred.nii.gz", "toads_wmfill_transferred.nii.gz", "toads_mask_transferred.nii.gz",
         "atlas_gm_cropped.nii.gz", "atlas_wm_cropped.nii.gz", "atlas_mask_cropped.nii.gz",
         "atlas_brain_tissue_mask_cropped.nii.gz", "toads_gm_cropped.nii.gz", "toads_wmfill_cropped.nii.gz",
-        "toads_mask_cropped.nii.gz", "fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "provenance.json",
+        "toads_mask_cropped.nii.gz", "boundary_csf_raw.nii.gz", "boundary_csf_toads_cleaned.nii.gz",
+        "boundary_csf.nii.gz", "fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "provenance.json",
     )
     prep_deps = [maseg_path, *toads_maps.values()]
     prep = execute_stage("base-tissue-preparation", prep_names, [
@@ -741,9 +743,10 @@ def run_base_resume_from_toads(
         "inner.nii.gz", "central.nii.gz", "outer.nii.gz", "provenance.json",
     )
     prep_prov = prep["provenance.json"]
-    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz")] + [prep_prov]
+    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "boundary_csf.nii.gz")] + [prep_prov]
     core = execute_stage("cruise-core", core_names, [
         "toads-cruise-core", "--gm", str(core_deps[0]), "--wm-fill", str(core_deps[1]), "--wm-mask", str(core_deps[2]),
+        "--boundary-csf", str(core_deps[3]),
         "--base-preparation-provenance", str(prep_prov), "--edge-width", str(_V3_CROP_EDGE_WIDTH),
         "--ace-diffusion-iterations", "25", "--use-updated-csf-in-ace", str(settings["ace_use_updated_csf_in_ace"]),
         "--gvf-iterations", "200", "--wm-iso-level", str(settings["wm_iso_level"]),

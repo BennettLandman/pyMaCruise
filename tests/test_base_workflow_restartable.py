@@ -135,7 +135,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert manifest["stages"]["toads-first"]["attempt"] == 2
     assert all(stage["outputs"] and stage["dependency_signature"] for stage in manifest["stages"].values())
     preparation_stage = manifest["stages"]["base-tissue-preparation"]
-    assert len(preparation_stage["outputs"]) == 19  # 17 RAS maps, provenance, stage log
+    assert len(preparation_stage["outputs"]) == 22  # 20 RAS maps, provenance, stage log
     assert "--remove-cerebellum" not in preparation_stage["command"]
     preparation_provenance_path = Path(next(
         item["path"] for item in preparation_stage["outputs"]
@@ -149,7 +149,13 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     core_stage = manifest["stages"]["cruise-core"]
     assert "--remove-cerebellum" not in core_stage["command"]
     assert "--base-preparation-provenance" in core_stage["command"]
+    assert "--boundary-csf" in core_stage["command"]
     assert any("fused_gm.nii.gz" in value for value in core_stage["command"])
+    assert any("boundary_csf.nii.gz" in value for value in core_stage["command"])
+    assert any(
+        Path(item["path"]).name == "boundary_csf.nii.gz"
+        for item in preparation_stage["outputs"]
+    )
     toads_log = output / "stages" / "toads-first" / "attempt-02" / "stage.log"
     assert toads_log.is_file()
     toads_log_text = toads_log.read_text()

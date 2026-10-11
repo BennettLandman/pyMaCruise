@@ -1,7 +1,7 @@
 """Compose the selected MaCRUISE base tissue-to-TGDM core.
 
 This follows the base wrapper after second-pass TOADS: prepare/crop/toplevel
-WM; run base ACE (without updated multi-atlas CSF); compute generalized GVF
+WM and its cleaned MaSeg CSF boundary; run base ACE; compute generalized GVF
 from enhanced GM; run nested TGDM on the crop; and restore its three level sets
 to the full GM reference grid with the source cropper's background value.
 Visualization surfaces are intentionally omitted.
@@ -15,7 +15,7 @@ import nibabel as nib
 import numpy as np
 
 from .ace import ACEImageResult, ace_enhance
-from .cropping import CropParameters, uncrop_image
+from .cropping import CropParameters, crop_image, uncrop_image
 from .image_io import normalize_image_to_ras
 from .gvf import GVFImageResult, generalized_gvf_image
 from .tgdm import (
@@ -49,6 +49,7 @@ def run_toads_cruise_core(
     white_matter_mask: nib.spatialimages.SpatialImage,
     *,
     segmentation: nib.spatialimages.SpatialImage | None = None,
+    boundary_csf: nib.spatialimages.SpatialImage | None = None,
     remove_cerebellum: bool = False,
     crop_edge_width: int = 5,
     ace_diffusion_iterations: int = 25,
@@ -122,9 +123,35 @@ def run_toads_cruise_core(
             removed_voxel_counts=None,
             stage_order=("useFusedMaSegToadsMaps", "topologyCorrectWhiteMatterFill"),
         )
+    ace_boundary = None
+    if boundary_csf is not None:
+        boundary_ras = normalize_image_to_ras(
+            boundary_csf, source_name="base ACE multi-atlas CSF boundary"
+        )
+        same_cropped_grid = (
+            boundary_ras.shape == prepared.gray_matter.shape
+            and np.allclose(boundary_ras.affine, prepared.gray_matter.affine, rtol=0, atol=1e-5)
+        )
+        if same_cropped_grid:
+            ace_boundary = boundary_ras
+        elif (
+            boundary_ras.shape == prepared.crop_parameters.original_shape
+            and np.allclose(
+                boundary_ras.affine,
+                prepared.crop_parameters.original_affine,
+                rtol=0,
+                atol=1e-5,
+            )
+        ):
+            ace_boundary = crop_image(boundary_ras, prepared.crop_parameters)
+        else:
+            raise ValueError(
+                "ACE multi-atlas CSF boundary must match the prepared crop or its full reference grid"
+            )
     ace = ace_enhance(
         prepared.gray_matter,
         prepared.white_matter_fill,
+        multi_atlas_csf=ace_boundary,
         intensity_threshold=126.9,
         tensor_alpha=1.6,
         gaussian_alpha=1.8,
