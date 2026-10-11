@@ -1024,7 +1024,11 @@ def _tgdm_simple_point_cube_618(neighborhood: np.ndarray) -> np.ndarray:
                 index = tuple(v + 1 for v in point)
                 if status[index] == -1:
                     cube[index] = -1
-                elif any(
+                # A zero in this padded block denotes an out-of-volume
+                # neighbor. MaGenericTGDM.SimplePointTest18 checks bounds
+                # before its interior-fill branch, so only explicit +1
+                # statuses may enter the geodesic neighborhood.
+                elif status[index] == 1 and any(
                     cube[tuple(v + 1 for v in face)] == 1
                     for face in _adjacent_faces(point)
                 ):
@@ -1039,7 +1043,9 @@ def _tgdm_simple_point_cube_618(neighborhood: np.ndarray) -> np.ndarray:
                 index = tuple(v + 1 for v in point)
                 if status[index] == -1:
                     cube[index] = -1
-                elif any(
+                # Match the source's explicit bounds check for the corner
+                # neighbors too; padded zero cells remain excluded.
+                elif status[index] == 1 and any(
                     cube[tuple(v + 1 for v in edge)] == 1
                     for edge in ((x, y, 0), (x, 0, z), (0, y, z))
                 ):

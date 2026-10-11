@@ -56,6 +56,17 @@ def test_plus_requires_flair_and_accepts_a_distinct_input_grid() -> None:
     assert result.profile is WorkflowProfile.PLUS
 
 
+def test_integer_valued_maseg_labels_may_use_float_storage() -> None:
+    t1, maseg, brain_mask = _aligned_inputs()
+    float_labels = nib.Nifti1Image(
+        np.asanyarray(maseg.dataobj, dtype=np.float64), maseg.affine
+    )
+    result = validate_workflow_inputs(
+        "base", t1, float_labels, brain_mask=brain_mask
+    )
+    np.testing.assert_array_equal(result.maseg.dataobj, maseg.dataobj)
+
+
 @pytest.mark.parametrize("problem", ["shifted", "non_integer", "infinite", "4d"])
 def test_invalid_maseg_and_geometry_fail_with_actionable_errors(problem: str) -> None:
     t1, maseg, brain_mask = _aligned_inputs()

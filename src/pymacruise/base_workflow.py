@@ -21,6 +21,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.cli import main as cli_main
+from pymacruise.contracts import has_finite_integer_values
 from pymacruise.image_io import normalize_image_to_ras
 
 
@@ -313,7 +314,7 @@ def run_base_workflow(
     maseg_values = np.asanyarray(maseg_image.dataobj)
     if maseg_image.shape != reference.shape or not np.allclose(maseg_image.affine, reference.affine, rtol=0, atol=1e-4):
         raise ValueError("MaSeg input must match the input T1 grid")
-    if not np.issubdtype(maseg_values.dtype, np.integer) or not np.isfinite(maseg_values).all():
+    if not has_finite_integer_values(maseg_values):
         raise ValueError("MaSeg input must contain finite integer labels")
     if not reference.shape or len(reference.shape) != 3:
         raise ValueError("Input T1 must be a 3D image")

@@ -27,6 +27,7 @@ from pymacruise.tgdm import (
     _SMOOTHING_PROFILE_SETTINGS,
     _INNER_FROM_CENTRAL_PROFILE_SETTINGS,
     _binary_brain_mask_bound,
+    _tgdm_simple_point_cube_618,
 )
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics
 
@@ -210,6 +211,37 @@ def test_tgdm_geodesic_simple_point_rejects_separate_interior_face_components() 
 def test_tgdm_geodesic_simple_point_rejects_missing_or_multiple_components() -> None:
     assert not tgdm_simple_point_618(np.zeros((3, 3, 3), dtype=bool))
     assert not tgdm_simple_point_618(np.ones((3, 3, 3), dtype=bool))
+
+
+def test_tgdm_low_z_simple_point_excludes_out_of_volume_geodesic_cells() -> None:
+    # Status zero in the first z plane represents padding beyond the low-z
+    # image edge. MaGenericTGDM.SimplePointTest18 leaves those cells at zero:
+    # it initializes each cube cell to zero and continues when its computed
+    # neighbor is out of bounds, before considering the +1 interior fill.
+    # A diagnostic Java run at the corresponding low-z case likewise left
+    # out-of-volume cells excluded. Treating those zeros as interior can turn
+    # this rejected topology update into an accepted one.
+    neighborhood = np.array(
+        [
+            0, -1, 1, 0, 1, -1, 0, -1, 1,
+            0, 1, 1, 0, 0, 1, 0, -1, 1,
+            0, 1, 1, 0, 1, 1, 0, -1, -1,
+        ],
+        dtype=np.int8,
+    ).reshape((3, 3, 3))
+    expected_java_geodesic_cube = np.array(
+        [
+            0, -1, 1, 0, 1, -1, 0, -1, 1,
+            0, 1, 1, 0, 0, 1, 0, -1, 1,
+            0, 1, 1, 0, 1, 1, 0, -1, -1,
+        ],
+        dtype=np.int8,
+    ).reshape((3, 3, 3))
+
+    np.testing.assert_array_equal(
+        _tgdm_simple_point_cube_618(neighborhood), expected_java_geodesic_cube
+    )
+    assert not tgdm_simple_point_618(neighborhood)
 
 
 def test_tgdm_evolution_reinitializes_without_changing_a_planar_zero_force_front() -> None:

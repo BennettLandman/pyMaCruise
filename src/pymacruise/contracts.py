@@ -23,6 +23,18 @@ class WorkflowInputError(ValueError):
     """Raised when workflow inputs violate the documented contract."""
 
 
+def has_finite_integer_values(data: np.ndarray) -> bool:
+    """Return whether an array stores finite integer-valued labels.
+
+    NIfTI label maps are sometimes stored as float types even when every voxel
+    is an exact integer (for example, source MaSeg exports). Validate label
+    values rather than requiring a particular storage dtype.
+    """
+    if np.issubdtype(data.dtype, np.integer):
+        return True
+    return bool(np.isfinite(data).all() and np.equal(data, np.floor(data)).all())
+
+
 @dataclass(frozen=True)
 class ValidatedInputs:
     """Loaded, RAS-oriented images and original orientation metadata."""
@@ -47,7 +59,7 @@ def _validate_image(
     data = np.asanyarray(normalized.dataobj)
     if not np.isfinite(data).all():
         raise WorkflowInputError(f"{name} contains NaN or infinite voxel values")
-    if labels and not np.equal(data, np.floor(data)).all():
+    if labels and not has_finite_integer_values(data):
         raise WorkflowInputError(f"MaSeg labels must have integer-valued voxels: {name}")
     return normalized
 

@@ -28,6 +28,7 @@ from pymacruise.base_workflow import (
     _write_manifest,
 )
 from pymacruise.cli import main as cli_main
+from pymacruise.contracts import has_finite_integer_values
 from pymacruise.image_io import normalize_image_to_ras
 from pymacruise.surfaces import read_legacy_vtk
 
@@ -581,7 +582,7 @@ def run_base_resume_from_toads(
     maseg_values = np.asanyarray(maseg.dataobj)
     if len(maseg.shape) != 3 or maseg.shape != reference.shape or not np.allclose(maseg.affine, reference.affine, rtol=0, atol=1e-4):
         raise ValueError("MaSeg must match the source run T1 grid")
-    if not np.issubdtype(maseg_values.dtype, np.integer) or not np.isfinite(maseg_values).all():
+    if not has_finite_integer_values(maseg_values):
         raise ValueError("MaSeg input must contain finite integer labels")
     recorded_maseg = source_manifest["inputs"]["maseg"]
     if _sha256(maseg_path) != recorded_maseg.get("sha256"):
