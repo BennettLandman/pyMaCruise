@@ -21,6 +21,7 @@ from pymacruise.lesion_post_registration import lesion_toads_post_registration_b
 from pymacruise.lesion_registration_handoff import register_lesion_membership_handoff
 from pymacruise.lesion_registration_handoff import _bounds_for_transform
 from pymacruise.lesion_relations import lesion_compute_relations
+from pymacruise.lesion_growth import propagate_lesion_toads_growing
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
 
 
@@ -31,11 +32,13 @@ HARNESS = ROOT / "java_reference/LesionNextIterationBranchReferenceHarness.java"
 REGISTRATION_HARNESS = ROOT / "java_reference/P41zIteration6RegistrationReferenceHarness.java"
 OUTPUT_HARNESS = ROOT / "java_reference/LesionPostRegistrationOutputsReferenceHarness.java"
 BOUNDS_HARNESS = ROOT / "java_reference/LesionShapeBoundsReferenceHarness.java"
+GROWTH_HARNESS = ROOT / "java_reference/LesionGrowingPassDynamicReferenceHarness.java"
 NUMERICS = ROOT / "java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java"
 REFERENCE_ROOT = ROOT / "java_reference"
 UPSTREAM = REFERENCE_ROOT / "upstream/edu/jhmi/rad/medic"
 OUTPUT_HARNESS_SHA256 = "c65f4efe46d96518c50acbd437482fa4118b88a87475561ce68f83569a2b0e76"
 REGISTRATION_HARNESS_SHA256 = "da1022cdc5fd9fb1fce2c4456e9427187ebe5c546944e28985df92f112f4b366"
+THINNING_RESULT = ROOT / "data/synthetic/plus_iteration_6_thinning_result"
 PREVIOUS_SUMMARY_SHA = "f03d9f0d0831022335a3296bd084e229f172ff49d86645827ec05199eb46aac0"
 ATLAS_NAMES = (
     "Background", "Sulcal-CSF", "Ventricles", "Cerebellum-GM", "Cerebrum-GM",
@@ -320,3 +323,136 @@ def test_shape_bounds_transform_rounding_matches_java_on_compact_phantom(tmp_pat
     assert actual.lower_xyz == tuple(expected["lower_xyz"])
     assert actual.upper_xyz == tuple(expected["upper_xyz"])
     assert actual.support_count == expected["support_count"]
+
+
+@pytest.mark.skipif(
+    os.environ.get("PYMACRUISE_RUN_P41Z_ITER6_GROWTH") != "1",
+    reason="set PYMACRUISE_RUN_P41Z_ITER6_GROWTH=1 for full synthetic thinning/growth Java replay",
+)
+def test_p41z_iteration6_growth_and_postgrowth_relations_match_java(tmp_path: Path) -> None:
+    """Replay saved iteration-5 thinning inputs, then compare iteration-6 growth and relations."""
+    if shutil.which("java") is None or shutil.which("javac") is None:
+        pytest.skip("Java runtime and compiler are required for selected-source comparison")
+    thin_result = json.loads((THINNING_RESULT / "result.json").read_text())
+    assert thin_result["validated_against"] == "Lesion13ClassNextThinningReferenceHarness"
+    assert thin_result["selected_lesion_toad_source_sha256"] == "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+
+    def thin_result_load(name: str) -> np.ndarray:
+        record = thin_result["files"][name]
+        path = THINNING_RESULT / record["path"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == record["sha256"]
+        image = nib.load(str(path))
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
+        assert list(image.shape) == record["shape"]
+        return np.asarray(image.dataobj)
+
+    # These are the Java-validated outputs of initThinningLabels and
+    # propagateThinning: the exact pre-growth state, not post-growth fields.
+    pre_growth_segmentation = thin_result_load("segmentation").astype(np.int16)
+    pre_growth_skeleton = thin_result_load("skeleton").astype(np.int16)
+    pre_growth_available = thin_result_load("availability_13ch").astype(bool)
+    pre_growth_ordering = thin_result_load("ordering").astype(np.float32)
+    pre_growth_class_volume = np.asarray(thin_result["class_volume"], dtype=np.float32)
+    p41z_seg = np.asarray(nib.load(str(FIXTURE / "thinned_segmentation.nii.gz")).dataobj, dtype=np.int16)
+    p41z_skeleton = np.asarray(nib.load(str(FIXTURE / "thinned_skeleton.nii.gz")).dataobj, dtype=np.int16)
+    np.testing.assert_array_equal(pre_growth_segmentation, p41z_seg)
+    np.testing.assert_array_equal(pre_growth_skeleton, p41z_skeleton)
+
+    case = json.loads((FIXTURE / "case.json").read_text())
+    arrays, statistics, _ = _stats_from_fixture()
+    update = run_lesion_toads_next_gm_membership_update(
+        statistics, arrays["images"], arrays["shape_values"], np.ones(13, dtype=np.float32),
+        np.ones(13, dtype=np.float32), arrays["direct_relations"], arrays["class_memberships"],
+        arrays["lesion"], arrays["black"], arrays["outlier"], arrays["lesion_relation"],
+        arrays["distance_maps"][..., 0], arrays["distance_maps"][..., 1],
+        arrays["distance_maps"][..., 2], previous_energy=float(case["wrapper_ratio_previous_objective"]),
+        outlier_energy=0.1, lesion_power_exponent=1.2, spread=0.5,
+        source_zero_variance_nan=True,
+    )
+    growing = propagate_lesion_toads_growing(
+        pre_growth_segmentation, pre_growth_skeleton, update.membership.class_memberships,
+        pre_growth_ordering, pre_growth_class_volume, STANDARD13_TYPES,
+        update.membership.lesion_membership, update.membership.black_hole_membership,
+        lesion_class=10, use_lesion_max=False, retain_event_states=False,
+    )
+
+    reference_root = ROOT / "java_reference"
+    upstream = reference_root / "upstream/edu/jhmi/rad/medic"
+    growth_sources = (
+        upstream / "structures/BinaryHeap4D.java",
+        upstream / "structures/CriticalPointLUT.java",
+        upstream / "utilities/Numerics.java",
+        GROWTH_HARNESS,
+        OUTPUT_HARNESS,
+    )
+    classes_dir = tmp_path / "classes"
+    classes_dir.mkdir()
+    growth_input = tmp_path / "growth.bin"
+    growth_output = tmp_path / "growth-java.bin"
+    type_codes = {"lesion": 1, "blackhole": 2}
+    kinds = bytes(type_codes.get(name, 0) for name in STANDARD13_TYPES)
+    growth_input.write_bytes(b"".join((
+        struct.pack(">6i", *p41z_seg.shape, 13, 10, 0), kinds,
+        np.asarray(pre_growth_segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(pre_growth_skeleton, dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(update.membership.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(pre_growth_ordering, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(pre_growth_class_volume, dtype=">f4").tobytes(),
+        np.asarray(update.membership.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(update.membership.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    )))
+    subprocess.run(
+        ["javac", "-d", str(classes_dir), *(str(path) for path in growth_sources)],
+        check=True, capture_output=True, text=True,
+    )
+    resource = classes_dir / "edu/jhmi/rad/medic/structures/critical186LUT.raw.gz"
+    resource.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / "../src/pymacruise/data/critical186LUT.raw.gz", resource)
+    subprocess.run(
+        ["java", "-Xmx2g", "-cp", str(classes_dir), "LesionGrowingPassDynamicReferenceHarness",
+         str(growth_input), str(growth_output)],
+        check=True, capture_output=True, text=True,
+    )
+
+    def event_item(item) -> bytes:
+        return struct.pack(">fiiii", float(item.value), item.x, item.y, item.z, item.label)
+
+    python_output = bytearray()
+    python_output.extend(np.asarray(growing.segmentation, dtype=np.int8).ravel(order="C").tobytes())
+    python_output.extend(np.asarray(growing.skeleton, dtype=np.int8).ravel(order="C").tobytes())
+    python_output.extend(np.asarray(growing.available, dtype=np.uint8).ravel(order="C").tobytes())
+    python_output.extend(np.asarray(growing.ordering, dtype=">f4").ravel(order="C").tobytes())
+    python_output.extend(np.asarray(growing.class_volume, dtype=">f4").tobytes())
+    python_output.extend(struct.pack(">i", len(growing.events)))
+    for event in growing.events:
+        accepted = -1 if event.topology_accepted is None else int(event.topology_accepted)
+        python_output.extend(event_item(event.popped_item))
+        python_output.extend(struct.pack(">bi", accepted, len(event.inserted_neighbors)))
+        for inserted in event.inserted_neighbors:
+            python_output.extend(event_item(inserted))
+    assert growth_output.read_bytes() == bytes(python_output)
+
+    # Relation refresh occurs after growth. Reuse the selected terminal-output
+    # Java excerpt for map and relation-membership parity on that exact output.
+    relation_input = tmp_path / "growth-relations.bin"
+    blank_classification = np.zeros(growing.segmentation.shape, dtype=np.int8)
+    shape = growing.segmentation.shape
+    relation_input.write_bytes(b"".join((
+        struct.pack(">6i", *shape, 13, 10, 3), np.arange(13, dtype=np.int8).tobytes(),
+        np.asarray(growing.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        blank_classification.ravel(order="C").tobytes(),
+        np.asarray(update.membership.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(update.membership.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(update.membership.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    )))
+    relation_output = json.loads(subprocess.run(
+        ["java", "-Xmx1g", "-cp", str(classes_dir),
+         "LesionPostRegistrationOutputsReferenceHarness", str(relation_input)],
+        check=True, capture_output=True, text=True,
+    ).stdout)
+    relations = lesion_compute_relations(growing.segmentation, 13, 3)
+    np.testing.assert_array_equal(relations.relation_map.ravel(), relation_output["relation_map"])
+    np.testing.assert_array_equal(
+        relations.relation_membership.ravel(),
+        np.asarray(relation_output["relation_membership"], dtype=np.bool_),
+    )

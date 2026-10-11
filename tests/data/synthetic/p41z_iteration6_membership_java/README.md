@@ -30,10 +30,13 @@ Its isolated branch check uses an empty skeleton, so it is not growth evidence.
 
 The saved thinned segmentation's `computeRelations` map and relation table
 match the selected Java method for a 14-pass diffusion. This relation check is
-pre-growth. The fixture does not include the matching pre-growth ordering and
-class-volume arrays needed to run source-faithful `initGrowingLabels` and
-`propagateGrowing`; the saved registered ordering/volumes are post-growth and
-cannot substitute for those inputs without inventing stage history.
+pre-growth. The matching pre-growth arrays are in the separate
+`../plus_iteration_6_thinning_result/` fixture, which preserves the Java-
+validated output of `initThinningLabels` and `propagateThinning`. Using that
+ordering and class-volume state, the current iteration-6 growth event trace
+and post-growth relation refresh also match their selected Java references
+byte for byte. The empty-skeleton branch test isolates wrapper control flow;
+it is not the evidence for growth.
 
 ## Run
 

@@ -103,26 +103,31 @@ division, and template-center addition in the float32 order used by
 `ParametricTransform.imageToTemplate()`. The 71×89×67 comparison and a compact
 nonidentity-transform phantom both match Java support bounds/counts exactly.
 
-The fixed-state relation method is also compared on the saved thinned
-segmentation, independently of growth: `computeRelations()` produces an exact
-relation map, relation-membership table, and 14 diffusion passes for limit 3.
-This is a held-fixed pre-growth segmentation comparison, not evidence for the
-post-growth relation output.
+The held-fixed relation comparison on the saved thinned segmentation also
+matches `computeRelations()` exactly for a relation map, relation-membership
+table, and 14 diffusion passes. More importantly, the committed
+`plus_iteration_6_thinning_result/` fixture supplies the true pre-growth
+ordering and per-class volume after `initThinningLabels()` and
+`propagateThinning()`. That result is byte-compared to the selected Java
+thinning reference; its segmentation and skeleton match the P41z membership
+fixture. These are valid inputs for the subsequent growth pass, not values
+recovered from the later post-growth registration-loop outputs.
 
-The bundled iteration-6 fixture has the thinned segmentation and skeleton,
-and the current membership update can be source-compared. It does not contain
-the matching post-thinning `ordering` field or per-class `class_volume` state
-that `initGrowingLabels()`/`propagateGrowing()` consume. The iteration-6 saved
-`registered_ordering` and `class_volume` are outputs after growth, so feeding
-them back would invent the missing history. Therefore actual P41z growth and
-the relation refresh after that growth remain unvalidated. Next evidence
-requires those two pre-growth arrays from the same checkpoint or a replayable
-earlier stage that regenerates them.
+With the current iteration-6 membership update and that source-matched
+pre-growth state, Python growth matches the selected Java harness byte for
+byte. The comparison covers each popped heap item, topology decision, inserted
+neighbor and priority, final segmentation, skeleton, availability, ordering,
+and class volumes. `computeRelations()` after that grown segmentation also
+matches the selected Java relation map and membership table. This validates
+these held-fixed synthetic operations; it does not establish a complete
+iteration workflow or human-MRI equivalence.
 
 Focused evidence (no full suite):
 
 - Registration + wrapper branch: **1 passed in 148.09s**, peak sampled RSS
   **0.499 GB** under a 4 GB watchdog.
+- Growth + post-growth relation refresh: **1 passed in 116.56s**, peak sampled
+  RSS **0.700 GB** under a 4 GB watchdog.
 - Saved thinned-state relation comparison: **1 passed in 4.67s**.
 - Compact transform-rounding/support-bound comparison: **1 passed in 1.29s**.
 
@@ -134,6 +139,16 @@ PYMACRUISE_RUN_P41Z_ITER6_REGISTRATION_BRANCH=1 PYTHONPATH=src MPLCONFIGDIR=/pri
   --interval-seconds 1 --report-interval-seconds 30 -- \
   .venv/bin/pytest -q --tb=short \
   tests/test_p41z_iteration6_registration_branch_java.py::test_p41z_iteration6_registration_and_wrapper_branch_match_references
+```
+
+The growth and post-growth relation replay is opt-in and reproducible with:
+
+```sh
+PYMACRUISE_RUN_P41Z_ITER6_GROWTH=1 PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
+.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 4 \
+  --interval-seconds 1 --report-interval-seconds 30 -- \
+  .venv/bin/pytest -q --tb=short \
+  tests/test_p41z_iteration6_registration_branch_java.py::test_p41z_iteration6_growth_and_postgrowth_relations_match_java
 ```
 
 The relation and compact bounds comparisons are:
