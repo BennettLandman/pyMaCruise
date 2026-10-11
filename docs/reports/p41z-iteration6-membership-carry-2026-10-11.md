@@ -19,22 +19,24 @@ remaining energy discrepancy.
 
 ## Validation
 
-- Focused voxel and compact Java regression: **8 passed** (commit `9e4e84a`).
-- Full fixed-input P41z Java comparison: **not exact** on the same commit,
-  under a 16 GB watchdog (peak sampled RSS 0.448 GB). The statistics refresh
-  matches exactly; class memberships, class energies, lesion membership,
-  black-hole membership, outlier membership, lesion relation, denominator,
-  and black-hole energy all match bitwise. Java and Python each report zero
-  NaNs.
-- Remaining differences: lesion-energy values differ at 383,138 voxels
-  (first `[1, 28, 29]`, max finite absolute error `0.72380799`); running
-  objective differs at 388,088 voxels (first `[1, 33, 28]`, max finite
-  absolute error `4.24145508`). Total objective float32 bits are Java
-  `1162605034`, Python `1162622407`.
+- Focused voxel and compact Java regression: **8 passed** on implementation
+  commit `9e4e84a` (with the Java oracle corrected in `733d19e`).
+- Full fixed-input P41z Java comparison: **all outputs bitwise exact** on
+  implementation commit `9e4e84a` with oracle/diagnostics commit `733d19e`.
+  Statistics were exact first; memberships, class energies, lesion and
+  black-hole auxiliaries, outlier, relation, denominator, lesion and
+  black-hole energies, running objective, and total objective all match.
+  Java and Python each report zero NaNs. The Java/Python total objective bits
+  are both `1162622407`. The run used a 6 GB RSS watchdog and peaked at
+  0.445 GB.
+- The original apparent failure was in the Java reference harness: it
+  initialized `eL=0` instead of source-faithfully assigning `eL=rawLesion`
+  before smoothing and prior contributions. The full comparison now models
+  the selected source assignment. At first mismatch coordinate `[1,28,29]`,
+  a cropped traversal-prefix replay updated 811 preceding voxels; all six
+  faces and raw, smoothing, prior, and final lesion-energy bits matched.
+  The actual Vandy `PowerTable.java` lookup also matched.
 
 This is a held-fixed synthetic stage comparison, not full registered-loop
-equivalence and not human-data validation. The exact remaining lesion-energy
-source mismatch is unresolved; do not claim P41z membership parity. The
-next diagnostic should inspect the first mismatch and its immediately prior
-traversal voxel, including whether the lesion class is active and the raw,
-smoothing, and prior contributions on both sides.
+equivalence and not human-data validation. The energy ratio/update and later
+P41z registration/growth stages remain separately open.
