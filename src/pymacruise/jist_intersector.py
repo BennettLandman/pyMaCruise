@@ -169,7 +169,10 @@ def _jist_triangle_distance_point(point, p1, p2, p3):
         e0 = np.float32(edge0[axis] * s)
         e1 = np.float32(edge1[axis] * t)
         closest[axis] = np.float32(np.float32(p1[axis] + e0) + e1)
-    return math.sqrt(float(sq)), closest
+    # Java's Math.sqrt promotes this float32 argument to double. Numba's
+    # ``math.sqrt(float32)`` overload returns float32, so force the promotion
+    # explicitly before sqrt to preserve Java's strict nearest-triangle ties.
+    return math.sqrt(np.float64(sq)), closest
 
 
 @njit(cache=True, fastmath=False)
@@ -191,10 +194,9 @@ def _jist_box_distance(point, minimum, maximum):
         delta = np.float32(point[axis] - reference)
         squared = np.float32(squared + np.float32(delta * delta))
     # javax.vecmath.Point3f.distance squares and sums in float32, then calls
-    # Math.sqrt(double) and narrows its result back to float.  Taking a native
-    # float32 sqrt can differ by one ULP and reorder equal-distance candidates
-    # in PriorityQueue, which changes the selected closest point on shell ties.
-    return float(np.float32(math.sqrt(float(squared))))
+    # Math.sqrt(double) and narrows its result back to float. Explicitly
+    # promote for Numba before sqrt, then preserve the float32 return.
+    return np.float32(math.sqrt(np.float64(squared)))
 
 
 @njit(cache=True, fastmath=False)

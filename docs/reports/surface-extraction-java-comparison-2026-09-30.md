@@ -8,28 +8,28 @@ Source `IsoSurfaceOnGrid.java` SHA-256: `a323ac5eed8b66ad62a68cd93a6bc7bcf012814
 
 | Level set | JIST V/F/χ | Lewiner V/F/χ | JIST boundary/nonmanifold edges | Lewiner boundary/nonmanifold edges | Symmetric vertex NN mean / max (mm) | Symmetric vertex-to-triangle mean / max (mm) |
 |---|---:|---:|---:|---:|---:|---:|
-| inner | 2194/4384/2 | 2194/4384/2 | 0/0 | 0/0 | 0.000000 / 0.000001 | 0.000000 / 0.000001 |
-| central | 3062/6120/2 | 3062/6120/2 | 0/0 | 0/0 | 0.000000 / 0.000002 | 0.000000 / 0.000002 |
-| outer | 4070/8136/2 | 4070/8136/2 | 0/0 | 0/0 | 0.000000 / 0.000002 | 0.000000 / 0.000002 |
+| inner | 2194/4384/2 | 2194/4384/2 | 0/0 | 0/0 | 0.000000 / 0.000001 | 0.000000 / 0.000000 |
+| central | 3062/6120/2 | 3062/6120/2 | 0/0 | 0/0 | 0.000000 / 0.000002 | 0.000000 / 0.000000 |
+| outer | 4070/8136/2 | 4070/8136/2 | 0/0 | 0/0 | 0.000000 / 0.000002 | 0.000000 / 0.000000 |
 
-The vertex-count/topology invariants match on this phantom, but this does not mean the triangulations match. After bijectively mapping near-identical Java vertices to Lewiner vertex indices, unordered triangles match by the fractions below. The remaining face connectivity can change interpolated triangle interiors and mesh-dependent measurements.
+Vertex counts, topology invariants, and unordered triangle connectivity match on this phantom after bijectively mapping the near-identical Java vertices to Lewiner vertex indices. The vertex-to-triangle measurements are zero at reported precision; the vertex-nearest maximum remains a few micrometres because of tiny coordinate differences.
 
 | Level set | Matching unordered triangles | Matching fraction |
 |---|---:|---:|
-| inner | 3034/4384 | 69.2% |
-| central | 4320/6120 | 70.6% |
-| outer | 5640/8136 | 69.3% |
+| inner | 4384/4384 | 100.0% |
+| central | 6120/6120 | 100.0% |
+| outer | 8136/8136 | 100.0% |
 
 ## Downstream thickness impact
 
-Using the same `closest_point_thickness` operator on the two nested mesh sets: JIST geometry mean thickness `3.558764 mm` (SD `0.367833`, 2194 nonzero inner vertices); Lewiner geometry mean thickness `3.558218 mm` (SD `0.367726`, 2194 nonzero inner vertices); difference `-0.000546 mm`.
+Using the same `closest_point_thickness` operator on the two nested mesh sets: JIST geometry mean thickness `3.558754 mm` (SD `0.367832`, 2194 nonzero inner vertices); Lewiner geometry mean thickness `3.558754 mm` (SD `0.367832`, 2194 nonzero inner vertices); difference `+0.000000 mm`.
 
 ## Scope and limitations
 
 - The harness compiles and invokes the selected `IsoSurfaceOnGrid` source directly. Minimal API stubs replace JIST progress/image containers and normal generation; the harness records the Java algorithm's actual returned vertices and triangle indices.
 - Both methods consume identical float32 values. Per-volume SHA-256 digests are checked by the runner. The fixture's identity affine makes index coordinates equal to RAS millimetres.
 - Vertex-nearest distances depend on tessellation density. Vertex-to-triangle distances here sample mesh vertices against the other mesh's triangles; they are not a continuous triangle-to-triangle Hausdorff bound.
-- Although vertex coordinates and topology counts align closely, only the reported fraction of unordered faces match after mapping vertices; this indicates differing local connectivity/interpolation and is a relevant substitution risk for mesh-dependent measurements.
+- All unordered faces match after vertex mapping for this fixture. This removes the observed synthetic triangulation-connectivity risk for this case, but does not establish matching behavior for other level sets or resolve the separate human ribbon-quality deficit.
 - Thickness uses the same Python closest-point operator on both extracted mesh sets. This quantifies geometry's effect on that measure; it is not a direct Java thickness implementation comparison.
 - This single synthetic folded fixture does not establish clinical or end-to-end equivalence. Matching this case would not remove the need for broader shapes, adversarial topology cases, and source-version verification.
 
