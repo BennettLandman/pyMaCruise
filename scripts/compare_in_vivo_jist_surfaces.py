@@ -9,14 +9,16 @@ the pad is checked so cropping cannot remove a zero crossing.
 
 Run from pymacruise with the project environment:
 
-    PYTHONPATH=src .venv/bin/python scripts/compare_in_vivo_jist_surfaces.py
+    PYTHONPATH=src .venv/bin/python scripts/compare_in_vivo_jist_surfaces.py [--core-dir PATH]
 
 Java heap is capped at 2 GiB. Intermediate Java inputs/meshes stay in ignored
-build/; the compact report is written under docs/reports/.
+build/; the compact report is written under docs/reports/. Explicit directories
+allow any saved run attempt to be compared without changing default paths.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -208,10 +210,33 @@ def extract_java(name: str, affine: np.ndarray) -> tuple[SurfaceMesh, dict[str, 
 
 
 def main() -> int:
+    global CORE, SURFACES, BUILD, CLASSES, REPORT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--core-dir", type=Path, default=CORE,
+                        help="directory containing inner/central/outer level-set NIfTIs")
+    parser.add_argument("--surfaces-dir", type=Path, default=None,
+                        help="directory containing production *_surface.vtk files (default: CORE/surface-thickness)")
+    parser.add_argument("--build-dir", type=Path, default=BUILD,
+                        help="ignored directory for Java classes and comparison artifacts")
+    parser.add_argument("--report-path", type=Path, default=REPORT,
+                        help="Markdown summary path")
+    args = parser.parse_args()
+    CORE = args.core_dir.resolve()
+    SURFACES = (args.surfaces_dir or (CORE / "surface-thickness")).resolve()
+    BUILD = args.build_dir.resolve()
+    CLASSES = BUILD / "classes"
+    REPORT = args.report_path.resolve()
+    for name in LEVELS:
+        if not (CORE / f"{name}.nii.gz").is_file():
+            raise FileNotFoundError(CORE / f"{name}.nii.gz")
+        if not (SURFACES / f"{name}_surface.vtk").is_file():
+            raise FileNotFoundError(SURFACES / f"{name}_surface.vtk")
     BUILD.mkdir(parents=True, exist_ok=True)
     compile_java()
     report: dict[str, object] = {
         "scope": "held-fixed human level sets; direct selected Java IsoSurfaceOnGrid versus saved production Python VTK meshes",
+        "core_dir": str(CORE),
+        "surfaces_dir": str(SURFACES),
         "source": {
             "jist_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, CONNECT_18_6=18, iso=0, inclusive=false)",
             "isosurface_source_sha256": sha(JIST_SOURCE),
@@ -274,7 +299,7 @@ def main() -> int:
         "- This directly replays the Java `IsoSurfaceOnGrid` algorithm source, not the complete JIST runtime, VTK serializer, or historical full MaCRUISE pipeline.",
         "- Both extractors consume fixed saved human fields. Agreement validates this extractor stage only; it does not fix low GM/WM support or the fragmented output seen in the human quality audit.",
         "- Distances use the user's symmetric nearest-surface limits of 0.01 mm mean and 1 mm Hausdorff; topology agreement is reported independently and is not inferred from distance agreement.",
-        "- The machine-readable full output, hashes, crop bounds, and runtime are in `build/in-vivo-jist-surface-comparison-2026-10-11/comparison.json` (ignored build output). The reproducible runner is [`compare_in_vivo_jist_surfaces.py`](../../scripts/compare_in_vivo_jist_surfaces.py).",
+        f"- The machine-readable full output, hashes, crop bounds, and runtime are in `{report_path.relative_to(ROOT)}` (ignored build output). The reproducible runner is [`compare_in_vivo_jist_surfaces.py`](../../scripts/compare_in_vivo_jist_surfaces.py).",
         "",
     ])
     REPORT.parent.mkdir(parents=True, exist_ok=True)

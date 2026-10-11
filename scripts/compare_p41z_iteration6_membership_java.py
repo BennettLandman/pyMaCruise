@@ -49,7 +49,13 @@ def _load(path: Path, dtype: str | np.dtype | None = None) -> np.ndarray:
     return values.astype(dtype, copy=False) if dtype is not None else values
 
 
-def _save_binary_input(path: Path, arrays: dict[str, np.ndarray], stats: LesionNextIterationStatistics) -> None:
+def _save_binary_input(
+    path: Path,
+    arrays: dict[str, np.ndarray],
+    stats: LesionNextIterationStatistics,
+    *,
+    previous_objective: float,
+) -> None:
     spatial = arrays["images"].shape[:3]
     record_type = np.dtype([
         ("image", ">f4", (2,)), ("shape", ">f4", (13,)), ("direct", "u1", (13,)),
@@ -65,6 +71,7 @@ def _save_binary_input(path: Path, arrays: dict[str, np.ndarray], stats: LesionN
     records["distances"] = arrays["distance_maps"]
     with path.open("wb") as stream:
         stream.write(np.asarray(spatial, dtype=">i4").tobytes())
+        stream.write(np.asarray([previous_objective], dtype=">f4").tobytes())
         state = stats.statistics
         for array in (
             state.centroids.class_centroids, state.variances.class_standard_deviation,
@@ -142,6 +149,7 @@ def _parse_java(path: Path, spatial: tuple[int, int, int]) -> dict[str, np.ndarr
         cursor += length
     result["objective"] = int(raw[cursor]); cursor += 1
     result["nan_count"] = int(raw[cursor]); cursor += 1
+    result["energy_ratio"] = np.asarray(raw[cursor], dtype=np.uint32).view(np.float32).item(); cursor += 1
     if cursor != len(raw):
         raise ValueError("Java output has unexpected byte count")
     return result
@@ -155,10 +163,11 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
         raise RuntimeError(f"upstream statistics comparison failed: {stats_report['difference_diagnostics']}")
     arrays, stats, stats_case = _stats_from_fixture()
     spatial = arrays["images"].shape[:3]
+    previous_objective = float(stats_case["wrapper_ratio_synthetic_previous_objective"])
     with tempfile.TemporaryDirectory(prefix="p41z-iter6-membership-java-") as temporary:
         work = Path(temporary)
         in_path, out_path = work / "input.bin", work / "output.bin"
-        _save_binary_input(in_path, arrays, stats)
+        _save_binary_input(in_path, arrays, stats, previous_objective=previous_objective)
         classes = work / "classes"; classes.mkdir()
         subprocess.run([javac, "-d", str(classes), str(HARNESS)], check=True, capture_output=True, text=True)
         subprocess.run([java, "-Xmx4g", "-cp", str(classes), "LesionNextIterationMembershipReferenceHarness", str(in_path), str(out_path)], check=True, capture_output=True, text=True)
@@ -169,7 +178,7 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
         arrays["direct_relations"], arrays["class_memberships"], arrays["lesion"], arrays["black"],
         arrays["outlier"], arrays["lesion_relation"], arrays["distance_maps"][..., 0],
         arrays["distance_maps"][..., 1], arrays["distance_maps"][..., 2],
-        previous_energy=0.0, outlier_energy=0.1, lesion_power_exponent=1.2,
+        previous_energy=previous_objective, outlier_energy=0.1, lesion_power_exponent=1.2,
         spread=0.5, source_zero_variance_nan=True, intensity_fields=None,
     )
     actual = result.membership
@@ -203,6 +212,11 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
     expected_objective = int(reference["objective"])
     objective_exact = int(np.asarray(actual.objective, np.float32).view(np.uint32)) == expected_objective
     exact["objective"] = objective_exact
+    expected_ratio = np.float32(reference["energy_ratio"])
+    ratio_exact = int(np.asarray(result.energy_ratio.energy_ratio, np.float32).view(np.uint32)) == int(
+        np.asarray(expected_ratio, np.float32).view(np.uint32)
+    )
+    exact["energy_ratio"] = ratio_exact
     nan_counts["python"] += int(np.isnan(actual.objective))
     return {
         "spatial_shape_xyz": list(spatial),
@@ -210,7 +224,10 @@ def compare(*, java: str = "java", javac: str = "javac") -> dict:
                     "use_lesion_weight": True, "gm_flag": True, "fields": None},
         "statistics_exact_first": stats_report["all_exact"],
         "compared_stage_order": [*stats.stage_order, "computeMemberships:GMflag=true"],
-        "energy_ratio_checked": False,
+        "energy_ratio_checked": True,
+        "synthetic_previous_objective": previous_objective,
+        "java_energy_ratio_bits": int(np.asarray(expected_ratio).view(np.uint32)),
+        "python_energy_ratio_bits": int(np.asarray(result.energy_ratio.energy_ratio, np.float32).view(np.uint32)),
         "nan_counts": nan_counts,
         "exact_float32_bits": exact,
         "all_exact": all(exact.values()) and nan_counts["java"] == nan_counts["python"],

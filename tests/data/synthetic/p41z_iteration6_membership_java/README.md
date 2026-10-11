@@ -19,9 +19,12 @@ The source method's class loop is guarded by `if (shape[k] > 0)`; its later
 `shape[k] == 0` branch is unreachable in this source version. The outer
 `else` clears the skipped class membership, while the class-energy slot and
 lesion auxiliary maps remain untouched. The harness follows that behavior.
-The prior-energy ratio is outside this held-fixed comparison because the
-previous objective is not included in this fixture; the comparison reports
-membership and energy maps and the new objective only.
+The wrapper ratio step is now included after the exact membership objective.
+Because this fixture does not preserve the preceding iteration's objective,
+the Java/Python ratio comparison uses an explicit synthetic previous objective
+of `3.25`; it validates the selected float32 expression and its wiring, not a
+reconstructed iteration-5-to-6 energy change. Registration and growth remain
+outside this held-fixed comparison.
 
 ## Run
 

@@ -38,5 +38,41 @@ remaining energy discrepancy.
   The actual Vandy `PowerTable.java` lookup also matched.
 
 This is a held-fixed synthetic stage comparison, not full registered-loop
-equivalence and not human-data validation. The energy ratio/update and later
-P41z registration/growth stages remain separately open.
+equivalence and not human-data validation.
+
+## Wrapper energy-ratio boundary
+
+The comparator now continues through the wrapper's next source expression in
+`AlgorithmLesionToads.calcSegmentation()` (membership objective update and
+`Eratio = Numerics.abs(2.0f*(Eprev-energy)/(Eprev+energy))`, around source
+lines 687–706). `Numerics.abs(float)` is the source comparison-and-negation
+implementation (`a > 0 ? a : -a`). The fixture does not include the true
+previous objective, so both Java and Python receive an explicit synthetic
+`Eprev=3.25`; this isolates and validates the loop expression and its
+float32 wiring without claiming an iteration-5-to-6 objective history.
+
+For the 71×89×67 fixture, refreshed statistics, all membership/energy outputs,
+the objective, and the ratio match Java bit-for-bit. Java/Python ratio bits are
+both `1073708481`, objective bits are both `1162622407`, and both NaN counts
+are zero. The fixed-volume comparator completed under a 4 GB watchdog with
+0.445 GB peak sampled RSS. The compact regression is:
+
+```sh
+PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
+.venv/bin/pytest -q --tb=short \
+  tests/test_p41z_iteration6_membership_java.py::test_java_membership_energy_carries_from_active_lesion_to_skipped_support
+```
+
+Result: **1 passed**. The fixed-volume comparison is reproducible with:
+
+```sh
+PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl \
+.venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 4 \
+  --interval-seconds 1 --report-interval-seconds 30 -- \
+  .venv/bin/python scripts/compare_p41z_iteration6_membership_java.py
+```
+
+This closes only the source-faithful energy-ratio expression after the held-
+fixed membership pass. P41z registered atlas update and subsequent growth,
+relation refresh, and iteration-to-iteration state carry remain open; no
+full registered iteration or human-data equivalence is claimed.

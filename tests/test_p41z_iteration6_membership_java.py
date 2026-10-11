@@ -25,6 +25,10 @@ from pymacruise.lesion_next_iteration_statistics import (
 from pymacruise.lesion_statistics import LesionToadsAuxiliaryCentroids, LesionToadsVariances
 
 
+def _bits(value: float) -> int:
+    return int(np.asarray(value, dtype=np.float32).view(np.uint32))
+
+
 def test_java_membership_energy_carries_from_active_lesion_to_skipped_support() -> None:
     if shutil.which("java") is None or shutil.which("javac") is None:
         pytest.skip("Java runtime and compiler are required for selected-source comparison")
@@ -70,7 +74,7 @@ def test_java_membership_energy_carries_from_active_lesion_to_skipped_support() 
     with tempfile.TemporaryDirectory(prefix="p41z-lesion-energy-carry-") as temporary:
         work = Path(temporary)
         input_path, output_path = work / "input.bin", work / "output.bin"
-        _save_binary_input(input_path, arrays, stats)
+        _save_binary_input(input_path, arrays, stats, previous_objective=3.25)
         classes = work / "classes"
         classes.mkdir()
         subprocess.run(["javac", "-d", str(classes), str(HARNESS)], check=True, capture_output=True)
@@ -81,17 +85,22 @@ def test_java_membership_energy_carries_from_active_lesion_to_skipped_support() 
         )
         expected = _parse_java(output_path, spatial)
 
-    actual = run_lesion_toads_next_gm_membership_update(
+    actual_update = run_lesion_toads_next_gm_membership_update(
         stats, images, shape, np.ones(13, dtype=np.float32), np.ones(13, dtype=np.float32),
         arrays["direct_relations"], memberships, lesion, zero, zero, zero,
         arrays["distance_maps"][..., 0], arrays["distance_maps"][..., 1], arrays["distance_maps"][..., 2],
-        previous_energy=0.0, outlier_energy=0.1, lesion_power_exponent=1.2,
-    ).membership
+        previous_energy=3.25, outlier_energy=0.1, lesion_power_exponent=1.2,
+    )
+    actual = actual_update.membership
     first, skipped = (1, 1, 1), (2, 1, 1)
     assert expected["lesion_energy"][first].view(np.uint32) != 0
     assert expected["lesion_energy"][skipped].view(np.uint32) == expected["lesion_energy"][first].view(np.uint32)
     assert expected["class_memberships"][skipped + (10,)] == np.float32(0.0)
     assert actual.class_memberships[skipped + (10,)] == np.float32(0.0)
+    # The compact harness compares the wrapper's source-ordered float32
+    # energy-ratio update after the membership objective is complete.
+    assert actual_update.energy_ratio.previous_energy == np.float32(3.25)
+    assert _bits(actual_update.energy_ratio.energy_ratio) == _bits(expected["energy_ratio"])
     assert actual.lesion_energy[skipped].view(np.uint32) == actual.lesion_energy[first].view(np.uint32)
     assert actual.class_energies[skipped + (10,)].view(np.uint32) == actual.class_energies[first + (10,)].view(np.uint32)
     # The Java harness writes its accumulated objective after this voxel. The

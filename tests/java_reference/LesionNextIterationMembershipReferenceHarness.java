@@ -38,7 +38,7 @@ public final class LesionNextIterationMembershipReferenceHarness {
     // their values when a later voxel skips the corresponding class support.
     private final float[] energyState = new float[C];
     private float lesionEnergyCarry = 0.0f, blackHoleEnergyCarry = 0.0f;
-    private float objective;
+    private float objective, previousObjective, energyRatio;
 
     private int voxel(int x, int y, int z) { return (x * ny + y) * nz + z; }
     private int classOffset(int v, int k) { return v * C + k; }
@@ -48,6 +48,7 @@ public final class LesionNextIterationMembershipReferenceHarness {
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(path)))) {
             nx = in.readInt(); ny = in.readInt(); nz = in.readInt(); n = nx * ny * nz;
             if (nx < 3 || ny < 3 || nz < 3) throw new IllegalArgumentException("invalid spatial dimensions");
+            previousObjective = in.readFloat();
             mu = new float[NC * C]; sd = new float[NC * C];
             lesionCentroid = new float[NC]; lesionStd = new float[NC]; weights = new float[NC];
             shapePriors = new float[C]; smoothingPriors = new float[C];
@@ -230,6 +231,14 @@ public final class LesionNextIterationMembershipReferenceHarness {
     private void run() {
         computeSimilarities(); objective=0.0f;
         for (int x=1;x<nx-1;x++) for (int y=1;y<ny-1;y++) for (int z=1;z<nz-1;z++) voxelUpdate(x,y,z);
+        // AlgorithmLesionToads.calcSegmentation: Eprev=energy; energy=computeMemberships();
+        // Eratio=Numerics.abs(2.0f*(Eprev-energy)/(Eprev+energy)). Numerics.abs(float)
+        // is the selected source's comparison-and-negation expression, not Math.abs.
+        float difference=previousObjective-objective;
+        float numerator=2.0f*difference;
+        float denominator=previousObjective+objective;
+        float quotient=numerator/denominator;
+        energyRatio=quotient>0.0f?quotient:-quotient;
     }
     private static int countNaN(float[] values) { int n=0; for(float v:values) if(Float.isNaN(v)) n++; return n; }
     private void write(String path) throws Exception {
@@ -248,7 +257,7 @@ public final class LesionNextIterationMembershipReferenceHarness {
             for (float v:lesionEnergy) out.writeFloat(v);
             for (float v:blackHoleEnergy) out.writeFloat(v);
             for (float v:runningObjective) out.writeFloat(v);
-            out.writeFloat(objective); out.writeInt(nan);
+            out.writeFloat(objective); out.writeInt(nan); out.writeFloat(energyRatio);
         }
     }
     public static void main(String[] args) throws Exception {
