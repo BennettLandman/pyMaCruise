@@ -38,7 +38,7 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl .venv/bin/python \
   --evidence-class in-vivo
 ```
 
-Focused regressions after the precision correction: `tests/test_thickness.py`, `tests/test_jist_closest_point_thickness_report.py`, and `tests/test_jist_surface_intersector_report.py`: **12 passed in 3.54 s**. The full suite was not run in this cycle.
+Focused regressions after the precision correction, plus the saved Java TGDM source-match regression, ran on code committed as `6b51612`: `tests/test_thickness.py`, `tests/test_jist_closest_point_thickness_report.py`, `tests/test_jist_surface_intersector_report.py`, and `tests/test_base_core_current_java_match.py`: **15 passed in 56.31 s**. The full suite was not run in this cycle.
 
 ## Interpretation
 
