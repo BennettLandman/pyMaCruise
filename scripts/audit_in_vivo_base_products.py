@@ -50,7 +50,7 @@ def read_legacy_vtk(path: Path) -> tuple[np.ndarray, np.ndarray]:
     return points.reshape((-1, 3)), faces
 
 
-def mesh_topology(path: Path) -> dict[str, int | bool]:
+def mesh_topology(path: Path) -> tuple[dict[str, int | bool], np.ndarray, np.ndarray, int]:
     vertices, faces = read_legacy_vtk(path)
     edges = np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]))
     edges.sort(axis=1)
@@ -67,7 +67,7 @@ def mesh_topology(path: Path) -> dict[str, int | bool]:
     edge_counts_by_component = np.bincount(edge_component, minlength=components)
     face_counts_by_component = np.bincount(face_component, minlength=components)
     largest = int(np.argmax(vertex_component))
-    return {
+    metrics = {
         "vertices": int(len(vertices)),
         "faces": int(len(faces)),
         "edges": int(len(unique_edges)),
@@ -83,6 +83,7 @@ def mesh_topology(path: Path) -> dict[str, int | bool]:
         "euler_characteristic": int(len(vertices) - len(unique_edges) + len(faces)),
         "watertight_by_edge_incidence": bool(np.all(edge_uses == 2)),
     }
+    return metrics, vertices, component_id, largest
 
 
 def main() -> None:
@@ -175,9 +176,38 @@ def main() -> None:
             "supported_voxels": supported_count,
             "support_fraction": supported_count / voxel_count,
         }
-    meshes = {
+    mesh_results = {
         name: mesh_topology(surface_dir / f"{name}_surface.vtk")
         for name in ("inner", "central", "outer")
+    }
+    meshes = {name: result[0] for name, result in mesh_results.items()}
+    inner_vertices, inner_component_id, largest_inner_component = (
+        mesh_results["inner"][1], mesh_results["inner"][2], mesh_results["inner"][3]
+    )
+    non_dominant_vertices = inner_component_id != largest_inner_component
+    vertex_voxels = nib.affines.apply_affine(np.linalg.inv(reference.affine), inner_vertices)
+    nearest_voxels = np.rint(vertex_voxels).astype(np.int64)
+    inside_grid = np.all((nearest_voxels >= 0) & (nearest_voxels < np.asarray(reference.shape)), axis=1)
+    nearest_labels = np.zeros(len(inner_vertices), dtype=labels.dtype)
+    nearest_mask = np.zeros(len(inner_vertices), dtype=bool)
+    selected_voxels = nearest_voxels[inside_grid]
+    nearest_labels[inside_grid] = labels[tuple(selected_voxels.T)]
+    nearest_mask[inside_grid] = np.asarray(brain_mask.dataobj)[tuple(selected_voxels.T)] > 0
+    non_dominant_in_grid = non_dominant_vertices & inside_grid
+    nearest_label_values, nearest_label_counts = np.unique(
+        nearest_labels[non_dominant_in_grid], return_counts=True
+    )
+    shell_locations = {
+        "non_dominant_component_count": int(meshes["inner"]["connected_components"] - 1),
+        "non_dominant_vertices": int(np.count_nonzero(non_dominant_vertices)),
+        "non_dominant_vertices_inside_grid": int(np.count_nonzero(non_dominant_in_grid)),
+        "non_dominant_vertices_inside_brain_mask": int(
+            np.count_nonzero(non_dominant_in_grid & nearest_mask)
+        ),
+        "nearest_maseg_labels_inside_grid": {
+            str(int(value)): int(count)
+            for value, count in zip(nearest_label_values, nearest_label_counts, strict=True)
+        },
     }
     thickness = json.loads((surface_dir / "thickness_summary.json").read_text(encoding="utf-8"))
     comparison = None
@@ -250,6 +280,7 @@ def main() -> None:
         "label_support_by_label": label_support,
         "comparison": comparison,
         "meshes": meshes,
+        "inner_non_dominant_shell_locations": shell_locations,
         "thickness": thickness,
         "watchdog": log_metrics,
         "source_reference_comparison": "unavailable: supplied output directory had no historical reference products",

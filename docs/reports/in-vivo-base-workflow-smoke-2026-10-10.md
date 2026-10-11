@@ -81,6 +81,8 @@ The new profile did **not** pass the agreed ribbon-quality criteria:
 
 An internal comparison against the earlier source-selected core (which reused the bounded upstream outputs) shows the fuller upstream profile did not improve tissue support: GM changed from 81.84% to **79.00%** (−2.84 percentage points), WM from 83.15% to **82.72%** (−0.43 points), while inner-outside-central nesting improved from five voxels to **one**. The largest per-label support loss was label 161 (71.4% to **44.3%**, −27.2 points), followed by labels 135 (−17.7 points), 125 (−12.2), and 122 (−11.8). This profile comparison is diagnostic only; it is not a source-output comparison and does not identify the anatomical label names.
 
+The 206 non-dominant components on the new inner mesh contain **1,752 vertices**; **1,748** nearest-map inside the supplied brain mask. Of those in-grid shell vertices, **1,452** map to MaSeg label 209, 252 to label 11, 15 to label 35, 6 each to labels 122 and 208, and 21 to background. The same earlier shell audit also concentrated most small components at label 209. Label 209 is not named in the historical MaCRUISE label-name table, so its anatomy and whether these islands should be included remain unresolved.
+
 These are in-vivo integration and quality measurements, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
 
 The audit is reproducible with:
