@@ -428,6 +428,25 @@ WM-mask. It writes the three cropped maps and corrected WM-fill on native
 cropped RAS geometry. Base workflow defaults are used; multi-atlas topology
 refinement is not enabled by this command.
 
+## `pymacruise base-tissue-preparation`
+
+```text
+pymacruise base-tissue-preparation --maseg MaSeg.nii.gz \
+  --gm Toads2_gm.nii.gz --wm-fill Toads2_wmfill.nii.gz \
+  --wm-mask Toads2_wmmask.nii.gz --output-dir prepared_maps \
+  --provenance run.json [--edge-width 5] \
+  [--gm-confident-level 0.001] [--remove-cerebellum]
+```
+
+Derives MaSeg cortical tissue maps, transfers the three second-pass TOADS maps
+to the MaSeg grid with nearest-neighbor interpolation, crops all maps from
+positive MaSeg GM support, then fuses them with the selected
+`CombineMAandTOADS` settings. It writes the intermediate atlas/TOADS maps and
+the fused GM, WM-fill, and mask as RAS `.nii.gz` files. Optional
+brainstem/cerebellum removal is disabled in the selected V3 base workflow.
+This fusion mask is derived from MaSeg and is distinct from the external
+brain mask used to skull-strip TOADS.
+
 ## `pymacruise toads-cruise-core`
 
 ```text
@@ -438,16 +457,21 @@ pymacruise toads-cruise-core --gm Toads2_gm.nii.gz \
   [--ace-diffusion-iterations 25] [--gvf-lambda 1] \
   [--gvf-iterations 200] [--tgdm-initial-iterations 6] \
   [--tgdm-inner-iterations 4] [--tgdm-central-iterations 7] \
+  [--base-preparation-provenance run.json] \
   [--provenance run.json]
 ```
 
 This continues from second-pass maps through cleanup/crop/topology,
 base-parameter ACE, generalized GVF, nested TGDM, and native-grid inverse
-crop. It writes cropped tissue maps, topology-corrected WM-fill, ACE outputs,
-the component-last GVF, and native-RAS inner/central/outer level sets. Base
-ACE does not merge updated multi-atlas CSF. The selected MATLAB wrapper passes
-the central-surface iteration option to the outer TGDM stage as well, so the
-CLI preserves that mapping. Surfaces and thickness outputs are not generated.
+crop. When `--base-preparation-provenance` is supplied, the command instead
+accepts already-fused, cropped maps, verifies their grid against the recorded
+MaSeg crop, performs the selected WM-fill topology correction, and avoids
+repeating cleanup/crop. It writes cropped tissue maps, topology-corrected
+WM-fill, ACE outputs, the component-last GVF, and native-RAS
+inner/central/outer level sets. Base ACE does not merge updated multi-atlas
+CSF. The selected MATLAB wrapper passes the central-surface iteration option
+to the outer TGDM stage as well, so the CLI preserves that mapping. Surfaces
+and thickness outputs are not generated.
 
 
 ## `pymacruise plus-run`
