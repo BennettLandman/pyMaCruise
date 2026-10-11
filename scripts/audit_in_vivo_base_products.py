@@ -90,6 +90,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("core_dir", type=Path)
     parser.add_argument("--maseg", type=Path, required=True)
+    parser.add_argument(
+        "--refined-segmentation", type=Path,
+        help="Optional source-refined MaSeg image for a separate, label-support diagnostic",
+    )
     parser.add_argument("--brain-mask", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--watchdog-log", type=Path)
@@ -144,6 +148,23 @@ def main() -> None:
     inner = np.asarray(images["inner"].dataobj) <= 0
     central = np.asarray(images["central"].dataobj) <= 0
     outer = np.asarray(images["outer"].dataobj) <= 0
+
+    def support_for_label_map(label_map: np.ndarray) -> dict[str, int | float]:
+        gm_mask = np.isin(label_map, tuple(GM_LABELS))
+        wm_mask = np.isin(label_map, tuple(WM_LABELS))
+        gm_total = int(gm_mask.sum())
+        wm_total = int(wm_mask.sum())
+        gm_in_ribbon = int(np.count_nonzero(gm_mask & ~inner & outer))
+        wm_inside_inner = int(np.count_nonzero(wm_mask & inner))
+        return {
+            "gm_voxels": gm_total,
+            "gm_between_inner_outer": gm_in_ribbon,
+            "gm_between_inner_outer_fraction": gm_in_ribbon / max(1, gm_total),
+            "wm_voxels": wm_total,
+            "wm_inside_inner": wm_inside_inner,
+            "wm_inside_inner_fraction": wm_inside_inner / max(1, wm_total),
+        }
+
     gm = np.isin(labels, tuple(GM_LABELS))
     wm = np.isin(labels, tuple(WM_LABELS))
     gm_count = int(gm.sum())
@@ -179,6 +200,21 @@ def main() -> None:
             "supported_voxels": supported_count,
             "support_fraction": supported_count / voxel_count,
         }
+    refined_support = None
+    if args.refined_segmentation is not None:
+        refined_image = nib.load(str(args.refined_segmentation))
+        if refined_image.shape != reference.shape or not np.allclose(
+            refined_image.affine, reference.affine, rtol=0, atol=1e-4
+        ):
+            raise ValueError("Refined segmentation does not share the final level-set grid")
+        if nib.aff2axcodes(refined_image.affine) != ("R", "A", "S"):
+            raise ValueError("Refined segmentation is not RAS oriented")
+        refined_labels = np.asarray(refined_image.dataobj)
+        if not np.isfinite(refined_labels).all() or not np.equal(
+            refined_labels, np.floor(refined_labels)
+        ).all():
+            raise ValueError("Refined segmentation must contain finite integer labels")
+        refined_support = support_for_label_map(refined_labels)
     mesh_results = {
         name: mesh_topology(surface_dir / f"{name}_surface.vtk")
         for name in ("inner", "central", "outer")
@@ -360,6 +396,7 @@ def main() -> None:
             str(value): int(np.count_nonzero(labels == value)) for value in (208, 209)
         },
         "quality": {**support, **nesting},
+        "refined_segmentation_support": refined_support,
         "label_support_by_label": label_support,
         "comparison": comparison,
         "upstream_diagnostics": upstream_diagnostics,
