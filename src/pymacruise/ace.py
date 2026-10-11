@@ -17,7 +17,6 @@ compute Huo et al.'s separate ``mu_boundary`` field. See
 from __future__ import annotations
 
 from dataclasses import dataclass
-import heapq
 
 import nibabel as nib
 import numpy as np
@@ -580,120 +579,42 @@ def _ace_initial_levelset(white_matter: np.ndarray, threshold: float) -> np.ndar
 def _signed_distance_fmm(
     level_set: np.ndarray,
     max_distance: float = 1000.0,
-    *,
-    round_updates_to_float32: bool = False,
 ) -> np.ndarray:
-    """Port VandyCRUISE's six-neighbor, unit-speed signed fast-marching field.
+    """Run the source-ordered VandyCRUISE six-neighbor unit-speed FMM.
 
-    Zero voxels and sign-crossing voxels form the initial accepted set. Crossing
-    distances use linear subvoxel interpolation; the Eikonal update then marches
-    independently outward from both sides of the interface.
+    The selected Java ``DistanceFieldyh`` uses float-valued heap priorities,
+    one indexed heap entry per voxel, and source scan/neighbor order. Reuse the
+    validated Numba implementation shared with TGDM reinitialization so these
+    details are preserved instead of approximated by Python's duplicate-entry
+    ``heapq`` traversal. ACE, NarrowBandACE, ThinACE, and Dura all call this
+    unit-speed source operation.
     """
-    phi = np.asarray(level_set, dtype=np.float32)
-    if phi.ndim != 3 or any(size < 2 for size in phi.shape):
+    values = np.asarray(level_set, dtype=np.float32)
+    if values.ndim != 3 or any(size < 2 for size in values.shape):
         raise ValueError("ACE signed distance requires a 3D array with dimensions >= 2")
-    if not np.isfinite(phi).all():
+    if not np.isfinite(values).all():
         raise ValueError("ACE signed-distance input must be finite")
     if not np.isfinite(max_distance) or max_distance <= 0:
         raise ValueError("max_distance must be finite and positive")
 
-    alive = phi == 0
-    distance = np.full(phi.shape, np.inf, dtype=np.float64)
-    distance[alive] = 0.0
-    seeds = np.argwhere(~alive)
-    for point in seeds:
-        index = tuple(point)
-        value = float(phi[index])
-        offsets = _source_crossing_offsets(phi, index)
-        if offsets:
-            seed_distance = 1.0 / np.sqrt(sum(1.0 / (offset * offset) for offset in offsets))
-            distance[index] = (
-                float(np.float32(seed_distance))
-                if round_updates_to_float32
-                else seed_distance
-            )
-            alive[index] = True
-
-    state = np.zeros(phi.shape, dtype=np.uint8)  # 0 far, 1 narrow band, 2 accepted
-    state[alive] = 2
-    heap: list[tuple[float, int, int, int]] = []
-
-    def update(candidate: tuple[int, int, int]) -> float:
-        terms = []
-        for axis in range(3):
-            neighbor_values = []
-            for delta in (-1, 1):
-                neighbor_index = list(candidate)
-                neighbor_index[axis] += delta
-                if 0 <= neighbor_index[axis] < phi.shape[axis]:
-                    ni = tuple(neighbor_index)
-                    if state[ni] == 2:
-                        neighbor_values.append(distance[ni])
-            if neighbor_values:
-                terms.append(min(neighbor_values))
-        if not terms:
-            return float("inf")
-        terms.sort()
-        total = 0.0
-        square_total = 0.0
-        root = terms[0] + 1.0
-        for count, term in enumerate(terms, start=1):
-            total += term
-            square_total += term * term
-            discriminant = total * total - count * (square_total - 1.0)
-            root = (total + np.sqrt(max(0.0, discriminant))) / count
-            if count == len(terms) or root <= terms[count]:
-                break
-        return float(root)
-
-    for point in np.argwhere(alive):
-        current = tuple(int(v) for v in point)
-        for axis in range(3):
-            for delta in (-1, 1):
-                neighbor = list(current)
-                neighbor[axis] += delta
-                if not 0 <= neighbor[axis] < phi.shape[axis]:
-                    continue
-                candidate = tuple(neighbor)
-                if state[candidate] == 2:
-                    continue
-                tentative = update(candidate)
-                if round_updates_to_float32:
-                    tentative = float(np.float32(tentative))
-                if tentative < distance[candidate]:
-                    distance[candidate] = tentative
-                    state[candidate] = 1
-                    heapq.heappush(heap, (tentative, *candidate))
-
-    while heap:
-        value, i, j, k = heapq.heappop(heap)
-        current = (i, j, k)
-        if state[current] == 2 or value != distance[current]:
-            continue
-        if value > max_distance:
+    # DistanceFieldyh leaves every voxel FARAWAY when there are no exact-zero
+    # or sign-crossing seeds, then assigns the finite cap with the input sign.
+    has_interface = bool(np.any(values == 0))
+    for axis in range(3):
+        before = [slice(None)] * 3
+        after = [slice(None)] * 3
+        before[axis] = slice(0, -1)
+        after[axis] = slice(1, None)
+        left, right = values[tuple(before)], values[tuple(after)]
+        if np.any(((left < 0) & (right > 0)) | ((left > 0) & (right < 0))):
+            has_interface = True
             break
-        state[current] = 2
-        for axis in range(3):
-            for delta in (-1, 1):
-                neighbor = [i, j, k]
-                neighbor[axis] += delta
-                if not 0 <= neighbor[axis] < phi.shape[axis]:
-                    continue
-                candidate = tuple(neighbor)
-                if state[candidate] == 2:
-                    continue
-                tentative = update(candidate)
-                if round_updates_to_float32:
-                    tentative = float(np.float32(tentative))
-                if tentative < distance[candidate]:
-                    distance[candidate] = tentative
-                    state[candidate] = 1
-                    heapq.heappush(heap, (tentative, *candidate))
+    if not has_interface:
+        return np.where(values < 0, -max_distance, max_distance).astype(np.float32)
 
-    distance[state != 2] = max_distance
-    signed = np.where(phi < 0, -distance, distance)
-    return np.asarray(signed, dtype=np.float32)
+    from pymacruise.tgdm_fmm import tgdm_signed_distance_fmm
 
+    return tgdm_signed_distance_fmm(values, max_distance)
 
 def _shift_clamped(values: np.ndarray, axis: int, offset: int) -> np.ndarray:
     indices = np.clip(

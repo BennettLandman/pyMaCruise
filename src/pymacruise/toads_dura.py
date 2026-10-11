@@ -356,7 +356,6 @@ def dura_signed_distance_field(
     return _signed_distance_fmm(
         level_set,
         max_distance=max_distance_voxels,
-        round_updates_to_float32=True,
     )
 
 

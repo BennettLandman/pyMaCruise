@@ -15,6 +15,10 @@ No general scalar-field ACE tolerance has been declared. The continuous-field
 numbers below localize where the paths first differ; they are not a claim that
 every reported field passes a pre-agreed numerical tolerance.
 
+The stage table below is the **pre-correction diagnosis**. A source-ordered
+FMM correction and exact fixed-input human replay are recorded in the
+[follow-up report](in-vivo-human-ace-ordered-fmm-correction-2026-10-11.md).
+
 ## Earliest divergence and stage trace
 
 | Java intermediate | Comparison | Result |
@@ -68,18 +72,19 @@ user's 0.97 segmentation criterion. The thinned skeleton remains below that
 criterion. These are selected-stage comparisons on one human scan, not
 whole-workflow equivalence or clinical validation.
 
-## Source-localization target
+## Conclusion after correction
 
-The next code comparison should focus on the VandyCRUISE `DistanceFieldyh`
-initialization / `march` / indexed `BinaryMinHeap` behavior against
-`_signed_distance_fmm`, then on `NarrowBandACE`'s reinitialization and
-`DistanceFieldAndSkeleton`'s weighted field. In particular, compare equal
-float-priority heap ordering and update semantics before changing production
-code. The selected sources are
+The initial mismatch came from the Python unit-speed FMM's duplicate-entry
+`heapq` traversal and insertion order, which did not preserve Java's indexed
+float-priority heap behavior. `_signed_distance_fmm` now reuses the validated
+source-ordered unit-speed kernel; on the saved human initial level set it
+matches Java `02_PHIinit` exactly, and the held-fixed ACE products now match
+Java exactly. See the follow-up report for the focused tests, replay command,
+and resource measurements. The selected Java sources are
 [`DistanceFieldyh.java`](../../tests/java_reference/upstream/edu/vanderbilt/masi/algorithms/CRUISE/ace/DistanceFieldyh.java),
 [`BinaryMinHeap.java`](../../tests/java_reference/upstream/edu/jhu/ece/iacl/jist/structures/data/BinaryMinHeap.java),
 and [`MaAnatomicallyConsistentEnhance.java`](../../tests/java_reference/upstream/edu/vanderbilt/masi/algorithms/CRUISE/ace/MaAnatomicallyConsistentEnhance.java).
-The corresponding Python operations are in
+The Python operations are in
 [`ace.py`](../../src/pymacruise/ace.py#L580) (initial FMM),
 [`ace.py`](../../src/pymacruise/ace.py#L806) (narrow band), and
 [`ace.py`](../../src/pymacruise/ace.py#L889) (weighted FMM); thinning is in

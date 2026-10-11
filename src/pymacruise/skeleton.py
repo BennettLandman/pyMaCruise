@@ -93,7 +93,6 @@ def thin_ace(skeleton: np.ndarray) -> np.ndarray:
     distance = _signed_distance_fmm(
         initial_phi,
         max_distance=4.0,
-        round_updates_to_float32=True,
     )
 
     labels = np.zeros(object_mask.shape, dtype=np.uint8)

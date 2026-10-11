@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import struct
 from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.ace import (
     _ace_initial_levelset,
@@ -192,6 +194,53 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
 
 def test_ace_stages_match_selected_macruise_java_reference() -> None:
     _assert_ace_stages_match_selected_java(FIXTURES, JAVA)
+
+
+def test_ace_initial_signed_distance_matches_java_ordered_heap() -> None:
+    white = np.asarray(nib.load(FIXTURES / "white_matter.nii.gz").dataobj, dtype=np.float32)
+    initial_levelset = _ace_initial_levelset(white, 126.9)
+    actual = _signed_distance_fmm(initial_levelset, 1000.0)
+    expected = np.asarray(
+        nib.load(JAVA / "stages" / "02_PHIinit_java.nii.gz").dataobj,
+        dtype=np.float32,
+    )
+
+    # Source float priorities and indexed updates now match the Java field;
+    # The source-ordered heap matches the Java field up to a final float32
+    # ulp on this small phantom, so retain a tight scalar-field bound rather
+    # than bit equality.
+    error = np.abs(actual.astype(np.float64) - expected.astype(np.float64))
+    assert float(error.max(initial=0.0)) <= 1.0e-6
+    assert float(error.mean()) <= 2.0e-7
+
+
+def test_ace_initial_signed_distance_matches_saved_human_java_stage_when_available() -> None:
+    human_build = (
+        Path(__file__).parents[1]
+        / "build/invivo-base-source-v3-human-boundary-2026-10-11"
+    )
+    white_path = human_build / "stages/base-tissue-preparation/attempt-01/fused_wmfill.nii.gz"
+    java_intermediate = human_build / "ace-java-held-fixed/intermediate"
+    java_levelset_path = java_intermediate / "01_tmpVolfirst.bin"
+    java_phi_path = java_intermediate / "02_PHIinit.bin"
+    if not white_path.exists() or not java_levelset_path.exists() or not java_phi_path.exists():
+        pytest.skip("saved human ACE comparison artifacts are not available in this checkout")
+
+    white_image = nib.load(str(white_path))
+    white = np.asarray(white_image.dataobj, dtype=np.float32)
+    levelset = _ace_initial_levelset(white, 126.9)
+    with java_levelset_path.open("rb") as stream:
+        shape = struct.unpack(">III", stream.read(12))
+        assert shape == white.shape
+        expected_levelset = np.fromfile(stream, dtype=">f4").astype(np.float32).reshape(shape)
+    np.testing.assert_array_equal(levelset, expected_levelset)
+
+    with java_phi_path.open("rb") as stream:
+        shape = struct.unpack(">III", stream.read(12))
+        assert shape == white.shape
+        expected = np.fromfile(stream, dtype=">f4").astype(np.float32).reshape(shape)
+
+    np.testing.assert_array_equal(_signed_distance_fmm(levelset, 1000.0), expected)
 
 
 def test_ace_stages_match_selected_java_reference_on_folded_cortex() -> None:
