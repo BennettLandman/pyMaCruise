@@ -1,0 +1,56 @@
+{
+  "ace_outputs": {
+    "ace-enhanced": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    },
+    "ace-skeleton": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    },
+    "ace-thinned-skeleton": {
+      "changed_voxels": 0,
+      "exact": true,
+      "maximum_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 418509
+    }
+  },
+  "comparison": "selected MaCRUISEplus Java ACE mode 3 and VandyCRUISE GVF vs current plus workflow on exact held-fixed inputs",
+  "coordinate_system": "RAS",
+  "gvf_output": {
+    "accepted_by_existing_reference_limits": true,
+    "changed_values": 1109741,
+    "exact": false,
+    "maximum_absolute_error": 1.862645149230957e-07,
+    "mean_absolute_error": 1.8905495340335918e-08,
+    "value_count": 1255527
+  },
+  "implementation_signature": null,
+  "java_peak_sampled_rss_gb": {
+    "ace": 0.25,
+    "gvf": 0.309
+  },
+  "java_rss_limit_gb": 8,
+  "parameters": {
+    "csf_merge_mode": 3,
+    "gvf_iterations": 200,
+    "gvf_lambda": 0.2,
+    "gvf_normalize": false
+  },
+  "passed": true,
+  "scope": "the six Python TGDM stage products were first replayed exactly against saved workflow outputs; ACE and GVF inputs are reconstructed from the same crop inputs and plus settings",
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "synthetic_only": true,
+  "workflow_run_signature": "0a3c4e823e865c205f9e3b34aae7b2c3145e03d260f4ff34a715bb38e3ddb3c0"
+}

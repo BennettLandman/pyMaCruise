@@ -1,0 +1,16 @@
+{
+  "synthetic_only": true,
+  "comparison": "selected JIST MinFilter3D raw plus boundary versus Python on the P41z exact crop",
+  "workflow_run_signature": "0a3c4e823e865c205f9e3b34aae7b2c3145e03d260f4ff34a715bb38e3ddb3c0",
+  "shape_xyz": [73, 91, 63],
+  "coordinate_system": "RAS",
+  "input_sha256": "b0c36ffe249cc51529de443f970f99432274325f8c24ae11ba9daa188f3544f7",
+  "java_serialized_output_sha256": "36d43c22e10b50728f72729c166c4cafb0d579bcea63ebd9db2195ee733c1721",
+  "python_output_values_sha256": "34cba23a3046662a27baed9ff85bce1a5c4b98829a665c9376e502697d132a20",
+  "voxel_count": 418509,
+  "java_python_changed_voxels": 0,
+  "foreground_voxels_in_both": 0,
+  "java_peak_sampled_rss_gb": 0.088,
+  "folded_fixture_compatible": false,
+  "interpretation": "Array equality is exact but trivial: the P41z crop has only one label >=100 and its neighbors are lower labels, which the selected source suppresses. This is not nontrivial boundary validation."
+}
