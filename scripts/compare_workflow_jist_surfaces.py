@@ -85,6 +85,10 @@ def main() -> None:
         "--work-dir", type=Path, required=True,
         help="ignored build directory for raw inputs and Java mesh arrays",
     )
+    parser.add_argument(
+        "--evidence-class", choices=("synthetic", "in-vivo"), default="synthetic",
+        help="label the source-comparison dataset correctly in the JSON report",
+    )
     args = parser.parse_args()
     core_dir = args.core_dir.resolve()
     work_dir = args.work_dir.resolve()
@@ -148,8 +152,9 @@ def main() -> None:
         metrics[name] = compare_meshes(jist_mesh, python_mesh)
 
     result = {
-        "evidence_type": "synthetic selected-source comparison",
-        "synthetic_only": True,
+        "evidence_type": f"{args.evidence_class} held-fixed selected-source comparison",
+        "synthetic_only": args.evidence_class == "synthetic",
+        "human_data": args.evidence_class == "in-vivo",
         "core_dir": str(core_dir),
         "shape": shape,
         "spacing_mm": spacing,
