@@ -216,7 +216,10 @@ def run_plus_file_workflow(
             raise FileExistsError(f"Plus run manifest exists; use resume=True: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest.get("run_signature") != run_signature:
-            raise ValueError("Cannot resume plus workflow: inputs or settings differ")
+            manifest["previous_run_signature"] = manifest.get("run_signature")
+            manifest["run_signature"] = run_signature
+            manifest["inputs"] = input_records
+            manifest["settings"] = settings
     else:
         if resume:
             raise FileNotFoundError(f"Cannot resume; no plus run manifest exists: {manifest_path}")

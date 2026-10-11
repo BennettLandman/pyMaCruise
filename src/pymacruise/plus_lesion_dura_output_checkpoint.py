@@ -112,13 +112,15 @@ def run_plus_lesion_dura_output_checkpoint(
     summary_path = _checked_output(recrop, "summary")
     memberships_path = _checked_output(loop, "memberships")
     segmentation_path = _checked_output(loop, "segmentation")
-    inputs = {
-        "registered_recrop_manifest": _record(recrop_path),
-        "registered_loop_manifest": _record(loop_path),
+    input_files = {
         "recropped_modalities": _record(modalities_path),
         "registered_recrop_summary": _record(summary_path),
         "registered_memberships": _record(memberships_path),
         "registered_segmentation": _record(segmentation_path),
+    }
+    upstream_manifests = {
+        "registered_recrop_manifest": _record(recrop_path),
+        "registered_loop_manifest": _record(loop_path),
     }
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     class_names = tuple(summary.get("class_names", ()))
@@ -155,12 +157,16 @@ def run_plus_lesion_dura_output_checkpoint(
         "source_order": ["generateDuraRemovalOutputs"],
         "channel_order": ["csf", "gm", "wm_fill", "wm_mask"],
         "class_names": list(class_names),
-        "inputs": inputs,
+        "inputs": input_files,
+        "upstream_manifests": upstream_manifests,
         "spatial_convention": "RAS",
         "source_equivalence_claim": False,
     }
+    signature_payload = {
+        key: value for key, value in signature_data.items() if key != "upstream_manifests"
+    }
     signature = hashlib.sha256(
-        json.dumps(signature_data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        json.dumps(signature_payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     ).hexdigest()
     root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "lesion-dura-output-checkpoint.json"
@@ -170,9 +176,11 @@ def run_plus_lesion_dura_output_checkpoint(
         if not resume:
             raise FileExistsError(f"Dura output checkpoint exists; use resume=True: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("run_signature") != signature:
-            raise ValueError("Cannot resume Dura output checkpoint: inputs differ")
-        if manifest.get("status") == "complete":
+        # A completed upstream loop may have been repaired during resume, so
+        # its manifest/hash can legitimately change. Recompute this downstream
+        # checkpoint from the newly verified inputs instead of rejecting the
+        # parent workflow's dependency invalidation.
+        if manifest.get("run_signature") == signature and manifest.get("status") == "complete":
             verified = {
                 name: _verified_output(record, name, reference)
                 for name, record in manifest.get("outputs", {}).items()

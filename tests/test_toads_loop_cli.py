@@ -178,7 +178,8 @@ def test_toads_wrapper_outputs_feed_the_dura_cli_and_match_api(tmp_path) -> None
     gray = nib.load(str(toads_dura_inputs / "t1_gm.nii.gz"))
     white_mask = nib.load(str(toads_dura_inputs / "t1_wmmask.nii.gz"))
     expected = run_dura_removal(
-        nib.load(str(t1)), white, gray, white_mask, max_iterations=1
+        nib.load(str(t1)), white, gray, white_mask, max_iterations=1,
+        membership_level=0.3,
     )
     dura_output_dir = tmp_path / "dura-output"
     assert main(

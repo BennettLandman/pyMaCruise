@@ -126,9 +126,10 @@ def run_plus_lesion_native_dura_transfer(
         if not resume:
             raise FileExistsError(f"Native Dura transfer exists; use resume=True: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("run_signature") != signature:
-            raise ValueError("Cannot resume native Dura transfer: inputs differ")
-        if manifest.get("status") == "complete":
+        # If an upstream stage was repaired during a top-level resume, transfer
+        # again from its newly verified Dura products instead of rejecting the
+        # updated dependency signature.
+        if manifest.get("run_signature") == signature and manifest.get("status") == "complete":
             cached: dict[str, Path] = {}
             for name in channel_names:
                 record = manifest.get("outputs", {}).get(name, {})
