@@ -55,13 +55,19 @@ def test_selected_thinning_nonzero_shape_prior_competition_matches_java(tmp_path
     assert shaped_transition.topology_accepted is False
     assert zero_transition.topology_accepted is False
 
+    initial_skeleton = np.full(segmentation.shape, -1, dtype=np.int16)
     result = toads_propagate_thinning(
         segmentation, memberships, adjacency, shapes,
         volume_ratio=CASE["volume_ratio"], limit=CASE["thinning_limit"],
+        # The Java reference explicitly seeds -1 before initThinningLabels;
+        # keep that test input distinct from the low-level API's zero default.
+        initial_skeleton=initial_skeleton,
     )
     assert any((item.x, item.y, item.z) == (x, y, z) for item in result.processed_items)
     input_path = tmp_path / "p18czm_nonzero_shape_input.bin"
-    input_path.write_bytes(_serialize(segmentation, memberships, shapes, adjacency))
+    input_path.write_bytes(_serialize(
+        segmentation, memberships, shapes, adjacency, initial_skeleton
+    ))
     java = json.loads(subprocess.run(
         [
             "sh", str(THINNING_SCRIPT), str(input_path),

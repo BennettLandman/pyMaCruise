@@ -28,12 +28,13 @@ NEXT_THINNING_SCRIPT = ROOT.parent / "scripts/run_java_toads_post_registration_n
 ORDER_HARNESS = ROOT / "java_reference/ToadsP18cyvNextIterationOrderReferenceHarness.java"
 
 
-def _input_bytes(segmentation, memberships, shapes, adjacency):
+def _input_bytes(segmentation, memberships, shapes, adjacency, skeleton):
     return b"".join((
         np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
         np.asarray(memberships, dtype=">f4").tobytes(order="C"),
         np.asarray(shapes, dtype=">f4").tobytes(order="C"),
         np.asarray(adjacency, dtype=np.uint8).tobytes(order="C"),
+        np.asarray(skeleton, dtype=np.int8).tobytes(order="C"),
     ))
 
 
@@ -185,6 +186,7 @@ def test_actual_p18cyt_branch_flows_to_java_referenced_next_thinning(tmp_path: P
         branch.handoff.membership_pass.memberships,
         shape_values,
         branch.relations.relation.class_adjacency,
+        branch.growing.skeleton,
     ))
     completed = subprocess.run(
         [

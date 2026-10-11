@@ -104,6 +104,7 @@ def test_next_thinning_pass_consumes_java_referenced_continuation_state() -> Non
         shapes,
         volume_ratio=0.5,
         limit=3.0,
+        initial_skeleton=transition.growing.skeleton,
     )
     np.testing.assert_array_equal(actual.segmentation, direct.segmentation)
     np.testing.assert_array_equal(actual.skeleton, direct.skeleton)

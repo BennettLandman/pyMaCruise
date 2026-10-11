@@ -25,12 +25,13 @@ THINNING_SCRIPT = ROOT.parent / "scripts/run_java_toads_post_registration_next_t
 ORDER_HARNESS = ROOT / "java_reference/ToadsP18cyvNextIterationOrderReferenceHarness.java"
 
 
-def _serialize(segmentation, memberships, shapes, adjacency) -> bytes:
+def _serialize(segmentation, memberships, shapes, adjacency, skeleton) -> bytes:
     return b"".join((
         np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
         np.asarray(memberships, dtype=">f4").tobytes(order="C"),
         np.asarray(shapes, dtype=">f4").tobytes(order="C"),
         np.asarray(adjacency, dtype=np.uint8).tobytes(order="C"),
+        np.asarray(skeleton, dtype=np.int8).tobytes(order="C"),
     ))
 
 
@@ -120,7 +121,9 @@ def test_p18czc_continuing_branch_feeds_java_referenced_next_thinning(tmp_path: 
     grown = branch.growing.segmentation
     adjacency = branch.relations.relation.class_adjacency
     input_path = tmp_path / "p18czd_thinning_input.bin"
-    input_path.write_bytes(_serialize(grown, memberships, shapes, adjacency))
+    input_path.write_bytes(_serialize(
+        grown, memberships, shapes, adjacency, branch.growing.skeleton
+    ))
     java = json.loads(subprocess.run(
         [
             "sh", str(THINNING_SCRIPT), str(input_path),

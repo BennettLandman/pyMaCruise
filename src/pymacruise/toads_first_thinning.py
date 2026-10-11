@@ -44,6 +44,7 @@ def toads_first_exact_thinning_pass(
     crop_border: int = 10,
     volume_ratio: float = 0.5,
     limit: float = 3.0,
+    initial_skeleton: ArrayLike | None = None,
 ) -> ToadsFirstThinningPass:
     """Run the selected exact initializer into the first TOADS thinning pass.
 
@@ -76,5 +77,9 @@ def toads_first_exact_thinning_pass(
         transformed_shape_values,
         volume_ratio=volume_ratio,
         limit=limit,
+        # The production constructor starts with a zero-filled Java byte
+        # array. Accept an explicit seed only for callers replaying a harness
+        # or other already-initialized Java state.
+        initial_skeleton=initial_skeleton,
     )
     return ToadsFirstThinningPass(memberships=memberships, thinning=thinning)

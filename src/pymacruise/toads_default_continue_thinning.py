@@ -52,5 +52,10 @@ def toads_default_continue_thinning(
         shapes,
         volume_ratio=0.5,
         limit=3.0,
+        # The selected iteration carries this Java skeleton array into
+        # initThinningLabels, which overwrites its interior but retains its
+        # border. Keep that state explicit here; low-level callers that omit
+        # initial_skeleton still get the constructor's zero-filled default.
+        initial_skeleton=transition.growing.skeleton,
         ordering=transition.growing.ordering,
     )

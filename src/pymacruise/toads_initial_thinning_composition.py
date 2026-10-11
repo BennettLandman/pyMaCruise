@@ -59,6 +59,7 @@ def toads_initial_fielded_membership_to_thinning(
     volume_ratio: float = 0.5,
     thinning_limit: float = 3.0,
     psf_bias: ArrayLike | None = None,
+    initial_skeleton: ArrayLike | None = None,
 ) -> ToadsInitialThinningComposition:
     """Run startup relation/membership state and one thinning pass in order.
 
@@ -104,6 +105,9 @@ def toads_initial_fielded_membership_to_thinning(
         shapes,
         volume_ratio=volume_ratio,
         limit=thinning_limit,
+        # The Java constructor starts with a zero-filled byte array. Replays
+        # of harnesses with preinitialized state can provide that seed.
+        initial_skeleton=initial_skeleton,
     )
     return ToadsInitialThinningComposition(
         startup=startup,

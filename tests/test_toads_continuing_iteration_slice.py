@@ -76,6 +76,10 @@ def _run():
         4,
         1e-4,
         relation_limit=1,
+        # The committed source-composition snapshot begins with a reused
+        # skeleton explicitly seeded to the empty sentinel in its Java
+        # harness; the low-level fresh-constructor border default is zero.
+        initial_skeleton=np.full(segmentation.shape, -1, dtype=np.int16),
     )
 
 

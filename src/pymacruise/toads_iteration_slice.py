@@ -77,6 +77,7 @@ def toads_continuing_iteration_slice(
     convergence_threshold: float,
     *,
     relation_limit: int,
+    initial_skeleton: ArrayLike | None = None,
     intensity_field: ArrayLike | None = None,
     psf_bias: ArrayLike | None = None,
 ) -> ToadsContinuingIterationSlice:
@@ -86,7 +87,10 @@ def toads_continuing_iteration_slice(
     source energy/iteration decision; ``propagateGrowing``; then relations,
     boundary distances, and closest labels. The caller must provide the
     relation/shape model for thinning, the ordinary OBJECT membership model,
-    and the preceding iteration's ordering and boundary-distance fields.
+    and the preceding iteration's ordering and boundary-distance fields. If
+    the enclosing Java object already has a skeleton array, pass that state
+    through ``initial_skeleton``; omission preserves the fresh-constructor
+    zero-filled border semantics of the low-level kernel.
     This function refuses a stopping decision because classification transfer
     belongs to the separate stopping branch.
     """
@@ -97,6 +101,7 @@ def toads_continuing_iteration_slice(
         thinning_shape_values,
         volume_ratio,
         thinning_limit,
+        initial_skeleton=initial_skeleton,
         ordering=ordering,
     )
     updated_memberships, objective = toads_object_membership_pass(

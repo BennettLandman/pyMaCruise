@@ -69,6 +69,7 @@ def _run():
         4,
         1e-4,
         relation_limit=2,
+        initial_skeleton=np.full(segmentation.shape, -1, dtype=np.int16),
     )
     return segmentation, result
 

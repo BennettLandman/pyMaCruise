@@ -8,7 +8,7 @@
   "previous_polynomial_degree": 1,
   "maximum_polynomial_degree": 3,
   "low_energy_ratio": 0.01,
-  "observed_energy_ratio": 1.1715328693389893,
+  "observed_energy_ratio": 1.176735520362854,
   "field_initialization": "use the preceding P18cyw degree-one fitted field",
   "centroid_initialization": "use the preceding P18cyw exact centroid output",
   "closest_labels": "use the P18cyx continuing branch relation refresh output",
@@ -17,5 +17,5 @@
     "ToadsPostThinningExactFieldReferenceHarness",
     "ToadsPostThinningExactIterationReferenceHarness"
   ],
-  "scope": "one carried-degree degree-one iteration on a synthetic RAS grid; not a complete TOADS workflow"
+  "scope": "one carried-degree degree-one iteration on a synthetic RAS grid; the expected ratio follows the source-faithful carried skeleton border state; not a complete TOADS workflow"
 }

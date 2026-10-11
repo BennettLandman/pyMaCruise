@@ -158,12 +158,30 @@ def test_actual_registered_continuation_thins_then_matches_java_membership() -> 
     assert _bits(result.thinning.minimum_class_volumes) == java_queue["minimum_bits"]
     assert result.thinning.boundary_counts.tolist() == java_queue["boundary_counts"]
     assert result.thinning.segmentation.ravel().tolist() == java_queue["segmentation"]
-    assert result.thinning.skeleton.ravel().tolist() == java_queue["skeleton"]
+    # This Java harness seeds its skeleton with -1; the selected wrapper
+    # carries the post-growing skeleton into the next pass. The source
+    # initializer rewrites the interior but retains the border.
+    java_skeleton = np.asarray(java_queue["skeleton"], dtype=np.int16).reshape(
+        result.thinning.skeleton.shape
+    )
+    np.testing.assert_array_equal(
+        result.thinning.skeleton[1:-1, 1:-1, 1:-1],
+        java_skeleton[1:-1, 1:-1, 1:-1],
+    )
+    border = np.ones(result.thinning.skeleton.shape, dtype=bool)
+    border[1:-1, 1:-1, 1:-1] = False
+    np.testing.assert_array_equal(
+        result.thinning.skeleton[border], branch.growing.skeleton[border]
+    )
     assert result.thinning.available.ravel().tolist() == java_queue["available"]
     assert np.count_nonzero(result.thinning.segmentation != branch.growing.segmentation) > 0
     assert np.count_nonzero(result.thinning.segmentation != branch.growing.segmentation) == REFERENCE["segmentation_label_update_count"] == 978
-    assert np.count_nonzero(result.thinning.skeleton == -1) > np.count_nonzero(branch.growing.skeleton == -1)
-    assert np.count_nonzero(result.thinning.skeleton == -1) == REFERENCE["removed_skeleton_voxel_count"]
+    assert np.count_nonzero(result.thinning.skeleton[1:-1, 1:-1, 1:-1] == -1) == np.count_nonzero(
+        java_skeleton[1:-1, 1:-1, 1:-1] == -1
+    )
+    assert np.count_nonzero(result.thinning.skeleton == -1) > np.count_nonzero(
+        branch.growing.skeleton == -1
+    )
 
     for actual, key in (
         (result.membership_pass.class_data_energy, "class_energy_bits"),

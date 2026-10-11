@@ -66,6 +66,11 @@ def toads_post_registration_next_thinning(
         volume_ratio=0.5,
         limit=3.0,
         record_processed_items=record_thinning_items,
+        # The wrapper carries the skeleton produced by propagateGrowing into
+        # the next loop pass. initThinningLabels rewrites its interior while
+        # retaining the carried border; omit this only for low-level calls
+        # that intentionally exercise the constructor's zero-filled default.
+        initial_skeleton=branch.growing.skeleton,
         ordering=branch.growing.ordering,
     )
     return ToadsPostRegistrationNextThinning(

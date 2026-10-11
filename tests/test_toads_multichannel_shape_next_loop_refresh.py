@@ -50,6 +50,9 @@ def _thinning_input(labels: np.ndarray, memberships: np.ndarray, shapes: np.ndar
         np.asarray(memberships, dtype=">f4").tobytes(order="C"),
         np.asarray(shapes, dtype=">f4").tobytes(order="C"),
         np.asarray(adjacency, dtype=np.uint8).tobytes(order="C"),
+        # This low-level API call deliberately uses its constructor-equivalent
+        # zero default rather than a wrapper-carried skeleton.
+        np.zeros(labels.shape, dtype=np.int8).tobytes(order="C"),
     ))
 
 

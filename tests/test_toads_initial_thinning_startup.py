@@ -135,6 +135,8 @@ def test_selected_startup_relation_membership_then_first_thinning_matches_java()
         volume_ratio=spec["thinning_volume_ratio"],
         thinning_limit=spec["thinning_limit"],
         psf_bias=bias,
+        # The startup comparison harness explicitly pre-fills skeleton=-1.
+        initial_skeleton=np.full(labels.shape, -1, dtype=np.int16),
     )
 
     assert result.stage_order == tuple(REFERENCE["stage_order"])
@@ -177,6 +179,14 @@ def test_selected_startup_relation_membership_then_first_thinning_matches_java()
     )
     assert _byte_digest(thinning.segmentation) == REFERENCE["segmentation_sha256"]
     assert _byte_digest(thinning.skeleton) == REFERENCE["skeleton_sha256"]
+    # The selected Java startup harness pre-fills every voxel with -1; only
+    # the interior is assigned during initThinningLabels.
+    assert np.all(thinning.skeleton[0, :, :] == -1)
+    assert np.all(thinning.skeleton[-1, :, :] == -1)
+    assert np.all(thinning.skeleton[:, 0, :] == -1)
+    assert np.all(thinning.skeleton[:, -1, :] == -1)
+    assert np.all(thinning.skeleton[:, :, 0] == -1)
+    assert np.all(thinning.skeleton[:, :, -1] == -1)
     assert _available_digest(thinning.available) == REFERENCE["available_sha256"]
     assert len(thinning.queue) == REFERENCE["queue_after_count"]
     queue_after = []

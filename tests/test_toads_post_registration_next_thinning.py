@@ -91,12 +91,13 @@ def _label_string(values: np.ndarray, empty: bool = False) -> str:
 
 
 def _input_bytes(segmentation: np.ndarray, memberships: np.ndarray, shapes: np.ndarray,
-                 adjacency: np.ndarray) -> bytes:
+                 adjacency: np.ndarray, skeleton: np.ndarray) -> bytes:
     return b"".join((
         np.asarray(segmentation, dtype=np.int8).tobytes(order="C"),
         np.asarray(memberships, dtype=">f4").tobytes(order="C"),
         np.asarray(shapes, dtype=">f4").tobytes(order="C"),
         np.asarray(adjacency, dtype=np.uint8).tobytes(order="C"),
+        np.asarray(skeleton, dtype=np.int8).tobytes(order="C"),
     ))
 
 
@@ -117,7 +118,9 @@ def test_selected_registered_continue_branch_flows_into_java_referenced_next_thi
     memberships = branch.handoff.membership_pass.memberships
     adjacency = branch.relations.relation.class_adjacency
     input_path = tmp_path / "next_thinning_input.bin"
-    input_path.write_bytes(_input_bytes(labels, memberships, shapes, adjacency))
+    input_path.write_bytes(_input_bytes(
+        labels, memberships, shapes, adjacency, branch.growing.skeleton
+    ))
     completed = subprocess.run(
         ["sh", str(HARNESS_SCRIPT), str(input_path), *(str(v) for v in labels.shape), str(memberships.shape[-1])],
         check=True, capture_output=True, text=True,

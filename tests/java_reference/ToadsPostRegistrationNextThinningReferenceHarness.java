@@ -41,6 +41,10 @@ public final class ToadsPostRegistrationNextThinningReferenceHarness {
             for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)for(int k=0;k<classes;k++)mems[x][y][z][k]=in.readFloat();
             for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)for(int k=0;k<classes;k++)shape[x][y][z][k]=in.readFloat();
             for(int k=0;k<classes;k++)for(int j=0;j<classes;j++)relation[k][j]=in.readByte()!=0;
+            // initThinningLabels overwrites the interior skeleton but keeps
+            // the caller-owned border. Read the exact state carried by the
+            // prior propagateGrowing call rather than inventing a new one.
+            for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)skel[x][y][z]=in.readByte();
             if(in.read()!=-1)throw new IllegalArgumentException("unexpected trailing input bytes");
         }
     }
@@ -57,7 +61,6 @@ public final class ToadsPostRegistrationNextThinningReferenceHarness {
     }
     private void initThinningLabels() {
         for(int k=0;k<classes;k++)volume[k]=0.0f;
-        for(int x=0;x<nx;x++)for(int y=0;y<ny;y++)for(int z=0;z<nz;z++)skel[x][y][z]=EMPTY;
         for(int x=1;x<nx-1;x++)for(int y=1;y<ny-1;y++)for(int z=1;z<nz-1;z++) {
             int k=seg[x][y][z];skel[x][y][z]=(byte)k;
             for(int c=0;c<classes;c++) {

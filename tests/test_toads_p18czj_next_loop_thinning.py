@@ -17,7 +17,11 @@ from pymacruise.toads_p18czj_next_loop_thinning import (
     continue_p18czi_branch_through_next_loop_thinning,
 )
 from test_toads_p18czb_registered_handoff import _atlas
-from test_toads_p18czd_next_loop_thinning import _float_bits, _labels, _serialize
+from test_toads_p18czd_next_loop_thinning import (
+    _float_bits,
+    _labels,
+    _serialize,
+)
 from test_toads_p18cze_next_exact_iteration import _parameters
 from test_toads_p18czh_next_exact_iteration import _p18czg_state
 
@@ -109,6 +113,7 @@ def test_p18czi_registered_branch_feeds_java_referenced_next_thinning(tmp_path: 
         memberships,
         shapes,
         branch.relations.relation.class_adjacency,
+        branch.growing.skeleton,
     ))
     java = json.loads(subprocess.run(
         [

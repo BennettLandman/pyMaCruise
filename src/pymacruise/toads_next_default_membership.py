@@ -130,6 +130,11 @@ def toads_next_default_membership_pass(
         transformed_shapes,
         volume_ratio,
         thinning_limit,
+        # The continuing Java wrapper retains the skeleton returned by
+        # propagateGrowing as it begins the next thinning iteration. The
+        # initializer refreshes interior labels and preserves that carried
+        # state at the border. Direct low-level calls still use zero default.
+        initial_skeleton=branch.growing.skeleton,
         ordering=branch.growing.ordering,
     )
     membership = toads_default_atlas_membership_pass(

@@ -73,6 +73,9 @@ def test_selected_exact_initial_memberships_feed_first_default_thinning_pass() -
         crop_border=spec["crop_border"],
         volume_ratio=spec["volume_ratio"],
         limit=spec["thinning_limit"],
+        # This selected Java comparison harness explicitly initializes the
+        # skeleton to the empty-label sentinel before initThinningLabels.
+        initial_skeleton=np.full(segmentation.shape, -1, dtype=np.int16),
     )
     initial = toads_initialize_thinning_queue(
         segmentation,
@@ -102,6 +105,14 @@ def test_selected_exact_initial_memberships_feed_first_default_thinning_pass() -
     assert _queue_digest(thinning.processed_items) == REFERENCE["processed_sha256"]
     assert _label_digest(thinning.segmentation) == REFERENCE["segmentation_sha256"]
     assert _label_digest(thinning.skeleton) == REFERENCE["skeleton_sha256"]
+    # This source-selected wrapper pre-seeds the full skeleton with -1, so
+    # the crop border remains empty after initThinningLabels and propagation.
+    assert np.all(thinning.skeleton[0, :, :] == -1)
+    assert np.all(thinning.skeleton[-1, :, :] == -1)
+    assert np.all(thinning.skeleton[:, 0, :] == -1)
+    assert np.all(thinning.skeleton[:, -1, :] == -1)
+    assert np.all(thinning.skeleton[:, :, 0] == -1)
+    assert np.all(thinning.skeleton[:, :, -1] == -1)
     assert _available_digest(thinning.available) == REFERENCE["available_sha256"]
     np.testing.assert_array_equal(_bits(thinning.class_volumes), REFERENCE["final_volume_bits"])
     assert len(thinning.queue) == REFERENCE["queue_after_count"]
