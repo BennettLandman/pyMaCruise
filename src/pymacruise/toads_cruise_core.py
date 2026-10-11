@@ -52,6 +52,8 @@ def run_toads_cruise_core(
     remove_cerebellum: bool = False,
     crop_edge_width: int = 5,
     ace_diffusion_iterations: int = 25,
+    ace_use_updated_csf_in_ace: int = 0,
+    wm_iso_level: float = 0.6,
     gvf_lambda: float = 1.0,
     gvf_iterations: int = 200,
     gvf_solver_tolerance: float = 1e-6,
@@ -60,12 +62,12 @@ def run_toads_cruise_core(
 ) -> ToadsCruiseCoreResult:
     """Run preparation, base ACE/GVF, nested TGDM and selected inverse crop.
 
-    The MaCRUISE base MATLAB route leaves updated multi-atlas CSF disabled in
-    `run_Ace_jist`; therefore this composition explicitly selects ACE merge
-    placement 0. The TGDM wrapper selects WM iso 0.6 after `run_ToadsCruise`
-    assigns `opts.WMIsoLevel=0.6`; other baseline values follow the selected
-    wrapper defaults. Native-grid TGDM outputs use the JIST uncrop's 20-valued
-    exterior and legacy exclusive high-bound behavior.
+    ACE updated-CSF placement and TGDM WM iso are explicit parameters because
+    the selected V3 MATLAB pipeline overrides the older wrapper defaults:
+    it uses ACE placement mode 2 and WM iso 0.5. The generic function defaults
+    remain available for compatibility callers; the selected base workflow
+    passes the V3 values explicitly. Native-grid TGDM outputs use the JIST
+    uncrop's 20-valued exterior and legacy exclusive high-bound behavior.
     """
     if prepared_crop_parameters is None:
         prepared = prepare_toads_cruise_inputs(
@@ -127,7 +129,7 @@ def run_toads_cruise_core(
         tensor_alpha=1.6,
         gaussian_alpha=1.8,
         diffusion_iterations=ace_diffusion_iterations,
-        use_updated_csf_in_ace=0,
+        use_updated_csf_in_ace=ace_use_updated_csf_in_ace,
         merge_method="Merge",
     )
     gvf = generalized_gvf_image(
@@ -137,7 +139,7 @@ def run_toads_cruise_core(
         solver_tolerance=gvf_solver_tolerance,
     )
     baseline = (
-        replace(TGDMBaselineParameters(), white_matter_iso=0.6)
+        replace(TGDMBaselineParameters(), white_matter_iso=wm_iso_level)
         if tgdm_parameters is None
         else tgdm_parameters
     )

@@ -76,6 +76,12 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
                     "crop_edge_width": 2,
                     "ace_diffusion_iterations": 1,
                     "tgdm_iterations": 1,
+                    "tgdm_initial_iterations": 1,
+                    "tgdm_inner_iterations": 2,
+                    "tgdm_central_iterations": 3,
+                    "wm_iso_level": 0.43,
+                    "ace_use_updated_csf_in_ace": 0,
+                    "source_faithful_refinement": True,
                 },
             },
             indent=2,
@@ -116,6 +122,16 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         "maseg-refinement", "surface-thickness",
     }
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
+    core_command = manifest["stages"]["cruise-core"]["command"]
+    for option, expected in (
+        ("--tgdm-initial-iterations", "1"),
+        ("--tgdm-inner-iterations", "2"),
+        ("--tgdm-central-iterations", "3"),
+        ("--wm-iso-level", "0.43"),
+        ("--use-updated-csf-in-ace", "0"),
+    ):
+        assert core_command[core_command.index(option) + 1] == expected
+    assert "--source-faithful" in manifest["stages"]["maseg-refinement"]["command"]
     assert manifest["stages"]["toads-first"]["attempt"] == 2
     assert all(stage["outputs"] and stage["dependency_signature"] for stage in manifest["stages"].values())
     preparation_stage = manifest["stages"]["base-tissue-preparation"]

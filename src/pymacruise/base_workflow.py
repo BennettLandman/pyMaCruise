@@ -54,7 +54,27 @@ class BaseRunOptions:
     crop_edge_width: int = 5
     ace_diffusion_iterations: int = 1
     gvf_iterations: int = 200
+    # ``tgdm_iterations`` remains the compatibility value for existing JSON
+    # configurations. An explicitly supplied source-wrapper count takes
+    # precedence for that surface.
     tgdm_iterations: int = 1
+    tgdm_initial_iterations: int | None = None
+    tgdm_inner_iterations: int | None = None
+    tgdm_central_iterations: int | None = None
+    wm_iso_level: float = 0.6
+    ace_use_updated_csf_in_ace: int = 0
+    source_faithful_refinement: bool = True
+
+    def effective_tgdm_iterations(self) -> tuple[int, int, int]:
+        """Return independent surface counts, falling back to the legacy count."""
+        return tuple(
+            int(value if value is not None else self.tgdm_iterations)
+            for value in (
+                self.tgdm_initial_iterations,
+                self.tgdm_inner_iterations,
+                self.tgdm_central_iterations,
+            )
+        )
 
 
 def _sha256(path: Path) -> str:
@@ -314,10 +334,30 @@ def run_base_workflow(
 
     settings = asdict(options)
     membership_level = settings.pop("dura_membership_level")
-    if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in settings.values()):
+    count_values = [
+        value for key, value in settings.items()
+        if key not in {
+            "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement"
+        }
+        and value is not None
+    ]
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 1
+        for value in count_values
+    ):
         raise ValueError("All synthetic base workflow iteration/count options must be positive integers")
     if not np.isfinite(membership_level) or not 0.0 <= membership_level <= 1.0:
         raise ValueError("Dura membership level must be finite and in [0, 1]")
+    if not np.isfinite(options.wm_iso_level) or not 0.0 < options.wm_iso_level < 1.0:
+        raise ValueError("WM iso level must be finite and strictly between 0 and 1")
+    if (
+        isinstance(options.ace_use_updated_csf_in_ace, bool)
+        or not isinstance(options.ace_use_updated_csf_in_ace, int)
+        or options.ace_use_updated_csf_in_ace not in (0, 1, 2, 3)
+    ):
+        raise ValueError("ACE updated-CSF mode must be one of 0, 1, 2, or 3")
+    if not isinstance(options.source_faithful_refinement, bool):
+        raise ValueError("source_faithful_refinement must be boolean")
     signature_payload = {
         "schema_version": 1,
         "spatial_convention": "RAS",
@@ -377,7 +417,7 @@ def run_base_workflow(
             "status": "running",
             "stages": {},
             "history": [],
-            "workflow_scope": "synthetic/native-grid base route; not a full Java-equivalence claim",
+            "workflow_scope": "restartable base route on a native-grid input; source equivalence not implied",
             "derived_resources": [
                 {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
                 *(
@@ -547,11 +587,14 @@ def run_base_workflow(
 
     toads_common = [
         "--atlas-descriptor", str(run_atlas),
+        "--modality", "T1_MPRAGE",
         "--registration-levels", str(options.registration_levels),
         "--registration-iterations", str(options.registration_iterations),
         "--post-refresh-registration-iterations", str(options.post_refresh_registration_iterations),
         "--registration-max-iterations", str(options.registration_max_iterations),
         "--maximum-iterations", str(options.toads_iterations),
+        "--convergence-threshold", "1e-4",
+        "--maximum-distance", "1e-4",
     ]
     materialized_assets = [
         run_atlas.parent / asset.relative_to(atlas_root) for asset in atlas_assets
@@ -650,10 +693,12 @@ def run_base_workflow(
         "--wm-mask", str(prepared_mask), "--base-preparation-provenance",
         str(preparation_provenance), "--edge-width", str(options.crop_edge_width),
         "--ace-diffusion-iterations", str(options.ace_diffusion_iterations),
+        "--use-updated-csf-in-ace", str(options.ace_use_updated_csf_in_ace),
         "--gvf-iterations", str(options.gvf_iterations),
-        "--tgdm-initial-iterations", str(options.tgdm_iterations),
-        "--tgdm-inner-iterations", str(options.tgdm_iterations),
-        "--tgdm-central-iterations", str(options.tgdm_iterations),
+        "--wm-iso-level", str(options.wm_iso_level),
+        "--tgdm-initial-iterations", str(options.effective_tgdm_iterations()[0]),
+        "--tgdm-inner-iterations", str(options.effective_tgdm_iterations()[1]),
+        "--tgdm-central-iterations", str(options.effective_tgdm_iterations()[2]),
         "--output-dir", "{STAGE}",
         "--provenance", "{STAGE}/provenance.json",
     ], core_dependencies)
@@ -669,6 +714,7 @@ def run_base_workflow(
         "--outer-levelset", str(core_files["outer.nii.gz"]),
         "--output", "{STAGE}/SEG_refine.nii.gz",
         "--summary", "{STAGE}/SEG_refine-summary.json",
+        "--source-faithful" if options.source_faithful_refinement else "--no-source-faithful",
     ], [maseg_path, core_files["inner.nii.gz"], core_files["outer.nii.gz"]])
     surface_dependencies = [
         core_files["inner.nii.gz"],

@@ -250,6 +250,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     cruise_core.add_argument("--edge-width", type=int, default=5)
     cruise_core.add_argument("--ace-diffusion-iterations", type=int, default=25)
+    cruise_core.add_argument(
+        "--use-updated-csf-in-ace", type=int, choices=(0, 1, 2, 3), default=0,
+        help="ACE updated-CSF placement mode (selected MaCRUISE V3 profile: 2)",
+    )
+    cruise_core.add_argument("--wm-iso-level", type=float, default=0.6)
     cruise_core.add_argument("--gvf-lambda", type=float, default=1.0)
     cruise_core.add_argument("--gvf-iterations", type=int, default=200)
     cruise_core.add_argument("--gvf-solver-tolerance", type=float, default=1e-6)
@@ -354,7 +359,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     base_run = commands.add_parser(
         "base-run",
-        help="execute the restartable synthetic/native-grid base MaCRUISE stage chain",
+        help="execute the restartable base MaCRUISE stage chain on a native input grid",
     )
     base_run.add_argument("--t1", required=True, type=Path, help="input T1 .nii.gz")
     base_run.add_argument("--brain-mask", required=True, type=Path, help="same-grid brain mask .nii.gz")
@@ -373,6 +378,17 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
     base_run.add_argument("--gvf-iterations", type=int, default=200)
     base_run.add_argument("--tgdm-iterations", type=int, default=1)
+    base_run.add_argument("--tgdm-initial-iterations", type=int)
+    base_run.add_argument("--tgdm-inner-iterations", type=int)
+    base_run.add_argument("--tgdm-central-iterations", type=int)
+    base_run.add_argument("--wm-iso-level", type=float, default=0.6)
+    base_run.add_argument(
+        "--ace-use-updated-csf-in-ace", type=int, choices=(0, 1, 2, 3), default=0,
+    )
+    base_run.add_argument(
+        "--source-faithful-refinement", action=argparse.BooleanOptionalAction, default=True,
+        help="use historical MaSeg refinement behavior (default: enabled)",
+    )
 
     base_resume = commands.add_parser(
         "base-resume-from-toads",
@@ -694,6 +710,12 @@ def main(argv: list[str] | None = None) -> int:
                 ace_diffusion_iterations=args.ace_diffusion_iterations,
                 gvf_iterations=args.gvf_iterations,
                 tgdm_iterations=args.tgdm_iterations,
+                tgdm_initial_iterations=args.tgdm_initial_iterations,
+                tgdm_inner_iterations=args.tgdm_inner_iterations,
+                tgdm_central_iterations=args.tgdm_central_iterations,
+                wm_iso_level=args.wm_iso_level,
+                ace_use_updated_csf_in_ace=args.ace_use_updated_csf_in_ace,
+                source_faithful_refinement=args.source_faithful_refinement,
             ),
         )
         print(f"Base run complete: {manifest_path} (synthetic/native-grid route; inspect stage checks and TOADS stop metadata)")
@@ -1602,7 +1624,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.remove_cerebellum and args.segmentation is None:
             raise ValueError("--segmentation is required with --remove-cerebellum")
         core_parameters = TGDMBaselineParameters(
-            white_matter_iso=0.6,
+            white_matter_iso=args.wm_iso_level,
             initial_iterations=args.tgdm_initial_iterations,
             inner_iterations=args.tgdm_inner_iterations,
             central_iterations=args.tgdm_central_iterations,
@@ -1620,6 +1642,7 @@ def main(argv: list[str] | None = None) -> int:
             remove_cerebellum=args.remove_cerebellum,
             crop_edge_width=args.edge_width,
             ace_diffusion_iterations=args.ace_diffusion_iterations,
+            ace_use_updated_csf_in_ace=args.use_updated_csf_in_ace,
             gvf_lambda=args.gvf_lambda,
             gvf_iterations=args.gvf_iterations,
             gvf_solver_tolerance=args.gvf_solver_tolerance,
@@ -1664,7 +1687,7 @@ def main(argv: list[str] | None = None) -> int:
                 "tensor_alpha": 1.6,
                 "gaussian_alpha": 1.8,
                 "diffusion_iterations": args.ace_diffusion_iterations,
-                "updated_multi_atlas_csf_mode": 0,
+                "updated_multi_atlas_csf_mode": args.use_updated_csf_in_ace,
             },
             "gvf": {
                 "lambda": args.gvf_lambda,

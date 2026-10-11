@@ -9,7 +9,16 @@ hashes, and RAS/grid/finite properties. The imported `toads-second` pass was
 marked converged after 27 iterations with terminal energy ratio
 `2.59382614e-05`; its iteration limit was not reached.
 
-The corrected V3 tail then completed four stages in a separate manifest:
+**Important source-profile limitation:** the imported upstream run used a bounded tail-development profile recorded in its manifest (`Dura=1`, ACE
+diffusion 1, and legacy TGDM count 1). Its TOADS/registration controls were
+levels/iterations 4/50, post-refresh 5, registration cap 5, and TOADS max 50.
+In particular, it did not execute the selected five-pass Dura removal. The imported tail in this earlier checkpoint also used non-source core values
+(WM iso 0.6 and ACE updated-CSF mode 0). Therefore its upstream stages and
+tail did not use the selected V3 settings. A separate full-chain human
+run is documented in [the follow-up report](full-chain-human-base-2026-10-11.md);
+that run used selected high-level stage parameters and TGDM outer count 7, but followed the chosen native-RAS path rather than BET/SPECTRE; lower-level Dura parameter parity remains under review.
+
+The four-stage tail then completed its stages in a separate manifest:
 MaSeg-to-TOADS preparation, ACE/GVF/TGDM core, source-faithful segmentation
 refinement, and surface/thickness. This tail manifest is linked to the completed
 seven-stage upstream run manifest by its hash-verified `toads-second` inputs.

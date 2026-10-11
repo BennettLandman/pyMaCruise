@@ -35,6 +35,234 @@ from pymacruise.surfaces import read_legacy_vtk
 _V3_CROP_EDGE_WIDTH = 5
 
 
+def _selected_v3_profile_record(
+    manifest: dict[str, Any],
+    stages: dict[str, Any],
+    source_options: dict[str, Any],
+    toads_command: list[str],
+    dura_command: list[str],
+    dura_membership_level: float,
+) -> dict[str, Any]:
+    """Describe whether recorded upstream settings match the selected V3 profile.
+
+    This is deliberately informational: importing a complete, hash-verified
+    checkpoint with shorter settings remains supported. Missing wrapper
+    defaults are called out as unrecorded instead of being inferred from a
+    command line that omitted them.
+    """
+    expected_options: dict[str, int] = {
+        "registration_levels": 4,
+        "registration_iterations": 50,
+        "post_refresh_registration_iterations": 5,
+        "registration_max_iterations": 5,
+        "toads_iterations": 50,
+        "dura_iterations": 5,
+        "crop_edge_width": _V3_CROP_EDGE_WIDTH,
+    }
+    checked: dict[str, dict[str, Any]] = {}
+    mismatches: list[dict[str, Any]] = []
+
+    def check(name: str, expected: Any, actual: Any, evidence: str, *, numeric: bool = False) -> None:
+        matches = bool(np.isclose(float(actual), float(expected), rtol=0.0, atol=1e-12)) if numeric else actual == expected
+        checked[name] = {
+            "expected": expected,
+            "actual": actual,
+            "matches": matches,
+            "evidence": evidence,
+        }
+        if not matches:
+            mismatches.append({
+                "setting": name,
+                "expected": expected,
+                "actual": actual,
+                "evidence": evidence,
+            })
+
+    for name, expected in expected_options.items():
+        check(name, expected, source_options.get(name), f"run.json options.{name}")
+    check(
+        "dura_command_max_iterations", 5,
+        int(dura_command[dura_command.index("--max-iterations") + 1]),
+        "Dura command --max-iterations",
+    )
+    check(
+        "dura_membership_level", 0.3, dura_membership_level,
+        "Dura command --membership-level (effective value)", numeric=True,
+    )
+
+    # The generated TOADS command makes these wrapper settings explicit. The
+    # helper is only called after _validate_source_run has verified presence
+    # and consistency with run.json options.
+    command_option_names = {
+        "--registration-levels": "registration_levels",
+        "--registration-iterations": "registration_iterations",
+        "--post-refresh-registration-iterations": "post_refresh_registration_iterations",
+        "--registration-max-iterations": "registration_max_iterations",
+        "--maximum-iterations": "toads_iterations",
+    }
+    for flag, option_name in command_option_names.items():
+        check(
+            f"toads_{option_name}", expected_options[option_name],
+            int(toads_command[toads_command.index(flag) + 1]),
+            f"toads-second command {flag}",
+        )
+    if "--maximum-distance" in toads_command:
+        check(
+            "toads_maximum_distance", 1e-4,
+            float(toads_command[toads_command.index("--maximum-distance") + 1]),
+            "toads-second command --maximum-distance", numeric=True,
+        )
+    else:
+        checked["toads_maximum_distance"] = {
+            "expected": 1e-4,
+            "actual": None,
+            "matches": None,
+            "evidence": "omitted from command; CLI default is not persisted in the source run manifest",
+        }
+    if "--convergence-threshold" in toads_command:
+        check(
+            "toads_convergence_threshold", 1e-4,
+            float(toads_command[toads_command.index("--convergence-threshold") + 1]),
+            "toads-second command --convergence-threshold", numeric=True,
+        )
+    else:
+        checked["toads_convergence_threshold"] = {
+            "expected": 1e-4,
+            "actual": None,
+            "matches": None,
+            "evidence": "omitted from command; CLI default is not persisted in the source run manifest",
+        }
+    if "--modality" in toads_command:
+        check(
+            "toads_modality", "T1_MPRAGE",
+            toads_command[toads_command.index("--modality") + 1],
+            "toads-second command --modality",
+        )
+    else:
+        checked["toads_modality"] = {
+            "expected": "T1_MPRAGE",
+            "actual": None,
+            "matches": None,
+            "evidence": "omitted from command; CLI default is not persisted in the source run manifest",
+        }
+
+    n4_stage = stages.get("n4", {})
+    n4_command = n4_stage.get("command") if isinstance(n4_stage, dict) else None
+    if isinstance(n4_command, list) and "--input" in n4_command:
+        n4_input = Path(n4_command[n4_command.index("--input") + 1]).resolve()
+        declared_t1 = Path(manifest["inputs"]["t1"]["path"]).resolve()
+        check(
+            "n4_input_matches_declared_t1", str(declared_t1), str(n4_input),
+            "N4 command --input compared with run.json inputs.t1.path",
+        )
+    else:
+        checked["n4_input_matches_declared_t1"] = {
+            "expected": "N4 runs from the T1 declared in run.json",
+            "actual": None,
+            "matches": None,
+            "evidence": "N4 input command is not recorded in the source run manifest",
+        }
+
+    expected_stage_order = ["n4", "toads-first", "dura", "toads-second"]
+    history = manifest.get("history")
+    if isinstance(history, list):
+        latest_events: dict[str, tuple[int, dict[str, Any]]] = {}
+        for index, item in enumerate(history):
+            if (
+                isinstance(item, dict)
+                and item.get("status") == "complete"
+                and item.get("stage") in expected_stage_order
+            ):
+                latest_events[item["stage"]] = (index, item)
+        recorded_events: list[tuple[int, str]] = []
+        for name in expected_stage_order:
+            event = latest_events.get(name)
+            stage_record = stages.get(name)
+            if event is None or not isinstance(stage_record, dict):
+                continue
+            recorded_attempt = stage_record.get("attempt")
+            if isinstance(recorded_attempt, int) and not isinstance(recorded_attempt, bool):
+                event = next((
+                    (index, item) for index, item in enumerate(history)
+                    if isinstance(item, dict) and item.get("stage") == name
+                    and item.get("status") == "complete"
+                    and item.get("attempt") == recorded_attempt
+                ), None)
+                if event is None:
+                    continue
+            recorded_events.append((event[0], name))
+        if len(recorded_events) == len(expected_stage_order):
+            recorded_order = [name for _, name in sorted(recorded_events)]
+            check(
+                "upstream_stage_order", expected_stage_order, recorded_order,
+                "latest complete history event matching each stage's recorded attempt",
+            )
+        else:
+            checked["upstream_stage_order"] = {
+                "expected": expected_stage_order,
+                "actual": None,
+                "matches": None,
+                "evidence": "history does not contain a completed event for every recorded upstream attempt",
+            }
+    else:
+        checked["upstream_stage_order"] = {
+            "expected": expected_stage_order,
+            "actual": None,
+            "matches": None,
+            "evidence": "ordered stage history is not recorded",
+        }
+
+    # The source wrapper settings below are known from source inspection but
+    # are not serialized in this run manifest. Their absence prevents an
+    # affirmative full-profile match even if every recorded setting agrees.
+    checked["dura_source_wrapper_parameter_set"] = {
+        "expected": "selected run_RemoveDura_jist.m parameter set",
+        "actual": None,
+        "matches": None,
+        "evidence": "the Dura command records iteration count and membership only",
+    }
+    checked["toads_source_constructor_parameter_set"] = {
+        "expected": "selected run_Toads_jist.m constructor profile",
+        "actual": None,
+        "matches": None,
+        "evidence": "the command/run options omit several constructor parameters",
+    }
+
+    scope = manifest.get("workflow_scope")
+    modality = (
+        toads_command[toads_command.index("--modality") + 1]
+        if "--modality" in toads_command else None
+    )
+    return {
+        "profile": "selected-v3-base-upstream-recorded-settings",
+        "matches": False if mismatches else (True if all(value["matches"] is not None for value in checked.values()) else None),
+        "recorded_settings_match": not mismatches,
+        "fully_observed": all(value["matches"] is not None for value in checked.values()),
+        "mismatches": mismatches,
+        "checked_settings": checked,
+        "indicators": {
+            "workflow_scope": scope,
+            "workflow_scope_mentions_v3": isinstance(scope, str) and "v3" in scope.lower(),
+            "spatial_convention": manifest.get("spatial_convention"),
+            "source_stage_sequence": [name for name in ("n4", "toads-first", "dura", "toads-second") if name in stages],
+            "toads_command_modality_explicit": modality,
+            "source_profile_defaults_not_recorded": [
+                name for name, value in checked.items() if value["matches"] is None
+            ],
+            "dura_wrapper_parameters_not_recorded": [
+                "curvature=0.5", "level=1.0", "alignment=0.5", "pressure=0.5",
+                "target=0.3", "mask=2.0", "level2=0.0", "wm3=0.05", "gm2=0.02",
+            ],
+            "toads_constructor_parameters_not_recorded": [
+                "atlas coefficient=2.0", "smoothing=0.2", "rigid alignment",
+                "levels=4", "firstIter=50", "topIter=5", "lastIter=0",
+                "maximum distance=1e-4 unless explicit command flag is present",
+            ],
+            "scope_note": "matches recorded upstream settings only; this does not establish full V3 workflow equivalence",
+        },
+    }
+
+
 def _record_file(path: Path) -> dict[str, Any]:
     if not path.is_file() or path.is_symlink():
         raise ValueError(f"Expected a regular upstream input file: {path}")
@@ -310,6 +538,9 @@ def _validate_source_run(source_manifest_path: Path) -> tuple[dict[str, Any], di
     if missing:
         raise ValueError("Source toads-second output set is missing: " + ", ".join(missing))
     selected = {role: by_name[filename] for role, filename in required.items()}
+    profile_record = _selected_v3_profile_record(
+        manifest, stages, source_options, command, dura_command, dura_membership_level
+    )
     upstream = {
         "source_manifest": _record_file(source_manifest_path),
         "source_t1": _record_file(source_t1),
@@ -325,6 +556,7 @@ def _validate_source_run(source_manifest_path: Path) -> tuple[dict[str, Any], di
             "toads_stop": stop,
             "converged": stage["converged"],
         },
+        "selected_v3_profile_match": profile_record,
         "source_stage_outputs": [dict(record) for record in outputs],
     }
     return manifest, selected, upstream
@@ -359,12 +591,14 @@ def run_base_resume_from_toads(
         "crop_edge_width": _V3_CROP_EDGE_WIDTH,
         "crop_edge_width_source_run": source_options.get("crop_edge_width"),
         "ace_diffusion_iterations": 25,
+        "ace_use_updated_csf_in_ace": 2,
         "gvf_lambda": 1.0,
         "gvf_iterations": 200,
         "gvf_solver_tolerance": 1e-6,
         "tgdm_initial_iterations": 6,
         "tgdm_inner_iterations": 4,
         "tgdm_central_iterations": 7,
+        "wm_iso_level": 0.5,
         "gm_confident_level": 0.001,
         "remove_cerebellum": False,
         "refinement_source_faithful": True,
@@ -511,7 +745,8 @@ def run_base_resume_from_toads(
     core = execute_stage("cruise-core", core_names, [
         "toads-cruise-core", "--gm", str(core_deps[0]), "--wm-fill", str(core_deps[1]), "--wm-mask", str(core_deps[2]),
         "--base-preparation-provenance", str(prep_prov), "--edge-width", str(_V3_CROP_EDGE_WIDTH),
-        "--ace-diffusion-iterations", "25", "--gvf-iterations", "200",
+        "--ace-diffusion-iterations", "25", "--use-updated-csf-in-ace", str(settings["ace_use_updated_csf_in_ace"]),
+        "--gvf-iterations", "200", "--wm-iso-level", str(settings["wm_iso_level"]),
         "--tgdm-initial-iterations", "6", "--tgdm-inner-iterations", "4",
         "--tgdm-central-iterations", "7", "--output-dir", "{STAGE}",
         "--provenance", "{STAGE}/provenance.json",

@@ -116,6 +116,8 @@ def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, An
         "post_refresh_registration_iterations", "registration_max_iterations",
         "toads_iterations", "dura_iterations", "crop_edge_width",
         "ace_diffusion_iterations", "gvf_iterations", "tgdm_iterations",
+        "tgdm_initial_iterations", "tgdm_inner_iterations", "tgdm_central_iterations",
+        "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement",
     }
     plus_fields = {
         "crop_padding", "init_align_iterations", "pyramid_levels",

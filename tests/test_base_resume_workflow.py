@@ -199,6 +199,16 @@ def test_tail_imports_hashed_upstream_and_resumes_verified_stages(tmp_path, monk
     assert manifest["status"] == "complete"
     assert manifest["source_toads_second"]["source_stage"] == "toads-second"
     assert manifest["source_toads_second"]["source_stage_outputs"]
+    profile = manifest["source_toads_second"]["selected_v3_profile_match"]
+    assert profile["profile"] == "selected-v3-base-upstream-recorded-settings"
+    assert profile["matches"] is False
+    assert profile["recorded_settings_match"] is False
+    assert profile["fully_observed"] is False
+    mismatch_names = {item["setting"] for item in profile["mismatches"]}
+    assert {"dura_iterations", "dura_command_max_iterations", "registration_levels", "crop_edge_width"} <= mismatch_names
+    assert profile["checked_settings"]["toads_maximum_distance"]["matches"] is None
+    assert profile["checked_settings"]["n4_input_matches_declared_t1"]["matches"] is None
+    assert profile["checked_settings"]["upstream_stage_order"]["matches"] is None
     assert set(manifest["stages"]) == {
         "base-tissue-preparation", "cruise-core", "maseg-refinement", "surface-thickness"
     }
@@ -208,6 +218,10 @@ def test_tail_imports_hashed_upstream_and_resumes_verified_stages(tmp_path, monk
     assert prep_command[prep_command.index("--edge-width") + 1] == "5"
     core_command = manifest["stages"]["cruise-core"]["command"]
     assert core_command[core_command.index("--ace-diffusion-iterations") + 1] == "25"
+    assert core_command[core_command.index("--use-updated-csf-in-ace") + 1] == "2"
+    assert core_command[core_command.index("--wm-iso-level") + 1] == "0.5"
+    assert manifest["options"]["ace_use_updated_csf_in_ace"] == 2
+    assert manifest["options"]["wm_iso_level"] == 0.5
     assert core_command[core_command.index("--tgdm-initial-iterations") + 1] == "6"
     assert core_command[core_command.index("--tgdm-inner-iterations") + 1] == "4"
     assert core_command[core_command.index("--tgdm-central-iterations") + 1] == "7"
@@ -217,6 +231,65 @@ def test_tail_imports_hashed_upstream_and_resumes_verified_stages(tmp_path, monk
         source_run=source, maseg_path=maseg, output_dir=output, resume=True
     ) == manifest_path
     assert len(calls) == count
+
+
+def test_tail_records_match_for_selected_v3_upstream_settings(tmp_path, monkeypatch):
+    source, maseg = _source_run(tmp_path)
+    source_manifest = json.loads(source.read_text())
+    options = source_manifest["options"]
+    options.update({
+        "registration_levels": 4,
+        "registration_iterations": 50,
+        "post_refresh_registration_iterations": 5,
+        "registration_max_iterations": 5,
+        "toads_iterations": 50,
+        "dura_iterations": 5,
+        "crop_edge_width": 5,
+    })
+    source_manifest["stages"]["dura"]["command"][
+        source_manifest["stages"]["dura"]["command"].index("--max-iterations") + 1
+    ] = "5"
+    command = source_manifest["stages"]["toads-second"]["command"]
+    for flag, value in (
+        ("--registration-levels", "4"),
+        ("--registration-iterations", "50"),
+        ("--post-refresh-registration-iterations", "5"),
+        ("--registration-max-iterations", "5"),
+    ):
+        command[command.index(flag) + 1] = value
+    source_manifest["stages"]["n4"]["command"] = [
+        "n4", "--input", str(tmp_path / "source-t1.nii.gz"),
+        "--output", str(tmp_path / "source-n4" / "attempt-01" / "t1-n4.nii.gz"),
+    ]
+    for name in ("n4", "toads-first", "dura", "toads-second"):
+        source_manifest["stages"][name]["attempt"] = 2
+    source_manifest["history"] = [
+        {"stage": name, "attempt": 1, "status": "complete"}
+        for name in ("n4", "toads-first", "dura", "toads-second")
+    ] + [
+        {"stage": name, "attempt": 2, "status": "complete"}
+        for name in ("n4", "toads-first", "dura", "toads-second")
+    ]
+    source.write_text(json.dumps(source_manifest))
+
+    _install_fake_cli(monkeypatch, tmp_path / "source-t1.nii.gz")
+    output = tmp_path / "selected-v3-tail"
+    run_base_resume_from_toads(source_run=source, maseg_path=maseg, output_dir=output)
+    imported = json.loads((output / "run.json").read_text())["source_toads_second"]
+    profile = imported["selected_v3_profile_match"]
+    assert profile["matches"] is None  # Constructor and Dura wrapper parameters are not in the manifest.
+    assert profile["recorded_settings_match"] is True
+    assert profile["fully_observed"] is False
+    assert profile["mismatches"] == []
+    assert profile["checked_settings"]["dura_iterations"]["matches"] is True
+    assert profile["checked_settings"]["dura_command_max_iterations"]["matches"] is True
+    assert profile["checked_settings"]["toads_registration_levels"]["matches"] is True
+    assert profile["checked_settings"]["n4_input_matches_declared_t1"]["matches"] is True
+    assert profile["checked_settings"]["upstream_stage_order"]["matches"] is True
+    assert profile["indicators"]["workflow_scope_mentions_v3"] is True
+    assert profile["checked_settings"]["upstream_stage_order"]["evidence"].endswith(
+        "matching each stage's recorded attempt"
+    )
 
 
 def test_tail_rejects_changed_imported_toads_hash_before_creating_output(tmp_path, monkeypatch):

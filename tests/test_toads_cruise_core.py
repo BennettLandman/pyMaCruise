@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import nibabel as nib
@@ -69,10 +70,15 @@ def test_cruise_core_cli_writes_typed_native_grid_products_and_provenance(tmp_pa
         "--tgdm-initial-iterations", "1",
         "--tgdm-inner-iterations", "1",
         "--tgdm-central-iterations", "1",
+        "--wm-iso-level", "0.43",
+        "--use-updated-csf-in-ace", "0",
         "--output-dir", str(output_dir),
         "--provenance", str(provenance),
     ]) == 0
     assert provenance.is_file()
+    parameters = json.loads(provenance.read_text())["parameters"]
+    assert parameters["tgdm"]["white_matter_iso"] == 0.43
+    assert parameters["ace"]["updated_multi_atlas_csf_mode"] == 0
     reference = nib.load(str(FIXTURE / "gm.nii.gz"))
     expected = (
         "inner.nii.gz", "central.nii.gz", "outer.nii.gz",
