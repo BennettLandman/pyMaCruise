@@ -94,6 +94,9 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--watchdog-log", type=Path)
     parser.add_argument("--comparison-core-dir", type=Path)
+    parser.add_argument("--toads-gm", type=Path)
+    parser.add_argument("--comparison-toads-gm", type=Path)
+    parser.add_argument("--dura-brain-mask", type=Path)
     args = parser.parse_args()
     core = args.core_dir.resolve()
     surface_dir = core / "surface-thickness"
@@ -259,6 +262,86 @@ def main() -> None:
                 deltas, key=lambda item: item["delta_percentage_points"], reverse=True
             )[:10],
         }
+    upstream_diagnostics = None
+    if any((args.toads_gm, args.comparison_toads_gm, args.dura_brain_mask)):
+        upstream_diagnostics = {}
+        threshold = 0.4 * 255.0
+        gm_memberships = {}
+        for role, path in (("current", args.toads_gm), ("comparison", args.comparison_toads_gm)):
+            if path is None:
+                continue
+            image = nib.load(str(path))
+            if image.shape != reference.shape or not np.allclose(
+                image.affine, reference.affine, rtol=0, atol=1e-4
+            ):
+                raise ValueError(f"{role} TOADS GM map does not share the final level-set grid")
+            values = np.asarray(image.dataobj, dtype=np.float32)
+            gm_memberships[role] = values
+            per_label = {}
+            for label in sorted(GM_LABELS):
+                label_mask = labels == label
+                count = int(np.count_nonzero(label_mask))
+                if count:
+                    per_label[str(label)] = {
+                        "voxels": count,
+                        "mean_scaled_gm": float(values[label_mask].mean()),
+                        "fraction_above_0_4_of_255": float(
+                            np.count_nonzero(values[label_mask] > threshold) / count
+                        ),
+                    }
+            upstream_diagnostics[role + "_toads_gm"] = {
+                "path": str(path.resolve()),
+                "minimum": float(values.min()),
+                "maximum": float(values.max()),
+                "mean_over_cortical_gm_labels": float(values[gm].mean()),
+                "fraction_of_cortical_gm_labels_above_0_4_of_255": float(
+                    np.count_nonzero(values[gm] > threshold) / gm_count
+                ),
+                "per_label": per_label,
+            }
+        if "current" in gm_memberships and "comparison" in gm_memberships:
+            membership_deltas = []
+            for label in sorted(GM_LABELS):
+                label_mask = labels == label
+                count = int(np.count_nonzero(label_mask))
+                if count:
+                    current_fraction = float(
+                        np.count_nonzero(gm_memberships["current"][label_mask] > threshold) / count
+                    )
+                    prior_fraction = float(
+                        np.count_nonzero(gm_memberships["comparison"][label_mask] > threshold) / count
+                    )
+                    membership_deltas.append({
+                        "label": label,
+                        "prior_fraction_above_0_4_of_255": prior_fraction,
+                        "current_fraction_above_0_4_of_255": current_fraction,
+                        "delta_percentage_points": 100.0 * (current_fraction - prior_fraction),
+                    })
+            upstream_diagnostics["toads_gm_profile_comparison"] = {
+                "threshold_scaled_membership": threshold,
+                "largest_label_losses": sorted(
+                    membership_deltas, key=lambda item: item["delta_percentage_points"]
+                )[:10],
+            }
+        if args.dura_brain_mask is not None:
+            image = nib.load(str(args.dura_brain_mask))
+            if image.shape != reference.shape or not np.allclose(
+                image.affine, reference.affine, rtol=0, atol=1e-4
+            ):
+                raise ValueError("Dura brain mask does not share the final level-set grid")
+            dura_mask = np.asarray(image.dataobj) > 0
+            supplied_mask = np.asarray(brain_mask.dataobj) > 0
+            upstream_diagnostics["dura_brain_mask"] = {
+                "path": str(args.dura_brain_mask.resolve()),
+                "voxels": int(dura_mask.sum()),
+                "supplied_mask_voxels": int(supplied_mask.sum()),
+                "dice_with_supplied_mask": float(
+                    2 * np.count_nonzero(dura_mask & supplied_mask)
+                    / max(1, dura_mask.sum() + supplied_mask.sum())
+                ),
+                "supplied_only_voxels": int(np.count_nonzero(supplied_mask & ~dura_mask)),
+                "dura_only_voxels": int(np.count_nonzero(dura_mask & ~supplied_mask)),
+            }
     log_metrics = None
     if args.watchdog_log is not None:
         log = args.watchdog_log.read_text(encoding="utf-8")
@@ -279,6 +362,7 @@ def main() -> None:
         "quality": {**support, **nesting},
         "label_support_by_label": label_support,
         "comparison": comparison,
+        "upstream_diagnostics": upstream_diagnostics,
         "meshes": meshes,
         "inner_non_dominant_shell_locations": shell_locations,
         "thickness": thickness,

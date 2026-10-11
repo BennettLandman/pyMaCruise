@@ -81,6 +81,8 @@ The new profile did **not** pass the agreed ribbon-quality criteria:
 
 An internal comparison against the earlier source-selected core (which reused the bounded upstream outputs) shows the fuller upstream profile did not improve tissue support: GM changed from 81.84% to **79.00%** (−2.84 percentage points), WM from 83.15% to **82.72%** (−0.43 points), while inner-outside-central nesting improved from five voxels to **one**. The largest per-label support loss was label 161 (71.4% to **44.3%**, −27.2 points), followed by labels 135 (−17.7 points), 125 (−12.2), and 122 (−11.8). This profile comparison is diagnostic only; it is not a source-output comparison and does not identify the anatomical label names.
 
+An upstream diagnostic shows the five-iteration Dura mask has **1,185,356** voxels versus **1,305,385** in the supplied mask (Dice **0.9355**; 140,290 supplied-mask voxels were removed, 20,261 added). The second-pass TOADS GM map’s mean over selected MaSeg GM labels is **203.32** versus **211.81** in the earlier profile; the fraction above the diagnostic scaled threshold `0.4 × 255 = 102` is **86.16%** versus **89.82%**. Label 161’s fraction above that threshold changed from 75.6% to **46.5%**, label 135 from 82.4% to **63.4%**, label 125 from 77.1% to **60.8%**, and label 122 from 85.0% to **68.9%**. This localizes a substantial profile-dependent change to the Dura/TOADS handoff before CRUISE, but does not establish which output is source-correct; a matched reference remains necessary.
+
 The 206 non-dominant components on the new inner mesh contain **1,752 vertices**; **1,748** nearest-map inside the supplied brain mask. Of those in-grid shell vertices, **1,452** map to MaSeg label 209, 252 to label 11, 15 to label 35, 6 each to labels 122 and 208, and 21 to background. The same earlier shell audit also concentrated most small components at label 209. Label 209 is not named in the historical MaCRUISE label-name table, so its anatomy and whether these islands should be included remain unresolved.
 
 These are in-vivo integration and quality measurements, not evidence of Java/MATLAB equivalence or clinical validity. The agreed 3% Dice and 1 mm Hausdorff thresholds still require matched reference segmentations/surfaces; the 0.01 mm position criterion also requires the historical source mesh. No such outputs were present in `sample-macruise/output` at inspection.
@@ -94,6 +96,9 @@ PYTHONPATH=src MPLCONFIGDIR=/private/tmp/pymacruise-mpl ./.venv/bin/python scrip
   --brain-mask build/invivo-base-2026-10-10-inputs/ras-grid/T1_bet_mask_ras.nii.gz \\
   --watchdog-log build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/logs/cruise-core-second-toads.log \\
   --comparison-core-dir build/invivo-base-2026-10-10-ras-grid/source-selected-core \\
+  --toads-gm build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/toads-second/dura-inputs/stripped_t1_gm.nii.gz \\
+  --comparison-toads-gm build/invivo-base-2026-10-10-ras-grid/stages/toads-second/attempt-01/dura-inputs/stripped_t1_gm.nii.gz \\
+  --dura-brain-mask build/invivo-base-2026-10-10-ras-grid/source-selected-upstream/dura/brain_mask.nii.gz \\
   --report build/invivo-base-2026-10-10-ras-grid/source-selected-full-toads-core-audit.json
 ```
 
