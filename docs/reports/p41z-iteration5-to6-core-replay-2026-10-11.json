@@ -1,0 +1,88 @@
+{
+  "all_selected_method_checks_exact": true,
+  "case": "P41z synthetic saved iteration-5 to iteration-6 core replay",
+  "evidence_category": "sequential selected-method Java/Python comparison; not a complete Java iteration run",
+  "previous_objective": 3727.62158203125,
+  "previous_objective_provenance": "hash-verified iteration-5 synthetic integration summary",
+  "scope_limits": [
+    "Java references are selected-method excerpts, not a live AlgorithmLesionToads object or full composite run.",
+    "The previous objective 3727.62158203125 is from the saved Python iteration-5 summary; iteration 5 itself is not independently replayed in Java.",
+    "Registration, growth, and relation refresh are outside this core replay."
+  ],
+  "source_checkpoint": {
+    "iteration5_memberships_sha256": "c6204097d018f4ac1dbcd291304878715a055a2bc2b4a8651bf4f0af30ce077a",
+    "iteration5_segmentation_sha256": "f30f39161ef22a31d955db51d378e044e17acd40ebf794663e24e8570a62882d",
+    "iteration5_skeleton_sha256": "2461296b1ab4d85dc114ca9df77fbf08e9ffe6131a3d9e453d7678c8999349ad",
+    "iteration5_summary_sha256": "f03d9f0d0831022335a3296bd084e229f172ff49d86645827ec05199eb46aac0"
+  },
+  "spatial_convention": "RAS",
+  "stages": {
+    "iteration6_thinning": {
+      "committed_thinning_fixture_hashes": {
+        "availability": "734634355ad4dce146ccfa05bcc3ff3240649973b09a2a53fe0bd108ce5f1c06",
+        "ordering": "44c85c48eba7522cee877173b2ebe3d17e0749777a5eab46ef9dc1995522667f",
+        "segmentation": "a3408886d212c6832a25718fca795e71cdfbd743a016e6c779640a46cc825a90",
+        "skeleton": "9cb5360baffe8583dafcd55f9a256871ccde4f0249a0e20c81d08b22b12b1327"
+      },
+      "downstream_input_crosschecks": [
+        "post-thinning segmentation and skeleton",
+        "registered T1/FLAIR channels",
+        "iteration-5 class memberships"
+      ],
+      "downstream_state_exact": true,
+      "event_count": 267638,
+      "initialization_boundary_count": 98325,
+      "java_python_serialized_trace_exact": true,
+      "serialized_trace_sha256": "af7eaa1503a5268380d64788e1427e9c3dc7eee756818de21bf72ef6cb293446",
+      "source_selected_harness_sha256": "101aa12bfe874d937b4a0f8f208471dfe38139aff739f2f1d61cda16a159b83f"
+    },
+    "membership_objective_and_ratio": {
+      "all_exact": true,
+      "exact_float32_bits": {
+        "black": true,
+        "black_hole_energy": true,
+        "class_energy": true,
+        "class_memberships": true,
+        "denominator": true,
+        "energy_ratio": true,
+        "lesion": true,
+        "lesion_energy": true,
+        "lesion_relation": true,
+        "objective": true,
+        "outlier": true,
+        "running_objective": true
+      },
+      "java_energy_ratio_bits": 1040630131,
+      "java_objective_bits": 1162622407,
+      "nan_counts": {
+        "java": 0,
+        "python": 0
+      },
+      "python_energy_ratio": 0.13159732520580292,
+      "python_energy_ratio_bits": 1040630131,
+      "python_objective_bits": 1162622407
+    },
+    "post_thinning_statistics": {
+      "all_exact": true,
+      "exact_float32_bits": {
+        "black_hole_centroid_bits": true,
+        "black_hole_std_bits": true,
+        "channel_weight_bits": true,
+        "class_centroid_bits": true,
+        "class_std_bits": true,
+        "lesion_centroid_bits": true,
+        "lesion_std_bits": true
+      },
+      "nan_counts": {
+        "java": 0,
+        "python": 0
+      },
+      "spatial_shape_xyz": [
+        71,
+        89,
+        67
+      ]
+    }
+  },
+  "synthetic_only": true
+}
