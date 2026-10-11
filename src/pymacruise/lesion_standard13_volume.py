@@ -106,6 +106,11 @@ def run_lesion_toads_standard13_volume(
     class_energy = np.zeros_like(current)
     lesion_energy = np.zeros(spatial, dtype=np.float32)
     black_hole_energy = np.zeros(spatial, dtype=np.float32)
+    # In computeMemberships, these energy variables live outside the x/y/z
+    # traversal. A class skipped by shape[k] > 0 keeps its previous energy,
+    # and the objective still consumes that value at the current voxel.
+    class_energy_state = np.zeros(13, dtype=np.float32)
+    lesion_energy_state = np.float32(0.0)
     denominator = np.zeros(spatial, dtype=np.float32)
     nx, ny, nz = spatial
     # LesionToadSegmentation computes centroid similarities once before its
@@ -152,14 +157,18 @@ def run_lesion_toads_standard13_volume(
                     gm_flag=gm_flag, source_zero_variance_nan=source_zero_variance_nan,
                     intensity_field=None if fields is None else fields[x, y, z],
                     precomputed_similarities=similarities,
+                    initial_class_energies=class_energy_state,
+                    initial_lesion_energy=lesion_energy_state,
                 )
                 current[x, y, z] = voxel.class_memberships
                 lesion[x, y, z] = voxel.lesion_membership
                 black_hole[x, y, z] = voxel.black_hole_membership
                 outlier[x, y, z] = voxel.outlier_membership
                 lesion_relation[x, y, z] = voxel.lesion_relation
-                class_energy[x, y, z] = voxel.class_energies
-                lesion_energy[x, y, z] = voxel.lesion_energy
+                class_energy_state = voxel.class_energies.copy()
+                lesion_energy_state = voxel.lesion_energy
+                class_energy[x, y, z] = class_energy_state
+                lesion_energy[x, y, z] = lesion_energy_state
                 black_hole_energy[x, y, z] = voxel.black_hole_energy
                 denominator[x, y, z] = voxel.denominator
 

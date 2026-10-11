@@ -6,6 +6,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 from nibabel.orientations import aff2axcodes
 
 from pymacruise.lesion_standard13_voxel import (
@@ -120,14 +121,39 @@ def test_standard13_profile_composes_selected_initial_membership_voxel() -> None
         assert values == reference[name], name
 
 
-def test_standard13_zero_shape_skips_one_class_and_preserves_other_outputs() -> None:
+def test_standard13_zero_shape_clears_skipped_class_membership() -> None:
     state = _state()
     shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()
     shapes[8] = 0.0
+    direct = np.asarray(state["direct_relations"], dtype=np.bool_).copy()
+    direct[8] = False
     state["shape_values"] = shapes
+    state["direct_relations"] = direct
     result = compute_lesion_toads_standard13_voxel(**state)
-    assert result.class_memberships[8] == 0.0
+    assert result.class_memberships[8] == np.float32(0.0)
     assert result.class_energies[8] == 0.0
+
+
+@pytest.mark.parametrize("direct_relation", [False, True])
+def test_zero_shape_leaves_lesion_auxiliary_state_like_java_guard(direct_relation: bool) -> None:
+    state = _state()
+    shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()
+    shapes[10] = np.float32(0.0)
+    direct = np.asarray(state["direct_relations"], dtype=np.bool_).copy()
+    direct[10] = direct_relation
+    state["shape_values"] = shapes
+    state["direct_relations"] = direct
+    state["lesion_membership"] = np.float32(0.25)
+    state["black_hole_membership"] = np.float32(0.5)
+    state["lesion_relation"] = np.float32(0.75)
+
+    result = compute_lesion_toads_standard13_voxel(**state)
+
+    assert result.class_memberships[10] == np.float32(0.0)
+    assert result.class_energies[10] == np.float32(0.0)
+    assert result.lesion_membership == np.float32(np.float32(0.25) / result.denominator)
+    assert result.black_hole_membership == np.float32(0.5)
+    assert result.lesion_relation == np.float32(0.75)
 
 
 def test_source_zero_variance_mode_is_valid_when_current_statistics_are_nonzero() -> None:
@@ -155,21 +181,6 @@ def test_source_zero_variance_mode_is_valid_when_current_statistics_are_nonzero(
     ):
         np.testing.assert_array_equal(getattr(source, name), getattr(finite, name))
     assert source.objective.view(np.uint32) == finite.objective.view(np.uint32)
-
-
-def test_standard13_absent_lesion_preserves_previous_auxiliary_maps() -> None:
-    state = _state()
-    shapes = np.asarray(state["shape_values"], dtype=np.float32).copy()
-    shapes[10] = 0.0
-    state["shape_values"] = shapes
-    state["black_hole_membership"] = np.float32(0.25)
-    state["lesion_relation"] = np.float32(0.375)
-    result = compute_lesion_toads_standard13_voxel(**state)
-    assert result.class_memberships[10] == 0.0
-    assert result.class_energies[10] == 0.0
-    assert result.lesion_membership == np.float32(state["lesion_membership"] / result.denominator)
-    assert result.black_hole_membership == state["black_hole_membership"]
-    assert result.lesion_relation == state["lesion_relation"]
 
 
 def test_standard13_voxel_field_application_matches_unit_and_changes_residuals() -> None:

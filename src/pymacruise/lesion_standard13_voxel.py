@@ -97,6 +97,8 @@ def compute_lesion_toads_standard13_voxel(
     source_zero_variance_nan: bool = False,
     intensity_field: ArrayLike | None = None,
     precomputed_similarities: LesionToadsSimilarity | None = None,
+    initial_class_energies: ArrayLike | None = None,
+    initial_lesion_energy: float = 0.0,
 ) -> Standard13VoxelResult:
     """Update one interior voxel from a complete fixed pre-call state.
 
@@ -159,9 +161,8 @@ def compute_lesion_toads_standard13_voxel(
         raise ValueError("intensity_field must be finite and match image channel count")
     if source_zero_variance_nan and not gm_flag:
         raise ValueError("source zero-variance NaNs require GMflag")
-    # The Java volume pass accepts zero/negative transformed priors and skips
-    # those classes (setting membership to zero). Registered atlas support is
-    # class-specific, so this is expected outside individual class bounds.
+    # The source's outer `if (shape[k] > 0)` skips zero and negative priors;
+    # skipped classes and retained lesion auxiliary maps remain untouched.
 
     if precomputed_similarities is None:
         similarities = compute_lesion_toads_similarity(
@@ -186,13 +187,26 @@ def compute_lesion_toads_standard13_voxel(
         raise ValueError("precomputed_similarities must be a finite standard-13 similarity state")
     else:
         similarities = precomputed_similarities
-    class_energy = np.zeros(count, dtype=np.float32)
-    lesion_energy = np.float32(0.0)
+    class_energy = (
+        np.zeros(count, dtype=np.float32)
+        if initial_class_energies is None
+        else np.asarray(initial_class_energies, dtype=np.float32).copy()
+    )
+    if class_energy.shape != (count,):
+        raise ValueError("initial_class_energies must have one value per standard-13 class")
+    lesion_energy = np.float32(initial_lesion_energy)
+    if not source_zero_variance_nan and (
+        not np.isfinite(class_energy).all() or not np.isfinite(lesion_energy)
+    ):
+        raise ValueError("initial energy state must be finite outside source NaN mode")
     black_hole_energy = np.float32(0.0)
     denominator = np.float32(0.0)
 
     for k, kind in enumerate(STANDARD13_TYPES):
-        if shapes[k] <= np.float32(0.0):
+        if not shapes[k] > np.float32(0.0):
+            # The selected Java loop's outer else clears the skipped class
+            # membership. Its energy slot and lesion auxiliary maps are left
+            # untouched and carry their prior sweep state.
             current[k] = np.float32(0.0)
             continue
 
