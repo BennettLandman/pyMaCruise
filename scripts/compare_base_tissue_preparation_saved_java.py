@@ -32,12 +32,28 @@ INPUT_KEYS = (
     "toads_mask_cropped",
 )
 OUTPUT_KEYS = {"gm": "fused_gm", "wm": "fused_wmfill", "mask": "fused_mask"}
-EXPECTED_ORDER = [
+REQUIRED_ORDER = [
     "corticalSeparationFromMaSeg",
     "nearestNeighborTransferToMaSegReference",
     "sharedCropFromPositiveMaSegGM",
     "combineMaSegAtlasAndTOADS",
 ]
+
+
+def _contains_ordered_stages(actual: object, required: list[str]) -> bool:
+    """Accept selected V3 preparation orders with extra boundary stages.
+
+    Boundary construction and cleanup may run before/after fusion, so the
+    selected MaSeg preparation and fusion steps must occur in order but need
+    not be adjacent or constitute the entire stage list.
+    """
+    if not isinstance(actual, list):
+        return False
+    position = 0
+    for stage in actual:
+        if position < len(required) and stage == required[position]:
+            position += 1
+    return position == len(required)
 
 
 def _sha256(path: Path) -> str:
@@ -66,8 +82,15 @@ def main() -> int:
     parameters = provenance["parameters"]
     if parameters.get("remove_cerebellum") is not False:
         raise SystemExit("Expected corrected V3 preparation with remove_cerebellum=false")
-    if parameters.get("stage_order") != EXPECTED_ORDER:
-        raise SystemExit("Preparation stage order does not match the selected V3 route")
+    if not _contains_ordered_stages(parameters.get("stage_order"), REQUIRED_ORDER):
+        raise SystemExit(
+            "Preparation stage order does not contain the selected V3 MaSeg/fusion steps in order"
+        )
+    fusion = parameters.get("fusion", {})
+    if fusion.get("erosion") != "3D center plus six neighbors" or fusion.get(
+        "gm_confident_level"
+    ) != 0.001:
+        raise SystemExit("Preparation fusion settings do not match the selected V3 route")
 
     images = [nib.load(provenance["outputs"][key]) for key in INPUT_KEYS]
     shape = tuple(int(size) for size in images[0].shape)
@@ -173,7 +196,7 @@ def main() -> int:
         "preparation_provenance": str(provenance_path),
         "preparation_provenance_sha256": _sha256(provenance_path),
         "remove_cerebellum": False,
-        "preparation_stage_order": EXPECTED_ORDER,
+        "preparation_stage_order": parameters["stage_order"],
         "input_files": {
             key: {
                 "path": provenance["outputs"][key],
