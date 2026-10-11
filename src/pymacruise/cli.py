@@ -374,6 +374,15 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--gvf-iterations", type=int, default=200)
     base_run.add_argument("--tgdm-iterations", type=int, default=1)
 
+    base_resume = commands.add_parser(
+        "base-resume-from-toads",
+        help="resume the base MaCRUISE tail from a hash-verified completed toads-second stage",
+    )
+    base_resume.add_argument("--source-run", required=True, type=Path, help="completed source run.json; read only")
+    base_resume.add_argument("--maseg", required=True, type=Path, help="same-grid MaSeg labels .nii.gz")
+    base_resume.add_argument("--output-dir", required=True, type=Path, help="distinct tail-run directory")
+    base_resume.add_argument("--resume", action="store_true", help="resume verified tail stages from the tail run.json")
+
     plus_register = commands.add_parser(
         "plus-register-flair",
         help="register plus FLAIR to the T1 grid and persist a resumable ANTsPy checkpoint",
@@ -688,6 +697,16 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         print(f"Base run complete: {manifest_path} (synthetic/native-grid route; inspect stage checks and TOADS stop metadata)")
+    elif args.command == "base-resume-from-toads":
+        from pymacruise.base_resume_workflow import run_base_resume_from_toads
+
+        manifest_path = run_base_resume_from_toads(
+            source_run=args.source_run,
+            maseg_path=args.maseg,
+            output_dir=args.output_dir,
+            resume=args.resume,
+        )
+        print(f"Base tail complete: {manifest_path} (source TOADS outputs imported and hash-verified)")
     elif args.command == "plus-register-flair":
         from pymacruise.plus_workflow import run_plus_flair_registration_checkpoint
         from pymacruise.registration import RegistrationConfig
