@@ -140,8 +140,10 @@ passed **7 tests in 21.85 s**. No full suite was run in this checkpoint.
    [seed-component audit](in-vivo-current-seed-components-2026-10-11.md),
    [TGDM comparison](in-vivo-fused-input-tgdm-held-fixed-java-comparison-2026-10-11.md),
    and [surface-extraction comparison](in-vivo-jist-surface-extraction-held-fixed-2026-10-11.md).
-2. Add a restartable human manifest for this corrected preparation/core path
-   while reusing hashed upstream TOADS products; require resume/hash checks.
+2. The separate hash-verified human tail manifest is implemented and its four
+   stages resume successfully. Keep the original seven-stage upstream manifest
+   linked and validate the natural-convergence TOADS comparison before treating
+   this as a single end-to-end Java/MATLAB-equivalence result.
 3. Continue nonidentity transfer and crop source comparisons before claiming
    general grid equivalence.
 
