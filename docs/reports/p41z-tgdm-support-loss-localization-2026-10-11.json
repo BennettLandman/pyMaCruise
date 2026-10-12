@@ -1,0 +1,78 @@
+{
+  "case": "P41z folded synthetic checkpoint at completed iteration 11; held-fixed TGDM crop replay",
+  "input_images": {
+    "initial_inner": {
+      "path": "build/p41z-case-normalization/iterations-0008-to-0011-surfaces/plus-surfaces/stages/topology_ace_gvf_tgdm/attempt-01/initial_inner.nii.gz",
+      "sha256": "4cdca8f5664d202fbf627dd12515e0dd4f786c315b6b3a0a8235c63f96c9e5cf"
+    },
+    "initial_level_set": {
+      "path": "build/p41z-case-normalization/iterations-0008-to-0011-surfaces/plus-surfaces/stages/topology_ace_gvf_tgdm/attempt-01/initial_level_set.nii.gz",
+      "sha256": "7138e3c135d5dc0600a2836e00f0c20717e9e62830e4b1d45cde0825f72331a6"
+    },
+    "labels": {
+      "path": "build/p41z-case-normalization/iterations-0008-to-0011-surfaces/plus-surfaces/stages/transfer_crop/attempt-01/segmentation.nii.gz",
+      "sha256": "4adeea4b4469a689086770076645b0357623725036551695552b2b995831c4cf"
+    }
+  },
+  "java_python_smoothed_initial": {
+    "changed_voxels": 46493,
+    "dice_at_zero": 1.0,
+    "hausdorff_mm": 1.752232955240942e-05,
+    "maximum_absolute_voxel_error": 9.834766387939453e-06,
+    "mean_absolute_distance_mm": 8.456789234356916e-08,
+    "mean_absolute_voxel_error": 3.541526902552748e-08,
+    "sign_changed_voxels": 0,
+    "thresholds_pass": true
+  },
+  "labels_voxels": {
+    "0": 245988,
+    "100": 67677,
+    "44": 37699,
+    "5": 50789,
+    "75": 16356
+  },
+  "scope": "support metrics are on the saved MaSeg-like labels; Java result is a held-fixed selected TGDM replay, not an independently generated full Java workflow",
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "spacing_mm": [
+    2.00390625,
+    2.015625,
+    2.010690689086914
+  ],
+  "stage_support": {
+    "initial_inner": {
+      "components_26": 12,
+      "components_6": 24,
+      "euler_26": -4,
+      "label_support": {
+        "gm100_inside_fraction": 0.0010195487388625383,
+        "wm44_inside_fraction": 0.5974694288973182
+      },
+      "nonpositive_voxels": 22681
+    },
+    "initial_level_set": {
+      "components_26": 1,
+      "components_6": 24,
+      "euler_26": 6,
+      "label_support": {
+        "gm100_inside_fraction": 0.013741743871625516,
+        "wm44_inside_fraction": 0.9937929388047428
+      },
+      "nonpositive_voxels": 54657
+    },
+    "smoothed_initial": {
+      "components_26": 5,
+      "components_6": 24,
+      "euler_26": 19,
+      "label_support": {
+        "gm100_inside_fraction": 0.04101836665336821,
+        "wm44_inside_fraction": 0.8663625029841641
+      },
+      "nonpositive_voxels": 51819
+    }
+  },
+  "workflow_manifest_sha256": "fe9d7383cbe69e1fae0903ffbb77e3d715456cb8a871c61fcadd668107e6ae90"
+}
