@@ -22,7 +22,11 @@ against the raw generator outputs multiplied by 255.
 
 Focused checks passed: **3 passed in 39.93 seconds**, covering the complete
 restartable synthetic plus workflow, the regridding defaults/opt-out, and the
-base regridding CLI defaults/opt-out.
+base regridding CLI defaults/opt-out. The full suite on implementation commit
+`3bf4aeb260caaa41cceb3c4668fa7197c3f75fd2` then passed **1,559 passed, 4
+skipped, 0 failed** in 827.07 seconds, with 11 expected RAS warnings and
+11.211 GB peak sampled RSS under the 16 GB watchdog. See the [full-suite
+report](full-pytest-2026-10-11-lesion-dura-wrapper-scale.md).
 
 The correction was also applied to a held-fixed P41z iteration-11 checkpoint
 and passed through the downstream plus surface workflow. The source iteration
