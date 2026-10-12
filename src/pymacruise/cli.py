@@ -380,7 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--regrid-inputs",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="resample oblique RAS inputs to an orthogonal grid (default: enabled)",
+        help="recommended: resample oblique RAS inputs to an orthogonal grid (default: enabled)",
     )
     base_run.add_argument("--registration-levels", type=int, default=1)
     base_run.add_argument("--registration-iterations", type=int, default=1)
@@ -575,7 +575,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--regrid-inputs",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="resample oblique RAS T1, mask, and MaSeg to an orthogonal grid (default: enabled)",
+        help="recommended: resample oblique RAS T1, mask, and MaSeg to an orthogonal grid (default: enabled)",
     )
     plus_full.add_argument(
         "--dura-transfer-mode",

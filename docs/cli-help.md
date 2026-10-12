@@ -88,8 +88,8 @@ pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
   [--regrid-inputs | --no-regrid-inputs] [--resume]
 ```
 
-The default resamples an oblique RAS grid to an orthogonal RAS grid at the T1
-voxel spacing. T1 uses linear interpolation; the binary mask and MaSeg labels
+Regridding is recommended and enabled by default. It resamples an oblique RAS
+grid to an orthogonal RAS grid at the T1 voxel spacing. T1 uses linear interpolation; the binary mask and MaSeg labels
 use nearest-neighbor interpolation. The shared regridded inputs and hashes are
 recorded under the run's `resources` directory and manifest. Axis-aligned RAS
 inputs are left unchanged. Use `--no-regrid-inputs` to preserve a pre-aligned
@@ -100,7 +100,7 @@ SPECTRE.
 ## `pymacruise plus-full-run`
 
 The full plus workflow accepts the same `[--regrid-inputs | --no-regrid-inputs]`
-option, enabled by default. When T1 is oblique, it creates a shared orthogonal
+option, recommended and enabled by default. When T1 is oblique, it creates a shared orthogonal
 RAS grid for T1, brain mask, and MaSeg under `resources/regridded-inputs`;
 T1 uses linear interpolation and the discrete inputs use nearest neighbor.
 FLAIR stays on its input grid and is registered by the plus preprocessing
