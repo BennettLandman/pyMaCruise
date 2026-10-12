@@ -28,6 +28,11 @@ confirms:
 - Every next-membership map and energy field, including objective and energy
   ratio, matches selected Java float32 bits and the complete Python checkpoint.
   Both Java and Python report zero NaNs.
+- Post-registration growth matches byte-for-byte at **17,541,333 bytes** across
+  **253,886** queue events. The Java and Python growth serialization hashes
+  are both `d8120a6d89fce261eaf370557762d0742d194e0e48629bee78a95066956af589`;
+  segmentation, skeleton, availability, ordering, and class-volume outputs
+  each match the complete iteration-20 checkpoint.
 
 Iteration 20 has objective **3279.7939453125** and energy ratio
 **0.132798091**, above the stop threshold `0.0001`; the loop is nonterminal.
@@ -39,12 +44,13 @@ The iteration-19 parent manifest SHA-256 is
 ## Scope and limitations
 
 This is synthetic evidence. The full Python iteration executes registration,
-growth, and relation refresh and passes restartable manifest checks, but this
-report does **not** claim Java equivalence for those three iteration-20 stages
-or for a complete live Java loop. The selected Java replay covers shape
-sampling, thinning, statistics, distance refresh behavior, and membership.
-This is not real-human validation and does not resolve the separate
-ribbon-quality failures.
+growth, and relation refresh and passes restartable manifest checks. Selected
+Java comparisons cover shape sampling, thinning, statistics, refreshed-map
+membership, and post-registration growth. They do **not** compare the
+iteration-20 registration optimizer or relation refresh against Java, and do
+not establish complete live-loop or whole-workflow equivalence. This is not
+real-human validation and does not resolve the separate ribbon-quality
+failures.
 
 An initial version of the handoff comparator reused iteration-19 distance
 maps and reported a mismatching ratio. The comparator was corrected to refresh
@@ -75,8 +81,20 @@ MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONPATH=src \
   --interval-seconds 1 --report-interval-seconds 30 -- \
   .venv/bin/python scripts/compare_p41z_registered_thinning_java.py \
   build/p41z-case-normalization/iterations-0016-to-0019/lesion-registered-loop.json \
-  --output-dir build/p41z-case-normalization/iteration19-next-thinning-java
+  --output-dir build/p41z-case-normalization/iteration19-next-thinning-java \
+  --expected-next-checkpoint build/p41z-case-normalization/iteration20-complete/lesion-registered-loop.json
 ```
 
 Both runs verify source checkpoint hashes. Generated files and machine-readable
 comparison output are retained in ignored `build/` paths.
+
+The growth reference pins `LesionGrowingPassDynamicReferenceHarness.java`
+(`e324c89358dc83096c2cf98ef9a64f404263c0566292f25021b2b74bdfab7d62`),
+`BinaryHeap4D.java`
+(`9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a`),
+`CriticalPointLUT.java`
+(`50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f`),
+`Numerics.java`
+(`13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb`), and
+the bundled critical-point LUT data
+(`cbf1e339d78a0a2c673c939ee2c8a30ee3a35bfd9603d07ed2d48864bb0e88be`).

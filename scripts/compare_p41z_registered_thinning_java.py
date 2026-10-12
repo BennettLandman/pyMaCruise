@@ -32,6 +32,7 @@ from pymacruise.lesion_distance_refresh import refresh_lesion_toads_distance_map
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_registered_initial_membership import LesionInitialDistanceMaps
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
+from pymacruise.lesion_growth import propagate_lesion_toads_growing
 from pymacruise.plus_lesion_registered_loop import hydrate_plus_lesion_registered_branch
 from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
 
@@ -219,7 +220,141 @@ def _compare_membership_java(
     }
 
 
-def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac: str = "javac") -> dict:
+def _growth_bytes(growing) -> bytes:
+    output = bytearray()
+    output.extend(np.asarray(growing.segmentation, dtype=np.int8).ravel(order="C").tobytes())
+    output.extend(np.asarray(growing.skeleton, dtype=np.int8).ravel(order="C").tobytes())
+    output.extend(np.asarray(growing.available, dtype=np.uint8).ravel(order="C").tobytes())
+    output.extend(np.asarray(growing.ordering, dtype=">f4").ravel(order="C").tobytes())
+    output.extend(np.asarray(growing.class_volume, dtype=">f4").tobytes())
+    output.extend(struct.pack(">i", len(growing.events)))
+    for event in growing.events:
+        output.extend(_item_bytes(event.popped_item))
+        accepted = -1 if event.topology_accepted is None else int(event.topology_accepted)
+        output.extend(struct.pack(">bI", accepted, len(event.inserted_neighbors)))
+        for item in event.inserted_neighbors:
+            output.extend(_item_bytes(item))
+    return bytes(output)
+
+
+def _compare_growth_java(
+    *,
+    java: str,
+    javac: str,
+    temporary: Path,
+    thinning,
+    memberships,
+    object_types,
+    lesion_class: int,
+    expected_manifest_path: Path,
+) -> dict:
+    manifest = json.loads(expected_manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("status") != "complete" or manifest.get("stage") != "plus-lesion-registered-loop":
+        raise ValueError("expected next checkpoint must be a complete registered-loop manifest")
+    expected_outputs = {
+        name: _checked_path(record, name=f"iteration-20 {name}")
+        for name, record in manifest.get("outputs", {}).items()
+        if isinstance(record, dict)
+    }
+    temporary.mkdir(parents=True, exist_ok=True)
+    spatial = tuple(int(value) for value in thinning.run.segmentation.shape)
+    types = tuple(str(value).lower() for value in object_types)
+    kind_codes = {"lesion": 1, "blackhole": 2}
+    input_path, output_path = temporary / "growth-in.bin", temporary / "growth-java.bin"
+    input_path.write_bytes(b"".join((
+        struct.pack(">6i", *spatial, len(types), lesion_class, 0),
+        bytes(kind_codes.get(name, 0) for name in types),
+        np.asarray(thinning.run.segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(thinning.run.skeleton, dtype=np.int8).ravel(order="C").tobytes(),
+        np.asarray(memberships.class_memberships, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(thinning.run.ordering, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(thinning.run.class_volume, dtype=">f4").tobytes(),
+        np.asarray(memberships.lesion_membership, dtype=">f4").ravel(order="C").tobytes(),
+        np.asarray(memberships.black_hole_membership, dtype=">f4").ravel(order="C").tobytes(),
+    )))
+    classes = temporary / "classes"
+    classes.mkdir(parents=True, exist_ok=True)
+    upstream = JAVA_ROOT / "upstream/edu/jhmi/rad/medic"
+    harness = JAVA_ROOT / "LesionGrowingPassDynamicReferenceHarness.java"
+    sources = [
+        upstream / "structures/BinaryHeap4D.java",
+        upstream / "structures/CriticalPointLUT.java",
+        upstream / "utilities/Numerics.java",
+        harness,
+    ]
+    subprocess.run([javac, "-d", str(classes), *(str(path) for path in sources)], check=True, capture_output=True, text=True)
+    resource = classes / "edu/jhmi/rad/medic/structures/critical186LUT.raw.gz"
+    resource.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / "src/pymacruise/data/critical186LUT.raw.gz", resource)
+    subprocess.run(
+        [java, "-Xmx2g", "-cp", str(classes), "LesionGrowingPassDynamicReferenceHarness", str(input_path), str(output_path)],
+        check=True, capture_output=True, text=True,
+    )
+    python = propagate_lesion_toads_growing(
+        thinning.run.segmentation, thinning.run.skeleton, memberships.class_memberships,
+        thinning.run.ordering, thinning.run.class_volume, object_types,
+        memberships.lesion_membership, memberships.black_hole_membership,
+        lesion_class=lesion_class, use_lesion_max=False, retain_event_states=False,
+    )
+    expected = _growth_bytes(python)
+    java_bytes = output_path.read_bytes()
+    if java_bytes != expected:
+        return {
+            "all_exact": False,
+            "python_bytes": len(expected),
+            "java_bytes": len(java_bytes),
+            "python_sha256": hashlib.sha256(expected).hexdigest(),
+            "java_sha256": hashlib.sha256(java_bytes).hexdigest(),
+        }
+
+    voxel_count = int(np.prod(spatial))
+    cursor = 0
+    arrays_match = {}
+    for name, count, dtype in (
+        ("segmentation", voxel_count, np.int8),
+        ("skeleton", voxel_count, np.int8),
+        ("availability", voxel_count * len(types), np.uint8),
+        ("ordering", voxel_count, ">f4"),
+        ("class_volume", len(types), ">f4"),
+    ):
+        width = np.dtype(dtype).itemsize
+        actual = np.frombuffer(java_bytes[cursor:cursor + count * width], dtype=dtype)
+        cursor += count * width
+        if name == "class_volume":
+            summary = json.loads(expected_outputs["summary"].read_text(encoding="utf-8"))
+            reference = np.asarray(summary["class_volume"], dtype=np.float32).ravel(order="C")
+        else:
+            reference = np.asarray(nib.load(str(expected_outputs[name])).dataobj)
+            reference = reference.ravel(order="C")
+        if np.issubdtype(actual.dtype, np.floating):
+            actual_bits = actual.astype(np.float32).view(np.uint32)
+            reference_bits = np.asarray(reference, dtype=np.float32).view(np.uint32)
+            arrays_match[name] = np.array_equal(actual_bits, reference_bits)
+        else:
+            arrays_match[name] = np.array_equal(actual, np.asarray(reference, dtype=actual.dtype))
+    return {
+        "all_exact": True,
+        "checkpoint_outputs_exact": all(arrays_match.values()),
+        "checkpoint_arrays_exact": arrays_match,
+        "event_count": len(python.events),
+        "java_bytes": len(java_bytes),
+        "java_sha256": hashlib.sha256(java_bytes).hexdigest(),
+        "python_sha256": hashlib.sha256(expected).hexdigest(),
+        "source_files": {
+            str(path.relative_to(ROOT)): _sha256(path)
+            for path in (*sources, ROOT / "src/pymacruise/data/critical186LUT.raw.gz")
+        },
+    }
+
+
+def compare(
+    manifest_path: Path,
+    output_dir: Path,
+    *,
+    java: str = "java",
+    javac: str = "javac",
+    expected_next_manifest: Path | None = None,
+) -> dict:
     manifest_file = manifest_path.expanduser().resolve()
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     if manifest.get("status") != "complete" or manifest.get("stage") != "plus-lesion-registered-loop":
@@ -381,6 +516,31 @@ def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac:
         source_zero_variance_nan=bool(settings["source_zero_variance_nan"]),
     )
 
+    growth_report = None
+    if expected_next_manifest is not None:
+        next_membership = run_lesion_toads_next_gm_membership_update(
+            prior_stats,
+            membership_arrays["image"], membership_arrays["shape"],
+            np.ones(13, dtype=np.float32), np.ones(13, dtype=np.float32),
+            membership_arrays["direct"], membership_arrays["memberships"],
+            membership_arrays["lesion"], membership_arrays["black"],
+            membership_arrays["outlier"], membership_arrays["lesion_relation"],
+            distances[..., 0], distances[..., 1], distances[..., 2],
+            previous_energy=float(prior_membership.objective), outlier_energy=0.1,
+            lesion_power_exponent=1.2, spread=0.5,
+            source_zero_variance_nan=bool(settings["source_zero_variance_nan"]),
+        )
+        growth_report = _compare_growth_java(
+            java=java,
+            javac=javac,
+            temporary=output_dir / "growth-java-work",
+            thinning=thinning,
+            memberships=next_membership.membership,
+            object_types=STANDARD13_TYPES,
+            lesion_class=10,
+            expected_manifest_path=expected_next_manifest.expanduser().resolve(),
+        )
+
     with tempfile.TemporaryDirectory(prefix="p41z-registered-thinning-java-") as temporary:
         work = Path(temporary)
         classes_dir = work / "classes"
@@ -472,6 +632,7 @@ def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac:
         "next_membership_nan_counts": membership_report["nan_counts"],
         "next_membership_updated_energy": membership_report["updated_energy"],
         "next_membership_energy_ratio": membership_report["energy_ratio"],
+        "post_registration_growth": growth_report,
         "distance_refresh_stage_order": list(refreshed_distance_state.stage_order),
         "refreshed_distance_hashes": {
             "ventricle_mask": hashlib.sha256(refreshed.ventricle_mask.tobytes(order="C")).hexdigest(),
@@ -502,6 +663,8 @@ def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac:
     if (
         not shape_exact or java_bytes != expected or not statistics_report["all_exact"]
         or not membership_report["all_exact"]
+        or (growth_report is not None and not growth_report.get("all_exact"))
+        or (growth_report is not None and not growth_report.get("checkpoint_outputs_exact"))
     ):
         raise SystemExit(1)
     return report
@@ -513,8 +676,15 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--java", default="java")
     parser.add_argument("--javac", default="javac")
+    parser.add_argument("--expected-next-checkpoint", type=Path)
     args = parser.parse_args()
-    compare(args.checkpoint_manifest, args.output_dir, java=args.java, javac=args.javac)
+    compare(
+        args.checkpoint_manifest,
+        args.output_dir,
+        java=args.java,
+        javac=args.javac,
+        expected_next_manifest=args.expected_next_checkpoint,
+    )
 
 
 if __name__ == "__main__":
