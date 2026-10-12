@@ -12,15 +12,27 @@ end-to-end PLUS run and does not establish ribbon quality or source equivalence.
 
 The fixture has labels 0/5/44/100 and deterministic tissue-specific T1/FLAIR
 values, but it contains no lesion example. The bundled atlas descriptor
-nevertheless enables lesion handling based on its topology declarations. The
-first-iteration summary records two zero lesion-standard-deviation channels
-and no zero standard-deviation tissue channels. VandyCRUISE's selected
-`computeVariances` method assigns zero when a lesion denominator is empty;
-Python's source-faithful IEEE handling then exposes the nonfinite objective at
-the next membership pass. We will use a lesion-bearing synthetic case or
-resolve the no-lesion source path from the Java wrapper before claiming this
-checkpoint passes. The finite-zero-variance switch remains an explicit
-comparison option and was not used here.
+enables lesion handling based on its topology declarations. The V3 MATLAB
+wrapper also explicitly selects `With Lesion`, and VandyCRUISE sets
+`hasLesion=true` from the lesion atlas topology; absence of a lesion seed does
+not select the no-lesion atlas. The first-iteration summary records two zero
+lesion-standard-deviation channels and no zero standard-deviation tissue
+channels. `computeVariances` sets an empty lesion variance to zero, and the
+existing Java selected-method zero-variance harness confirms the resulting
+similarity can be NaN. Python's source-faithful numerical behavior therefore
+exposes a nonfinite objective, while this Python workflow currently stops at
+that point instead of continuing the Java loop. That stop-vs-continue behavior
+is an explicit integration gap; NaNs must not be silently replaced. A separate
+lesion-bearing fixture can exercise finite loop behavior, while source-faithful
+handling needs direct continuation/output comparison. The finite-zero-variance
+switch remains an explicit comparison option and was not used here.
+
+Source anchors: `run_LesionToads_jist.m:37` selects `With Lesion`;
+`LesionToadSegmentation.java:230-252` derives `hasLesion` from atlas topology;
+`computeVariances` sets an empty lesion standard deviation to zero at lines
+2738-2741. The existing selected-method zero-standard-deviation fixture at
+`tests/data/synthetic/lesion_toads_similarity/java_reference.json` records the
+Java NaN case.
 
 ## Resources and artifacts
 
@@ -59,7 +71,8 @@ MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
 
 ## Next step
 
-Trace how the V3 `run_maCRUISEplus` wrapper selects lesion-enabled behavior and
-initial lesion memberships for a subject without a lesion, then create a
-synthetic case that exercises that source path. Keep source-faithful NaN
-behavior enabled until the Java path demonstrates otherwise.
+Implement a source-anchored Java comparison for the zero-variance continuation
+and its exported maps, then create a lesion-bearing synthetic case to exercise
+finite full-loop behavior. Keep source-faithful NaN behavior enabled and make
+the Python workflow's stop-versus-continue policy explicit until the Java
+comparison establishes the expected outputs.
