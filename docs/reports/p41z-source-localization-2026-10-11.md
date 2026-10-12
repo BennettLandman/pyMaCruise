@@ -94,3 +94,16 @@ support and topology failures through the corrected fused map, TGDM seed, and
 surface evolution. Keep acceptance thresholds unchanged. A small two-parcel
 boundary fixture (labels 100 and 101, plus a paired lower-label suppression
 case) can separately validate nontrivial raw-boundary behavior.
+
+## Current-code re-comparison update
+
+The later 73×91×63 held-fixed Java comparison was rerun against current Python
+code after the source-bounds correction in commit `6d1d0162`. The previous
+report's two sign changes and approximately 32.4-mm sampled Hausdorff outlier
+came from older saved Python products. On the same serialized TGDM inputs, the
+current replay has zero sign changes in all six fields; Dice is 1.0 for each
+surface, maximum symmetric mean distance is `5.39e-7 mm`, and maximum sampled
+Hausdorff is `0.00670 mm`. This closes the selected TGDM comparison mismatch;
+it does not change the checkpoint's failed tissue-support, topology, or
+convergence results. See the [current TGDM re-comparison](p41z-tgdm-java-recomparison-2026-10-11.md)
+and [machine-readable metrics](p41z-tgdm-java-recomparison-2026-10-11.json).
