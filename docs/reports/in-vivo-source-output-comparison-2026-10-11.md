@@ -4,6 +4,10 @@
 
 This is a held-fixed comparison of the downloaded Singularity outputs against saved PyMaCRUISE products on the same human scan. It is direct real-data evidence, **not** a full workflow parity or acceptance pass. The source `Raw/T1.nii.gz` and `Raw/Seg.nii.gz` arrays are voxel-identical to the supplied T1 and `orig_target_seg` inputs, respectively; all are on the same 184×256×256 oblique RAS grid.
 
+### Refreshed verification of the downloaded output tree — 2026-10-12
+
+After the output download completed, the same comparison was rerun against `/Users/landmaba/dev/mipav/sample-macruise/output`. It exited successfully and reproduced the metrics below; this verifies the comparison artifacts correspond to the currently downloaded files. The source `Raw/T1.nii.gz` SHA-256 is `aae1e3168beea2f26369d34eea60115675e0f0a0123e9f64df8a00d04cfd068b`, and `Raw/Seg.nii.gz` is `524e088110c616ab261f05f3a09861f2735bde170b5b8495b43118be34005e81`. The level-set nonpositive-mask Dice values were inner `0.942914`, central `0.956964`, and outer `0.953565`; symmetric mean surface distances were `0.305786`, `0.356974`, and `0.510611 mm`, with sampled Hausdorff distances `6.3961`, `5.4603`, and `6.8939 mm`. The comparison process used a 1.563 GB peak sampled RSS under its 8 GB watchdog and exited 0; that exit records successful metric generation, not passing acceptance. No imaging data were copied into the repository.
+
 The current Python outputs do not meet the agreed position and segmentation tolerances:
 
 | Output | Comparison | Result | Acceptance |
