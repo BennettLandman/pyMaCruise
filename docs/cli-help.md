@@ -106,6 +106,14 @@ T1 uses linear interpolation and the discrete inputs use nearest neighbor.
 FLAIR stays on its input grid and is registered by the plus preprocessing
 stage. Disabling regridding requires an axis-aligned RAS T1 grid.
 
+Native Dura transfer defaults to `--dura-transfer-mode physical-affine`,
+which maps source values to the full T1 grid using physical RAS coordinates.
+Use `--dura-transfer-mode jist-unchanged` only to reproduce selected JIST
+behavior: preserve source extents and values, assign the reference header, and
+apply full-grid crop bounds with zero padding. The selected synthetic case
+shows substantial downstream map and surface changes under this mode; it is
+recorded in run signatures and manifests.
+
 ## `pymacruise base-surface-thickness`
 
 ```text
@@ -509,6 +517,7 @@ pymacruise plus-run --t1-reference T1.nii.gz --segmentation MaSeg.nii.gz \
   --multi-atlas-wm AtlasWM.nii.gz \
   --multi-atlas-mask Atlas_BrainTissueMask.nii.gz \
   --brain-mask BrainMask.nii.gz --output-dir plus-run [--resume] \
+  [--dura-transfer-mode physical-affine|jist-unchanged] \
   [--crop-edge-width 5] [--gvf-lambda 0.2] [--wm-iso-level 0.5] \
   [--refine-topology-by-maseg | --no-refine-topology-by-maseg]
 ```
@@ -520,7 +529,9 @@ and TGDM; and full-grid restoration, surfaces, and thickness. `--resume`
 requires the same input hashes and settings. Verified stages are skipped; an
 invalid stage is recomputed in a new attempt directory. Outputs include RAS
 `.nii.gz` level sets and thickness, RAS+ millimetre VTK surfaces, thickness
-metrics, and `run.json`.
+metrics, and `run.json`. The default `physical-affine` mode expects Dura maps
+on the full T1 grid. `jist-unchanged` accepts common smaller Dura extents that
+carry the T1 reference header, then applies the MaSeg crop bounds with padding.
 
 `--multi-atlas-mask` must be the MaSeg-derived `Atlas_BrainTissueMask.nii.gz`
 (GM, WM, and additional brain-tissue labels). It must not be the WM-only
@@ -820,6 +831,6 @@ The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the br
 
 Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last T1/FLAIR modalities, atlas-aligned/recropped state, registered LesionTOADS products, Dura channels, and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, and JSON metrics. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness.
 
-Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance` (default `1e-4`), `--loop-convergence-threshold` (defaults to `--max-distance`), `--n-iter-max` (default `99`), `--loop-thinning-limit`, and `--max-passes` (default `99`). `plus-full-run` runs until terminal convergence or the configured iteration ceiling; use an explicit smaller `--max-passes` for a restartable bounded segment. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms.
+Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance` (default `1e-4`), `--loop-convergence-threshold` (defaults to `--max-distance`), `--n-iter-max` (default `99`), `--loop-thinning-limit`, and `--max-passes` (default `99`). `plus-full-run` runs until terminal convergence or the configured iteration ceiling; use an explicit smaller `--max-passes` for a restartable bounded segment. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms. `--dura-transfer-mode` defaults to `physical-affine`; select `jist-unchanged` to preserve Dura source extents/values, assign the reference header, and crop by full-grid MaSeg bounds with padding.
 
 For a compact committed synthetic case, use `tests/data/synthetic/plus_lesion_atlas_init/mini-lesion-toads-atlas.txt` and the matching NIfTI topology/shape maps. `tests/test_plus_full_workflow.py` runs a 25³ folded-cortex synthetic T1/FLAIR/MaSeg/mask through the complete CLI composition with low-cost settings, including resume and corruption repair. This validates synthetic workflow composition, not composite Java equivalence or real-MRI behavior.

@@ -9,7 +9,11 @@ import pytest
 
 from pymacruise.image_io import save_nifti_ras
 from pymacruise.boundary import clean_csf_boundary, multi_atlas_csf_boundary
-from pymacruise.cropping import crop_image, find_crop_parameters
+from pymacruise.cropping import (
+    crop_image,
+    crop_image_with_reference_bounds,
+    find_crop_parameters,
+)
 from pymacruise.plus_file_workflow import run_plus_file_workflow
 from pymacruise.surfaces import read_legacy_vtk
 
@@ -139,6 +143,46 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
     assert changed_manifest["status"] == "complete"
     assert changed_manifest["previous_run_signature"] != changed_manifest["run_signature"]
     assert changed_manifest["settings"]["crop_edge_width"] == 4
+
+
+def test_plus_file_workflow_jist_unchanged_mode_crops_smaller_dura_extents(tmp_path: Path) -> None:
+    segmentation = _load("segmentation.nii.gz")
+    shape = tuple(int(size - 2) for size in segmentation.shape)
+    source_gm = np.asarray(_load("toads_gm.nii.gz").dataobj, dtype=np.float32)[: shape[0], : shape[1], : shape[2]]
+    source_wm = np.asarray(_load("toads_wm.nii.gz").dataobj, dtype=np.float32)[: shape[0], : shape[1], : shape[2]]
+    source_mask = np.ones(shape, dtype=np.float32)
+    source_csf = np.zeros(shape, dtype=np.float32)
+    inputs = {
+        "t1_reference_path": _save_channel(tmp_path, "jist-t1", np.zeros(segmentation.shape), segmentation),
+        "segmentation_path": FIXTURE / "segmentation.nii.gz",
+        "dura_csf_path": _save_channel(tmp_path, "jist-dura-csf", source_csf, segmentation),
+        "dura_gm_path": _save_channel(tmp_path, "jist-dura-gm", source_gm, segmentation),
+        "dura_wm_fill_path": _save_channel(tmp_path, "jist-dura-wm-fill", source_wm, segmentation),
+        "dura_wm_mask_path": _save_channel(tmp_path, "jist-dura-wm-mask", source_mask, segmentation),
+        "multi_atlas_gm_path": FIXTURE / "multi_atlas_gm.nii.gz",
+        "multi_atlas_wm_path": FIXTURE / "multi_atlas_wm.nii.gz",
+        "multi_atlas_mask_path": FIXTURE / "multi_atlas_brain_mask.nii.gz",
+        "brain_mask_path": FIXTURE / "multi_atlas_brain_mask.nii.gz",
+        "output_dir": tmp_path / "jist-unchanged-run",
+        "dura_transfer_mode": "jist-unchanged",
+    }
+
+    run = run_plus_file_workflow(**inputs, crop_edge_width=1)
+    manifest = json.loads(run.manifest_path.read_text())
+    assert manifest["settings"]["dura_transfer_mode"] == "jist-unchanged"
+    crop_attempt = Path(manifest["stages"]["transfer_crop"]["outputs"]["toads_gm"]["path"]).parent
+    crop_parameters = find_crop_parameters(_load("multi_atlas_gm.nii.gz"), edge_width=1)
+    expected_gm = crop_image_with_reference_bounds(
+        nib.Nifti1Image(source_gm, segmentation.affine), crop_parameters
+    )
+    actual_gm = nib.load(str(crop_attempt / "toads_gm.nii.gz"))
+    assert actual_gm.shape == expected_gm.shape
+    np.testing.assert_array_equal(actual_gm.dataobj, expected_gm.dataobj)
+    assert nib.aff2axcodes(actual_gm.affine) == ("R", "A", "S")
+    assert set(run.outputs) == {
+        "inner_level_set", "central_level_set", "outer_level_set", "thickness_volume",
+        "inner_surface", "central_surface", "outer_surface", "thickness_metrics",
+    }
 
 
 def test_plus_file_workflow_uses_toads_wm_mask_for_boundary_cleanup(

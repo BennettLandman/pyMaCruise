@@ -577,6 +577,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help="resample oblique RAS T1, mask, and MaSeg to an orthogonal grid (default: enabled)",
     )
+    plus_full.add_argument(
+        "--dura-transfer-mode",
+        choices=("physical-affine", "jist-unchanged"),
+        default="physical-affine",
+        help=(
+            "Dura mapping to native T1: recommended physical-affine default, or "
+            "jist-unchanged for legacy source-grid compatibility"
+        ),
+    )
     plus_full.add_argument("--registration-iterations", type=int, nargs="+", default=[1000, 500, 250, 0])
     plus_full.add_argument("--shrink-factors", type=int, nargs="+", default=[6, 4, 2, 1])
     plus_full.add_argument("--smoothing-sigmas", type=float, nargs="+", default=[3.0, 2.0, 1.0, 0.0])
@@ -622,6 +631,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plus_run.add_argument("--brain-mask", required=True, type=Path)
     plus_run.add_argument("--output-dir", required=True, type=Path)
+    plus_run.add_argument(
+        "--dura-transfer-mode",
+        choices=("physical-affine", "jist-unchanged"),
+        default="physical-affine",
+        help=(
+            "Dura mapping to native T1: recommended physical-affine default, or "
+            "jist-unchanged for legacy source-grid compatibility"
+        ),
+    )
     plus_run.add_argument("--resume", action="store_true")
     plus_run.add_argument("--crop-edge-width", type=int, default=5)
     plus_run.add_argument("--gvf-lambda", type=float, default=0.2)
@@ -973,6 +991,7 @@ def main(argv: list[str] | None = None) -> int:
             loop_thinning_limit=args.loop_thinning_limit,
             max_passes=args.max_passes,
             regrid_inputs=args.regrid_inputs,
+            dura_transfer_mode=args.dura_transfer_mode,
             resume=args.resume,
         )
         verb = "Verified and resumed" if result.resumed else "Completed"
@@ -1004,6 +1023,7 @@ def main(argv: list[str] | None = None) -> int:
             brain_mask_path=args.brain_mask,
             output_dir=args.output_dir,
             crop_edge_width=args.crop_edge_width,
+            dura_transfer_mode=args.dura_transfer_mode,
             options=PlusPipelineOptions(
                 gvf_lambda=args.gvf_lambda,
                 wm_iso_level=args.wm_iso_level,

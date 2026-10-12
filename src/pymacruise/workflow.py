@@ -125,6 +125,7 @@ def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, An
         "lesion_iterations", "first_thinning_limit", "first_thinning_volume_ratio",
         "source_zero_variance_nan", "max_distance", "loop_convergence_threshold",
         "n_iter_max", "loop_thinning_limit", "max_passes", "regrid_inputs",
+        "dura_transfer_mode",
     }
     registration_fields = {
         "transform_type", "metric", "metric_bins", "sampling_rate", "iterations",
@@ -140,6 +141,11 @@ def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, An
         if unknown:
             raise ValueError(f"Unknown base run_options field(s): {', '.join(unknown)}")
         return dict(values)
+
+    plus_run_options = values.get("plus")
+    if isinstance(plus_run_options, dict) and "dura_transfer_mode" in plus_run_options:
+        if plus_run_options["dura_transfer_mode"] not in ("physical-affine", "jist-unchanged"):
+            raise ValueError("plus.dura_transfer_mode must be 'physical-affine' or 'jist-unchanged'")
 
     unknown_groups = sorted(set(values) - {"plus", "registration", "n4"})
     if unknown_groups:

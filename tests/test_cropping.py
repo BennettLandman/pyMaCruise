@@ -4,7 +4,12 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from pymacruise.cropping import crop_from_mask, uncrop_image
+from pymacruise.cropping import (
+    CropParameters,
+    crop_from_mask,
+    crop_image_with_reference_bounds,
+    uncrop_image,
+)
 
 
 def test_asymmetric_threshold_bounds_landmark_affine_and_full_uncrop() -> None:
@@ -87,6 +92,27 @@ def test_crop_rejects_empty_masks_and_misaligned_companions() -> None:
     target = nib.Nifti1Image(np.ones_like(mask_data), shifted)
     with pytest.raises(ValueError, match="same physical grid"):
         crop_from_mask(mask, target)
+
+
+def test_crop_with_full_reference_bounds_pads_legacy_smaller_extents() -> None:
+    affine = np.diag([1.0, 1.5, 2.0, 1.0])
+    affine[:3, 3] = (-20.0, 4.0, -10.0)
+    values = np.fromfunction(lambda i, j, k: i + 10 * j + 100 * k, (4, 5, 6)).astype(np.float32)
+    source = nib.Nifti1Image(values, affine)
+    parameters = CropParameters(
+        original_shape=(8, 9, 10),
+        bounds=((2, 6), (1, 5), (4, 8)),
+        background=0.0,
+        original_affine=affine,
+    )
+
+    result = crop_image_with_reference_bounds(source, parameters)
+    expected = np.zeros((5, 5, 5), dtype=np.float32)
+    expected[:2, :4, :2] = values[2:4, 1:5, 4:6]
+
+    assert result.shape == (5, 5, 5)
+    np.testing.assert_array_equal(np.asanyarray(result.dataobj), expected)
+    np.testing.assert_array_equal(result.affine, affine @ _translation((2, 1, 4)))
 
 
 def test_crop_warns_and_reorients_non_ras_mask_and_target() -> None:

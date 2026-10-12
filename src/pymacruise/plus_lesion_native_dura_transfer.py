@@ -12,7 +12,10 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.image_io import normalize_image_to_ras, save_nifti_ras
-from pymacruise.spatial_transfer import transfer_to_reference_space
+from pymacruise.spatial_transfer import (
+    assign_reference_geometry_without_resampling,
+    transfer_to_reference_space,
+)
 
 
 @dataclass(frozen=True)
@@ -47,17 +50,20 @@ def run_plus_lesion_native_dura_transfer(
     t1_reference_path: str | Path,
     output_dir: str | Path,
     *,
+    transfer_mode: str = "physical-affine",
     resume: bool = False,
 ) -> NativeDuraTransferResult:
     """Transfer GM, WM-fill, and WM-mask Dura images into native T1 space.
 
-    The selected MATLAB pipeline applies its orientation-transfer helper to
-    these three products. Python maps their RAS physical affines with nearest
-    neighbor sampling; this adapter is not claimed to match JIST behavior for
-    arbitrary differing origins, dimensions, or spacings.
+    ``physical-affine`` maps RAS physical affines with nearest-neighbor
+    sampling and is recommended. ``jist-unchanged`` preserves RAS source
+    extents and values, then assigns the reference geometry to reproduce the
+    selected JIST behavior for legacy compatibility comparisons.
     """
     if not isinstance(resume, bool):
         raise TypeError("resume must be boolean")
+    if transfer_mode not in ("physical-affine", "jist-unchanged"):
+        raise ValueError("transfer_mode must be 'physical-affine' or 'jist-unchanged'")
     dura_manifest_file = Path(dura_manifest_path).expanduser().resolve()
     t1_file = Path(t1_reference_path).expanduser().resolve()
     root = Path(output_dir).expanduser().resolve()
@@ -109,8 +115,12 @@ def run_plus_lesion_native_dura_transfer(
         "schema_version": 1,
         "stage": "plus-lesion-native-dura-transfer",
         "source_order": ["transfer CSF auxiliary", "transfer GM", "transfer WM-fill", "transfer WM-mask"],
-        "interpolation": "nearest-neighbor",
-        "coordinate_mapping": "physical RAS affine",
+        "interpolation": "nearest-neighbor" if transfer_mode == "physical-affine" else "none",
+        "coordinate_mapping": (
+            "physical RAS affine" if transfer_mode == "physical-affine"
+            else "preserve RAS source extents and values; assign reference geometry"
+        ),
+        "transfer_mode": transfer_mode,
         "spatial_convention": "RAS",
         "inputs": input_records,
         "source_equivalence_claim": False,
@@ -141,9 +151,11 @@ def run_plus_lesion_native_dura_transfer(
                 ):
                     break
                 image = nib.load(str(path))
+                source_image = nib.load(str(source_paths[name]))
+                expected_shape = reference.shape if transfer_mode == "physical-affine" else source_image.shape
                 if (
                     not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image))
-                    or image.shape != reference.shape
+                    or image.shape != expected_shape
                     or image.get_data_dtype() != np.dtype(np.float32)
                     or nib.aff2axcodes(image.affine) != ("R", "A", "S")
                     or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-5)
@@ -170,7 +182,11 @@ def run_plus_lesion_native_dura_transfer(
             source = nib.load(str(source_paths[name]))
             if not isinstance(source, (nib.Nifti1Image, nib.Nifti2Image)) or len(source.shape) != 3:
                 raise ValueError(f"Dura {name} input must be a 3-D NIfTI image")
-            transferred = transfer_to_reference_space(source, reference, cval=0.0)
+            transferred = (
+                transfer_to_reference_space(source, reference, cval=0.0)
+                if transfer_mode == "physical-affine"
+                else assign_reference_geometry_without_resampling(source, reference)
+            )
             final_path = root / f"lesion_toads_{name}_native.nii.gz"
             temporary_path = root / f".{final_path.stem}.partial.nii.gz"
             save_nifti_ras(transferred, temporary_path, dtype=np.float32)

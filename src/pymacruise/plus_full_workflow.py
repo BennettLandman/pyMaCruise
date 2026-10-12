@@ -128,6 +128,7 @@ def run_plus_full_workflow(
     max_passes: int = 99,
     pipeline_options: PlusPipelineOptions = PlusPipelineOptions(),
     regrid_inputs: bool = True,
+    dura_transfer_mode: str = "physical-affine",
     resume: bool = False,
 ) -> PlusFullWorkflowResult:
     """Run raw inputs through LesionTOADS and terminal CRUISE surface outputs.
@@ -143,6 +144,8 @@ def run_plus_full_workflow(
         raise TypeError("pipeline_options must be PlusPipelineOptions")
     if not isinstance(regrid_inputs, bool):
         raise TypeError("regrid_inputs must be boolean")
+    if dura_transfer_mode not in ("physical-affine", "jist-unchanged"):
+        raise ValueError("dura_transfer_mode must be 'physical-affine' or 'jist-unchanged'")
     if not isinstance(resume, bool):
         raise TypeError("resume must be boolean")
     t1 = Path(t1_path).expanduser().resolve()
@@ -201,6 +204,7 @@ def run_plus_full_workflow(
         "loop_thinning_limit": float(loop_thinning_limit),
         "max_passes": int(max_passes),
         "regrid_inputs": regrid_inputs,
+        "dura_transfer_mode": dura_transfer_mode,
     }
     signature_data = {
         "schema_version": 1,
@@ -383,7 +387,9 @@ def run_plus_full_workflow(
             elif name == "native_dura_transfer":
                 dura = results["dura_outputs"]
                 result = run_plus_lesion_native_dura_transfer(
-                    dura.manifest_path, t1, stage_root / "native-dura", resume=child_resume
+                    dura.manifest_path, t1, stage_root / "native-dura",
+                    transfer_mode=dura_transfer_mode,
+                    resume=child_resume,
                 )
             elif name == "maseg_cortical_separation":
                 result = run_plus_maseg_cortical_checkpoint(
@@ -404,6 +410,7 @@ def run_plus_full_workflow(
                     multi_atlas_mask_path=cortical.outputs["Atlas_BrainTissueMask"],
                     brain_mask_path=mask,
                     output_dir=stage_root / "plus-surface",
+                    dura_transfer_mode=dura_transfer_mode,
                     options=pipeline_options,
                     resume=child_resume,
                 )

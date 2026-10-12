@@ -4,7 +4,10 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from pymacruise.spatial_transfer import transfer_to_reference_space
+from pymacruise.spatial_transfer import (
+    assign_reference_geometry_without_resampling,
+    transfer_to_reference_space,
+)
 
 
 def test_known_translation_transfers_labels_by_physical_nearest_neighbor() -> None:
@@ -77,3 +80,21 @@ def test_transfer_rejects_nonfinite_input_and_non_3d() -> None:
     four_d = nib.Nifti1Image(np.ones((3, 3, 3, 2), dtype=np.float32), np.eye(4))
     with pytest.raises(ValueError, match="3D"):
         transfer_to_reference_space(four_d, reference)
+
+
+def test_jist_unchanged_transfer_retains_source_extents_and_values() -> None:
+    source_data = np.arange(4 * 5 * 6, dtype=np.float32).reshape((4, 5, 6))
+    source_affine = np.diag([1.0, 1.5, 2.0, 1.0])
+    source_affine[:3, 3] = (-7.0, 2.0, -9.0)
+    reference_affine = np.diag([2.0, 2.0, 2.0, 1.0])
+    reference_affine[:3, 3] = (-12.0, 4.0, -10.0)
+    source = nib.Nifti1Image(source_data, source_affine)
+    reference = nib.Nifti1Image(np.zeros((8, 9, 10), dtype=np.uint8), reference_affine)
+
+    output = assign_reference_geometry_without_resampling(source, reference)
+
+    assert output.shape == source.shape
+    np.testing.assert_array_equal(np.asanyarray(output.dataobj), source_data)
+    np.testing.assert_array_equal(output.affine, reference_affine)
+    assert output.get_data_dtype() == np.dtype(np.float32)
+    assert nib.aff2axcodes(output.affine) == ("R", "A", "S")

@@ -111,6 +111,45 @@ def crop_image(
     return nib.Nifti1Image(output, affine, header=header)
 
 
+def crop_image_with_reference_bounds(
+    image: nib.spatialimages.SpatialImage,
+    parameters: CropParameters,
+) -> nib.Nifti1Image:
+    """Apply full-reference crop bounds to an image with legacy smaller extents.
+
+    This reproduces the selected JIST cropper's array-index behavior after a
+    source image retained its extents but received the full reference header.
+    Values outside the smaller source array use the crop background.
+    """
+    source = _prepare_image(image, "legacy crop target")
+    if len(source.shape) != 3:
+        raise ValueError("Cropping requires a 3D scalar image")
+    if not np.allclose(source.affine, parameters.original_affine, rtol=0.0, atol=1e-5):
+        raise ValueError("Legacy crop target must carry the crop reference geometry")
+    shape = parameters.cropped_shape
+    if any(size <= 0 for size in shape):
+        raise ValueError(f"Invalid crop shape {shape}")
+    output = np.full(shape, parameters.background, dtype=np.asarray(source.dataobj).dtype)
+    source_data = np.asarray(source.dataobj)
+    source_slices: list[slice] = []
+    target_slices: list[slice] = []
+    for (low, high), size in zip(parameters.bounds, source.shape, strict=True):
+        start = max(0, low)
+        stop = min(size, high + 1)
+        source_slices.append(slice(start, stop))
+        target_slices.append(slice(start - low, stop - low))
+    if all(s.stop > s.start for s in source_slices):
+        output[tuple(target_slices)] = source_data[tuple(source_slices)]
+    affine = parameters.original_affine.copy()
+    translation = np.eye(4)
+    translation[:3, 3] = parameters.offset
+    affine = affine @ translation
+    header = source.header.copy()
+    header.set_data_dtype(output.dtype)
+    header.set_slope_inter(None, None)
+    return nib.Nifti1Image(output, affine, header=header)
+
+
 def crop_from_mask(
     mask: nib.spatialimages.SpatialImage,
     target: nib.spatialimages.SpatialImage | None = None,

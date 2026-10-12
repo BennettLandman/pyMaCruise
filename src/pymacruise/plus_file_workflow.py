@@ -17,7 +17,12 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 
-from pymacruise.cropping import CropParameters
+from pymacruise.cropping import (
+    CropParameters,
+    crop_image,
+    crop_image_with_reference_bounds,
+    find_crop_parameters,
+)
 from pymacruise.image_io import normalize_image_to_ras, save_nifti_ras
 from pymacruise.lesion_post_loop_outputs import (
     LesionToadsOutputProduct,
@@ -167,6 +172,7 @@ def run_plus_file_workflow(
     brain_mask_path: str | Path,
     output_dir: str | Path,
     crop_edge_width: int = 5,
+    dura_transfer_mode: str = "physical-affine",
     options: PlusPipelineOptions = PlusPipelineOptions(),
     resume: bool = False,
 ) -> PlusFileWorkflowResult:
@@ -182,6 +188,8 @@ def run_plus_file_workflow(
         raise TypeError("options must be PlusPipelineOptions")
     if isinstance(crop_edge_width, bool) or not isinstance(crop_edge_width, int) or crop_edge_width < 0:
         raise ValueError("crop_edge_width must be a nonnegative integer")
+    if dura_transfer_mode not in ("physical-affine", "jist-unchanged"):
+        raise ValueError("dura_transfer_mode must be 'physical-affine' or 'jist-unchanged'")
     named_paths = {
         "t1_reference": Path(t1_reference_path).expanduser().resolve(),
         "segmentation": Path(segmentation_path).expanduser().resolve(),
@@ -202,7 +210,24 @@ def run_plus_file_workflow(
             image.affine, reference.affine, rtol=0, atol=1e-4
         ):
             raise ValueError(f"{name} must match the T1 reference grid")
-    settings = {"crop_edge_width": crop_edge_width, "plus_pipeline": options.as_dict()}
+    dura_images = [images[name] for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")]
+    if dura_transfer_mode == "physical-affine":
+        for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask"):
+            image = images[name]
+            if image.shape != reference.shape or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-4):
+                raise ValueError(f"{name} must match the T1 grid for physical-affine transfer")
+    else:
+        source_shape = dura_images[0].shape
+        for name, image in zip(("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask"), dura_images, strict=True):
+            if image.shape != source_shape or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-4):
+                raise ValueError(
+                    f"{name} must share the JIST source extents and carry the T1 reference header"
+                )
+    settings = {
+        "crop_edge_width": crop_edge_width,
+        "dura_transfer_mode": dura_transfer_mode,
+        "plus_pipeline": options.as_dict(),
+    }
     input_records = {
         name: {"path": str(path), "sha256": _sha256(path)}
         for name, path in named_paths.items()
@@ -262,49 +287,65 @@ def run_plus_file_workflow(
         }
         manifest["history"].append({"stage": "transfer_crop", "status": "running", "attempt": root_attempt.name})
         _write_json(manifest_path, manifest)
-        channels = np.stack(
-            [np.asarray(images[name].dataobj, dtype=np.float32) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")]
-        )
-        if channels.shape[1:] != reference.shape:
-            raise ValueError("P39 Dura channels must share the T1 reference dimensions")
-        if any(not np.allclose(images[name].affine, reference.affine, rtol=0, atol=1e-4) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")):
-            raise ValueError("P39 Dura channels must share the T1 reference geometry")
         segmentation = images["segmentation"]
-        labels = np.asarray(segmentation.dataobj)
-        dura_output = LesionToadsPostLoopOutputs(
-            classification=np.zeros(labels.shape, dtype=np.int8),
-            membership_classification=None,
-            lesion_classification=np.zeros(labels.shape, dtype=np.int16),
-            result_mode="dura removal inputs",
-            products=(LesionToadsOutputProduct("dura_removal_inputs", channels),),
-            source_order=("dura_removal_inputs",),
-        )
-        prepared = prepare_plus_lesion_inputs(
-            dura_output,
-            reference,
-            segmentation,
-            images["multi_atlas_gm"],
-            images["multi_atlas_wm"],
-            images["multi_atlas_mask"],
-            images["brain_mask"],
-            crop_edge_width=crop_edge_width,
-        )
-        crop_images = {
-            "multi_atlas_gm": prepared.multi_atlas_gm,
-            "multi_atlas_wm": prepared.multi_atlas_wm,
-            "multi_atlas_mask": prepared.multi_atlas_mask,
-            "brain_mask": prepared.brain_mask,
-            "segmentation": prepared.segmentation,
-            "toads_gm": prepared.toads_gm,
-            "toads_wm_fill": prepared.toads_wm_fill,
-            "toads_wm_mask": prepared.toads_wm_mask,
-        }
+        if dura_transfer_mode == "physical-affine":
+            channels = np.stack(
+                [np.asarray(images[name].dataobj, dtype=np.float32) for name in ("dura_csf", "dura_gm", "dura_wm_fill", "dura_wm_mask")]
+            )
+            labels = np.asarray(segmentation.dataobj)
+            dura_output = LesionToadsPostLoopOutputs(
+                classification=np.zeros(labels.shape, dtype=np.int8),
+                membership_classification=None,
+                lesion_classification=np.zeros(labels.shape, dtype=np.int16),
+                result_mode="dura removal inputs",
+                products=(LesionToadsOutputProduct("dura_removal_inputs", channels),),
+                source_order=("dura_removal_inputs",),
+            )
+            prepared = prepare_plus_lesion_inputs(
+                dura_output,
+                reference,
+                segmentation,
+                images["multi_atlas_gm"],
+                images["multi_atlas_wm"],
+                images["multi_atlas_mask"],
+                images["brain_mask"],
+                crop_edge_width=crop_edge_width,
+            )
+            crop_parameters = prepared.crop_parameters
+            crop_images = {
+                "multi_atlas_gm": prepared.multi_atlas_gm,
+                "multi_atlas_wm": prepared.multi_atlas_wm,
+                "multi_atlas_mask": prepared.multi_atlas_mask,
+                "brain_mask": prepared.brain_mask,
+                "segmentation": prepared.segmentation,
+                "toads_gm": prepared.toads_gm,
+                "toads_wm_fill": prepared.toads_wm_fill,
+                "toads_wm_mask": prepared.toads_wm_mask,
+            }
+        else:
+            crop_parameters = find_crop_parameters(
+                images["multi_atlas_gm"], threshold=0.0, edge_width=crop_edge_width
+            )
+            crop_images = {
+                name: crop_image(image, crop_parameters)
+                for name, image in (
+                    ("multi_atlas_gm", images["multi_atlas_gm"]),
+                    ("multi_atlas_wm", images["multi_atlas_wm"]),
+                    ("multi_atlas_mask", images["multi_atlas_mask"]),
+                    ("brain_mask", images["brain_mask"]),
+                    ("segmentation", segmentation),
+                )
+            }
+            crop_images.update({
+                "toads_gm": crop_image_with_reference_bounds(images["dura_gm"], crop_parameters),
+                "toads_wm_fill": crop_image_with_reference_bounds(images["dura_wm_fill"], crop_parameters),
+                "toads_wm_mask": crop_image_with_reference_bounds(images["dura_wm_mask"], crop_parameters),
+            })
         crop_outputs = {}
         for name, image in crop_images.items():
             path = root_attempt / f"{name}.nii.gz"
             save_nifti_ras(image, path)
             crop_outputs[name] = path
-        crop_parameters = prepared.crop_parameters
         crop_json = root_attempt / "crop.json"
         _write_json(crop_json, {
             "original_shape": list(crop_parameters.original_shape),

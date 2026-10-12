@@ -112,10 +112,19 @@ def test_plus_full_workflow_regrid_cli_and_config_defaults() -> None:
         "--atlas-descriptor", str(ATLAS), "--output-dir", "out",
     ]
     assert parser.parse_args(required).regrid_inputs is True
+    assert parser.parse_args(required).dura_transfer_mode == "physical-affine"
     assert parser.parse_args([*required, "--no-regrid-inputs"]).regrid_inputs is False
+    assert parser.parse_args([*required, "--dura-transfer-mode", "jist-unchanged"]).dura_transfer_mode == "jist-unchanged"
     assert workflow._validate_run_options(
         workflow.WorkflowProfile.PLUS, {"plus": {"regrid_inputs": False}}
     )["plus"]["regrid_inputs"] is False
+    assert workflow._validate_run_options(
+        workflow.WorkflowProfile.PLUS, {"plus": {"dura_transfer_mode": "jist-unchanged"}}
+    )["plus"]["dura_transfer_mode"] == "jist-unchanged"
+    with pytest.raises(ValueError, match="dura_transfer_mode"):
+        workflow._validate_run_options(
+            workflow.WorkflowProfile.PLUS, {"plus": {"dura_transfer_mode": "nearestish"}}
+        )
 
 
 def _command(t1: Path, flair: Path, mask: Path, maseg: Path, output: Path, *extra: str) -> list[str]:
@@ -190,10 +199,16 @@ def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
         name: artifact(f"native-{name}.nii.gz")
         for name in ("csf", "gm", "wm_fill", "wm_mask")
     }
+    captured_transfer: dict[str, object] = {}
+
+    def capture_native_transfer(*args: object, **kwargs: object) -> SimpleNamespace:
+        captured_transfer.update(kwargs)
+        return result("native-dura", outputs=native_outputs)
+
     monkeypatch.setattr(
         plus_full_workflow_module,
         "run_plus_lesion_native_dura_transfer",
-        lambda *_args, **_kwargs: result("native-dura", outputs=native_outputs),
+        capture_native_transfer,
     )
     cortical_outputs = {
         name: artifact(f"{name}.nii.gz")
@@ -213,11 +228,14 @@ def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
     monkeypatch.setattr(plus_full_workflow_module, "run_plus_file_workflow", capture_plus_surface)
 
     plus_full_workflow_module.run_plus_full_workflow(
-        t1, flair, mask, maseg, ATLAS, tmp_path / "full-workflow"
+        t1, flair, mask, maseg, ATLAS, tmp_path / "full-workflow",
+        dura_transfer_mode="jist-unchanged",
     )
 
     assert captured["multi_atlas_mask_path"] == cortical_outputs["Atlas_BrainTissueMask"]
     assert captured["multi_atlas_mask_path"] != cortical_outputs["Atlas_Mask"]
+    assert captured_transfer["transfer_mode"] == "jist-unchanged"
+    assert captured["dura_transfer_mode"] == "jist-unchanged"
 
 
 def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_path: Path) -> None:
@@ -436,6 +454,53 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     )
     with pytest.raises(ValueError, match="brain mask must match the T1 reference grid"):
         main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))
+
+
+def test_plus_full_run_completes_with_jist_unchanged_dura_transfer(tmp_path: Path) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    output = tmp_path / "plus-full-jist-unchanged"
+    command = _command(
+        t1, flair, mask, maseg, output,
+        "--dura-transfer-mode", "jist-unchanged",
+    )
+    assert main(command) == 0
+
+    manifest = json.loads((output / "plus-full-workflow.json").read_text())
+    assert manifest["status"] == "complete"
+    assert manifest["terminal"] is True
+    assert manifest["settings"]["dura_transfer_mode"] == "jist-unchanged"
+    native_manifest = json.loads(
+        Path(manifest["stages"]["native_dura_transfer"]["manifest"]["path"]).read_text()
+    )
+    dura_manifest = json.loads(
+        Path(manifest["stages"]["dura_outputs"]["manifest"]["path"]).read_text()
+    )
+    native_gm = nib.load(native_manifest["outputs"]["gm"]["path"])
+    dura_gm = nib.load(dura_manifest["outputs"]["gm"]["path"])
+    assert native_manifest["transfer_mode"] == "jist-unchanged"
+    assert native_gm.shape == dura_gm.shape
+    assert native_gm.shape != nib.load(str(t1)).shape
+    np.testing.assert_array_equal(native_gm.affine, nib.load(str(t1)).affine)
+    assert nib.aff2axcodes(native_gm.affine) == ("R", "A", "S")
+
+    surface_manifest = json.loads(
+        Path(manifest["stages"]["plus_surface_workflow"]["manifest"]["path"]).read_text()
+    )
+    crop_record = surface_manifest["stages"]["transfer_crop"]
+    cropped_gm_path = Path(crop_record["outputs"]["toads_gm"]["path"])
+    crop_json = json.loads((cropped_gm_path.parent / "crop.json").read_text())
+    from pymacruise.cropping import CropParameters, crop_image_with_reference_bounds
+
+    crop = CropParameters(
+        original_shape=tuple(crop_json["original_shape"]),
+        bounds=tuple(tuple(pair) for pair in crop_json["bounds"]),
+        background=float(crop_json["background"]),
+        original_affine=np.asarray(crop_json["original_affine"], dtype=np.float64),
+    )
+    expected_crop = crop_image_with_reference_bounds(native_gm, crop)
+    np.testing.assert_array_equal(nib.load(str(cropped_gm_path)).dataobj, expected_crop.dataobj)
+    assert surface_manifest["status"] == "complete"
+    assert all(Path(record["path"]).is_file() for record in manifest["final_outputs"].values())
 
 
 def test_plus_full_run_completes_on_larger_asymmetric_folded_ras_grid(tmp_path: Path) -> None:
