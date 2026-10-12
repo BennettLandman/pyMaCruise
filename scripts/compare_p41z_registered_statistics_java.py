@@ -10,6 +10,7 @@ complete registered-loop iteration.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -23,11 +24,19 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from compare_p41z_next_iteration_statistics_java import compare  # noqa: E402
 
 
+def _checked_path(record: dict, *, name: str) -> Path:
+    path = Path(record.get("path", "")).resolve()
+    if not path.is_file() or path.is_symlink():
+        raise FileNotFoundError(f"registered state is missing {name}: {path}")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != record.get("sha256"):
+        raise ValueError(f"registered state {name} fails its checkpoint hash")
+    return path
+
+
 def _load_record(manifest: dict, name: str) -> tuple[Path, nib.spatialimages.SpatialImage]:
     record = manifest["outputs"][name]
-    path = Path(record["path"]).resolve()
-    if not path.is_file():
-        raise FileNotFoundError(f"registered state is missing {name}: {path}")
+    path = _checked_path(record, name=name)
     image = nib.load(str(path))
     if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
         raise ValueError(f"registered state {name} must be RAS")
@@ -42,12 +51,10 @@ def prepare_case(loop_manifest_path: Path, output_dir: Path) -> Path:
     if loop.get("spatial_convention") != "RAS":
         raise ValueError("registered-loop checkpoint must be RAS")
     recrop_record = loop["inputs"]["registered_recrop_manifest"]
-    recrop_path = Path(recrop_record["path"]).resolve()
+    recrop_path = _checked_path(recrop_record, name="registered recrop manifest")
     recrop = json.loads(recrop_path.read_text(encoding="utf-8"))
     image_record = recrop["outputs"]["modalities"]
-    image_path = Path(image_record["path"]).resolve()
-    if not image_path.is_file():
-        raise FileNotFoundError(f"registered modalities are missing: {image_path}")
+    image_path = _checked_path(image_record, name="registered modalities")
     images = nib.load(str(image_path))
     if len(images.shape) != 4 or images.shape[-1] != 2 or nib.aff2axcodes(images.affine) != ("R", "A", "S"):
         raise ValueError("registered modalities must be two-channel RAS NIfTI")
@@ -61,7 +68,7 @@ def prepare_case(loop_manifest_path: Path, output_dir: Path) -> Path:
     ):
         raise ValueError("registered modalities, memberships, and segmentation affines differ")
 
-    summary_path = Path(loop["outputs"]["summary"]["path"]).resolve()
+    summary_path = _checked_path(loop["outputs"]["summary"], name="registered summary")
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     centroids = summary["refreshed_centroids"]
     initial_case = json.loads(
