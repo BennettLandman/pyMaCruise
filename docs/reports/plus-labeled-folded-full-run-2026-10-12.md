@@ -76,3 +76,44 @@ and its exported maps, then create a lesion-bearing synthetic case to exercise
 finite full-loop behavior. Keep source-faithful NaN behavior enabled and make
 the Python workflow's stop-versus-continue policy explicit until the Java
 comparison establishes the expected outputs.
+
+## Stabilized one-pass follow-up
+
+To determine whether the complete workflow wiring can finish beyond this
+source-faithful stop, the same inputs were run with the explicit
+`--finite-zero-variance` option and `--max-passes 1`. This is a deliberately
+stabilized, non-source-faithful comparison and is not used to claim Java
+equivalence.
+
+```bash
+MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
+  .venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 \
+  --interval-seconds 1 --report-interval-seconds 60 -- \
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  .venv/bin/python -m pymacruise.cli plus-full-run \
+  --t1 tests/data/synthetic/plus_labeled_folded_cortex/t1.nii.gz \
+  --flair tests/data/synthetic/plus_labeled_folded_cortex/flair.nii.gz \
+  --brain-mask tests/data/synthetic/plus_labeled_folded_cortex/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_labeled_folded_cortex/maseg.nii.gz \
+  --atlas-descriptor data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/full-plus-labeled-folded-finite-onepass \
+  --max-passes 1 --finite-zero-variance
+```
+
+All nine public workflow stages completed and wrote the expected LesionTOADS,
+Dura, level-set, mesh, and thickness products. The run is complete but
+nonterminal at iteration 2 (energy ratio `0.033323`, threshold `0.0001`). Peak
+sampled RSS was 5.046 GB under the 16 GB watchdog. An independent audit found
+all 95 manifest hash records valid and all 64 NIfTIs finite on RAS grids.
+Ribbon quality **failed**: GM between inner and outer support is 11.28% (target
+≥97%); mean level-set thickness is 3.370 mm (target 4–6 mm); meshes are
+watertight but have 13 connected components and Euler characteristic 10. The
+surface closest-point median/p05/p95 is 0.173/0.140/2.253 mm. The audit report
+is retained at `build/full-plus-labeled-folded-finite-onepass/ribbon-quality.json`.
+
+The main performance cost is also measured: the iteration-2 ordered membership
+sweep took 1,014 seconds, while thinning took 42 seconds, statistics refresh
+39 seconds, and shape registration/branching 323 seconds. This result
+establishes a complete bounded stabilized workflow and a concrete runtime
+target, but it fails anatomy criteria and is not source-faithful, converged,
+Java-equivalent, or real-human validation.
