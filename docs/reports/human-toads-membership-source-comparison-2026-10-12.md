@@ -9,12 +9,28 @@ grid with the same shape. For array comparison, source axes 0 and 1 were
 flipped to align LPS voxel order with RAS. Source T1 and MaSeg voxel arrays
 were independently verified identical to the provided input arrays.
 
+The saved source output includes `ToadsSeperate/MultiAtlasStripping`, although
+`run_maCRUISE_v3.m` defaults `SkullStripMethod` to BET unless the caller
+overrides it. Its saved `MAstrip_mask` is exactly the binarized input MaSeg
+(Dice 1.0, zero differing voxels). The user-supplied `T1_bet_mask` differs
+from that source mask on the shared raw-T1 grid (Dice **0.95797**, 111,925
+voxels differ). `run_MultiAtlasStripping.m` then sends the masked T1 through
+`run_Spectre_jist.m`, whose SPECTRE2010 invocation requests 12-DOF affine
+registration, trilinear interpolation, and `inResample=false`. The source run
+therefore contains both a different brain-mask construction and a distinct
+pre-TOADS spatial operation. The output folder establishes that the
+MultiAtlas stage ran, but no saved run options/log establish how the wrapper
+overrode its BET default. The Python run intentionally remains in the supplied
+T1 working space and uses the user mask, per the selected workflow design.
+
 The source TOADS NIfTI headers use an LPS diagonal and zero origin, while
 Python outputs use an axis-aligned RAS affine anchored at the input center.
 Consequently these are **voxel-index membership diagnostics**, not physical
-grid equivalence. They do not isolate whether the differences arise from the
-source BET/MultiAtlasStrip/SPECTRE path, the Python brain-mask replacement,
-registration settings, or TOADS updates.
+grid equivalence. They do not isolate how much of the difference is
+attributable to the source MaSeg-derived mask, its SPECTRE preprocessing,
+registration settings, or subsequent TOADS updates. These findings do not
+justify changing the selected native-space Python workflow or substituting
+MaSeg for the user-supplied brain-mask input.
 
 ## Measurements
 
