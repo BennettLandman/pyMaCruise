@@ -118,8 +118,8 @@ def lesion_toads_post_registration_branch(
     previous = np.float32(previous_energy)
     energy = np.float32(membership.objective)
     distance = np.float32(max_distance)
-    if not np.isfinite(previous):
-        raise ValueError("previous energy must be finite")
+    if np.isinf(previous) or (np.isnan(previous) and source_energy_ratio is None):
+        raise ValueError("nonfinite previous energy requires its source-computed energy ratio")
     if not np.isfinite(distance) or distance < np.float32(0.0):
         raise ValueError("max_distance must be finite and nonnegative")
     if source_energy_ratio is None:

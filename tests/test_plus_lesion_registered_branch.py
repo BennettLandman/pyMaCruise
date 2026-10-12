@@ -600,20 +600,31 @@ def test_registered_loop_cli_routes_checkpoint_settings(tmp_path: Path, monkeypa
     assert captured["initial_correction_degree"] == 1
 
 
-def test_source_faithful_zero_variance_failure_is_recorded(tmp_path: Path) -> None:
+def test_source_faithful_zero_variance_nan_continues_through_registered_branch(tmp_path: Path) -> None:
     recrop = _run_recrop(tmp_path)
-    with pytest.raises(ValueError, match="initial membership objective must be finite"):
-        registered_branch.run_plus_lesion_registered_branch_checkpoint(
-            recrop.manifest_path,
-            ATLAS,
-            tmp_path / "source-faithful",
-            iterations=1,
-            first_thinning_limit=1000.0,
-        )
-    failure = json.loads((tmp_path / "source-faithful/lesion-registered-branch.json").read_text())["failure"]
-    assert failure["source_zero_variance_nan"] is True
-    assert failure["nonfinite_initial_energy_values"] > 0
-    assert failure["zero_class_standard_deviation_channels"] > 0
+    output = tmp_path / "source-faithful"
+    result = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, output,
+        iterations=1, first_thinning_limit=1000.0,
+    )
+    manifest = json.loads(result.manifest_path.read_text())
+    summary = json.loads(result.summary_path.read_text())
+    memberships = nib.load(manifest["outputs"]["memberships"]["path"])
+    diagnostics = nib.load(manifest["outputs"]["membership_diagnostics"]["path"])
+    assert manifest["status"] == "complete"
+    assert summary["source_zero_variance_nan"] is True
+    assert summary["transition_objective"] == "NaN"
+    assert summary["energy_ratio"] == "NaN"
+    assert summary["nonfinite_membership_values"] == 0
+    assert summary["nonfinite_membership_energy_values"] > 0
+    assert np.isfinite(np.asarray(memberships.dataobj)).all()
+    assert np.count_nonzero(~np.isfinite(np.asarray(diagnostics.dataobj))) == summary["nonfinite_membership_energy_values"]
+
+    resumed = registered_branch.run_plus_lesion_registered_branch_checkpoint(
+        recrop.manifest_path, ATLAS, output,
+        iterations=1, first_thinning_limit=1000.0, resume=True,
+    )
+    assert resumed.resumed
 
 
 def test_persisted_loop_workflow_connects_and_resumes_p41i_p41k_p41m(tmp_path: Path) -> None:
@@ -734,24 +745,29 @@ def test_plus_lesion_loop_workflow_cli_routes_source_faithful_default(tmp_path: 
     assert captured["resume"] is True
 
 
-def test_loop_workflow_records_source_faithful_nonfinite_failure(tmp_path: Path) -> None:
+def test_loop_workflow_records_source_faithful_nan_and_completes_one_pass(tmp_path: Path) -> None:
     recrop = _run_recrop(tmp_path)
     output = tmp_path / "source-faithful-workflow"
-    with pytest.raises(ValueError, match="initial membership objective must be finite"):
-        run_plus_lesion_loop_workflow(
-            recrop.manifest_path,
-            ATLAS,
-            output,
-            iterations=1,
-            first_thinning_limit=1000.0,
-        )
-    manifest = json.loads((output / "plus-lesion-loop-workflow.json").read_text())
+    result = run_plus_lesion_loop_workflow(
+        recrop.manifest_path, ATLAS, output,
+        iterations=1, first_thinning_limit=1000.0, max_passes=1,
+    )
+    manifest = json.loads(result.manifest_path.read_text())
     first_stage = json.loads((output / "first-iteration/lesion-first-iteration.json").read_text())
-    assert manifest["status"] == "failed"
-    assert manifest["active_stage"] == "first_iteration"
-    assert manifest["stages"]["first_iteration"]["status"] == "failed"
-    assert "initial membership objective must be finite" in manifest["stages"]["first_iteration"]["error"]
-    assert first_stage["failure"]["source_zero_variance_nan"] is True
+    branch_summary = json.loads(Path(result.registered_branch_manifest.parent / "registered_branch_summary.json").read_text())
+    loop_manifest = json.loads(result.registered_loop_manifest.read_text())
+    loop_summary = json.loads(Path(loop_manifest["outputs"]["summary"]["path"]).read_text())
+    assert manifest["status"] == "complete"
+    assert {name: stage["status"] for name, stage in manifest["stages"].items()} == {
+        "first_iteration": "complete", "registered_branch": "complete", "registered_loop": "complete",
+    }
+    assert first_stage["status"] == "complete"
+    assert json.loads(Path(first_stage["outputs"]["summary"]["path"]).read_text())["initial_energy"] == "NaN"
+    assert branch_summary["transition_objective"] == "NaN"
+    assert branch_summary["energy_ratio"] == "NaN"
+    assert loop_summary["transition_objective"] == "NaN"
+    assert loop_summary["energy_ratio"] == "NaN"
+    assert loop_summary["nonfinite_membership_energy_values"] > 0
 
 
 def test_registered_branch_cli_routes_finite_mode(tmp_path: Path, monkeypatch) -> None:

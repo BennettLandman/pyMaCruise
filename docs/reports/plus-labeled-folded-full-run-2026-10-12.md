@@ -2,7 +2,7 @@
 
 ## Result
 
-The current `plus-full-run` path completed input handling, orthogonal RAS
+The earlier `plus-full-run` attempt completed input handling, orthogonal RAS
 regridding, preprocessing, registration, registered recropping, first
 membership initialization, and first thinning on the committed 65³ folded
 synthetic fixture. It then stopped during the post-thinning GM-enabled
@@ -22,10 +22,11 @@ existing Java selected-method zero-variance harness confirms the resulting
 similarity can be NaN. Python's source-faithful numerical behavior therefore
 exposes a nonfinite objective, while this Python workflow currently stops at
 that point instead of continuing the Java loop. That stop-vs-continue behavior
-is an explicit integration gap; NaNs must not be silently replaced. A separate
-lesion-bearing fixture can exercise finite loop behavior, while source-faithful
-handling needs direct continuation/output comparison. The finite-zero-variance
-switch remains an explicit comparison option and was not used here.
+was an integration gap; NaNs must not be silently replaced. The implementation
+below closes this continuation gap on the smaller source-selected synthetic
+LesionTOADS workflow. The larger 65³ public `plus-full-run` has not been rerun
+source-faithfully, so this does not establish complete PLUS behavior. The
+finite-zero-variance switch remains an explicit comparison option.
 
 Source anchors: `run_LesionToads_jist.m:37` selects `With Lesion`;
 `LesionToadSegmentation.java:230-252` derives `hasLesion` from atlas topology;
@@ -71,11 +72,41 @@ MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
 
 ## Next step
 
-Implement a source-anchored Java comparison for the zero-variance continuation
-and its exported maps, then create a lesion-bearing synthetic case to exercise
-finite full-loop behavior. Keep source-faithful NaN behavior enabled and make
-the Python workflow's stop-versus-continue policy explicit until the Java
-comparison establishes the expected outputs.
+Run the labeled 65³ case through source-faithful `plus-full-run` and retain its
+manifest, stage products, runtime, peak RSS, and ribbon audit. Then compare the
+zero-variance continuation and exported maps against the selected Java path.
+The stabilized run remains a separate diagnostic because it changes
+zero-variance arithmetic.
+
+## Source-faithful zero-variance continuation integration
+
+The small committed atlas/T1 synthetic case now completes initial membership
+and thinning, the post-thinning GM membership update, and a one-pass registered
+loop checkpoint with `source_zero_variance_nan=true`. The initial and
+post-thinning energy scalars and loop ratio are explicitly stored as the JSON
+string `NaN`; diagnostic NIfTIs retain the source-generated nonfinite values
+with exact counts in their adjacent summaries. Membership maps and
+segmentation products remain finite. Restart validation checks both the
+nonfinite count and the source-faithful setting before accepting diagnostic
+NaNs. No NaNs are substituted or omitted.
+
+Focused command:
+
+```bash
+PYTHONNOUSERSITE=1 PYTHONPATH=src .venv/bin/pytest -q \
+  tests/test_plus_lesion_first_iteration.py \
+  tests/test_plus_lesion_registered_branch.py \
+  tests/test_lesion_post_registration_branch.py \
+  tests/test_lesion_initial_loop_entry.py \
+  tests/test_lesion_nan_post_registration_branch.py
+```
+
+Result: **19 passed in 39.61 seconds**. This is a small synthetic integration
+result, not a Java composite comparison, the 65³ public workflow, a
+ribbon-quality pass, or real-human PLUS validation. An unlimited
+source-faithful loop was intentionally not used for this checkpoint because
+NaN ratios do not satisfy the convergence threshold; `max_passes=1` proves one
+restartable pass only.
 
 ## Stabilized one-pass follow-up
 

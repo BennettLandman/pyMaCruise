@@ -18,6 +18,7 @@ import nibabel as nib
 import numpy as np
 
 from .image_io import load_nifti_ras, nifti_ras_on_reference, save_nifti_ras
+from .json_numbers import json_number
 from .lesion_atlas_priors import (
     load_lesion_atlas_priors,
     load_lesion_atlas_shape_priors,
@@ -97,7 +98,12 @@ def _valid_cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusL
         or images[5].shape != shape
         or any(nib.aff2axcodes(image.affine) != ("R", "A", "S") for image in images)
         or not all(np.isfinite(np.asarray(image.dataobj)).all() for image in images)
-        or not np.isfinite(np.asarray(diagnostics.dataobj)).all()
+        or int(np.count_nonzero(~np.isfinite(np.asarray(diagnostics.dataobj))))
+        != int(summary.get("nonfinite_membership_energy_values", -1))
+        or (
+            int(np.count_nonzero(~np.isfinite(np.asarray(diagnostics.dataobj))))
+            and not manifest.get("settings", {}).get("source_zero_variance_nan")
+        )
         or not np.isfinite(np.asarray(distances.dataobj)).all()
         or summary.get("spatial_convention") != "RAS"
     ):
@@ -331,8 +337,19 @@ def run_plus_lesion_registered_branch_checkpoint(
             atlas_names=tuple(item.name for item in priors.structures),
             progress_callback=record_progress,
         )
-        if not np.isfinite(transition.membership.membership.objective):
-            raise ValueError("post-thinning membership objective is nonfinite; source-faithful zero-variance behavior recorded")
+        # Java continues through the loop with NaN energy when a zero-variance
+        # channel divides by zero. Membership images must still be finite; the
+        # diagnostic channels and scalar objective are recorded with explicit
+        # nonfinite counts below for source comparison.
+        updated_membership = transition.membership.membership
+        if not all(np.isfinite(value).all() for value in (
+            updated_membership.class_memberships,
+            updated_membership.lesion_membership,
+            updated_membership.black_hole_membership,
+            updated_membership.outlier_membership,
+            updated_membership.lesion_relation,
+        )):
+            raise ValueError("post-thinning membership maps contain nonfinite values")
         record_progress("post_thinning_update:complete")
         template_topology = load_lesion_atlas_topology(descriptor)
         image_spacing = tuple(float(v) for v in np.linalg.norm(modalities_image.affine[:3, :3], axis=0))
@@ -407,10 +424,10 @@ def run_plus_lesion_registered_branch_checkpoint(
         summary_output = {
             "spatial_convention": "RAS",
             "class_names": [item.name for item in priors.structures],
-            "transition_objective": float(transition.membership.membership.objective),
-            "energy_ratio": float(transition.membership.energy_ratio.energy_ratio),
+            "transition_objective": json_number(transition.membership.membership.objective),
+            "energy_ratio": json_number(transition.membership.energy_ratio.energy_ratio),
             "energy_ratio_state": {
-                key: float(getattr(transition.membership.energy_ratio, key))
+                key: json_number(getattr(transition.membership.energy_ratio, key))
                 for key in (
                     "previous_energy", "current_energy", "difference", "numerator",
                     "denominator", "quotient", "energy_ratio",
@@ -440,6 +457,8 @@ def run_plus_lesion_registered_branch_checkpoint(
             "class_volume": branch.growing.class_volume.tolist(),
             "stage_order": list(branch_result.stage_order),
             "source_zero_variance_nan": source_zero_variance_nan,
+            "nonfinite_membership_values": int(np.count_nonzero(~np.isfinite(membership_values))),
+            "nonfinite_membership_energy_values": int(np.count_nonzero(~np.isfinite(membership_diagnostics))),
             "equivalence_note": manifest["equivalence_note"],
         }
         _json(summary_path, summary_output)

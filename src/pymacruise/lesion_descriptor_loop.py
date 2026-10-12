@@ -25,6 +25,7 @@ from .lesion_descriptor_registered_iteration import (
     register_and_branch_lesion_toads_descriptor_iteration,
 )
 from .lesion_post_registration import LesionToadsPostRegistrationBranch
+from .json_numbers import json_number
 from .lesion_registered_initial_membership import LesionInitialDistanceMaps
 from .lesion_registered_shapes import transform_registered_lesion_shape_priors
 
@@ -406,7 +407,7 @@ def run_lesion_toads_descriptor_loop(
         if progress_callback is not None:
             progress_callback({
                 "iteration": int(iteration),
-                "energy_ratio": float(transition.membership.energy_ratio.energy_ratio),
+                "energy_ratio": json_number(transition.membership.energy_ratio.energy_ratio),
                 "stop": bool(branch.stop),
                 "stop_reason": branch.stop_reason,
                 "stage_order": list(passes[-1].stage_order),

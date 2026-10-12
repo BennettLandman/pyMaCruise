@@ -57,21 +57,23 @@ def test_first_iteration_checkpoint_saves_source_ordered_membership_and_thinning
     tmp_path: Path, monkeypatch
 ) -> None:
     recrop = _run_recrop(tmp_path)
-    with pytest.raises(ValueError, match="initial membership objective must be finite"):
-        first_stage.run_plus_lesion_first_iteration_checkpoint(
-            recrop.manifest_path,
-            ATLAS,
-            tmp_path / "source-faithful",
-            iterations=1,
-            first_thinning_limit=1000.0,
-        )
-    failed = json.loads((tmp_path / "source-faithful/lesion-first-iteration.json").read_text())
-    assert failed["status"] == "failed"
-    assert failed["failure"]["source_zero_variance_nan"] is True
-    assert failed["failure"]["initial_objective_finite"] is False
-    assert failed["failure"]["nonfinite_initial_membership_values"] == 0
-    assert failed["failure"]["nonfinite_initial_energy_values"] > 0
-    assert failed["failure"]["zero_lesion_standard_deviation_channels"] == 2
+    source_result = first_stage.run_plus_lesion_first_iteration_checkpoint(
+        recrop.manifest_path,
+        ATLAS,
+        tmp_path / "source-faithful",
+        iterations=1,
+        first_thinning_limit=1000.0,
+    )
+    source_manifest = json.loads(source_result.manifest_path.read_text())
+    source_summary = json.loads(source_result.summary_path.read_text())
+    source_diagnostics = nib.load(source_manifest["outputs"]["membership_diagnostics"]["path"])
+    assert source_manifest["status"] == "complete"
+    assert source_manifest["settings"]["source_zero_variance_nan"] is True
+    assert source_summary["initial_energy"] == "NaN"
+    assert source_summary["nonfinite_membership_values"] == 0
+    assert source_summary["nonfinite_membership_energy_values"] > 0
+    assert np.count_nonzero(~np.isfinite(np.asarray(source_diagnostics.dataobj))) == source_summary["nonfinite_membership_energy_values"]
+    assert source_summary["zero_lesion_standard_deviation_channels"] == 2
 
     captured = {}
     source_initial = first_stage.run_lesion_toads_registered_initial_membership

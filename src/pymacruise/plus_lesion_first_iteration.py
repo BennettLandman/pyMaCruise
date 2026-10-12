@@ -26,6 +26,7 @@ from .lesion_registered_initial_membership import (
     LesionInitialDistanceMaps,
     LesionRegisteredInitialMembership,
 )
+from .json_numbers import json_number
 from .lesion_relations import LesionRelationList
 from .lesion_standard13_volume import Standard13VolumeResult
 from .lesion_registered_initial_membership import (
@@ -86,8 +87,13 @@ def hydrate_plus_lesion_first_iteration_state(
     distances = np.asarray(images["distance_state"].dataobj, dtype=np.int16)
     if packed.shape != (*spatial, 17) or diagnostics.shape != (*spatial, 17) or distances.shape != (*spatial, 6):
         raise ValueError("first-iteration checkpoint state has invalid channel counts")
-    if not np.isfinite(packed).all() or not np.isfinite(diagnostics).all():
-        raise ValueError("first-iteration membership state contains nonfinite values")
+    diagnostic_nonfinite = int(np.count_nonzero(~np.isfinite(diagnostics)))
+    if (
+        not np.isfinite(packed).all()
+        or diagnostic_nonfinite != int(summary.get("nonfinite_membership_energy_values", -1))
+        or (diagnostic_nonfinite and not manifest.get("settings", {}).get("source_zero_variance_nan"))
+    ):
+        raise ValueError("first-iteration membership state contains unreported nonfinite values")
     membership = Standard13VolumeResult(
         class_memberships=packed[..., :13],
         lesion_membership=packed[..., 13],
@@ -98,7 +104,7 @@ def hydrate_plus_lesion_first_iteration_state(
         class_energies=diagnostics[..., 1:14],
         lesion_energy=diagnostics[..., 14],
         black_hole_energy=diagnostics[..., 15],
-        objective=np.float32(summary["initial_energy"]),
+        objective=np.float32(float(summary["initial_energy"])),
         running_objective=diagnostics[..., 16],
     )
     loop_entry = seed_lesion_toads_initial_loop(
@@ -212,6 +218,8 @@ def _cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusLesionF
     except (OSError, ValueError, json.JSONDecodeError):
         return None
     spatial = memberships.shape[:3]
+    diagnostics_array = np.asarray(diagnostics.dataobj)
+    diagnostics_nonfinite = int(np.count_nonzero(~np.isfinite(diagnostics_array)))
     if (
         len(memberships.shape) != 4
         or memberships.shape[-1] != 17
@@ -225,7 +233,8 @@ def _cached(manifest: dict[str, Any], signature: str, root: Path) -> PlusLesionF
         or availability.shape != (*spatial, 13)
         or any(nib.aff2axcodes(image.affine) != ("R", "A", "S") for image in (memberships, diagnostics, distances, relations, segmentation, skeleton, availability, ordering))
         or not np.isfinite(np.asarray(memberships.dataobj)).all()
-        or not np.isfinite(np.asarray(diagnostics.dataobj)).all()
+        or diagnostics_nonfinite != int(summary.get("nonfinite_membership_energy_values", -1))
+        or (diagnostics_nonfinite and not manifest.get("settings", {}).get("source_zero_variance_nan"))
         or summary.get("spatial_convention") != "RAS"
     ):
         return None
@@ -491,9 +500,9 @@ def run_plus_lesion_first_iteration_checkpoint(
         "spatial_convention": "RAS",
         "class_names": list(priors.structures[i].name for i in range(13)),
         "membership_channels": [*list(priors.structures[i].name for i in range(13)), "lesion", "black_hole", "outlier", "lesion_relation"],
-        "initial_energy": float(result.membership.objective),
-        "loop_entry_energy_ratio": float(result.loop_entry.energy_ratio),
-        "loop_entry_previous_energy": float(result.loop_entry.previous_energy),
+        "initial_energy": json_number(result.membership.objective),
+        "loop_entry_energy_ratio": json_number(result.loop_entry.energy_ratio),
+        "loop_entry_previous_energy": json_number(result.loop_entry.previous_energy),
         "loop_entry_gm_flag": bool(result.loop_entry.gm_flag),
         "first_thinning_events": len(thinning.events),
         "first_thinning_class_volume": thinning.class_volume.tolist(),
@@ -501,6 +510,7 @@ def run_plus_lesion_first_iteration_checkpoint(
         "relation_diffusion_iterations": result.relations.diffusion_iterations,
         "relation_membership": result.relations.relation_membership.astype(np.uint8).tolist(),
         "nonfinite_membership_values": nan_count,
+        "nonfinite_membership_energy_values": int(np.count_nonzero(~np.isfinite(diagnostics))),
         "source_zero_variance_nan": source_zero_variance_nan,
         "zero_class_standard_deviation_channels": int(
             np.count_nonzero(result.variances.class_standard_deviation == np.float32(0.0))

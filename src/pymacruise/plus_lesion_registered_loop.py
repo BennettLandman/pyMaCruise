@@ -18,6 +18,7 @@ import nibabel as nib
 import numpy as np
 
 from .image_io import load_nifti_ras, nifti_ras_on_reference, save_nifti_ras
+from .json_numbers import json_number
 from .lesion_atlas_priors import (
     load_lesion_atlas_priors,
     load_lesion_atlas_shape_priors,
@@ -126,8 +127,13 @@ def hydrate_plus_lesion_registered_branch(
     distance_state = np.asarray(images["distance_state"].dataobj, dtype=np.int16)
     if packed.shape != (*spatial, 17) or diagnostics.shape != (*spatial, 17) or distance_state.shape != (*spatial, 6):
         raise RegisteredBranchStateError("registered-branch state channel shapes are invalid")
-    if not all(np.isfinite(array).all() for array in (packed, diagnostics)):
-        raise RegisteredBranchStateError("registered-branch membership state contains nonfinite values")
+    nonfinite_diagnostics = int(np.count_nonzero(~np.isfinite(diagnostics)))
+    if (
+        not np.isfinite(packed).all()
+        or nonfinite_diagnostics != int(summary.get("nonfinite_membership_energy_values", -1))
+        or (nonfinite_diagnostics and not summary.get("source_zero_variance_nan"))
+    ):
+        raise RegisteredBranchStateError("registered-branch state contains unreported nonfinite values")
 
     ratio_state = summary["energy_ratio_state"]
     ratio = LesionEnergyRatio(**{key: np.float32(value) for key, value in ratio_state.items()})
@@ -640,9 +646,9 @@ def persist_plus_lesion_registered_loop_checkpoint(
     summary_output = {
         "spatial_convention": "RAS",
         "class_names": parent_summary["class_names"],
-        "transition_objective": float(membership.objective),
-        "energy_ratio": float(ratio.energy_ratio),
-        "energy_ratio_state": {key: float(getattr(ratio, key)) for key in (
+        "transition_objective": json_number(membership.objective),
+        "energy_ratio": json_number(ratio.energy_ratio),
+        "energy_ratio_state": {key: json_number(getattr(ratio, key)) for key in (
             "previous_energy", "current_energy", "difference", "numerator",
             "denominator", "quotient", "energy_ratio",
         )},
@@ -671,6 +677,9 @@ def persist_plus_lesion_registered_loop_checkpoint(
             if branch.relations is not None else None
         ),
         "class_volume": branch.growing.class_volume.tolist() if branch.growing is not None else None,
+        "source_zero_variance_nan": bool(parent_summary.get("source_zero_variance_nan", False)),
+        "nonfinite_membership_values": int(np.count_nonzero(~np.isfinite(packed_memberships))),
+        "nonfinite_membership_energy_values": int(np.count_nonzero(~np.isfinite(diagnostics))),
         "stage_order": list(loop.passes[-1].stage_order),
         "completed_iteration": int(completed_iteration),
         "final_correction_degree": int(loop.final_correction_degree),

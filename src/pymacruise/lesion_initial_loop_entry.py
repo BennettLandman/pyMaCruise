@@ -58,9 +58,10 @@ def seed_lesion_toads_initial_loop(
     ):
         raise ValueError("thread_stopped and is_working must be booleans")
 
+    # AlgorithmLesionToads assigns Eprev=energy and seeds Eratio=1.0f without
+    # a finite-value guard. A source NaN still enters the loop; convergence
+    # comparisons against NaN are false, matching the selected Java path.
     energy = np.float32(initial_membership.objective)
-    if not np.isfinite(energy):
-        raise ValueError("initial membership objective must be finite")
     stop = int(iterations) == 0
     enter_loop = bool((not stop) and (not thread_stopped) and is_working)
     stages = [
