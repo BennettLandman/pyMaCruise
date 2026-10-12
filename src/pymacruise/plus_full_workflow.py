@@ -13,6 +13,7 @@ import numpy as np
 
 from pymacruise.image_io import (
     is_axis_aligned_ras_grid,
+    is_orthogonal_ras_grid,
     normalize_image_to_ras,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
@@ -160,10 +161,10 @@ def run_plus_full_workflow(
     if not isinstance(t1_image, (nib.Nifti1Image, nib.Nifti2Image)) or len(t1_image.shape) != 3:
         raise ValueError("T1 must be a 3-D NIfTI reference image")
     t1_ras = normalize_image_to_ras(t1_image, source_name="T1")
-    if not regrid_inputs and not is_axis_aligned_ras_grid(t1_ras):
+    if not regrid_inputs and not is_orthogonal_ras_grid(t1_ras):
         raise ValueError(
-            "TOADS requires an axis-aligned RAS grid; regridding is disabled, "
-            "so provide an orthogonal RAS T1 or enable --regrid-inputs"
+            "TOADS requires orthogonal RAS voxel axes; the no-regrid path "
+            "preserves oblique orthogonal grids but cannot use sheared grids"
         )
     for path, name in ((mask, "brain mask"), (maseg, "MaSeg")):
         image = nib.load(str(path))

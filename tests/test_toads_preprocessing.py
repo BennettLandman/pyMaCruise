@@ -157,10 +157,34 @@ def test_toads_ras_geometry_reorients_permuted_axis_orders(
     )
 
 
-def test_toads_ras_geometry_rejects_oblique_affines() -> None:
+def test_toads_ras_geometry_preserves_oblique_orthogonal_affines() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    affine = t1.affine.copy()
+    angle = np.deg2rad(11.0)
+    rotation = np.asarray(
+        [[np.cos(angle), -np.sin(angle), 0.0],
+         [np.sin(angle), np.cos(angle), 0.0],
+         [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    )
+    affine[:3, :3] = rotation @ affine[:3, :3]
+    oblique = nib.Nifti1Image(np.asanyarray(t1.dataobj), affine)
+    geometry = toads_ras_geometry(oblique)
+
+    assert nib.aff2axcodes(geometry.image.affine) == ("R", "A", "S")
+    np.testing.assert_allclose(
+        geometry.image.affine[:3, :3], affine[:3, :3], rtol=0, atol=1e-5
+    )
+    np.testing.assert_array_equal(
+        geometry.signed_image_resolutions_mm,
+        np.asarray((-1.0, -1.0, 1.0), dtype=np.float64),
+    )
+
+
+def test_toads_ras_geometry_rejects_sheared_affines() -> None:
     t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
     affine = t1.affine.copy()
     affine[0, 1] = 0.1
-    oblique = nib.Nifti1Image(np.asanyarray(t1.dataobj), affine)
-    with pytest.raises(ValueError, match="oblique or sheared"):
-        toads_ras_geometry(oblique)
+    sheared = nib.Nifti1Image(np.asanyarray(t1.dataobj), affine)
+    with pytest.raises(ValueError, match="orthogonal RAS voxel axes"):
+        toads_ras_geometry(sheared)

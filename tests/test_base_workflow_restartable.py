@@ -322,7 +322,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     } == hashes_before
 
 
-def test_base_run_can_disable_regridding_but_rejects_oblique_grid(tmp_path) -> None:
+def test_base_run_can_preserve_oblique_grid_when_regridding_is_disabled(tmp_path, monkeypatch) -> None:
     source_t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     angle = np.deg2rad(8.0)
     rotation = np.array(
@@ -342,12 +342,22 @@ def test_base_run_can_disable_regridding_but_rejects_oblique_grid(tmp_path) -> N
     maseg = nib.load(str(MASEG))
     nib.save(nib.Nifti1Image(np.asarray(maseg.dataobj), affine), maseg_path)
 
-    with pytest.raises(ValueError, match="regridding is disabled"):
+    def stop_before_n4(command: list[str]) -> None:
+        assert command[0] == "n4"
+        raise RuntimeError("stopped after no-regrid preflight")
+
+    monkeypatch.setattr(base_workflow_module, "cli_main", stop_before_n4)
+    output = tmp_path / "no-regrid"
+    with pytest.raises(RuntimeError, match="stopped after no-regrid preflight"):
         run_base_workflow(
             t1_path=t1_path,
             brain_mask_path=mask_path,
             atlas_descriptor=ATLAS,
             maseg_path=maseg_path,
-            output_dir=tmp_path / "no-regrid",
+            output_dir=output,
             options=BaseRunOptions(regrid_inputs=False),
         )
+    manifest = json.loads((output / "run.json").read_text())
+    assert manifest["options"]["regrid_inputs"] is False
+    assert not any("regridded-inputs" in item["path"] for item in manifest["derived_resources"])
+    assert manifest["stages"]["n4"]["status"] == "failed"

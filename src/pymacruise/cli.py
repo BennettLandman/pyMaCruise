@@ -382,7 +382,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help=(
             "recommended: resample oblique RAS inputs to an orthogonal grid "
-            "(default: enabled; use --no-regrid-inputs for aligned legacy inputs)"
+            "(default: enabled; --no-regrid-inputs preserves an oblique orthogonal RAS grid without interpolation)"
         ),
     )
     base_run.add_argument("--registration-levels", type=int, default=1)
@@ -580,7 +580,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help=(
             "recommended: resample oblique RAS T1, mask, and MaSeg to an "
-            "orthogonal grid (default: enabled; use --no-regrid-inputs for aligned legacy inputs)"
+            "orthogonal grid (default: enabled; --no-regrid-inputs preserves an oblique orthogonal RAS grid without interpolation)"
         ),
     )
     plus_full.add_argument(

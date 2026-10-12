@@ -24,6 +24,7 @@ from pymacruise.cli import main as cli_main
 from pymacruise.contracts import has_finite_integer_values
 from pymacruise.image_io import (
     is_axis_aligned_ras_grid,
+    is_orthogonal_ras_grid,
     normalize_image_to_ras,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
@@ -428,10 +429,10 @@ def run_base_workflow(
         reference = normalize_image_to_ras(orthogonal_t1, source_name="regridded base T1")
         mask = normalize_image_to_ras(orthogonal_mask, source_name="regridded brain mask")
         maseg_image = normalize_image_to_ras(orthogonal_maseg, source_name="regridded MaSeg")
-    elif not options.regrid_inputs and not is_axis_aligned_ras_grid(reference):
+    elif not options.regrid_inputs and not is_orthogonal_ras_grid(reference):
         raise ValueError(
-            "TOADS requires an axis-aligned RAS grid; regridding is disabled, "
-            "so provide an orthogonal RAS T1 or enable --regrid-inputs"
+            "TOADS requires orthogonal RAS voxel axes; the no-regrid path "
+            "preserves oblique orthogonal grids but cannot use sheared grids"
         )
     run_atlas = _materialize_dura_atlas(atlas_descriptor, output_dir / "resources" / "dura-atlas")
     materialized_audit = run_atlas.parent / "CONVERSION_AUDIT.json"

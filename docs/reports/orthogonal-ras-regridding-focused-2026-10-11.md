@@ -14,10 +14,13 @@ neighbor. The plus workflow leaves FLAIR on its own grid for the existing
 registration step. Derived images are saved as `.nii.gz`, and their paths and
 SHA-256 hashes are recorded in the top-level run manifest.
 
-With regridding disabled, an oblique T1 is rejected before a run manifest is
-created because the current TOADS registration implementation requires an
-axis-aligned RAS grid. An already axis-aligned RAS input can be run with
-`--no-regrid-inputs` without interpolation.
+With regridding disabled, an oblique but orthogonal RAS T1/mask/MaSeg grid is
+preserved without resampling. The selected TOADS registration adapter uses the
+source MIPAV axis signs and voxel spacings; it does not pass affine rotation
+terms into atlas registration. The full RAS affine remains on saved images for
+physical-space operations and surfaces. Sheared grids remain unsupported.
+Inputs with non-RAS axis codes are still reoriented to RAS without
+interpolation and emit the standard warning.
 
 ## Evidence
 
@@ -40,3 +43,18 @@ equivalence or real-MRI output equivalence. The earlier full suite is recorded
 separately in [the full-suite report](full-pytest-2026-10-11-orthogonal-regridding.md)
 for tested tree `cabb52aa`; that run predates the current implementation tree
 and is not a fresh full-suite result for the current checkout.
+
+## Oblique no-resampling opt-out — 2026-10-12
+
+The previous opt-out rejected oblique RAS grids. It now preserves an oblique,
+orthogonal RAS input grid in both full workflows, records
+`regrid_inputs=false`, and creates no regridded input resources. The TOADS
+geometry adapter accepts rigid obliquity and still rejects shears. CLI help
+describes the opt-out as preserving the original grid without interpolation.
+
+Focused validation result: **19 passed, 0 failed, 0 skipped in 0.94s**, peak
+sampled RSS **0.125 GB** under an 8 GB watchdog. The selected tests cover grid
+classification, TOADS signed-spacing behavior, no-regrid manifest/resource
+behavior for both workflows, default regridding, and shear rejection. This
+does not yet compare a no-regrid oblique workflow with a complete historical
+Java/MATLAB run.

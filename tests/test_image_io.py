@@ -7,6 +7,7 @@ import pytest
 from pymacruise.image_io import (
     ImageGeometryError,
     is_axis_aligned_ras_grid,
+    is_orthogonal_ras_grid,
     load_nifti_ras,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
@@ -115,6 +116,21 @@ def test_oblique_ras_inputs_regrid_to_one_orthogonal_grid_with_role_interpolatio
     np.testing.assert_array_equal(np.unique(np.asarray(target_mask.dataobj)), [0, 1])
     np.testing.assert_array_equal(np.unique(np.asarray(target_maseg.dataobj)), [0, 100])
     assert np.isfinite(np.asarray(target_t1.dataobj)).all()
+
+
+def test_orthogonal_ras_grid_recognizes_oblique_without_regridding() -> None:
+    angle = np.deg2rad(17.0)
+    affine = np.eye(4)
+    affine[:3, :3] = np.asarray(
+        [[np.cos(angle), -np.sin(angle), 0.0],
+         [np.sin(angle), np.cos(angle), 0.0],
+         [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    ) @ np.diag((1.0, 1.2, 1.5))
+    image = nib.Nifti1Image(np.zeros((4, 5, 6), dtype=np.float32), affine)
+
+    assert is_orthogonal_ras_grid(image)
+    assert not is_axis_aligned_ras_grid(image)
 
 
 def test_axis_aligned_ras_regrid_is_a_noop_and_rejects_other_interpolators() -> None:

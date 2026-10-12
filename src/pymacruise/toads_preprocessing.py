@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import nibabel as nib
 import numpy as np
 
-from pymacruise.image_io import normalize_image_to_ras
+from pymacruise.image_io import is_orthogonal_ras_grid, normalize_image_to_ras
 
 
 @dataclass(frozen=True)
@@ -52,9 +52,11 @@ def toads_ras_geometry(
     L→R, P→A, and I→S, which produce signed spacings ``(-sx, -sy, +sz)``.
     ``ParametricTransform.imageToTemplate`` uses voxel centers and these
     signed spacings; its source inputs have no NIfTI world-origin translation,
-    so that origin does not affect the atlas map. Oblique/sheared grids are
-    rejected because the source model only represents axis-aligned spacing
-    and signs.
+    so that origin does not affect the atlas map. For an oblique but orthogonal
+    acquisition grid, the selected source model continues to use voxel-axis
+    signs and spacings; the full RAS affine is retained for image I/O and
+    surface coordinates. Sheared grids are rejected because they cannot be
+    represented by three independent source spacings.
     """
     source_codes = tuple(nib.aff2axcodes(image.affine))
     normalized = normalize_image_to_ras(image, source_name=source_name)
@@ -62,10 +64,9 @@ def toads_ras_geometry(
         raise ValueError("TOADS spatial geometry requires a 3D single-volume image")
     if nib.aff2axcodes(normalized.affine) != ("R", "A", "S"):
         raise ValueError("TOADS image could not be represented on an RAS voxel grid")
+    if not is_orthogonal_ras_grid(normalized):
+        raise ValueError("TOADS source registration requires orthogonal RAS voxel axes; sheared grids are unsupported")
     zooms = np.asarray(nib.affines.voxel_sizes(normalized.affine), dtype=np.float64)
-    directions = normalized.affine[:3, :3] / zooms[np.newaxis, :]
-    if not np.allclose(directions, np.eye(3), rtol=0, atol=1e-6):
-        raise ValueError("TOADS source registration does not support oblique or sheared RAS grids")
     if not np.isfinite(zooms).all() or np.any(zooms <= 0):
         raise ValueError("TOADS image voxel sizes must be finite and positive")
 

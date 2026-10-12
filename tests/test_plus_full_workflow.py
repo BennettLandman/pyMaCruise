@@ -69,13 +69,6 @@ def test_plus_full_workflow_regrids_oblique_t1_mask_and_maseg_by_default(
         image = nib.load(str(path))
         nib.save(nib.Nifti1Image(np.asarray(image.dataobj), affine), path)
 
-    with pytest.raises(ValueError, match="regridding is disabled"):
-        plus_full_workflow_module.run_plus_full_workflow(
-            t1, flair, mask, maseg, ATLAS, tmp_path / "no-regrid-plus",
-            regrid_inputs=False,
-        )
-    assert not (tmp_path / "no-regrid-plus" / "plus-full-workflow.json").exists()
-
     def stop_after_preprocessing_inputs(*args, **kwargs):
         raise RuntimeError("captured regridded inputs")
 
@@ -84,6 +77,19 @@ def test_plus_full_workflow_regrids_oblique_t1_mask_and_maseg_by_default(
         "run_plus_lesion_preprocessing_checkpoint",
         stop_after_preprocessing_inputs,
     )
+    no_regrid_output = tmp_path / "no-regrid-plus"
+    with pytest.raises(RuntimeError, match="captured regridded inputs"):
+        plus_full_workflow_module.run_plus_full_workflow(
+            t1, flair, mask, maseg, ATLAS, no_regrid_output,
+            regrid_inputs=False,
+        )
+    no_regrid_manifest = json.loads(
+        (no_regrid_output / "plus-full-workflow.json").read_text()
+    )
+    assert no_regrid_manifest["settings"]["regrid_inputs"] is False
+    assert no_regrid_manifest["derived_resources"]["regridded_inputs"] == []
+    assert no_regrid_manifest["inputs"]["t1"]["path"] == str(t1.resolve())
+
     output = tmp_path / "regrid-plus"
     with pytest.raises(RuntimeError, match="captured regridded inputs"):
         plus_full_workflow_module.run_plus_full_workflow(

@@ -64,11 +64,28 @@ def normalize_image_to_ras(
 
 def is_axis_aligned_ras_grid(image: nib.spatialimages.SpatialImage) -> bool:
     """Return whether a 3-D image uses positive, axis-aligned RAS voxel axes."""
-    if len(image.shape) != 3 or nib.aff2axcodes(image.affine) != ("R", "A", "S"):
+    if not is_orthogonal_ras_grid(image):
         return False
     spacing = nib.affines.voxel_sizes(image.affine)
     directions = np.asarray(image.affine[:3, :3], dtype=np.float64) / spacing[np.newaxis, :]
     return bool(np.allclose(directions, np.eye(3), rtol=0, atol=1e-6))
+
+
+def is_orthogonal_ras_grid(image: nib.spatialimages.SpatialImage) -> bool:
+    """Return whether a 3-D RAS grid has mutually orthogonal voxel axes.
+
+    Oblique rotation is allowed; sheared axes are not. This distinction lets
+    callers preserve a valid oblique acquisition grid without resampling while
+    still rejecting geometry that the selected TOADS spacing model cannot
+    represent.
+    """
+    if len(image.shape) != 3 or nib.aff2axcodes(image.affine) != ("R", "A", "S"):
+        return False
+    spacing = np.asarray(nib.affines.voxel_sizes(image.affine), dtype=np.float64)
+    if not np.isfinite(spacing).all() or np.any(spacing <= 0):
+        return False
+    directions = np.asarray(image.affine[:3, :3], dtype=np.float64) / spacing[np.newaxis, :]
+    return bool(np.allclose(directions.T @ directions, np.eye(3), rtol=0, atol=1e-6))
 
 
 def regrid_to_orthogonal_ras(
