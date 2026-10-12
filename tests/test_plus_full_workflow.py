@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from pymacruise.cli import build_parser, main
+from pymacruise.image_io import is_axis_aligned_ras_grid
 from pymacruise.lesion_dura_outputs import generate_lesion_dura_removal_outputs
 from pymacruise.spatial_transfer import transfer_to_reference_space
 from pymacruise import workflow
@@ -68,6 +69,13 @@ def test_plus_full_workflow_regrids_oblique_t1_mask_and_maseg_by_default(
     for path in (t1, mask, maseg):
         image = nib.load(str(path))
         nib.save(nib.Nifti1Image(np.asarray(image.dataobj), affine), path)
+    flair_image = nib.load(str(flair))
+    flair_affine = flair_image.affine.copy()
+    flair_center_index = (np.asarray(flair_image.shape) - 1) / 2
+    flair_center = nib.affines.apply_affine(flair_affine, flair_center_index)
+    flair_affine[:3, :3] = rotation @ flair_affine[:3, :3]
+    flair_affine[:3, 3] = flair_center - flair_affine[:3, :3] @ flair_center_index
+    nib.save(nib.Nifti1Image(np.asarray(flair_image.dataobj), flair_affine), flair)
 
     def stop_after_preprocessing_inputs(*args, **kwargs):
         raise RuntimeError("captured regridded inputs")
@@ -88,7 +96,13 @@ def test_plus_full_workflow_regrids_oblique_t1_mask_and_maseg_by_default(
     )
     assert no_regrid_manifest["settings"]["regrid_inputs"] is False
     assert no_regrid_manifest["derived_resources"]["regridded_inputs"] == []
-    assert no_regrid_manifest["inputs"]["t1"]["path"] == str(t1.resolve())
+    oriented = no_regrid_manifest["derived_resources"]["orientation_only_inputs"]
+    assert {item["role"] for item in oriented} == {"t1", "flair", "brain_mask", "maseg"}
+    oriented_images = {item["role"]: nib.load(item["path"]) for item in oriented}
+    assert all(is_axis_aligned_ras_grid(image) for image in oriented_images.values())
+    assert len({(oriented_images[role].shape, tuple(oriented_images[role].affine.ravel()))
+                for role in ("t1", "brain_mask", "maseg")}) == 1
+    assert oriented_images["flair"].shape == nib.load(str(flair)).shape
 
     output = tmp_path / "regrid-plus"
     with pytest.raises(RuntimeError, match="captured regridded inputs"):

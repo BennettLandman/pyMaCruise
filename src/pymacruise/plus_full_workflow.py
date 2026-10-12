@@ -15,6 +15,7 @@ from pymacruise.image_io import (
     is_axis_aligned_ras_grid,
     is_orthogonal_ras_grid,
     normalize_image_to_ras,
+    orient_to_ras_without_obliquity,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
 )
@@ -157,20 +158,25 @@ def run_plus_full_workflow(
     root = Path(output_dir).expanduser().resolve()
     # Reject source-grid mismatches before costly work. Regridding changes only
     # an oblique T1 grid; its paired mask and MaSeg use nearest-neighbor sampling.
-    t1_image = nib.load(str(t1))
+    raw_t1_image = nib.load(str(t1))
+    t1_image = raw_t1_image
     if not isinstance(t1_image, (nib.Nifti1Image, nib.Nifti2Image)) or len(t1_image.shape) != 3:
         raise ValueError("T1 must be a 3-D NIfTI reference image")
     t1_ras = normalize_image_to_ras(t1_image, source_name="T1")
     if not regrid_inputs and not is_orthogonal_ras_grid(t1_ras):
         raise ValueError(
-            "TOADS requires orthogonal RAS voxel axes; the no-regrid path "
-            "preserves oblique orthogonal grids but cannot use sheared grids"
+            "TOADS requires orthogonal voxel axes; the no-regrid path can discard "
+            "obliquity without interpolation but cannot use sheared grids"
         )
-    for path, name in ((mask, "brain mask"), (maseg, "MaSeg")):
+    raw_grid_inputs: dict[str, nib.spatialimages.SpatialImage] = {"t1": raw_t1_image}
+    normalized_grid_inputs: dict[str, nib.spatialimages.SpatialImage] = {"t1": t1_ras}
+    for role, path, name in (("brain_mask", mask, "brain mask"), ("maseg", maseg, "MaSeg")):
         image = nib.load(str(path))
         if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)) or len(image.shape) != 3:
             raise ValueError(f"{name} must be a 3-D NIfTI image")
         image_ras = normalize_image_to_ras(image, source_name=name)
+        raw_grid_inputs[role] = image
+        normalized_grid_inputs[role] = image_ras
         if image_ras.shape != t1_ras.shape or not np.allclose(
             image_ras.affine, t1_ras.affine, rtol=0, atol=1e-5
         ):
@@ -205,6 +211,7 @@ def run_plus_full_workflow(
         "loop_thinning_limit": float(loop_thinning_limit),
         "max_passes": int(max_passes),
         "regrid_inputs": regrid_inputs,
+        "no_regrid_behavior": "axis-permute-flip-and-discard-obliquity-without-interpolation",
         "dura_transfer_mode": dura_transfer_mode,
     }
     signature_data = {
@@ -267,6 +274,7 @@ def run_plus_full_workflow(
         _write_json(manifest_path, manifest)
 
     regridded_resources: list[dict[str, str]] = []
+    orientation_only_resources: list[dict[str, str]] = []
     if regrid_inputs and not is_axis_aligned_ras_grid(t1_ras):
         print(
             "Plus workflow: regridding oblique RAS T1, brain mask, and MaSeg "
@@ -294,11 +302,66 @@ def run_plus_full_workflow(
             save_nifti_ras(image, path)
             regridded_resources.append({"role": role, "path": str(path), "sha256": _sha256(path)})
         t1, mask, maseg = derived["t1"][0], derived["brain_mask"][0], derived["maseg"][0]
+    elif not regrid_inputs:
+        raw_flair = nib.load(str(flair))
+        if not isinstance(raw_flair, (nib.Nifti1Image, nib.Nifti2Image)) or len(raw_flair.shape) != 3:
+            raise ValueError("FLAIR must be a 3-D NIfTI image")
+        normalized_inputs = {
+            **normalized_grid_inputs,
+            "flair": normalize_image_to_ras(raw_flair, source_name="FLAIR"),
+        }
+        raw_inputs = {**raw_grid_inputs, "flair": raw_flair}
+        orientation_inputs = {
+            role: orient_to_ras_without_obliquity(image, source_name=role.replace("_", " "))
+            for role, image in normalized_inputs.items()
+        }
+        oriented_roles = {
+            role for role, image in raw_inputs.items()
+            if nib.aff2axcodes(image.affine) != ("R", "A", "S") or not is_axis_aligned_ras_grid(image)
+        }
+        if oriented_roles:
+            print(
+                "Plus workflow: using orientation-only RAS inputs for "
+                + ", ".join(sorted(oriented_roles))
+                + " (axis permutations/flips only; no interpolation; oblique direction cosines are discarded)."
+            )
+            oriented_dir = root / "resources" / "orientation-only-inputs"
+            oriented_dir.mkdir(parents=True, exist_ok=True)
+            input_paths = {"t1": t1, "flair": flair, "brain_mask": mask, "maseg": maseg}
+            for role in sorted(oriented_roles):
+                image = orientation_inputs[role]
+                path = oriented_dir / {
+                    "t1": "T1.nii.gz", "flair": "FLAIR.nii.gz",
+                    "brain_mask": "BrainMask.nii.gz", "maseg": "MaSeg.nii.gz",
+                }[role]
+                save_nifti_ras(image, path)
+                orientation_only_resources.append(
+                    {"role": role, "path": str(path), "sha256": _sha256(path)}
+                )
+                input_paths[role] = path
+            t1, flair, mask, maseg = (
+                input_paths["t1"], input_paths["flair"],
+                input_paths["brain_mask"], input_paths["maseg"],
+            )
+            aligned_grid = orientation_inputs["t1"]
+            for role in ("brain_mask", "maseg"):
+                image = orientation_inputs[role]
+                if image.shape != aligned_grid.shape or not np.allclose(
+                    image.affine, aligned_grid.affine, rtol=0, atol=1e-5
+                ):
+                    raise ValueError(f"{role} must match T1 after orientation-only RAS conversion")
 
     stage_root.mkdir(parents=True, exist_ok=True)
     manifest["implementation_signature"] = implementation_signature
     manifest["stage_root"] = str(stage_root)
-    manifest["derived_resources"] = {"regridded_inputs": regridded_resources}
+    manifest["derived_resources"] = {
+        "regridded_inputs": regridded_resources,
+        "orientation_only_inputs": orientation_only_resources,
+    }
+    manifest["input_geometry_handling"] = (
+        "resampled-to-orthogonal-RAS" if regrid_inputs
+        else "axis-permute-flip-and-discard-obliquity-without-interpolation"
+    )
     _write_json(manifest_path, manifest)
 
     stage_paths = {

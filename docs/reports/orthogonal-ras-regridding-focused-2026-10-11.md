@@ -44,17 +44,23 @@ separately in [the full-suite report](full-pytest-2026-10-11-orthogonal-regriddi
 for tested tree `cabb52aa`; that run predates the current implementation tree
 and is not a fresh full-suite result for the current checkout.
 
-## Oblique no-resampling opt-out — 2026-10-12
+## Clarified orientation-only no-regrid mode — 2026-10-12
 
-The previous opt-out rejected oblique RAS grids. It now preserves an oblique,
-orthogonal RAS input grid in both full workflows, records
-`regrid_inputs=false`, and creates no regridded input resources. The TOADS
-geometry adapter accepts rigid obliquity and still rejects shears. CLI help
-describes the opt-out as preserving the original grid without interpolation.
+The user clarified that `--no-regrid-inputs` must ignore oblique direction
+cosines while still correcting axis order/sign. The implementation now uses
+only axis permutations/flips to closest RAS, replaces the direction matrix by
+positive axis-aligned voxel spacing, preserves voxel values without
+interpolation, and anchors the new affine at the original volume center. It
+warns that pointwise physical correspondence to the acquisition is lost and
+hashes materialized `.nii.gz` inputs in the workflow manifest. Sheared inputs
+remain unsupported. The earlier paragraph in this report and its 19-test
+result document the superseded preserve-obliquity behavior; those results do
+not validate this clarified mode.
 
-Focused validation result: **19 passed, 0 failed, 0 skipped in 0.94s**, peak
-sampled RSS **0.125 GB** under an 8 GB watchdog. The selected tests cover grid
-classification, TOADS signed-spacing behavior, no-regrid manifest/resource
-behavior for both workflows, default regridding, and shear rejection. This
-does not yet compare a no-regrid oblique workflow with a complete historical
-Java/MATLAB run.
+Focused validation of the clarified mode: **21 passed in 136.29s** across the
+complete affected image-I/O, BASE-workflow, and PLUS-workflow test modules. The
+synthetic oblique test verifies
+exact voxel-value preservation, retained spacing, center anchoring, and an
+axis-aligned RAS affine; workflow checks verify saved/hash-recorded resources.
+The full-suite result on commit `452cc573` predates this clarification. The
+corrected human no-regrid BASE run remains pending.

@@ -88,6 +88,57 @@ def is_orthogonal_ras_grid(image: nib.spatialimages.SpatialImage) -> bool:
     return bool(np.allclose(directions.T @ directions, np.eye(3), rtol=0, atol=1e-6))
 
 
+def orient_to_ras_without_obliquity(
+    image: nib.spatialimages.SpatialImage,
+    *,
+    source_name: str = "image",
+) -> nib.spatialimages.SpatialImage:
+    """Reorder/flip voxels to closest RAS and replace oblique axes with RAS axes.
+
+    This is an orientation-only compatibility path: no interpolation or voxel
+    value changes are performed. Voxel sizes and the physical center are kept;
+    the rotation in the affine is discarded, so individual world coordinates
+    no longer describe the original oblique acquisition. Sheared grids remain
+    unsupported because they do not define an orthogonal acquisition basis.
+    """
+    if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)) or len(image.shape) != 3:
+        raise ValueError("Orientation-only RAS conversion requires a 3D scalar NIfTI image")
+    normalized = normalize_image_to_ras(image, source_name=source_name)
+    if not is_orthogonal_ras_grid(normalized):
+        raise ImageGeometryError(
+            f"{source_name} has sheared voxel axes; orientation-only RAS conversion requires orthogonal axes"
+        )
+    if is_axis_aligned_ras_grid(normalized):
+        return normalized
+
+    warnings.warn(
+        f"{source_name} has oblique RAS axes; reorienting voxel axes to closest RAS without interpolation "
+        "and discarding oblique direction cosines. Voxel-center/world correspondence to the input is not preserved.",
+        UserWarning,
+        stacklevel=2,
+    )
+    canonical = nib.as_closest_canonical(normalized, enforce_diag=False)
+    data = np.asanyarray(canonical.dataobj)
+    spacing = np.asarray(nib.affines.voxel_sizes(canonical.affine), dtype=np.float64)
+    if not np.isfinite(spacing).all() or np.any(spacing <= 0):
+        raise ImageGeometryError(f"{source_name} has invalid voxel spacing")
+    center_index = (np.asarray(canonical.shape, dtype=np.float64) - 1.0) / 2.0
+    center_world = nib.affines.apply_affine(canonical.affine, center_index)
+    affine = np.eye(4, dtype=np.float64)
+    affine[:3, :3] = np.diag(spacing)
+    affine[:3, 3] = center_world - spacing * center_index
+
+    header = canonical.header.copy()
+    header.set_data_dtype(data.dtype)
+    header.set_slope_inter(None, None)
+    output = nib.Nifti1Image(data, affine, header=header)
+    _, qcode = canonical.get_qform(coded=True)
+    _, scode = canonical.get_sform(coded=True)
+    output.set_qform(affine if qcode else None, code=int(qcode), strip_shears=True)
+    output.set_sform(affine if scode else None, code=int(scode) if scode else 1)
+    return output
+
+
 def regrid_to_orthogonal_ras(
     image: nib.spatialimages.SpatialImage,
     *,

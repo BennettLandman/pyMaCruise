@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from pymacruise.cli import build_parser, main
+from pymacruise.image_io import is_axis_aligned_ras_grid
 from pymacruise import base_workflow as base_workflow_module
 from pymacruise.base_workflow import (
     BaseRunOptions,
@@ -322,7 +323,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     } == hashes_before
 
 
-def test_base_run_can_preserve_oblique_grid_when_regridding_is_disabled(tmp_path, monkeypatch) -> None:
+def test_base_run_uses_orientation_only_ras_grid_when_regridding_is_disabled(tmp_path, monkeypatch) -> None:
     source_t1 = nib.load(str(FIXTURE / "t1.nii.gz"))
     angle = np.deg2rad(8.0)
     rotation = np.array(
@@ -360,4 +361,13 @@ def test_base_run_can_preserve_oblique_grid_when_regridding_is_disabled(tmp_path
     manifest = json.loads((output / "run.json").read_text())
     assert manifest["options"]["regrid_inputs"] is False
     assert not any("regridded-inputs" in item["path"] for item in manifest["derived_resources"])
+    oriented = [item for item in manifest["derived_resources"] if "orientation-only-inputs" in item["path"]]
+    assert len(oriented) == 3
+    oriented_images = {Path(item["path"]).name: nib.load(item["path"]) for item in oriented}
+    assert set(oriented_images) == {"T1.nii.gz", "BrainMask.nii.gz", "MaSeg.nii.gz"}
+    assert all(is_axis_aligned_ras_grid(image) for image in oriented_images.values())
+    expected = nib.as_closest_canonical(nib.load(str(t1_path)))
+    np.testing.assert_array_equal(
+        np.asarray(oriented_images["T1.nii.gz"].dataobj), np.asarray(expected.dataobj)
+    )
     assert manifest["stages"]["n4"]["status"] == "failed"

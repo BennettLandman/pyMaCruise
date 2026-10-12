@@ -382,7 +382,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help=(
             "recommended: resample oblique RAS inputs to an orthogonal grid "
-            "(default: enabled; --no-regrid-inputs preserves an oblique orthogonal RAS grid without interpolation)"
+            "(default: enabled; --no-regrid-inputs only permutes/flips axes to closest RAS, "
+            "discards oblique directions, and does not interpolate)"
         ),
     )
     base_run.add_argument("--registration-levels", type=int, default=1)
@@ -580,7 +581,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help=(
             "recommended: resample oblique RAS T1, mask, and MaSeg to an "
-            "orthogonal grid (default: enabled; --no-regrid-inputs preserves an oblique orthogonal RAS grid without interpolation)"
+            "orthogonal grid (default: enabled; --no-regrid-inputs only permutes/flips axes to "
+            "closest RAS, discards oblique directions, and does not interpolate)"
         ),
     )
     plus_full.add_argument(

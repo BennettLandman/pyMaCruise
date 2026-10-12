@@ -24,8 +24,8 @@ from pymacruise.cli import main as cli_main
 from pymacruise.contracts import has_finite_integer_values
 from pymacruise.image_io import (
     is_axis_aligned_ras_grid,
-    is_orthogonal_ras_grid,
     normalize_image_to_ras,
+    orient_to_ras_without_obliquity,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
 )
@@ -313,11 +313,14 @@ def run_base_workflow(
         raise ValueError("T1 and brain-mask inputs must be .nii.gz")
     if not maseg_path.name.lower().endswith(".nii.gz"):
         raise ValueError("MaSeg input must be .nii.gz")
-    reference = normalize_image_to_ras(nib.load(str(t1_path)), source_name="base workflow T1")
-    mask = normalize_image_to_ras(nib.load(str(brain_mask_path)), source_name="base workflow brain mask")
+    raw_reference = nib.load(str(t1_path))
+    raw_mask = nib.load(str(brain_mask_path))
+    reference = normalize_image_to_ras(raw_reference, source_name="base workflow T1")
+    mask = normalize_image_to_ras(raw_mask, source_name="base workflow brain mask")
     if reference.shape != mask.shape or not np.allclose(reference.affine, mask.affine, rtol=0, atol=1e-4):
         raise ValueError("Brain mask must match the input T1 grid")
-    maseg_image = normalize_image_to_ras(nib.load(str(maseg_path)), source_name="base workflow MaSeg")
+    raw_maseg = nib.load(str(maseg_path))
+    maseg_image = normalize_image_to_ras(raw_maseg, source_name="base workflow MaSeg")
     maseg_values = np.asanyarray(maseg_image.dataobj)
     if maseg_image.shape != reference.shape or not np.allclose(maseg_image.affine, reference.affine, rtol=0, atol=1e-4):
         raise ValueError("MaSeg input must match the input T1 grid")
@@ -392,6 +395,7 @@ def run_base_workflow(
         raise FileExistsError(f"Run manifest exists; use --resume to continue: {manifest_path}")
 
     regridded_resources: list[dict[str, Any]] = []
+    orientation_only_resources: list[dict[str, Any]] = []
     if options.regrid_inputs and not is_axis_aligned_ras_grid(reference):
         print(
             "Base workflow: regridding oblique RAS T1, brain mask, and MaSeg "
@@ -429,11 +433,51 @@ def run_base_workflow(
         reference = normalize_image_to_ras(orthogonal_t1, source_name="regridded base T1")
         mask = normalize_image_to_ras(orthogonal_mask, source_name="regridded brain mask")
         maseg_image = normalize_image_to_ras(orthogonal_maseg, source_name="regridded MaSeg")
-    elif not options.regrid_inputs and not is_orthogonal_ras_grid(reference):
-        raise ValueError(
-            "TOADS requires orthogonal RAS voxel axes; the no-regrid path "
-            "preserves oblique orthogonal grids but cannot use sheared grids"
+    elif not options.regrid_inputs:
+        orientation_images = {
+            "t1": orient_to_ras_without_obliquity(reference, source_name="base workflow T1"),
+            "brain_mask": orient_to_ras_without_obliquity(mask, source_name="base workflow brain mask"),
+            "maseg": orient_to_ras_without_obliquity(maseg_image, source_name="base workflow MaSeg"),
+        }
+        needs_orientation_only = any(
+            not is_axis_aligned_ras_grid(image)
+            for image in (raw_reference, raw_mask, raw_maseg)
         )
+        # Cardinal LPS/other inputs may already be axis aligned after in-memory
+        # normalization, but the stage CLIs read paths, so materialize that RAS
+        # voxel ordering as well.
+        needs_orientation_only = needs_orientation_only or any(
+            nib.aff2axcodes(image.affine) != ("R", "A", "S")
+            for image in (raw_reference, raw_mask, raw_maseg)
+        )
+        if needs_orientation_only:
+            print(
+                "Base workflow: using orientation-only RAS inputs (axis permutations/flips only; "
+                "no interpolation; oblique direction cosines are discarded)."
+            )
+            oriented_dir = output_dir / "resources" / "orientation-only-inputs"
+            oriented_dir.mkdir(parents=True, exist_ok=True)
+            paths = {
+                "t1": oriented_dir / "T1.nii.gz",
+                "brain_mask": oriented_dir / "BrainMask.nii.gz",
+                "maseg": oriented_dir / "MaSeg.nii.gz",
+            }
+            target = orientation_images["t1"]
+            for role in ("brain_mask", "maseg"):
+                image = orientation_images[role]
+                if image.shape != target.shape or not np.allclose(image.affine, target.affine, rtol=0, atol=1e-5):
+                    raise ValueError(f"{role} must match the T1 grid after orientation-only RAS conversion")
+            for role, image in orientation_images.items():
+                save_nifti_ras(image, paths[role])
+                orientation_only_resources.append(
+                    {"role": role, "path": str(paths[role]), "sha256": _sha256(paths[role])}
+                )
+            t1_path = paths["t1"]
+            brain_mask_path = paths["brain_mask"]
+            maseg_path = paths["maseg"]
+            reference, mask, maseg_image = (
+                orientation_images["t1"], orientation_images["brain_mask"], orientation_images["maseg"]
+            )
     run_atlas = _materialize_dura_atlas(atlas_descriptor, output_dir / "resources" / "dura-atlas")
     materialized_audit = run_atlas.parent / "CONVERSION_AUDIT.json"
     if manifest_path.exists():
@@ -473,11 +517,17 @@ def run_base_workflow(
             "stages": {},
             "history": [],
             "workflow_scope": (
-                "restartable base route on a regridded or axis-aligned RAS input; source equivalence not implied"
+                "restartable base route with optional resampling or orientation-only RAS conversion; "
+                "source equivalence not implied"
+            ),
+            "input_geometry_handling": (
+                "resampled-to-orthogonal-RAS" if options.regrid_inputs
+                else "axis-permute-flip-and-discard-obliquity-without-interpolation"
             ),
             "derived_resources": [
                 {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
                 *regridded_resources,
+                *orientation_only_resources,
                 *(
                     [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
                     if materialized_audit.is_file()
@@ -489,12 +539,17 @@ def run_base_workflow(
     manifest["derived_resources"] = [
         {"path": str(run_atlas), "sha256": _sha256(run_atlas)},
         *regridded_resources,
+        *orientation_only_resources,
         *(
             [{"path": str(materialized_audit), "sha256": _sha256(materialized_audit)}]
             if materialized_audit.is_file()
             else []
         ),
     ]
+    manifest["input_geometry_handling"] = (
+        "resampled-to-orthogonal-RAS" if options.regrid_inputs
+        else "axis-permute-flip-and-discard-obliquity-without-interpolation"
+    )
     if manifest.get("implementation_signature") != implementation_signature:
         previous_signature = manifest.get("implementation_signature")
         if previous_signature is not None:

@@ -9,6 +9,8 @@ from pymacruise.image_io import (
     is_axis_aligned_ras_grid,
     is_orthogonal_ras_grid,
     load_nifti_ras,
+    normalize_image_to_ras,
+    orient_to_ras_without_obliquity,
     regrid_to_orthogonal_ras,
     save_nifti_ras,
 )
@@ -131,6 +133,46 @@ def test_orthogonal_ras_grid_recognizes_oblique_without_regridding() -> None:
 
     assert is_orthogonal_ras_grid(image)
     assert not is_axis_aligned_ras_grid(image)
+
+
+def test_orientation_only_ras_discards_obliquity_without_interpolating() -> None:
+    angle = np.deg2rad(17.0)
+    affine = np.eye(4)
+    affine[:3, :3] = np.asarray(
+        [[np.cos(angle), -np.sin(angle), 0.0],
+         [np.sin(angle), np.cos(angle), 0.0],
+         [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    ) @ np.diag((1.0, 1.2, 1.5))
+    affine[:3, 3] = (-8.0, -7.0, -6.0)
+    values = np.arange(4 * 5 * 6, dtype=np.int16).reshape((4, 5, 6))
+    image = nib.Nifti1Image(values, affine)
+
+    with pytest.warns(UserWarning, match="discarding oblique direction cosines"):
+        result = orient_to_ras_without_obliquity(image, source_name="synthetic T1")
+
+    assert is_axis_aligned_ras_grid(result)
+    assert result.shape == image.shape
+    np.testing.assert_array_equal(np.asarray(result.dataobj), values)
+    np.testing.assert_allclose(nib.affines.voxel_sizes(result.affine), (1.0, 1.2, 1.5))
+    old_center = nib.affines.apply_affine(image.affine, (np.asarray(image.shape) - 1) / 2)
+    new_center = nib.affines.apply_affine(result.affine, (np.asarray(result.shape) - 1) / 2)
+    np.testing.assert_allclose(new_center, old_center)
+
+
+def test_orientation_only_ras_reorders_left_to_right_axes_without_interpolation() -> None:
+    values = np.arange(2 * 3 * 4, dtype=np.uint8).reshape((2, 3, 4))
+    affine = np.diag((-1.0, -2.0, 3.0, 1.0))
+    image = nib.Nifti1Image(values, affine)
+
+    with pytest.warns(UserWarning, match="orientation is"):
+        normalized = normalize_image_to_ras(image, source_name="synthetic LPS")
+    with pytest.warns(UserWarning, match="orientation is"):
+        result = orient_to_ras_without_obliquity(image, source_name="synthetic LPS")
+
+    assert nib.aff2axcodes(result.affine) == ("R", "A", "S")
+    assert is_axis_aligned_ras_grid(result)
+    np.testing.assert_array_equal(np.asarray(result.dataobj), np.asarray(normalized.dataobj))
 
 
 def test_axis_aligned_ras_regrid_is_a_noop_and_rejects_other_interpolators() -> None:

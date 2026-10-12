@@ -1,4 +1,14 @@
-# In-vivo BASE run on the original oblique grid — 2026-10-12
+# Superseded in-vivo BASE run that retained obliquity — 2026-10-12
+
+> **Superseded for the `--no-regrid-inputs` contract.** This experiment ran
+> before the user's clarification that no-regrid must discard oblique
+> direction cosines while retaining only closest-RAS axis permutations/flips.
+> Its run, metrics, and comparison below document the former preserve-obliquity
+> behavior only. The corrected orientation-only human run is pending.
+
+The earlier run directory and outputs remain under ignored `build/` for
+reproducibility. The corrected run uses a separate output directory and must
+not reuse these saved stages or comparisons.
 
 ## Scope and result
 
