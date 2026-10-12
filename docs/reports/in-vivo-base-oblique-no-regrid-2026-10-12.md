@@ -2,7 +2,7 @@
 
 ## Scope and result
 
-This is an end-to-end BASE integration run on the supplied human T1, user-provided brain mask, and MaSeg, with `--no-regrid-inputs`. It tests the compatibility path that preserves the historical oblique orthogonal RAS input grid. It completed every workflow stage, passed the stage output checks, and stayed below the 16 GB watchdog. It is **not** a source-equivalence or clinical validation pass.
+This is an end-to-end BASE integration run on the supplied human T1, user-provided brain mask, and MaSeg, with `--no-regrid-inputs`. It tests the native-grid option, which preserves the supplied oblique orthogonal RAS grid. The source audit below shows that the historical V3 route reorients through SPECTRE before TOADS, so this option alone does not reproduce the historical preprocessing. The run completed every workflow stage, passed the stage output checks, and stayed below the 16 GB watchdog. It is **not** a source-equivalence or clinical validation pass.
 
 The T1 grid remained `(184, 256, 256)` with its original oblique affine. All 68 manifest output records exist and their SHA-256 values match; all 51 NIfTI outputs are finite and RAS. Peak sampled RSS was **7.945 GB**. TOADS stopped naturally in both passes: iteration 18 at energy ratio `3.8099166e-05`, then iteration 22 at `1.4343048e-05`.
 
