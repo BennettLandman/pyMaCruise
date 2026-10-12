@@ -33,6 +33,9 @@ confirms:
   are both `d8120a6d89fce261eaf370557762d0742d194e0e48629bee78a95066956af589`;
   segmentation, skeleton, availability, ordering, and class-volume outputs
   each match the complete iteration-20 checkpoint.
+- Relation refresh matches byte-for-byte at **848,444 bytes**: the relation
+  map and relation-membership table are exact against selected Java and the
+  complete checkpoint, with **130** relation rows and **14** diffusion passes.
 
 Iteration 20 has objective **3279.7939453125** and energy ratio
 **0.132798091**, above the stop threshold `0.0001`; the loop is nonterminal.
@@ -46,9 +49,9 @@ The iteration-19 parent manifest SHA-256 is
 This is synthetic evidence. The full Python iteration executes registration,
 growth, and relation refresh and passes restartable manifest checks. Selected
 Java comparisons cover shape sampling, thinning, statistics, refreshed-map
-membership, and post-registration growth. They do **not** compare the
-iteration-20 registration optimizer or relation refresh against Java, and do
-not establish complete live-loop or whole-workflow equivalence. This is not
+membership, post-registration growth, and relation refresh. They do **not**
+compare the iteration-20 registration optimizer against Java and do not
+establish complete live-loop or whole-workflow equivalence. This is not
 real-human validation and does not resolve the separate ribbon-quality
 failures.
 
@@ -98,3 +101,8 @@ The growth reference pins `LesionGrowingPassDynamicReferenceHarness.java`
 (`13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb`), and
 the bundled critical-point LUT data
 (`cbf1e339d78a0a2c673c939ee2c8a30ee3a35bfd9603d07ed2d48864bb0e88be`).
+The relation reference uses
+`LesionRelationsDynamicReferenceHarness.java`
+(`073421ec8ad64f047869b3a8185dbc7b3fc41b455e8c473ddb7d1e6ed44d72e1`) and
+`LesionRelationsReferenceHarness.java`
+(`c2b7e73a9b0539279164714d945f460f654433d3ac138d8a42997a7b5218c15e`).

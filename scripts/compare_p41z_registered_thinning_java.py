@@ -31,6 +31,7 @@ from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after
 from pymacruise.lesion_distance_refresh import refresh_lesion_toads_distance_maps
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_registered_initial_membership import LesionInitialDistanceMaps
+from pymacruise.lesion_relations import lesion_compute_relations
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
 from pymacruise.lesion_growth import propagate_lesion_toads_growing
 from pymacruise.plus_lesion_registered_loop import hydrate_plus_lesion_registered_branch
@@ -332,6 +333,15 @@ def _compare_growth_java(
             arrays_match[name] = np.array_equal(actual_bits, reference_bits)
         else:
             arrays_match[name] = np.array_equal(actual, np.asarray(reference, dtype=actual.dtype))
+    relation_report = _compare_relations_java(
+        java=java,
+        javac=javac,
+        temporary=temporary / "relations",
+        segmentation=python.segmentation,
+        classes_count=len(types),
+        limit=3,
+        expected_outputs=expected_outputs,
+    )
     return {
         "all_exact": True,
         "checkpoint_outputs_exact": all(arrays_match.values()),
@@ -343,6 +353,69 @@ def _compare_growth_java(
         "source_files": {
             str(path.relative_to(ROOT)): _sha256(path)
             for path in (*sources, ROOT / "src/pymacruise/data/critical186LUT.raw.gz")
+        },
+        "post_growth_relations": relation_report,
+    }
+
+
+def _compare_relations_java(
+    *,
+    java: str,
+    javac: str,
+    temporary: Path,
+    segmentation: np.ndarray,
+    classes_count: int,
+    limit: int,
+    expected_outputs: dict[str, Path],
+) -> dict:
+    temporary.mkdir(parents=True, exist_ok=True)
+    spatial = tuple(int(value) for value in segmentation.shape)
+    input_path, output_path = temporary / "relations-in.bin", temporary / "relations-java.bin"
+    input_path.write_bytes(b"".join((
+        struct.pack(">5i", *spatial, classes_count, limit),
+        np.asarray(segmentation, dtype=np.int8).ravel(order="C").tobytes(),
+    )))
+    classes = temporary / "classes"
+    classes.mkdir(parents=True, exist_ok=True)
+    reference = JAVA_ROOT / "LesionRelationsReferenceHarness.java"
+    harness = JAVA_ROOT / "LesionRelationsDynamicReferenceHarness.java"
+    subprocess.run([javac, "-d", str(classes), str(reference), str(harness)], check=True, capture_output=True, text=True)
+    subprocess.run(
+        [java, "-Xmx2g", "-cp", str(classes), "LesionRelationsDynamicReferenceHarness", str(input_path), str(output_path)],
+        check=True, capture_output=True, text=True,
+    )
+    python = lesion_compute_relations(segmentation, classes_count, limit)
+    expected = b"".join((
+        np.asarray(python.relation_map, dtype=">i2").ravel(order="C").tobytes(),
+        struct.pack(">i", python.relation_count),
+        np.asarray(python.relation_membership, dtype=np.uint8).ravel(order="C").tobytes(),
+        struct.pack(">i", python.diffusion_iterations),
+    ))
+    java_bytes = output_path.read_bytes()
+    summary = json.loads(expected_outputs["summary"].read_text(encoding="utf-8"))
+    checkpoint_map = np.asarray(nib.load(str(expected_outputs["relation_map"])).dataobj, dtype=np.int16)
+    checkpoint_membership = np.asarray(summary["relation_membership"], dtype=np.uint8)
+    offset = int(np.prod(spatial)) * 2
+    java_map = np.frombuffer(java_bytes[:offset], dtype=">i2").astype(np.int16).reshape(spatial)
+    count = struct.unpack(">i", java_bytes[offset:offset + 4])[0]
+    rel_start = offset + 4
+    rel_stop = rel_start + count * classes_count
+    java_membership = np.frombuffer(java_bytes[rel_start:rel_stop], dtype=np.uint8).reshape(count, classes_count)
+    iterations = struct.unpack(">i", java_bytes[rel_stop:rel_stop + 4])[0]
+    return {
+        "all_exact": java_bytes == expected,
+        "checkpoint_outputs_exact": np.array_equal(java_map, checkpoint_map)
+        and np.array_equal(java_membership, checkpoint_membership),
+        "map_exact": np.array_equal(java_map, checkpoint_map),
+        "relation_membership_exact": np.array_equal(java_membership, checkpoint_membership),
+        "relation_count": count,
+        "diffusion_iterations": iterations,
+        "java_bytes": len(java_bytes),
+        "java_sha256": hashlib.sha256(java_bytes).hexdigest(),
+        "python_sha256": hashlib.sha256(expected).hexdigest(),
+        "source_files": {
+            str(path.relative_to(ROOT)): _sha256(path)
+            for path in (reference, harness)
         },
     }
 
@@ -665,6 +738,8 @@ def compare(
         or not membership_report["all_exact"]
         or (growth_report is not None and not growth_report.get("all_exact"))
         or (growth_report is not None and not growth_report.get("checkpoint_outputs_exact"))
+        or (growth_report is not None and not growth_report["post_growth_relations"].get("all_exact"))
+        or (growth_report is not None and not growth_report["post_growth_relations"].get("checkpoint_outputs_exact"))
     ):
         raise SystemExit(1)
     return report
