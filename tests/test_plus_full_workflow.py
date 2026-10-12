@@ -296,14 +296,16 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         packed[..., 13], packed[..., 14],
     )
     expected_channels = {
-        "csf": expected_dura.csf,
-        "gm": expected_dura.gray_matter,
-        "wm_fill": expected_dura.white_matter_fill,
-        "wm_mask": expected_dura.white_matter_mask,
+        "csf": np.multiply(expected_dura.csf, np.float32(255.0), dtype=np.float32),
+        "gm": np.multiply(expected_dura.gray_matter, np.float32(255.0), dtype=np.float32),
+        "wm_fill": np.multiply(expected_dura.white_matter_fill, np.float32(255.0), dtype=np.float32),
+        "wm_mask": np.multiply(expected_dura.white_matter_mask, np.float32(255.0), dtype=np.float32),
     }
     dura_manifest_path = Path(manifest["stages"]["dura_outputs"]["manifest"]["path"])
     dura_manifest = json.loads(dura_manifest_path.read_text())
     assert dura_manifest["channel_order"] == ["csf", "gm", "wm_fill", "wm_mask"]
+    assert dura_manifest["wrapper_output_scale_factor"] == 255.0
+    assert dura_manifest["source_order"][-1] == "MedicAlgorithmLesionToads.scaleFloatValue(255)"
     for name, expected in expected_channels.items():
         image = nib.load(dura_manifest["outputs"][name]["path"])
         assert image.get_data_dtype() == np.dtype(np.float32)

@@ -92,11 +92,13 @@ def run_plus_lesion_dura_output_checkpoint(
     *,
     resume: bool = False,
 ) -> LesionDuraOutputCheckpointResult:
-    """Apply `generateDuraRemovalOutputs` to persisted P41m state.
+    """Apply the selected LesionTOADS Dura wrapper to persisted P41m state.
 
-    The four channel images are saved on the registered recrop grid. Native
-    T1-grid transfer and the later MaCRUISEplus surface workflow are separate
-    stages and are not inferred here.
+    The Java ``MedicAlgorithmLesionToads`` plugin unconditionally scales the
+    four ``generateDuraRemovalOutputs`` channels by 255 before saving them.
+    Preserve the raw generator API's normalized outputs, then apply that
+    wrapper scale here. Native T1-grid transfer and later surface processing
+    remain separate stages.
     """
     if not isinstance(resume, bool):
         raise TypeError("resume must be boolean")
@@ -154,8 +156,12 @@ def run_plus_lesion_dura_output_checkpoint(
     signature_data = {
         "schema_version": 1,
         "stage": "plus-lesion-dura-output-checkpoint",
-        "source_order": ["generateDuraRemovalOutputs"],
+        "source_order": [
+            "generateDuraRemovalOutputs",
+            "MedicAlgorithmLesionToads.scaleFloatValue(255)",
+        ],
         "channel_order": ["csf", "gm", "wm_fill", "wm_mask"],
+        "wrapper_output_scale_factor": 255.0,
         "class_names": list(class_names),
         "inputs": input_files,
         "upstream_manifests": upstream_manifests,
@@ -211,10 +217,16 @@ def run_plus_lesion_dura_output_checkpoint(
             packed[..., 14],
         )
         channel_values = {
-            "csf": result.csf,
-            "gm": result.gray_matter,
-            "wm_fill": result.white_matter_fill,
-            "wm_mask": result.white_matter_mask,
+            # Source `run_LesionToads_jist` requests "dura removal inputs";
+            # the Java plugin then unconditionally applies ImageDataMath's
+            # ×255 scaling to every returned map before writing NIfTIs.
+            name: np.multiply(values, np.float32(255.0), dtype=np.float32)
+            for name, values in (
+                ("csf", result.csf),
+                ("gm", result.gray_matter),
+                ("wm_fill", result.white_matter_fill),
+                ("wm_mask", result.white_matter_mask),
+            )
         }
         outputs: dict[str, Path] = {}
         records: dict[str, dict[str, str]] = {}
