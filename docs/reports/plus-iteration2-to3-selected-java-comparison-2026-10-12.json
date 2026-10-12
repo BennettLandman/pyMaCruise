@@ -1,0 +1,165 @@
+{
+  "checkpoint_manifest": "/Users/landmaba/dev/mipav/pymacruise/build/plus-labeled-folded-deterministic-numba-onepass-2026-10-12/lesion_workflow/registered-loop/lesion-registered-loop.json",
+  "checkpoint_sha256": "3556b7dc4695785130b1809a9c57d4e8375d45c5467084c60fa758c14f553826",
+  "claim_limit": "fixed transform and support bounds; not full registered-loop or whole-workflow equivalence",
+  "comparison_scope": "selected Java shape sampling and next-thinning methods on a hash-verified P41z iteration-2 registered state",
+  "distance_refresh_stage_order": [
+    "computeVentirclsDistance",
+    "computeBstemDistance",
+    "computeGMDistance"
+  ],
+  "initial_queue_items": 469847,
+  "java_serialized_bytes": 136921848,
+  "java_serialized_sha256": "965ac1752f52892feedda831d5970058d1f43c57131d6e7f5ae309e6f5e95d2f",
+  "next_membership_energy_ratio": "NaN",
+  "next_membership_energy_ratio_both_nan": true,
+  "next_membership_field_matches": {
+    "black": true,
+    "black_hole_energy": true,
+    "class_energy": true,
+    "class_memberships": true,
+    "denominator": true,
+    "energy_ratio": true,
+    "lesion": true,
+    "lesion_energy": true,
+    "lesion_relation": true,
+    "objective": true,
+    "outlier": true,
+    "running_objective": true
+  },
+  "next_membership_nan_counts": {
+    "java": 25552556,
+    "python": 25552556
+  },
+  "next_membership_updated_energy": "NaN",
+  "next_membership_values_and_nan_state_match": true,
+  "post_registration_growth": {
+    "all_exact": true,
+    "checkpoint_arrays_exact": {
+      "availability": true,
+      "class_volume": true,
+      "ordering": true,
+      "segmentation": true,
+      "skeleton": true
+    },
+    "checkpoint_outputs_exact": true,
+    "event_count": 1099864,
+    "java_bytes": 132735816,
+    "java_sha256": "5eab4c213a472d5c403a380308f27a8988e092818d3251efa55b93e6fb64c1be",
+    "post_growth_relations": {
+      "all_exact": true,
+      "checkpoint_outputs_exact": true,
+      "diffusion_iterations": 14,
+      "java_bytes": 9367899,
+      "java_sha256": "347b7ab313f3b4281db3a00100270be214808b124030812f4b49cbfbc0a6cbd6",
+      "map_exact": true,
+      "python_sha256": "347b7ab313f3b4281db3a00100270be214808b124030812f4b49cbfbc0a6cbd6",
+      "relation_count": 127,
+      "relation_membership_exact": true,
+      "source_files": {
+        "tests/java_reference/LesionRelationsDynamicReferenceHarness.java": "073421ec8ad64f047869b3a8185dbc7b3fc41b455e8c473ddb7d1e6ed44d72e1",
+        "tests/java_reference/LesionRelationsReferenceHarness.java": "c2b7e73a9b0539279164714d945f460f654433d3ac138d8a42997a7b5218c15e"
+      }
+    },
+    "python_sha256": "5eab4c213a472d5c403a380308f27a8988e092818d3251efa55b93e6fb64c1be",
+    "source_files": {
+      "src/pymacruise/data/critical186LUT.raw.gz": "cbf1e339d78a0a2c673c939ee2c8a30ee3a35bfd9603d07ed2d48864bb0e88be",
+      "tests/java_reference/LesionGrowingPassDynamicReferenceHarness.java": "e324c89358dc83096c2cf98ef9a64f404263c0566292f25021b2b74bdfab7d62",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/BinaryHeap4D.java": "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/CriticalPointLUT.java": "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb"
+    }
+  },
+  "post_thinning_statistics_exact_fields": {
+    "black_hole_centroid_bits": true,
+    "black_hole_std_bits": true,
+    "channel_weight_bits": true,
+    "class_centroid_bits": true,
+    "class_std_bits": true,
+    "lesion_centroid_bits": true,
+    "lesion_std_bits": true
+  },
+  "post_thinning_statistics_exact_float32_bits": true,
+  "post_thinning_statistics_nan_counts": {
+    "java": 0,
+    "python": 0
+  },
+  "python_serialized_sha256": "965ac1752f52892feedda831d5970058d1f43c57131d6e7f5ae309e6f5e95d2f",
+  "queue_events": 958848,
+  "refreshed_distance_hashes": {
+    "brainstem": "6d331c46b46b20eed1ff6b07059388c1b736cf708e9bb0aec9f8f19d1e2548c2",
+    "brainstem_mask": "94278a98a93d1b252d40d2b5ac24c1f5d1891bd0e60e51485d0f77ff8b7cbaa7",
+    "gray_matter": "0fbe5c9ca66820d8a3c9718901065e65c6489f1c0032a011425db1142c3683d7",
+    "gray_matter_mask": "d9e5eb13653123fe3bb0a1c6824d723bbec12f9dca5f11db2590f36ecd27e035",
+    "ventricle": "fbcdc25b0561ea0099da98fa8d6ccba39c89b9c85ae0b6de7c5099fb26959969",
+    "ventricle_mask": "d015af5153046028a65acca2386779f9a5245e68637bfbbae7048761625aed30"
+  },
+  "registration_optimizer": {
+    "all_exact": true,
+    "bounds_exact_each_class": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "checkpoint_bounds_exact": true,
+    "checkpoint_rotation_exact": true,
+    "checkpoint_transform_exact": true,
+    "energy": 0.09073235094547272,
+    "iterations_configured": 1,
+    "java_output_sha256": "753b8e90eec0c29e50978b4436084dea96ef5a2fb65acab1e08cabd645f93640",
+    "optimizer_energy_exact_float32_bits": true,
+    "rotation_exact_float32_bits": true,
+    "source_files": {
+      "tests/java_reference/LesionRegisteredOptimizerDynamicReferenceHarness.java": "9f0d5b95bcdb2f1dca2aa088f5b06bba8843fa11090b61aab1873cdb113d0eb4",
+      "tests/java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java": "d88dbbb18b587815c91786c13ed68655b050eceae793631d8eb9db1bb72e90b2",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/libraries/ImageFunctions.java": "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/methods/ParametricTransform.java": "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/RotationMatrix.java": "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0",
+      "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb"
+    },
+    "transform": [
+      -0.06637336313724518,
+      0.09795953333377838,
+      -0.10711276531219482,
+      22.301097869873047,
+      -6.79143762588501,
+      4.115403175354004
+    ],
+    "transform_exact_float32_bits": true
+  },
+  "remaining_queue_items": 0,
+  "report_note": "NaN values are compared by NaN state and counted separately; finite float32 fields are compared by bits. The selected Java harness counts the objective NaN in its total, which the comparator includes.",
+  "shape_exact": true,
+  "shape_grid_xyz": [
+    158,
+    195,
+    152
+  ],
+  "shape_maximum_absolute_error": 0.0,
+  "shape_values": 60880560,
+  "source_files": {
+    "tests/java_reference/Lesion13ClassNextThinningReferenceHarness.java": "101aa12bfe874d937b4a0f8f208471dfe38139aff739f2f1d61cda16a159b83f",
+    "tests/java_reference/P41zRegisteredShapeVolumeReferenceHarness.java": "73339c53c9bd25c12e872c1cebe4ff79bd490760a11d5c184e87e77eaefc9511",
+    "tests/java_reference/stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java": "d88dbbb18b587815c91786c13ed68655b050eceae793631d8eb9db1bb72e90b2",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/libraries/ImageFunctions.java": "be0eae41dd1487de200930e72ed22a3585402caf7a04484180bbb45d77468892",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/methods/ParametricTransform.java": "22bd0cf545bf1112f24096be54e7688638bbcdbd6224e69dc6c74ea240063fac",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/BinaryHeap4D.java": "9d9d016a6d87bd9aa07e77b75429651ee66d4f67422515d5bd8ab3dde6a9ac7a",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/CriticalPointLUT.java": "50f0deaf2328741755cad5cdafa91c0debd5f6a09f5712d52f3945e35e257f9f",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/structures/RotationMatrix.java": "144d16dc33eca12a4a3a117c362b7aa1e767fe6561950f64ef04a66297818af0",
+    "tests/java_reference/upstream/edu/jhmi/rad/medic/utilities/Numerics.java": "13925b6bb7f5d58e15c3cd7d4c66bdba5b60de6762e688667babe5621844e6fb"
+  },
+  "synthetic_only": true,
+  "thinning_exact_serialization": true,
+  "topology_candidate_events": 474355,
+  "workflow_iteration": 2
+}

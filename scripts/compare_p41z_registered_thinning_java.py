@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import shutil
 import struct
@@ -46,6 +47,17 @@ from compare_p41z_next_iteration_statistics_java import compare as compare_stati
 JAVA_ROOT = ROOT / "tests/java_reference"
 UPSTREAM = JAVA_ROOT / "upstream/edu/jhmi/rad/medic"
 TYPE_CODES = {"lesion": 1, "blackhole": 2}
+
+
+def _json_safe(value):
+    """Keep source-faithful nonfinite scalars explicit in strict JSON reports."""
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, (float, np.floating)) and not math.isfinite(float(value)):
+        return "NaN" if math.isnan(float(value)) else ("Infinity" if value > 0 else "-Infinity")
+    return value
 
 
 def _sha256(path: Path) -> str:
@@ -205,14 +217,24 @@ def _compare_membership_java(
         if np.any(difference):
             differing[name] = int(np.count_nonzero(difference))
     exact["objective"] = int(np.asarray(actual.objective, np.float32).view(np.uint32)) == int(reference["objective"])
-    exact["energy_ratio"] = int(np.asarray(updated.energy_ratio.energy_ratio, np.float32).view(np.uint32)) == int(
-        np.asarray(reference["energy_ratio"], dtype=np.float32).view(np.uint32)
+    nan_counts["python"] += int(np.isnan(np.float32(actual.objective)))
+    python_ratio = np.float32(updated.energy_ratio.energy_ratio)
+    java_ratio = np.float32(reference["energy_ratio"])
+    ratio_both_nan = bool(np.isnan(python_ratio) and np.isnan(java_ratio))
+    ratio_both_finite_and_bit_equal = bool(
+        np.isfinite(python_ratio)
+        and np.isfinite(java_ratio)
+        and python_ratio.view(np.uint32) == java_ratio.view(np.uint32)
     )
+    exact["energy_ratio"] = ratio_both_nan or ratio_both_finite_and_bit_equal
     return {
         "all_exact": all(exact.values()) and nan_counts["java"] == nan_counts["python"],
         "exact_float32_bits": exact,
         "differing_value_counts": differing,
         "nan_counts": nan_counts,
+        "energy_ratio_both_nan": ratio_both_nan,
+        "energy_ratio_java_float32_bits": int(java_ratio.view(np.uint32)),
+        "energy_ratio_python_float32_bits": int(python_ratio.view(np.uint32)),
         "objective_exact": exact["objective"],
         "energy_ratio_exact": exact["energy_ratio"],
         "previous_energy": float(previous_energy),
@@ -818,11 +840,12 @@ def compare(
         "post_thinning_statistics_exact_float32_bits": statistics_report["all_exact"],
         "post_thinning_statistics_nan_counts": statistics_report["nan_counts"],
         "post_thinning_statistics_exact_fields": statistics_report["exact_float32_bits"],
-        "next_membership_exact_float32_bits": membership_report["all_exact"],
-        "next_membership_exact_fields": membership_report["exact_float32_bits"],
+        "next_membership_values_and_nan_state_match": membership_report["all_exact"],
+        "next_membership_field_matches": membership_report["exact_float32_bits"],
         "next_membership_nan_counts": membership_report["nan_counts"],
         "next_membership_updated_energy": membership_report["updated_energy"],
         "next_membership_energy_ratio": membership_report["energy_ratio"],
+        "next_membership_energy_ratio_both_nan": membership_report["energy_ratio_both_nan"],
         "registration_optimizer": registration_report,
         "post_registration_growth": growth_report,
         "distance_refresh_stage_order": list(refreshed_distance_state.stage_order),
@@ -850,6 +873,7 @@ def compare(
         "claim_limit": "fixed transform and support bounds; not full registered-loop or whole-workflow equivalence",
     }
     report_path = output_dir / "comparison.json"
+    report = _json_safe(report)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False))
     if (
