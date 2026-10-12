@@ -28,7 +28,9 @@ from pymacruise.lesion_atlas_priors import (
 )
 from pymacruise.lesion_next_iteration_membership import run_lesion_toads_next_gm_membership_update
 from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after_next_iteration_thinning
+from pymacruise.lesion_distance_refresh import refresh_lesion_toads_distance_maps
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
+from pymacruise.lesion_registered_initial_membership import LesionInitialDistanceMaps
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
 from pymacruise.plus_lesion_registered_loop import hydrate_plus_lesion_registered_branch
 from pymacruise.lesion_next_iteration_thinning import run_lesion_toads_next_iteration_thinning
@@ -158,7 +160,7 @@ def _compare_membership_java(
         arrays["distances"], statistics, previous_energy,
     ))
     classes = temporary / "membership-classes"
-    classes.mkdir()
+    classes.mkdir(parents=True, exist_ok=True)
     harness = JAVA_ROOT / "LesionNextIterationMembershipReferenceHarness.java"
     subprocess.run([javac, "-d", str(classes), str(harness)], check=True, capture_output=True, text=True)
     subprocess.run(
@@ -315,8 +317,25 @@ def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac:
     prior_membership = branch.membership_result.membership
     relation_state = branch.relations
     direct_relations = relation_state.relation_membership[relation_state.relation_map]
+    previous_distance_maps = LesionInitialDistanceMaps(
+        distance_state[..., 0].astype(np.bool_),
+        distance_state[..., 1].astype(np.int8),
+        distance_state[..., 2].astype(np.bool_),
+        distance_state[..., 3].astype(np.int8),
+        distance_state[..., 4].astype(np.bool_),
+        distance_state[..., 5].astype(np.int8),
+    )
+    refreshed_distance_state = refresh_lesion_toads_distance_maps(
+        thinning.run.segmentation,
+        tuple(item.name for item in atlas_classes.structures),
+        maximum_ventricle_distance=2,
+        maximum_gm_distance=3,
+        maximum_brainstem_distance=25,
+        previous_maps=previous_distance_maps,
+    )
+    refreshed = refreshed_distance_state.maps
     distances = np.stack(
-        (distance_state[..., 1], distance_state[..., 3], distance_state[..., 5]), axis=-1
+        (refreshed.ventricle, refreshed.gray_matter, refreshed.brainstem), axis=-1
     ).astype(np.int32, copy=False)
     prior_stats = refresh_statistics_after_next_iteration_thinning(
         thinning,
@@ -451,7 +470,17 @@ def compare(manifest_path: Path, output_dir: Path, *, java: str = "java", javac:
         "next_membership_exact_float32_bits": membership_report["all_exact"],
         "next_membership_exact_fields": membership_report["exact_float32_bits"],
         "next_membership_nan_counts": membership_report["nan_counts"],
+        "next_membership_updated_energy": membership_report["updated_energy"],
         "next_membership_energy_ratio": membership_report["energy_ratio"],
+        "distance_refresh_stage_order": list(refreshed_distance_state.stage_order),
+        "refreshed_distance_hashes": {
+            "ventricle_mask": hashlib.sha256(refreshed.ventricle_mask.tobytes(order="C")).hexdigest(),
+            "ventricle": hashlib.sha256(refreshed.ventricle.tobytes(order="C")).hexdigest(),
+            "gray_matter_mask": hashlib.sha256(refreshed.gray_matter_mask.tobytes(order="C")).hexdigest(),
+            "gray_matter": hashlib.sha256(refreshed.gray_matter.tobytes(order="C")).hexdigest(),
+            "brainstem_mask": hashlib.sha256(refreshed.brainstem_mask.tobytes(order="C")).hexdigest(),
+            "brainstem": hashlib.sha256(refreshed.brainstem.tobytes(order="C")).hexdigest(),
+        },
         "initial_queue_items": len(thinning.initialization.inserted_items),
         "queue_events": len(thinning.run.events),
         "topology_candidate_events": sum(event.candidate_label is not None for event in thinning.run.events),
