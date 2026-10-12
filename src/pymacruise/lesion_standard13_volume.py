@@ -18,11 +18,15 @@ from numpy.typing import ArrayLike, NDArray
 from .lesion_objective import reduce_lesion_toads_objective
 from .lesion_similarity import compute_lesion_toads_similarity
 from .lesion_standard13_voxel import (
+    STANDARD13_CLASS_SMOOTHING,
     STANDARD13_NAMES,
+    STANDARD13_PRIOR_COEFFICIENT,
     STANDARD13_PRIOR_SCALE,
     STANDARD13_TYPES,
     compute_lesion_toads_standard13_voxel,
 )
+from .lesion_standard13_numba import standard13_membership_sweep_numba
+from .toads_math import toads_powertable_lookup
 
 
 @dataclass(frozen=True)
@@ -66,6 +70,7 @@ def run_lesion_toads_standard13_volume(
     spread: float = 0.5,
     source_zero_variance_nan: bool = False,
     intensity_fields: ArrayLike | None = None,
+    backend: str = "numba",
 ) -> Standard13VolumeResult:
     """Run the selected 13-class membership update over one volume.
 
@@ -75,6 +80,8 @@ def run_lesion_toads_standard13_volume(
     The returned objective is reduced in the same x/y/z/class accumulation
     order as Java after all in-place voxel updates are complete.
     """
+    if backend not in {"numba", "python"}:
+        raise ValueError("backend must be 'numba' or 'python'")
     data = np.asarray(images, dtype=np.float32)
     if data.ndim != 4 or data.shape[-1] != 2 or min(data.shape[:3], default=0) < 3:
         raise ValueError("images must have shape (x>=3,y>=3,z>=3,2) in T1_MPRAGE/FLAIR order")
@@ -129,6 +136,73 @@ def run_lesion_toads_standard13_volume(
         black_hole_similarity=np.zeros(13, dtype=np.float32),
         finite_zero_variance=not source_zero_variance_nan,
     )
+
+    if backend == "numba":
+        centers = np.asarray(class_centroids, dtype=np.float32)
+        weights = np.asarray(channel_weights, dtype=np.float32)
+        lesion_center = np.asarray(lesion_centroid, dtype=np.float32)
+        corrected_images = (
+            data
+            if fields is None
+            else np.asarray(fields * data, dtype=np.float32)
+        )
+        lesion_difference = np.asarray(
+            corrected_images[..., 1] - lesion_center[1], dtype=np.float32
+        )
+        lesion_squared_difference = np.asarray(
+            lesion_difference * lesion_difference, dtype=np.float32
+        )
+        lesion_energy_map = np.asarray(
+            toads_powertable_lookup(
+                lesion_squared_difference,
+                float(np.float32(lesion_power_exponent)),
+                cached_exponent=float(np.float32(lesion_power_exponent)),
+                minimum=0.0,
+                maximum=4.0,
+                step=float(np.float32(1.0e-6)),
+            ),
+            dtype=np.float32,
+        )
+        outputs = standard13_membership_sweep_numba(
+            corrected_images,
+            centers,
+            weights,
+            lesion_center,
+            lesion_energy_map,
+            shapes,
+            np.asarray(shape_priors, dtype=np.float32),
+            np.asarray(smoothing_priors, dtype=np.float32),
+            direct,
+            similarities.class_similarity,
+            similarities.lesion_similarity,
+            current,
+            lesion,
+            black_hole,
+            outlier,
+            lesion_relation,
+            vent,
+            gm,
+            brainstem,
+            np.float32(outlier_energy),
+            bool(gm_flag),
+            np.float32(spread),
+            bool(source_zero_variance_nan),
+            np.float32(STANDARD13_CLASS_SMOOTHING),
+            np.float32(STANDARD13_PRIOR_COEFFICIENT),
+        )
+        return Standard13VolumeResult(
+            class_memberships=outputs[0],
+            lesion_membership=outputs[1],
+            black_hole_membership=outputs[2],
+            outlier_membership=outputs[3],
+            lesion_relation=outputs[4],
+            denominator=outputs[5],
+            class_energies=outputs[6],
+            lesion_energy=outputs[7],
+            black_hole_energy=outputs[8],
+            objective=np.float32(outputs[9]),
+            running_objective=outputs[10],
+        )
 
     # Java uses x outermost, then y, then z, mutating maps before the next
     # coordinate reads its six neighbors.

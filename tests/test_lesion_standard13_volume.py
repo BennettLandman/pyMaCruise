@@ -220,6 +220,46 @@ def test_standard13_volume_applies_channel_correction_fields() -> None:
     assert np.count_nonzero(corrected.class_memberships != uncorrected.class_memberships) > 0
 
 
+def test_numba_backend_matches_python_oracle_bitwise() -> None:
+    state = _state()
+    accelerated = run_lesion_toads_standard13_volume(**state, backend="numba")
+    oracle = run_lesion_toads_standard13_volume(**state, backend="python")
+    for name in (
+        "class_memberships", "lesion_membership", "black_hole_membership",
+        "outlier_membership", "lesion_relation", "denominator", "class_energies",
+        "lesion_energy", "black_hole_energy", "running_objective",
+    ):
+        np.testing.assert_array_equal(getattr(accelerated, name), getattr(oracle, name), err_msg=name)
+    assert accelerated.objective.view(np.uint32) == oracle.objective.view(np.uint32)
+
+
+def test_numba_backend_matches_python_oracle_on_larger_folded_volume() -> None:
+    state = _state()
+    spatial_keys = {
+        "images", "shape_values", "direct_relations", "initial_class_memberships",
+        "initial_lesion_membership", "initial_black_hole_membership",
+        "initial_outlier_membership", "initial_lesion_relation", "ventricle_distances",
+        "gray_matter_distances", "brainstem_distances",
+    }
+    for name in spatial_keys:
+        value = np.asarray(state[name])
+        reps = (3, 3, 3) + ((1,) if value.ndim == 4 else ())
+        state[name] = np.tile(value, reps)
+
+    accelerated = run_lesion_toads_standard13_volume(**state, backend="numba")
+    oracle = run_lesion_toads_standard13_volume(**state, backend="python")
+    for name in (
+        "class_memberships", "lesion_membership", "black_hole_membership",
+        "outlier_membership", "lesion_relation", "denominator", "class_energies",
+        "lesion_energy", "black_hole_energy", "running_objective",
+    ):
+        np.testing.assert_array_equal(
+            getattr(accelerated, name), getattr(oracle, name), err_msg=name
+        )
+    assert accelerated.objective.view(np.uint32) == oracle.objective.view(np.uint32)
+    assert np.count_nonzero(accelerated.class_memberships) > 0
+
+
 def test_standard13_volume_rejects_invalid_correction_field() -> None:
     state = _state()
     images = np.asarray(state["images"], dtype=np.float32)
