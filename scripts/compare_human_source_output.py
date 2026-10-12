@@ -54,9 +54,19 @@ def image_record(path: Path) -> dict[str, object]:
     }
 
 
-def require_same_grid(reference: nib.spatialimages.SpatialImage, candidate: nib.spatialimages.SpatialImage, label: str) -> None:
-    if reference.shape != candidate.shape or not np.allclose(reference.affine, candidate.affine, rtol=0, atol=1e-4):
-        raise ValueError(f"{label} does not share the source T1 grid")
+def require_same_grid(
+    reference: nib.spatialimages.SpatialImage,
+    candidate: nib.spatialimages.SpatialImage,
+    label: str,
+    *,
+    voxel_index_only: bool = False,
+) -> None:
+    if reference.shape != candidate.shape or (
+        not voxel_index_only
+        and not np.allclose(reference.affine, candidate.affine, rtol=0, atol=1e-4)
+    ):
+        qualifier = "voxel-index grid" if voxel_index_only else "source T1 grid"
+        raise ValueError(f"{label} does not share the {qualifier}")
 
 
 def main() -> int:
@@ -65,6 +75,16 @@ def main() -> int:
     parser.add_argument("--python-output", type=Path, default=DEFAULT_PYTHON)
     parser.add_argument("--python-core", type=Path, default=DEFAULT_CORE)
     parser.add_argument("--python-preparation", type=Path, default=DEFAULT_PREPARATION)
+    parser.add_argument(
+        "--voxel-index-only", action="store_true",
+        help=(
+            "Compare arrays by voxel index despite different affines. Requires "
+            "--python-input-t1 and --python-input-maseg to prove exact source-array "
+            "identity; Python mesh vertices are mapped back through the source affine."
+        ),
+    )
+    parser.add_argument("--python-input-t1", type=Path)
+    parser.add_argument("--python-input-maseg", type=Path)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     args = parser.parse_args()
 
@@ -83,15 +103,52 @@ def main() -> int:
         raise ValueError("Source Raw/T1 does not match sample input T1 voxel-for-voxel")
     if not np.array_equal(np.asanyarray(source_seg.dataobj), np.asanyarray(python_input_seg.dataobj)):
         raise ValueError("Source Raw/Seg does not match sample input MaSeg voxel-for-voxel")
+    orientation_only_inputs: dict[str, object] | None = None
+    if args.voxel_index_only:
+        if args.python_input_t1 is None or args.python_input_maseg is None:
+            raise ValueError(
+                "--voxel-index-only requires --python-input-t1 and --python-input-maseg"
+            )
+        orientation_only_inputs = {}
+        for label, source_image, source_path, oriented_path in (
+            ("T1", source_t1, source_t1_path, args.python_input_t1),
+            ("MaSeg", source_seg, source_seg_path, args.python_input_maseg),
+        ):
+            oriented = nib.load(str(oriented_path))
+            if oriented.shape != source_image.shape or not np.array_equal(
+                np.asanyarray(oriented.dataobj), np.asanyarray(source_image.dataobj)
+            ):
+                raise ValueError(
+                    f"Orientation-only Python {label} values are not voxel-identical "
+                    "to the source; index comparison would be invalid"
+                )
+            orientation_only_inputs[label] = {
+                "source": image_record(source_path),
+                "python": image_record(oriented_path),
+                "voxel_values_identical": True,
+                "affine_matches": bool(np.allclose(
+                    source_image.affine, oriented.affine, rtol=0, atol=1e-4
+                )),
+            }
 
     report: dict[str, object] = {
-        "scope": "same-grid held-fixed human source-output comparison; not whole-workflow source equivalence",
+        "scope": (
+            "same-index held-fixed human source-output comparison; not whole-workflow source equivalence"
+            if args.voxel_index_only else
+            "same-grid held-fixed human source-output comparison; not whole-workflow source equivalence"
+        ),
+        "comparison_geometry": (
+            "voxel arrays are compared by index after exact input-array identity checks; "
+            "Python meshes are mapped through Python voxel coordinates and then the source Raw/T1 affine"
+            if args.voxel_index_only else "shared source T1 physical grid"
+        ),
         "source_output": str(source),
         "input_identity": {
             "t1_voxel_identical": True,
             "maseg_voxel_identical": True,
             "t1": image_record(source_t1_path),
             "maseg": image_record(source_seg_path),
+            "orientation_only_python_inputs": orientation_only_inputs,
         },
         "settings_and_logs": {
             "source_run_logs_found": False,
@@ -116,7 +173,10 @@ def main() -> int:
         python_path = preparation / python_name
         source_image, python_image = nib.load(str(source_path)), nib.load(str(python_path))
         require_same_grid(source_t1, source_image, f"Source {source_name}")
-        require_same_grid(source_t1, python_image, f"Python {python_name}")
+        require_same_grid(
+            source_t1, python_image, f"Python {python_name}",
+            voxel_index_only=args.voxel_index_only,
+        )
         source_values = np.asanyarray(source_image.dataobj) > 0
         python_values = np.asanyarray(python_image.dataobj) > 0
         tissue_results[source_name] = {
@@ -151,7 +211,10 @@ def main() -> int:
     python_refine_path = python_output / "SEG_refine.nii.gz"
     source_refined, python_refined = nib.load(str(source_refine_path)), nib.load(str(python_refine_path))
     require_same_grid(source_t1, source_refined, "Source SEG_refine")
-    require_same_grid(source_t1, python_refined, "Python SEG_refine")
+    require_same_grid(
+        source_t1, python_refined, "Python SEG_refine",
+        voxel_index_only=args.voxel_index_only,
+    )
     source_labels = np.asarray(source_refined.dataobj, dtype=np.int32)
     python_labels = np.asarray(python_refined.dataobj, dtype=np.int32)
     per_label = label_dice_scores(source_labels, python_labels)
@@ -179,14 +242,30 @@ def main() -> int:
         source_mesh = read_legacy_vtk(source_path, input_frame="RAS")
         python_mesh = read_legacy_vtk(python_path, input_frame="RAS")
         source_points = (np.c_[source_mesh.vertices, np.ones(len(source_mesh.vertices))] @ source_affine.T)[:, :3]
+        if args.voxel_index_only:
+            python_levelset = nib.load(str(core / f"{name}.nii.gz"))
+            python_to_voxel = np.linalg.inv(python_levelset.affine)
+            python_voxels = (
+                np.c_[python_mesh.vertices, np.ones(len(python_mesh.vertices))]
+                @ python_to_voxel.T
+            )[:, :3]
+            python_points = (
+                np.c_[python_voxels, np.ones(len(python_voxels))] @ source_affine.T
+            )[:, :3]
+        else:
+            python_points = python_mesh.vertices
         distances = mesh_surface_distance_metrics(
-            source_points, source_mesh.faces, python_mesh.vertices, python_mesh.faces
+            source_points, source_mesh.faces, python_points, python_mesh.faces
         )
         meshes[name] = {
             "source_file": str(source_path),
             "python_file": str(python_path),
             "source_point_units_before_transform": "voxel indices",
             "source_transform": source_affine.tolist(),
+            "python_mesh_transform": (
+                "Python mesh RAS to Python voxel indices, then source Raw/T1 affine"
+                if args.voxel_index_only else "already RAS"
+            ),
             "source_topology": {"vertices": len(source_mesh.vertices), "faces": len(source_mesh.faces)},
             "python_topology": {"vertices": len(python_mesh.vertices), "faces": len(python_mesh.faces)},
             "symmetric_vertex_to_triangle_mm": distances,

@@ -4,7 +4,8 @@
 > before the user's clarification that no-regrid must discard oblique
 > direction cosines while retaining only closest-RAS axis permutations/flips.
 > Its run, metrics, and comparison below document the former preserve-obliquity
-> behavior only. The corrected orientation-only human run is pending.
+> behavior only. The corrected orientation-only human run completed; see the
+> [corrected report](in-vivo-base-orientation-only-no-regrid-2026-10-12.md).
 
 The earlier run directory and outputs remain under ignored `build/` for
 reproducibility. The corrected run uses a separate output directory and must
@@ -55,7 +56,7 @@ PYTHONPATH=src PYTHONNOUSERSITE=1 MPLCONFIGDIR=build/invivo-base-oblique-no-regr
   --wm-iso-level 0.5 --ace-use-updated-csf-in-ace 2
 ```
 
-The quality audit and source comparison are saved beside `run.json` under the ignored run directory. The JIST fixed-field comparison is in `jist-surface-comparison/`. The current default remains orthogonal RAS regridding on; this opt-out preserves an oblique orthogonal RAS grid without interpolation. Sheared grids remain unsupported.
+The quality audit and source comparison are saved beside `run.json` under the ignored run directory. The JIST fixed-field comparison is in `jist-surface-comparison/`. The current default remains orthogonal RAS regridding on; the corrected opt-out discards oblique directions without interpolation and preserves voxel values. This report documents the former behavior only. Sheared grids remain unsupported.
 
 The audits can be repeated from the repository root:
 
