@@ -1,0 +1,181 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "affine_ras": [
+    [
+      2.00390625,
+      0.0,
+      0.0,
+      -252.4921875
+    ],
+    [
+      0.0,
+      2.015625,
+      0.0,
+      13.468887329101562
+    ],
+    [
+      0.0,
+      0.0,
+      2.010690689086914,
+      -242.499267578125
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
+  "coordinate_system": "RAS",
+  "full_workflow_run_signature": "27168c8de663be49752b8b7b943663a5e76628a51dc8407f8d7c2fd2c88ab886",
+  "implementation_signature": null,
+  "java_peak_sampled_rss_gb": 0.537,
+  "java_rss_limit_gb": 8,
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 5.3701154471709925e-09,
+      "changed_voxels": 5903,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 7.12056348760402e-06,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 6.0093520943338095e-09,
+        "hausdorff_mm": 7.12056348760402e-06,
+        "mean_absolute_distance_mm": 6.021711277918106e-09,
+        "n_candidate_vertices": 22312,
+        "n_reference_vertices": 22312,
+        "reference_to_candidate_mean_mm": 6.034070461502403e-09
+      },
+      "maximum_absolute_voxel_error": 2.0265579223632812e-06,
+      "mean_absolute_distance_mm": 5.460228594371109e-09,
+      "mean_absolute_voxel_error": 2.527671124436013e-09,
+      "n_candidate_vertices": 22296,
+      "n_reference_vertices": 22296,
+      "reference_to_candidate_mean_mm": 5.550341741571226e-09,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 418509
+    },
+    "initial_inner": {
+      "candidate_to_reference_mean_mm": 7.532772749634297e-09,
+      "changed_voxels": 9408,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 1.3638041655250552e-05,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 8.25222117258444e-09,
+        "hausdorff_mm": 1.3638041655250552e-05,
+        "mean_absolute_distance_mm": 8.260079140110227e-09,
+        "n_candidate_vertices": 21552,
+        "n_reference_vertices": 21552,
+        "reference_to_candidate_mean_mm": 8.267937107636015e-09
+      },
+      "maximum_absolute_voxel_error": 1.9073486328125e-06,
+      "mean_absolute_distance_mm": 7.611936296305881e-09,
+      "mean_absolute_voxel_error": 5.22896576841319e-09,
+      "n_candidate_vertices": 21552,
+      "n_reference_vertices": 21552,
+      "reference_to_candidate_mean_mm": 7.691099842977465e-09,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 418509
+    },
+    "initial_level_set": {
+      "changed_voxels": 284,
+      "exact": false,
+      "maximum_absolute_voxel_error": 4.76837158203125e-07,
+      "mean_absolute_voxel_error": 3.2358145925102567e-10,
+      "sign_changed_voxels": 0,
+      "voxel_count": 418509
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 8.653625494312206e-09,
+      "changed_voxels": 8552,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 7.66186672129997e-06,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 9.570057526563677e-09,
+        "hausdorff_mm": 7.661864187364034e-06,
+        "mean_absolute_distance_mm": 9.319673113960625e-09,
+        "n_candidate_vertices": 21421,
+        "n_reference_vertices": 21421,
+        "reference_to_candidate_mean_mm": 9.069288701357575e-09
+      },
+      "maximum_absolute_voxel_error": 1.9073486328125e-06,
+      "mean_absolute_distance_mm": 8.713296271858007e-09,
+      "mean_absolute_voxel_error": 5.270454326105613e-09,
+      "n_candidate_vertices": 21418,
+      "n_reference_vertices": 21418,
+      "reference_to_candidate_mean_mm": 8.772967049403808e-09,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 418509
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 1.120328691136023e-06,
+      "changed_voxels": 6972,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.010872721456826115,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 5.850979095292176e-06,
+        "hausdorff_mm": 0.22431430512369843,
+        "mean_absolute_distance_mm": 1.0188163534450585e-05,
+        "n_candidate_vertices": 22413,
+        "n_reference_vertices": 22413,
+        "reference_to_candidate_mean_mm": 1.4525347973608995e-05
+      },
+      "maximum_absolute_voxel_error": 0.028276726603507996,
+      "mean_absolute_distance_mm": 1.1869128796639098e-06,
+      "mean_absolute_voxel_error": 6.639244793433954e-07,
+      "n_candidate_vertices": 22388,
+      "n_reference_vertices": 22388,
+      "reference_to_candidate_mean_mm": 1.2534970681917967e-06,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 418509
+    },
+    "smoothed_initial": {
+      "candidate_to_reference_mean_mm": 8.588696691532088e-08,
+      "changed_voxels": 46493,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 1.752232955240942e-05,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 1.1248302735730838e-07,
+        "hausdorff_mm": 1.752232955240942e-05,
+        "mean_absolute_distance_mm": 1.1104566823476647e-07,
+        "n_candidate_vertices": 21769,
+        "n_reference_vertices": 21769,
+        "reference_to_candidate_mean_mm": 1.0960830911222457e-07
+      },
+      "maximum_absolute_voxel_error": 9.834766387939453e-06,
+      "mean_absolute_distance_mm": 8.456789234356916e-08,
+      "mean_absolute_voxel_error": 3.541526902552748e-08,
+      "n_candidate_vertices": 21760,
+      "n_reference_vertices": 21760,
+      "reference_to_candidate_mean_mm": 8.324881777181743e-08,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 418509
+    }
+  },
+  "scope": "TGDM only; the source signed-distance seed is reused from the hash-checked Python stage, tissue/ACE/GVF inputs are reconstructed on the same crop grid, and TOADS/LesionTOADS remain held fixed",
+  "shape_xyz": [
+    73,
+    91,
+    63
+  ],
+  "surface_extractor": "source-matched JIST IsoSurfaceOnGrid connectivity-18 port",
+  "surface_gate_note": "Primary distance metrics use production JIST-compatible surfaces; marching_cubes_diagnostic is informational only.",
+  "surface_thresholds_pass": true,
+  "synthetic_only": true,
+  "tgdm_input_mode": "initial_membership",
+  "workflow_run_signature": "c44d5859ee0bf32c47ded8f8f77070ecb1acc41c7f2651e42a13fdceabd6a61b"
+}
