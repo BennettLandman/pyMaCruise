@@ -30,11 +30,13 @@ Focused command:
 
 The focused set includes an oblique, restartable synthetic base workflow, shared
 RAS-grid and nearest-neighbor checks, plus-workflow resource/hash checks, CLI
-and workflow-config defaults, and early opt-out rejection. The two newly added
-plus regridding selectors were rerun after strengthening the manifest-hash
-assertion: **2 passed in 1.08s**. `pymacruise plus-full-run --help` lists both
-regridding switches. `git diff --check` passed.
+and workflow-config defaults, and early opt-out rejection. The two plus
+regridding selectors and the base CLI default/opt-out selector were rerun on
+the current checkout: **3 passed in 2.21s**. `pymacruise plus-full-run --help`
+lists both regridding switches. `git diff --check` passed.
 
 This is synthetic integration evidence. It does not establish source
-equivalence or real-MRI output equivalence. The post-change full pytest suite
-has not yet run; roadmap item P46 remains Started until that run is recorded.
+equivalence or real-MRI output equivalence. The earlier full suite is recorded
+separately in [the full-suite report](full-pytest-2026-10-11-orthogonal-regridding.md)
+for tested tree `cabb52aa`; that run predates the current implementation tree
+and is not a fresh full-suite result for the current checkout.
