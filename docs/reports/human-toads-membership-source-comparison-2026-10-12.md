@@ -66,5 +66,15 @@ Source maps:
   sample-macruise/output/ToadsSeperate/Toads2ndPass/*toads2{gm,wmfill,wmmask}.nii.gz
 ```
 
+Reproduce the mask and membership measurements with:
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/compare_human_toads_membership.py \
+  --python-run build/invivo-base-orientation-only-source-profile-2026-10-12 \
+  --brain-mask /Users/landmaba/dev/mipav/sample-macruise/input/T1_bet_mask.nii.gz \
+  --maseg /Users/landmaba/dev/mipav/sample-macruise/input/orig_target_seg.nii.gz \
+  --report build/human-toads-membership-source-profile-2026-10-12/comparison.json
+```
+
 The Python and source affine headers are intentionally not treated as a shared
 world coordinate system. No changes were made to source files or image data.
