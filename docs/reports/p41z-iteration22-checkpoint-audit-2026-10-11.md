@@ -11,7 +11,13 @@ RAS-oriented on the 71×89×67 grid.
 
 The loop remains nonterminal at energy ratio **0.1324751973** (threshold
 `0.0001`). Iterations 20–22 alternate between objective values near 3,280 and
-3,747, so this pass does not establish convergence.
+3,747. Iterations 20 and 22 are much closer to each other than adjacent
+iterations: their mean absolute membership difference is **0.000130**, and
+only **171/423,373** segmentation voxels differ; their objective differs by
+1.514 (0.046%). The adjacent 20-to-21 membership mean absolute difference is
+0.003672. This is evidence of a near two-cycle, not proof of its cause; the
+source energy-ratio stopping rule compares adjacent objectives and therefore
+does not stop on this trajectory.
 
 ## Selected Java method comparison
 
