@@ -1,0 +1,123 @@
+{
+  "all_maps_exact": false,
+  "atlas_gm_sha256": "33b14535239ab3f6da5f22596a564c209416afd29b482fd2936f58f2d52e436f",
+  "case": "P41z iteration-11 synthetic transfer followed by selected Java crop",
+  "crop_parameters_class_sha256": "4eefab6e849ce3a667d71fdd43fdf9abfd40f6acf524ccdd7689845c0956b3bd",
+  "dura_source_geometry": [
+    "R",
+    "A",
+    "S"
+  ],
+  "dura_source_shape_xyz": [
+    71,
+    89,
+    67
+  ],
+  "evidence_category": "synthetic selected Java crop comparison; no full workflow equivalence claim",
+  "java_crop_bounds_and_shape": "2,74;5,95;7,69;73,91,63",
+  "java_cropper_class_sha256": "a205190169f270bc0c130c5a609d18fa819f67d374691bf707082fe15cac1dfc",
+  "python_crop_bounds_inclusive": [
+    [
+      2,
+      74
+    ],
+    [
+      5,
+      95
+    ],
+    [
+      7,
+      69
+    ]
+  ],
+  "reference_sha256": "6207cb32b42d8a8fbe3071357dc4de77a2ae64fd176402382e1c9172a0d97b99",
+  "reference_shape_xyz": [
+    81,
+    101,
+    77
+  ],
+  "results": [
+    {
+      "crop_shape": [
+        73,
+        91,
+        63
+      ],
+      "input_shape": [
+        71,
+        89,
+        67
+      ],
+      "java_nonzero_voxels": 261769,
+      "java_vs_python_physical_transfer_then_crop_differing_voxels": 295556,
+      "map": "csf",
+      "max_abs_difference": 0.8249391317367554,
+      "mean_abs_difference": 0.10278351734690248,
+      "python_nonzero_voxels": 270749,
+      "source_sha256": "b4698fe9864d9291a16af4b15c4e9883b93aca89103cc4423d73c205ee80d55d",
+      "voxel_count": 418509
+    },
+    {
+      "crop_shape": [
+        73,
+        91,
+        63
+      ],
+      "input_shape": [
+        71,
+        89,
+        67
+      ],
+      "java_nonzero_voxels": 249408,
+      "java_vs_python_physical_transfer_then_crop_differing_voxels": 282146,
+      "map": "gm",
+      "max_abs_difference": 0.9960163235664368,
+      "mean_abs_difference": 0.15102675778388855,
+      "python_nonzero_voxels": 256664,
+      "source_sha256": "01183acac0c9246534f2bd872cdf107e26f2aefef2a799a1392739b59ddcfad8",
+      "voxel_count": 418509
+    },
+    {
+      "crop_shape": [
+        73,
+        91,
+        63
+      ],
+      "input_shape": [
+        71,
+        89,
+        67
+      ],
+      "java_nonzero_voxels": 223420,
+      "java_vs_python_physical_transfer_then_crop_differing_voxels": 252296,
+      "map": "wm_fill",
+      "max_abs_difference": 0.9962758421897888,
+      "mean_abs_difference": 0.08910506977847249,
+      "python_nonzero_voxels": 228167,
+      "source_sha256": "16eb6cba3c67afbcb8be31e940f28dfbb4d0f8bb49c5d3584ab1f8c4fa1bdd9b",
+      "voxel_count": 418509
+    },
+    {
+      "crop_shape": [
+        73,
+        91,
+        63
+      ],
+      "input_shape": [
+        71,
+        89,
+        67
+      ],
+      "java_nonzero_voxels": 56676,
+      "java_vs_python_physical_transfer_then_crop_differing_voxels": 42457,
+      "map": "wm_mask",
+      "max_abs_difference": 1.0,
+      "mean_abs_difference": 0.10144823647759069,
+      "python_nonzero_voxels": 57047,
+      "source_sha256": "1d23b53337b445a9dd17fcd8c0d1612c886791a7a9273e51e5e67a93bfd21508",
+      "voxel_count": 418509
+    }
+  ],
+  "selected_wrapper": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/plugins/CRUISE/utilities/CropBasedOnGM.java",
+  "selected_wrapper_sha256": "4e41266b67a344cce53bc354b2302bf35486d1beb408e76a204d8c24d9fd1912"
+}

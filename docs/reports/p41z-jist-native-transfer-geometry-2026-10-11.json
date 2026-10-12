@@ -1,0 +1,521 @@
+{
+  "case": "selected JIST ReorientVolume versus PyMaCRUISE physical-affine transfer",
+  "evidence_category": "held-fixed source geometry audit",
+  "interpretation": "JIST uses Resolution.UNCHANGED and may preserve source extents; Python samples on the full reference grid. Different output extents are reported, not silently compared voxelwise.",
+  "java_harness_sha256": "f2f78e17f178d010ae5e27218d86e56e3dd8498126dafa4f31dc5fa332573ac3",
+  "java_source": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/src/edu/jhu/ece/iacl/algorithms/volume/ReorientVolume.java",
+  "java_source_sha256": "67fbf8b3f29e844cbec5e5994fecddf542da1e32d48222ee47312acb6886da24",
+  "maps": {
+    "csf": {
+      "java_array_matches_source_voxels_exactly": true,
+      "java_data_sha256": "b54802dbb07284892e9e3e99cbe2ecc4a1175ad0ccac11c79bddbe40609a82b0",
+      "java_output_extents_xyz": [
+        71,
+        89,
+        67
+      ],
+      "java_output_geometry_after_reference_header": {
+        "axis_orientation": [
+          2,
+          4,
+          5
+        ],
+        "extents": [
+          71,
+          89,
+          67
+        ],
+        "image_orientation": 0,
+        "origin": [
+          256.5,
+          -198.17174,
+          -256.5741,
+          0.0
+        ],
+        "resolutions": [
+          2.0039062,
+          2.015625,
+          2.0106907
+        ]
+      },
+      "java_voxel_count": 423373,
+      "output_shape_matches": false,
+      "python_physical_transfer_geometry": {
+        "affine": [
+          [
+            2.00390625,
+            0.0,
+            0.0,
+            -256.5
+          ],
+          [
+            0.0,
+            2.015625,
+            0.0,
+            3.3907623291015625
+          ],
+          [
+            0.0,
+            0.0,
+            2.010690689086914,
+            -256.5740966796875
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "axis_codes": [
+          "R",
+          "A",
+          "S"
+        ],
+        "dtype": "float32",
+        "shape": [
+          81,
+          101,
+          77
+        ]
+      },
+      "source": {
+        "geometry": {
+          "affine": [
+            [
+              2.00390625,
+              0.0,
+              0.0,
+              -250.48828125
+            ],
+            [
+              0.0,
+              2.015625,
+              0.0,
+              15.484512329101562
+            ],
+            [
+              0.0,
+              0.0,
+              2.010690689086914,
+              -254.5634002685547
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "axis_codes": [
+            "R",
+            "A",
+            "S"
+          ],
+          "dtype": "float32",
+          "shape": [
+            71,
+            89,
+            67
+          ]
+        },
+        "path": "/Users/landmaba/dev/mipav/pymacruise/build/p41z-case-normalization/iterations-0008-to-0011-surfaces/lesion-dura/lesion_toads_csf.nii.gz",
+        "sha256": "b4698fe9864d9291a16af4b15c4e9883b93aca89103cc4423d73c205ee80d55d"
+      }
+    },
+    "gm": {
+      "java_array_matches_source_voxels_exactly": true,
+      "java_data_sha256": "482a329e9386449a2a0321fe6b53b514aa15d7144818b50a70c2780ae16f3ef1",
+      "java_output_extents_xyz": [
+        71,
+        89,
+        67
+      ],
+      "java_output_geometry_after_reference_header": {
+        "axis_orientation": [
+          2,
+          4,
+          5
+        ],
+        "extents": [
+          71,
+          89,
+          67
+        ],
+        "image_orientation": 0,
+        "origin": [
+          256.5,
+          -198.17174,
+          -256.5741,
+          0.0
+        ],
+        "resolutions": [
+          2.0039062,
+          2.015625,
+          2.0106907
+        ]
+      },
+      "java_voxel_count": 423373,
+      "output_shape_matches": false,
+      "python_physical_transfer_geometry": {
+        "affine": [
+          [
+            2.00390625,
+            0.0,
+            0.0,
+            -256.5
+          ],
+          [
+            0.0,
+            2.015625,
+            0.0,
+            3.3907623291015625
+          ],
+          [
+            0.0,
+            0.0,
+            2.010690689086914,
+            -256.5740966796875
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "axis_codes": [
+          "R",
+          "A",
+          "S"
+        ],
+        "dtype": "float32",
+        "shape": [
+          81,
+          101,
+          77
+        ]
+      },
+      "source": {
+        "geometry": {
+          "affine": [
+            [
+              2.00390625,
+              0.0,
+              0.0,
+              -250.48828125
+            ],
+            [
+              0.0,
+              2.015625,
+              0.0,
+              15.484512329101562
+            ],
+            [
+              0.0,
+              0.0,
+              2.010690689086914,
+              -254.5634002685547
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "axis_codes": [
+            "R",
+            "A",
+            "S"
+          ],
+          "dtype": "float32",
+          "shape": [
+            71,
+            89,
+            67
+          ]
+        },
+        "path": "/Users/landmaba/dev/mipav/pymacruise/build/p41z-case-normalization/iterations-0008-to-0011-surfaces/lesion-dura/lesion_toads_gm.nii.gz",
+        "sha256": "01183acac0c9246534f2bd872cdf107e26f2aefef2a799a1392739b59ddcfad8"
+      }
+    },
+    "wm_fill": {
+      "java_array_matches_source_voxels_exactly": true,
+      "java_data_sha256": "a39e72efde805d3756993354cc6ddbc08bbc61950a2a30fd74002b5547f6c969",
+      "java_output_extents_xyz": [
+        71,
+        89,
+        67
+      ],
+      "java_output_geometry_after_reference_header": {
+        "axis_orientation": [
+          2,
+          4,
+          5
+        ],
+        "extents": [
+          71,
+          89,
+          67
+        ],
+        "image_orientation": 0,
+        "origin": [
+          256.5,
+          -198.17174,
+          -256.5741,
+          0.0
+        ],
+        "resolutions": [
+          2.0039062,
+          2.015625,
+          2.0106907
+        ]
+      },
+      "java_voxel_count": 423373,
+      "output_shape_matches": false,
+      "python_physical_transfer_geometry": {
+        "affine": [
+          [
+            2.00390625,
+            0.0,
+            0.0,
+            -256.5
+          ],
+          [
+            0.0,
+            2.015625,
+            0.0,
+            3.3907623291015625
+          ],
+          [
+            0.0,
+            0.0,
+            2.010690689086914,
+            -256.5740966796875
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "axis_codes": [
+          "R",
+          "A",
+          "S"
+        ],
+        "dtype": "float32",
+        "shape": [
+          81,
+          101,
+          77
+        ]
+      },
+      "source": {
+        "geometry": {
+          "affine": [
+            [
+              2.00390625,
+              0.0,
+              0.0,
+              -250.48828125
+            ],
+            [
+              0.0,
+              2.015625,
+              0.0,
+              15.484512329101562
+            ],
+            [
+              0.0,
+              0.0,
+              2.010690689086914,
+              -254.5634002685547
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "axis_codes": [
+            "R",
+            "A",
+            "S"
+          ],
+          "dtype": "float32",
+          "shape": [
+            71,
+            89,
+            67
+          ]
+        },
+        "path": "/Users/landmaba/dev/mipav/pymacruise/build/p41z-case-normalization/iterations-0008-to-0011-surfaces/lesion-dura/lesion_toads_wm_fill.nii.gz",
+        "sha256": "16eb6cba3c67afbcb8be31e940f28dfbb4d0f8bb49c5d3584ab1f8c4fa1bdd9b"
+      }
+    },
+    "wm_mask": {
+      "java_array_matches_source_voxels_exactly": true,
+      "java_data_sha256": "e1fcbcc4f9b4cabc5f3433541f0c9a31e5485a7de1e3ed7564c91346004d6bb9",
+      "java_output_extents_xyz": [
+        71,
+        89,
+        67
+      ],
+      "java_output_geometry_after_reference_header": {
+        "axis_orientation": [
+          2,
+          4,
+          5
+        ],
+        "extents": [
+          71,
+          89,
+          67
+        ],
+        "image_orientation": 0,
+        "origin": [
+          256.5,
+          -198.17174,
+          -256.5741,
+          0.0
+        ],
+        "resolutions": [
+          2.0039062,
+          2.015625,
+          2.0106907
+        ]
+      },
+      "java_voxel_count": 423373,
+      "output_shape_matches": false,
+      "python_physical_transfer_geometry": {
+        "affine": [
+          [
+            2.00390625,
+            0.0,
+            0.0,
+            -256.5
+          ],
+          [
+            0.0,
+            2.015625,
+            0.0,
+            3.3907623291015625
+          ],
+          [
+            0.0,
+            0.0,
+            2.010690689086914,
+            -256.5740966796875
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "axis_codes": [
+          "R",
+          "A",
+          "S"
+        ],
+        "dtype": "float32",
+        "shape": [
+          81,
+          101,
+          77
+        ]
+      },
+      "source": {
+        "geometry": {
+          "affine": [
+            [
+              2.00390625,
+              0.0,
+              0.0,
+              -250.48828125
+            ],
+            [
+              0.0,
+              2.015625,
+              0.0,
+              15.484512329101562
+            ],
+            [
+              0.0,
+              0.0,
+              2.010690689086914,
+              -254.5634002685547
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "axis_codes": [
+            "R",
+            "A",
+            "S"
+          ],
+          "dtype": "float32",
+          "shape": [
+            71,
+            89,
+            67
+          ]
+        },
+        "path": "/Users/landmaba/dev/mipav/pymacruise/build/p41z-case-normalization/iterations-0008-to-0011-surfaces/lesion-dura/lesion_toads_wm_mask.nii.gz",
+        "sha256": "1d23b53337b445a9dd17fcd8c0d1612c886791a7a9273e51e5e67a93bfd21508"
+      }
+    }
+  },
+  "reference": {
+    "geometry": {
+      "affine": [
+        [
+          2.00390625,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          2.015625,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          2.010690689086914,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "float32",
+      "shape": [
+        81,
+        101,
+        77
+      ]
+    },
+    "path": "/Users/landmaba/dev/mipav/pymacruise/tests/data/synthetic/plus_vandy_atlas_aligned_fine/t1.nii.gz",
+    "sha256": "6207cb32b42d8a8fbe3071357dc4de77a2ae64fd176402382e1c9172a0d97b99"
+  }
+}
