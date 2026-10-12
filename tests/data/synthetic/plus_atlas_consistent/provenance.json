@@ -1,0 +1,184 @@
+{
+  "description": "Atlas-aligned synthetic MaCRUISEplus integration fixture",
+  "evidence_category": "synthetic integration; not independent atlas or source-method ground truth",
+  "images": {
+    "brain-mask.nii.gz": {
+      "affine_ras_mm": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "uint8",
+      "sha256": "06a5397c028ceb0b2e872986bddede50d7cbf73fd54e37a206748e67aa491a5b",
+      "shape": [
+        172,
+        216,
+        164
+      ]
+    },
+    "flair.nii.gz": {
+      "affine_ras_mm": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "float32",
+      "sha256": "ce31642f2d701b36f3c194a5efc126e0298e29d5817334ba52d415168ce112c5",
+      "shape": [
+        172,
+        216,
+        164
+      ]
+    },
+    "maseg.nii.gz": {
+      "affine_ras_mm": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "uint16",
+      "sha256": "1acd6cb0002187effb38f9fc4bc09fb7a045f243c19af75f34871ffbb181385a",
+      "shape": [
+        172,
+        216,
+        164
+      ]
+    },
+    "t1.nii.gz": {
+      "affine_ras_mm": [
+        [
+          0.9375,
+          0.0,
+          0.0,
+          -256.5
+        ],
+        [
+          0.0,
+          0.9375,
+          0.0,
+          3.3907623291015625
+        ],
+        [
+          0.0,
+          0.0,
+          0.9375,
+          -256.5740966796875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "axis_codes": [
+        "R",
+        "A",
+        "S"
+      ],
+      "dtype": "float32",
+      "sha256": "7236472d9f34259b666ae15ce758542a7f0daf4c58574f7a6a117ee748205c93",
+      "shape": [
+        172,
+        216,
+        164
+      ]
+    }
+  },
+  "intensity_model": "selected T1_MPRAGE and FLAIR descriptor means scaled by 255 with deterministic smooth within-class modulation; FLAIR exterior baseline 80 keeps cubic interpolation nonnegative",
+  "source_atlas_descriptor": "data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt",
+  "spatial_assumptions": "RAS NIfTIs on bundled topology-atlas grid; atlas classes supply anatomy and synthetic MaSeg tissue grouping",
+  "topology_id_to_maseg_label": {
+    "1": 0,
+    "14": 100,
+    "15": 100,
+    "16": 100,
+    "17": 100,
+    "18": 100,
+    "22": 100,
+    "24": 44,
+    "25": 44,
+    "26": 44,
+    "27": 44,
+    "5": 5,
+    "6": 5
+  }
+}
