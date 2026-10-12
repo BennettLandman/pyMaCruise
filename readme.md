@@ -4,13 +4,15 @@ Python-native implementation of the MaCRUISE cortical segmentation workflow. The
 
 [plan.md](plan.md) is the detailed, step-by-step port and validation plan. This README keeps only the current project status and stable project guidance; historical validation reports remain under [docs/reports](docs/reports/).
 
-## Current status — 2026-10-11
+## Current status — 2026-10-12
 
 The restartable BASE workflow completes on the supplied human T1 under the 16 GB memory ceiling. Orthogonal RAS regridding is enabled by default in the base and PLUS workflow commands; use `--no-regrid-inputs` for already aligned legacy inputs. The latest full-suite evidence is 1,559 passed, 4 skipped on commit `3bf4aeb2`; later changes have focused validation but no new full-suite run. See the [full-suite report](docs/reports/full-pytest-2026-10-11-lesion-dura-wrapper-scale.md) and [regridding behavior/evidence](docs/reports/orthogonal-ras-regridding-focused-2026-10-11.md).
 
 Real-human BASE processing and selected Java stage comparisons are available, but source-output agreement and ribbon acceptance remain unresolved: held-fixed segmentation/surface thresholds fail, and the produced meshes contain many small components. PLUS integration is restartable on a committed synthetic case through iteration 26. The latest selected Java comparison (iteration 25→26) matches its tested methods exactly; the loop remains nonterminal, and the surface audit fails GM support, genus, and thickness-tail bounds. Iterations 24 and 26 return to a similar state, confirming the near two-cycle. See the [iteration-26 source and ribbon audit](docs/reports/p41z-iteration26-checkpoint-audit-2026-10-11.md) and [iteration-25 audit](docs/reports/p41z-iteration25-checkpoint-audit-2026-10-11.md). Real-human PLUS acceptance and whole-application Java equivalence remain open.
 
-Current blockers are upstream PLUS/source-run configuration and the synthetic ribbon/convergence failures; these cannot be resolved by relaxing tolerances. No visualization port or FreeSurfer dependency is included. Detailed standalone-tool and workflow status is in [plan.md](plan.md); reproducible historical reports are in [docs/reports](docs/reports/).
+The latest full run on the labeled 65³ folded synthetic PLUS fixture completed preprocessing, registered recropping, and first thinning, then stopped at post-thinning membership because two lesion variance channels were zero under source-faithful NaN behavior. Peak RSS was 3.378 GB. The fixture contains no lesion example while its bundled atlas enables lesion handling; the next step is to trace the V3 no-lesion wrapper path and build a source-valid synthetic case. This is a diagnosed integration blocker, not a ribbon-quality pass. Details and the runnable command are in the [full-run report](docs/reports/plus-labeled-folded-full-run-2026-10-12.md).
+
+Current blockers also include human source-output discrepancies and synthetic ribbon/convergence failures; these cannot be resolved by relaxing tolerances. No visualization port or FreeSurfer dependency is included. Detailed standalone-tool and workflow status is in [plan.md](plan.md); reproducible historical reports are in [docs/reports](docs/reports/).
 
 ## Scope and target
 
