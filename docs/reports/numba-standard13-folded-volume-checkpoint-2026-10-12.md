@@ -1,14 +1,20 @@
-# Ordered standard-13 membership acceleration and PLUS checkpoint
+# Ordered standard-13 acceleration and reproducible PLUS checkpoint
 
-## Result
+## Source-behavior implementation
 
-The standard-13 TOADS membership sweep now has a Numba implementation and keeps the prior Python implementation as an executable oracle (`backend="python"`). Numba is the default. The kernel preserves source traversal and in-place neighbor updates, class and energy state ordering, float32 arithmetic, the six-face neighborhood, and the source-selected zero-variance behavior.
+The standard-13 TOADS membership sweep now has a Numba implementation and retains the Python implementation as an executable oracle (`backend="python"`). Numba is the default. The accelerated kernel preserves source traversal and in-place neighbor updates, class and energy state ordering, float32 arithmetic, the six-face neighborhood, and source-selected zero-variance behavior.
 
-The focused oracle comparison is bit-for-bit on the 5³ Java-harness input and on a 15³ folded volume tiled from that fixture. All returned membership, relation, energy, denominator, objective-history arrays and the scalar objective match exactly. The focused regression group passed **11 tests in 6.49 s**. This is Python-backend equivalence evidence on synthetic inputs; it is not a new Java-equivalence claim.
+The accelerated and Python backends match bit-for-bit on the 5³ Java-harness case and on a 15³ folded synthetic volume tiled from that input. All membership, relation, energy, denominator, objective-history arrays, and the scalar objective agree exactly. The focused group passed **11 tests in 6.49 s** on implementation commit `e09e104c`. This establishes Python-backend equivalence on synthetic states; it is not a new Java-equivalence claim.
 
-## Integrated synthetic PLUS run
+## ANTs reproducibility correction
 
-Command (with an RSS watchdog capped at 16 GB):
+Before the correction, repeated Rigid registrations on identical synthetic inputs and settings produced different transforms. With the PLUS sampling rate 0.25, two runs differed at **100,955 voxels** (maximum absolute difference 0.41469). ANTsX's reproducibility guidance calls for a fixed random seed and single-threaded execution; setting those variables only after ANTsPy/ITK had initialized was too late. PyMaCRUISE now sets `ANTS_RANDOM_SEED` and `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1` before converting images to ANTs objects, then restores the prior environment.
+
+After the fix, repeated registrations produced bit-identical transforms and warped images. The committed regression test repeats Rigid registration with fixed seed and verifies exact equality. Registration and CLI tests passed **9 tests in 4.88 s** on commit `bca4e8cc`. The source guidance is [ANTsX's reproducibility notes](https://github.com/ANTsX/ANTs/wiki/antsRegistration-reproducibility-issues) and [ANTsPy's environment-variable notes](https://github.com/ANTsX/ANTsPy/wiki/Important-environment-variables).
+
+## Restartable synthetic PLUS run
+
+Runnable command (16 GB RSS watchdog; single-threaded numerical libraries):
 
 ```sh
 MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
@@ -21,14 +27,14 @@ MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
   --brain-mask tests/data/synthetic/plus_labeled_folded_cortex/brain-mask.nii.gz \
   --maseg tests/data/synthetic/plus_labeled_folded_cortex/maseg.nii.gz \
   --atlas-descriptor data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt \
-  --output-dir build/plus-labeled-folded-numba-onepass-2026-10-12 \
+  --output-dir build/plus-labeled-folded-deterministic-numba-onepass-2026-10-12 \
   --max-passes 1
 ```
 
-All nine public workflow stages completed, with peak sampled RSS **5.327 GB**. The run is a deliberate one-pass checkpoint (`terminal=false`), not a converged result. In the iteration-2 progress manifest, `update_memberships` took **1.10 s**. An earlier run of the same labeled-folded 65³ case recorded about **1,014 s** for that stage. Treat the ratio as an indicative performance measurement, not a controlled benchmark: comparison of saved outputs found that upstream registered FLAIR already differs (maximum absolute difference 0.65204) even though both run manifests list the same input hashes and registration settings. The older run therefore cannot validate the accelerated kernel's whole-pipeline output.
+All **nine workflow stages completed** under the watchdog; the manifest is `build/plus-labeled-folded-deterministic-numba-onepass-2026-10-12/plus-full-workflow.json`. It is a one-pass checkpoint with `terminal=false`, not a converged result. The iteration-2 membership update took **1.065 s**; registered shape-prior computation took 222.47 s and is now the larger measured bottleneck. A prior unseeded 65³ run recorded about 1,014 s for the membership stage, but that is not a controlled speed comparison because its registration-derived inputs differed.
 
-The output checkpoint is under `build/plus-labeled-folded-numba-onepass-2026-10-12/`; `plus-full-workflow.json` is the restart manifest and `ribbon-quality.json` records the audit. The audit failed acceptance: GM-between-surfaces support **75.716%**, WM-inside-inner support **91.280%**, closest-surface thickness p05/median/p95 **0.170/1.394/5.325 mm**, and each mesh has 29 components (Euler characteristic 40). Level-set mean thickness is 4.247 mm and level-set nesting passes. All are synthetic results; no real-human PLUS validation is implied.
+The current run's registered FLAIR output is bit-identical to two independently repeated registrations with the same seed and settings. Its first ribbon audit still fails: GM-between-surfaces support **82.98%**, WM-inside-inner support **89.92%**, and closest-surface thickness p05/median/p95 **0.174/1.887/5.615 mm**. The level-set mean thickness is 4.690 mm, but nested voxel regions fail. All meshes are watertight but each has 21 connected components and Euler characteristic 36. These are synthetic checkpoint measurements, not Java equivalence or real-human PLUS validation.
 
-## Next
+## Next integration work
 
-Keep the Python backend available for same-state checks. Before claiming whole-run equivalence or keeping the integrated speed result as a controlled benchmark, investigate why the registered FLAIR output changed between these runs, rerun both backends from the same persisted workflow checkpoint, and retain the required ribbon-quality gates. The integrated PLUS case remains nonterminal and fails tissue support and mesh quality.
+Keep the Python backend as an oracle and the deterministic ANTs setup enabled. Diagnose the synthetic ribbon support, nesting, and mesh-component failures, then resume the checkpoint for additional source-selected passes and repeat the explicit quality audit. A held-fixed full-workflow Python-backend comparison has not yet been run. The previous whole-run comparison is no longer used to assess backend equivalence because it predates repeatable registration.
