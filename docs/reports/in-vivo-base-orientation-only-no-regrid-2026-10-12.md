@@ -2,7 +2,7 @@
 
 ## Result and scope
 
-> This run used WM iso 0.6 and ACE mode 0, the BASE defaults. The selected source profile is WM iso 0.5 and ACE mode 2. The geometry, execution, hash, RAS, TOADS-convergence, and fixed-field JIST findings below remain valid; source-levelset, label-refinement, and anatomy metrics are exploratory. A separate source-profile rerun is underway and will provide the plan acceptance comparison.
+> This run used WM iso 0.6 and ACE mode 0, the BASE defaults. The selected source profile is WM iso 0.5 and ACE mode 2. The geometry, execution, hash, RAS, TOADS-convergence, and fixed-field JIST findings below remain valid; source-levelset, label-refinement, and anatomy metrics are exploratory. The selected-profile rerun completed; see the [source-profile comparison](in-vivo-base-orientation-only-source-profile-2026-10-12.md) for the plan acceptance evidence.
 
 The restartable BASE workflow completed on the supplied human T1, brain mask,
 and MaSeg using the clarified `--no-regrid-inputs` behavior. The run manifest
