@@ -31,6 +31,7 @@ from pymacruise.lesion_next_iteration_statistics import refresh_statistics_after
 from pymacruise.lesion_distance_refresh import refresh_lesion_toads_distance_maps
 from pymacruise.lesion_registered_shapes import transform_registered_lesion_shape_priors
 from pymacruise.lesion_registered_initial_membership import LesionInitialDistanceMaps
+from pymacruise.lesion_registration_handoff import register_lesion_membership_handoff
 from pymacruise.lesion_relations import lesion_compute_relations
 from pymacruise.lesion_standard13_volume import STANDARD13_TYPES
 from pymacruise.lesion_growth import propagate_lesion_toads_growing
@@ -420,6 +421,105 @@ def _compare_relations_java(
     }
 
 
+def _compare_registration_java(
+    *,
+    java: str,
+    javac: str,
+    temporary: Path,
+    memberships,
+    shape_priors,
+    initial_transform,
+    image_resolution: tuple[float, float, float],
+    template_resolution: tuple[float, float, float],
+    expected_manifest_path: Path,
+) -> dict:
+    manifest = json.loads(expected_manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("status") != "complete" or manifest.get("stage") != "plus-lesion-registered-loop":
+        raise ValueError("expected next checkpoint must be a complete registered-loop manifest")
+    summary = json.loads(_checked_path(manifest["outputs"]["summary"], name="iteration-20 summary").read_text())
+    membership = np.asarray(memberships.class_memberships, dtype=np.float32)
+    shapes = tuple(np.asarray(value, dtype=np.float32) for value in shape_priors)
+    spatial = tuple(int(value) for value in membership.shape[:3])
+    template = tuple(int(value) for value in shapes[0].shape)
+    python = register_lesion_membership_handoff(
+        memberships,
+        shapes,
+        initial_transform,
+        image_resolutions_mm=image_resolution,
+        template_resolutions_mm=template_resolution,
+        align_shapes=True,
+        init_align_iter=1,
+    )
+    if python.optimization is None:
+        raise RuntimeError("iteration-20 registration unexpectedly skipped shape alignment")
+    temporary.mkdir(parents=True, exist_ok=True)
+    input_path, output_path = temporary / "registration-in.bin", temporary / "registration-java.bin"
+    input_path.write_bytes(b"".join((
+        struct.pack(">8i", *spatial, *template, len(shapes), 1),
+        np.asarray(image_resolution, dtype=">f4").tobytes(),
+        np.asarray(template_resolution, dtype=">f4").tobytes(),
+        np.asarray(initial_transform, dtype=">f4").tobytes(),
+        np.asarray(membership, dtype=">f4").ravel(order="C").tobytes(),
+        b"".join(np.asarray(value, dtype=">f4").ravel(order="C").tobytes() for value in shapes),
+    )))
+    classes = temporary / "classes"
+    classes.mkdir(parents=True, exist_ok=True)
+    upstream = JAVA_ROOT / "upstream/edu/jhmi/rad/medic"
+    harness = JAVA_ROOT / "LesionRegisteredOptimizerDynamicReferenceHarness.java"
+    sources = [
+        upstream / "structures/RotationMatrix.java",
+        upstream / "methods/ParametricTransform.java",
+        upstream / "libraries/ImageFunctions.java",
+        upstream / "utilities/Numerics.java",
+        JAVA_ROOT / "stubs/edu/jhmi/rad/medic/utilities/MedicUtilPublic.java",
+        harness,
+    ]
+    subprocess.run([javac, "-d", str(classes), *(str(path) for path in sources)], check=True, capture_output=True, text=True)
+    subprocess.run(
+        [java, "-Xmx2g", "-cp", str(classes), "LesionRegisteredOptimizerDynamicReferenceHarness", str(input_path), str(output_path)],
+        check=True, capture_output=True, text=True,
+    )
+    data = output_path.read_bytes()
+    offset = 4
+    java_energy = np.frombuffer(data[offset:offset + 4], dtype=">f4")[0]
+    offset += 4
+    java_transform = np.frombuffer(data[offset:offset + 24], dtype=">f4").astype(np.float32)
+    offset += 24
+    java_rotation = np.frombuffer(data[offset:offset + 36], dtype=">f4").astype(np.float32).reshape(3, 3)
+    offset += 36
+    classes_count = struct.unpack(">i", data[offset:offset + 4])[0]
+    offset += 4
+    java_bounds = []
+    for _ in range(classes_count):
+        values = struct.unpack(">7i", data[offset:offset + 28])
+        offset += 28
+        java_bounds.append({"lower_xyz": list(values[:3]), "upper_xyz": list(values[3:6]), "support_count": values[6]})
+    expected_transform = np.asarray(summary["registration_transform"], dtype=np.float32)
+    expected_rotation = np.asarray(summary["registration_rotation"], dtype=np.float32)
+    expected_bounds = summary["registration_shape_bounds"]
+    checks = {
+        "transform_exact_float32_bits": np.array_equal(java_transform.view(np.uint32), np.asarray(python.transform, dtype=np.float32).view(np.uint32)),
+        "rotation_exact_float32_bits": np.array_equal(java_rotation.view(np.uint32), np.asarray(python.rotation, dtype=np.float32).view(np.uint32)),
+        "optimizer_energy_exact_float32_bits": int(np.float32(java_energy).view(np.uint32)) == int(np.float32(python.optimization.energy).view(np.uint32)),
+        "checkpoint_transform_exact": np.array_equal(java_transform.view(np.uint32), expected_transform.view(np.uint32)),
+        "checkpoint_rotation_exact": np.array_equal(java_rotation.view(np.uint32), expected_rotation.view(np.uint32)),
+        "checkpoint_bounds_exact": java_bounds == expected_bounds,
+    }
+    return {
+        "all_exact": all(checks.values()),
+        **checks,
+        "iterations_configured": 1,
+        "energy": float(java_energy),
+        "transform": java_transform.tolist(),
+        "bounds_exact_each_class": [left == right for left, right in zip(java_bounds, expected_bounds)],
+        "java_output_sha256": hashlib.sha256(data).hexdigest(),
+        "source_files": {
+            str(path.relative_to(ROOT)): _sha256(path)
+            for path in sources
+        },
+    }
+
+
 def compare(
     manifest_path: Path,
     output_dir: Path,
@@ -590,6 +690,7 @@ def compare(
     )
 
     growth_report = None
+    registration_report = None
     if expected_next_manifest is not None:
         next_membership = run_lesion_toads_next_gm_membership_update(
             prior_stats,
@@ -602,6 +703,17 @@ def compare(
             previous_energy=float(prior_membership.objective), outlier_energy=0.1,
             lesion_power_exponent=1.2, spread=0.5,
             source_zero_variance_nan=bool(settings["source_zero_variance_nan"]),
+        )
+        registration_report = _compare_registration_java(
+            java=java,
+            javac=javac,
+            temporary=output_dir / "registration-java-work",
+            memberships=next_membership.membership,
+            shape_priors=shape_priors,
+            initial_transform=registration.transform,
+            image_resolution=image_resolution,
+            template_resolution=template_resolution,
+            expected_manifest_path=expected_next_manifest.expanduser().resolve(),
         )
         growth_report = _compare_growth_java(
             java=java,
@@ -705,6 +817,7 @@ def compare(
         "next_membership_nan_counts": membership_report["nan_counts"],
         "next_membership_updated_energy": membership_report["updated_energy"],
         "next_membership_energy_ratio": membership_report["energy_ratio"],
+        "registration_optimizer": registration_report,
         "post_registration_growth": growth_report,
         "distance_refresh_stage_order": list(refreshed_distance_state.stage_order),
         "refreshed_distance_hashes": {
@@ -736,6 +849,7 @@ def compare(
     if (
         not shape_exact or java_bytes != expected or not statistics_report["all_exact"]
         or not membership_report["all_exact"]
+        or (registration_report is not None and not registration_report.get("all_exact"))
         or (growth_report is not None and not growth_report.get("all_exact"))
         or (growth_report is not None and not growth_report.get("checkpoint_outputs_exact"))
         or (growth_report is not None and not growth_report["post_growth_relations"].get("all_exact"))

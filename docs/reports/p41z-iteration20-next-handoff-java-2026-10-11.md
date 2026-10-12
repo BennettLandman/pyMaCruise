@@ -36,6 +36,10 @@ confirms:
 - Relation refresh matches byte-for-byte at **848,444 bytes**: the relation
   map and relation-membership table are exact against selected Java and the
   complete checkpoint, with **130** relation rows and **14** diffusion passes.
+- The iteration-20 registration optimizer matches selected Java for the
+  configured single optimization update: final transform, rotation, objective,
+  and all **13** transformed positive-support bounds are exact float32/integer
+  matches to both Python and the complete checkpoint.
 
 Iteration 20 has objective **3279.7939453125** and energy ratio
 **0.132798091**, above the stop threshold `0.0001`; the loop is nonterminal.
@@ -44,15 +48,26 @@ The checkpoint manifest SHA-256 is
 The iteration-19 parent manifest SHA-256 is
 `b060756ae8d04803c38941bf84a464dfeea59cc00ef831f5c63738ae24c8cab9`.
 
+The downstream synthetic surface tail also completed from the iteration-20
+checkpoint at **0.636 GB peak RSS** under a 4 GB watchdog. It remains explicitly
+nonterminal. The ribbon audit fails anatomy acceptance: GM-between-surfaces is
+**94.425%** (minimum 97%), WM-inside-inner is 99.403%, and CSF-outside-outer is
+99.270%. Each watertight surface has two connected components and Euler
+characteristic −14. Surface-thickness median/p05/p95 is **5.705/0.238/11.455
+mm**; level-set mean thickness is 4.736 mm. Nesting and level-set mean pass.
+The machine-readable metrics are in ignored
+`build/p41z-case-normalization/iteration20-surfaces/ribbon-quality.json`.
+
 ## Scope and limitations
 
 This is synthetic evidence. The full Python iteration executes registration,
 growth, and relation refresh and passes restartable manifest checks. Selected
-Java comparisons cover shape sampling, thinning, statistics, refreshed-map
-membership, post-registration growth, and relation refresh. They do **not**
-compare the iteration-20 registration optimizer against Java and do not
-establish complete live-loop or whole-workflow equivalence. This is not
-real-human validation and does not resolve the separate ribbon-quality
+Selected Java comparisons now cover each represented iteration-20 seam:
+shape sampling, thinning, statistics, refreshed-map membership, registration,
+post-registration growth, and relation refresh. The references are selected
+method harnesses composed around held-fixed state, not a run of the complete
+Java application or a complete Java loop. This is synthetic evidence, not
+real-human validation, and does not resolve the separate ribbon-quality
 failures.
 
 An initial version of the handoff comparator reused iteration-19 distance
@@ -88,6 +103,27 @@ MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONPATH=src \
   --expected-next-checkpoint build/p41z-case-normalization/iteration20-complete/lesion-registered-loop.json
 ```
 
+Compose the checkpoint surface tail and run the tissue-support/topology/
+thickness audit:
+
+```sh
+MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONPATH=src \
+  .venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 4 \
+  --interval-seconds 1 --report-interval-seconds 30 -- \
+  .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
+  --loop-manifest build/p41z-case-normalization/iteration20-complete/lesion-registered-loop.json \
+  --t1 tests/data/synthetic/plus_vandy_atlas_aligned_fine/t1.nii.gz \
+  --brain-mask tests/data/synthetic/plus_vandy_atlas_aligned_fine/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_vandy_atlas_aligned_fine/maseg.nii.gz \
+  --output-dir build/p41z-case-normalization/iteration20-surfaces --allow-checkpoint
+
+MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONPATH=src \
+  .venv/bin/python scripts/audit_plus_ribbon_quality.py \
+  build/p41z-case-normalization/iteration20-surfaces/synthetic-plus-checkpoint-surface-composition.json \
+  --allow-checkpoint \
+  --report build/p41z-case-normalization/iteration20-surfaces/ribbon-quality.json
+```
+
 Both runs verify source checkpoint hashes. Generated files and machine-readable
 comparison output are retained in ignored `build/` paths.
 
@@ -106,3 +142,8 @@ The relation reference uses
 (`073421ec8ad64f047869b3a8185dbc7b3fc41b455e8c473ddb7d1e6ed44d72e1`) and
 `LesionRelationsReferenceHarness.java`
 (`c2b7e73a9b0539279164714d945f460f654433d3ac138d8a42997a7b5218c15e`).
+The registration reference pins
+`LesionRegisteredOptimizerDynamicReferenceHarness.java`
+(`9f0d5b95bcdb2f1dca2aa088f5b06bba8843fa11090b61aab1873cdb113d0eb4`), plus
+the `ParametricTransform`, `RotationMatrix`, and `ImageFunctions` upstream
+files whose hashes are recorded in `comparison.json` under ignored `build/`.
