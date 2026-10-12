@@ -795,10 +795,16 @@ def compare(
         java_bytes = thinning_output.read_bytes()
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    workflow_iteration = int(
+        json.loads(outputs["summary"].read_text(encoding="utf-8"))["completed_iteration"]
+    )
     report = {
         "synthetic_only": True,
-        "comparison_scope": "selected Java shape sampling and next-thinning methods on a hash-verified P41z iteration-19 registered state",
-        "workflow_iteration": int(json.loads(outputs["summary"].read_text(encoding="utf-8"))["completed_iteration"]),
+        "comparison_scope": (
+            "selected Java shape sampling and next-thinning methods on a "
+            f"hash-verified P41z iteration-{workflow_iteration} registered state"
+        ),
+        "workflow_iteration": workflow_iteration,
         "shape_grid_xyz": list(dimensions),
         "shape_exact": shape_exact,
         "shape_values": int(shapes.size),
