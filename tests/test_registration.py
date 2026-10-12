@@ -152,6 +152,39 @@ def test_flair_to_t1_adapter_is_rigid_and_recovers_synthetic_shift(tmp_path: Pat
         )
 
 
+def test_rigid_registration_repeats_with_fixed_seed(tmp_path: Path) -> None:
+    config = RegistrationConfig(
+        transform_type="Rigid",
+        metric="mattes",
+        sampling_rate=0.25,
+        iterations=(60, 40, 20, 0),
+        shrink_factors=(6, 4, 2, 1),
+        smoothing_sigmas=(3, 2, 1, 0),
+        deterministic=True,
+        random_seed=321,
+    )
+    first = register_flair_to_t1(
+        _load("fixed_image"),
+        _load("moving_flair"),
+        output_prefix=tmp_path / "repeat_a_",
+        config=config,
+    )
+    second = register_flair_to_t1(
+        _load("fixed_image"),
+        _load("moving_flair"),
+        output_prefix=tmp_path / "repeat_b_",
+        config=config,
+    )
+
+    np.testing.assert_array_equal(
+        np.asarray(first.warped_moving.dataobj),
+        np.asarray(second.warped_moving.dataobj),
+    )
+    assert Path(first.forward_transforms[0]).read_bytes() == Path(
+        second.forward_transforms[0]
+    ).read_bytes()
+
+
 def test_non_ras_inputs_warn_and_registration_grid_mismatches_fail() -> None:
     fixed = _load("fixed_image")
     moving = _load("moving_image")

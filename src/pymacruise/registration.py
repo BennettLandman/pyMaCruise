@@ -138,11 +138,44 @@ def _deterministic_ants(ants, enabled: bool, seed: int):
     previous_deterministic = ants.config._deterministic
     previous_seed = ants.config._random_seed
     previous_threads = os.environ.get("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS")
+    previous_ants_seed = os.environ.get("ANTS_RANDOM_SEED")
     ants.config.set_ants_deterministic(True, seed_value=seed)
+    if seed is not None:
+        # ANTs registration reads its C++ random seed from this environment
+        # variable. ANTsPy's NumPy/Python seeds alone do not control the
+        # random metric sampling used by Rigid/Affine registration.
+        os.environ["ANTS_RANDOM_SEED"] = str(seed)
     try:
         yield
     finally:
         ants.config.set_ants_deterministic(previous_deterministic, seed_value=previous_seed)
+        if previous_ants_seed is None:
+            os.environ.pop("ANTS_RANDOM_SEED", None)
+        else:
+            os.environ["ANTS_RANDOM_SEED"] = previous_ants_seed
+        if previous_threads is None:
+            os.environ.pop("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS", None)
+        else:
+            os.environ["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = previous_threads
+
+
+@contextmanager
+def _ants_runtime_environment(enabled: bool, seed: int):
+    """Set seed and thread count before ANTsPy/ITK initializes its runtime."""
+    if not enabled or seed is None:
+        yield
+        return
+    previous_seed = os.environ.get("ANTS_RANDOM_SEED")
+    previous_threads = os.environ.get("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS")
+    os.environ["ANTS_RANDOM_SEED"] = str(seed)
+    os.environ["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = "1"
+    try:
+        yield
+    finally:
+        if previous_seed is None:
+            os.environ.pop("ANTS_RANDOM_SEED", None)
+        else:
+            os.environ["ANTS_RANDOM_SEED"] = previous_seed
         if previous_threads is None:
             os.environ.pop("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS", None)
         else:
@@ -150,6 +183,27 @@ def _deterministic_ants(ants, enabled: bool, seed: int):
 
 
 def register_to_reference(
+    fixed: nib.spatialimages.SpatialImage,
+    moving: nib.spatialimages.SpatialImage,
+    *,
+    output_prefix: str | Path,
+    fixed_mask: nib.spatialimages.SpatialImage | None = None,
+    config: RegistrationConfig = RegistrationConfig(),
+) -> RegistrationResult:
+    # ANTs/ITK can read ANTS_RANDOM_SEED while the native runtime is loading,
+    # before ANTsPy's config seed is applied. Set it before converting images
+    # to ANTs objects so repeated process-level registrations use the same seed.
+    with _ants_runtime_environment(config.deterministic, config.random_seed):
+        return _register_to_reference(
+            fixed,
+            moving,
+            output_prefix=output_prefix,
+            fixed_mask=fixed_mask,
+            config=config,
+        )
+
+
+def _register_to_reference(
     fixed: nib.spatialimages.SpatialImage,
     moving: nib.spatialimages.SpatialImage,
     *,
