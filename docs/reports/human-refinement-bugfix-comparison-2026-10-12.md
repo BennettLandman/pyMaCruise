@@ -25,16 +25,21 @@ source of disagreement without establishing full refinement equivalence.
 
 ## Source-provenance finding
 
-The checked-in MaCRUISE source tree and its `MaCRUISE_v3_1_0` copy both contain
-the historical assignment `labels(...)=maxind`; the intended label lookup
-`foundtable(maxind,1)` is commented out in both `fillGM` and `fillWM`. However,
-the downloaded V3 `SegRefine/SEG_refine.nii.gz` contains none of the five
-low-valued labels produced by the Python source-faithful run. The supplied
-human output tree has no MATLAB/Singularity run log or manifest to identify
-the exact refinement file that was executed or any subsequent label cleanup.
-Thus local V3 source and observed V3 output disagree on this behavior. Keep
-the source-faithful option and default unchanged until the executed V3 source
-or a user-approved compatibility choice resolves that provenance gap.
+All seven readable copies of `MAsegRefineBySurf.m` located in the supplied
+MATLAB source tree and its source-import export have the same SHA-256
+(`4c901b974dd8b7851758d87cb4bb892b19bf0427409e6dea8b4d0eda668e63e0`). Each
+contains the historical assignment `labels(...)=maxind`; the intended lookup
+`foundtable(maxind,1)` is commented out in both `fillGM` and `fillWM`. The
+human input's MATLAB Compiler cache contains a binary `MCR` payload at the
+cached `.m` path, not readable source, so it cannot confirm whether the
+executed code differed. The downloaded V3 `SegRefine/SEG_refine.nii.gz`
+contains none of the five low-valued labels produced by the Python
+source-faithful run, while the supplied output tree has no MATLAB/Singularity
+run log or manifest to identify the exact refinement code or any subsequent
+label cleanup. The local readable V3 sources and observed V3 output therefore
+still disagree on this behavior. Keep the source-faithful option and default
+unchanged until the executed V3 source or a user-approved compatibility
+choice resolves that provenance gap.
 
 ## Reproduction
 
