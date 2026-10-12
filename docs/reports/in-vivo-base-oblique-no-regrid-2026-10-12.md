@@ -10,7 +10,7 @@ The T1 grid remained `(184, 256, 256)` with its original oblique affine. All 68 
 
 The quality audit reports nested surfaces except for three voxels where the inner level set falls outside the central level set; central remains inside outer. MaSeg support is **84.05% for GM** between inner and outer and **88.03% for WM** inside inner. The meshes have 74 connected components each, including 72 components under 100 vertices. This is executable human-data integration, but these support and topology measurements show that ribbon quality remains unresolved.
 
-Held-fixed comparison against the downloaded Singularity outputs confirms the source `Raw/T1` and `Raw/Seg` arrays are identical to the supplied inputs. On this native grid, nonpositive level-set Dice is **0.97236 inner, 0.97102 central, and 0.97109 outer**; each meets the user’s 0.97 Dice threshold. The corresponding symmetric mean surface distances and sampled Hausdorff distances are:
+Held-fixed comparison against the downloaded Singularity outputs confirms the source `Raw/T1` and `Raw/Seg` arrays are identical to the supplied inputs. The source level-set NIfTI headers do not preserve the raw T1 oblique affine, so level-set Dice is compared by voxel index, not as a shared-affine physical-space comparison. The index-based nonpositive Dice is **0.97236 inner, 0.97102 central, and 0.97109 outer**; each meets the user’s 0.97 numeric threshold for this comparison. The corresponding symmetric mean surface distances and sampled Hausdorff distances are:
 
 | Surface | Mean nearest-surface distance | Sampled Hausdorff | Result |
 |---|---:|---:|---|
@@ -18,7 +18,7 @@ Held-fixed comparison against the downloaded Singularity outputs confirms the so
 | Central | 0.241563 mm | 5.832957 mm | Fails both position limits |
 | Outer | 0.321702 mm | 7.059284 mm | Fails both position limits |
 
-The held-fixed JIST `IsoSurfaceOnGrid` comparison on the Python level sets passes the surface limits: Java and Python meshes have identical topology and counts; symmetric mean distances are approximately `1.0e-7 mm`, and sampled Hausdorff is `0.00034527 mm` for each surface. This isolates the remaining position mismatch to upstream level-set differences, rather than the Python mesh extraction on these fields.
+The held-fixed JIST `IsoSurfaceOnGrid` comparison on the Python level sets passes the surface limits: Java and Python meshes have identical topology and counts; symmetric mean distances are approximately `1.0e-7 mm`, and sampled Hausdorff is `0.00034527 mm` for each surface. This isolates the remaining position mismatch to upstream level-set differences, rather than the Python mesh extraction on these fields. A separate audit found that source TOADS/Dura intermediate NIfTIs use LPS or axis-aligned headers that do not preserve the raw T1 oblique affine; see the [intermediate geometry audit](in-vivo-source-intermediate-geometry-audit-2026-10-12.md). These missing physical mappings limit how strongly voxel-index comparisons can be interpreted.
 
 Refined-label comparison remains below target: 87 of 139 union labels have Dice below 0.97, mean Dice is 0.91958, and labels 1, 2, 3, 5, and 6 appear only in the Python result. The source output has no run logs or manifest, so exact historical executable settings remain unverified. The no-regrid run improves level-set Dice relative to the previously recorded regridded comparison (0.943–0.957), but does not meet the surface-position or refined-segmentation gates.
 
