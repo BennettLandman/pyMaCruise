@@ -108,6 +108,52 @@ source-faithful loop was intentionally not used for this checkpoint because
 NaN ratios do not satisfy the convergence threshold; `max_passes=1` proves one
 restartable pass only.
 
+## Source-faithful public 65³ run
+
+After adding explicit JSON encoding and counted checkpoint handling for the
+source-generated NaN energy state, the labeled folded case completed the full
+public PLUS command with the default source-faithful zero-variance behavior
+and default-on orthogonal RAS regridding. The run used `--max-passes 1`,
+completed all nine public workflow stages, and ended as a nonterminal
+iteration-2 checkpoint. Peak sampled RSS was **5.433 GB** under the 16 GB
+watchdog.
+
+Reproduction:
+
+```bash
+MPLCONFIGDIR="$PWD/build/matplotlib-config" PYTHONNOUSERSITE=1 PYTHONPATH=src \
+  .venv/bin/python scripts/run_with_rss_watchdog.py --limit-gb 16 \
+  --interval-seconds 1 --report-interval-seconds 60 -- \
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  .venv/bin/python -m pymacruise.cli plus-full-run \
+  --t1 tests/data/synthetic/plus_labeled_folded_cortex/t1.nii.gz \
+  --flair tests/data/synthetic/plus_labeled_folded_cortex/flair.nii.gz \
+  --brain-mask tests/data/synthetic/plus_labeled_folded_cortex/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_labeled_folded_cortex/maseg.nii.gz \
+  --atlas-descriptor data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/full-plus-labeled-folded-source-onepass --max-passes 1
+```
+
+Integrity validation found **51/51** output hash records valid and **46/46**
+NIfTI outputs in RAS. The only nonfinite image files are the registered
+branch and loop membership diagnostic volumes; they contain **24,603,172**
+and **16,835,949** nonfinite diagnostic values, respectively, exactly matching
+their JSON summaries. The corresponding membership images have zero
+nonfinite values. The NaN transition objective and ratio are preserved as
+explicit JSON strings; the energy ratio remains NaN as expected from the
+source's zero-variance branch.
+
+The independent audit is a **failed anatomy acceptance** despite successful
+workflow execution. WM-inside-inner, GM-between-inner-and-outer, and
+CSF-outside-outer support are **90.67%, 71.78%, and 100%** (minimum 97%).
+Level-set mean thickness is **4.198 mm**. Surface closest-point thickness
+median/p05/p95 is **1.382/0.169/5.240 mm**. Each mesh is watertight, but each
+has **24 connected components** and Euler characteristic **32** rather than a
+single genus-zero component (Euler 2). The report is retained at
+`build/full-plus-labeled-folded-source-onepass/ribbon-quality.json` and marks
+the workflow as nonterminal. This is synthetic integration evidence only;
+it is neither Java whole-run equivalence nor real-human PLUS validation.
+
 ## Stabilized one-pass follow-up
 
 To determine whether the complete workflow wiring can finish beyond this
