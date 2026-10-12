@@ -1,0 +1,112 @@
+{
+  "compared_with": "saved physical-affine transfer plus crop surface run",
+  "evidence_category": "synthetic downstream compatibility experiment; selected Java crop inputs, Python topology-through-surface stages",
+  "input_sha256": {
+    "crop_parameters": "b4186a7ca4c29e56356082b7af6eb128c17c85eb30a544f4f080af9b230149ab",
+    "fixed_crop_ready_inputs": {
+      "multi_atlas_gm": "bcff80bb5c9346cc79d10421654a288d504507e517ac4fa3318b010a3f194be5",
+      "multi_atlas_mask": "126292fbe6bf7e7f198390e4d0d50d2f5a89584c4a94dbe61be4c831b04e448a",
+      "multi_atlas_wm": "e100904e9cf54c48ed2f34930ab3f79897f8293af480f858a9af36591d3cc082",
+      "segmentation": "4adeea4b4469a689086770076645b0357623725036551695552b2b995831c4cf",
+      "toads_gm": "3af7ae0ca01fb53738e87618c67a9f4810ff1d6b1c241f0504badb8fd2c380d9",
+      "toads_wm_fill": "4aeffcd6d271ceae65249e772397399daf3eebf5cc913d0e6d0616568ba0b632",
+      "toads_wm_mask": "5bcf59070d9cd0aa95ae487cf00f05f07b7808b4af55573e02e02e7d557fa452"
+    },
+    "physical_route_ribbon_reference": "8939a2c5ab70cc147e5dbc4a61b7e29067f9500e25326759379f7da1ef063473",
+    "runner": "b569ef33fed5dd56c20e8e8099261c102b68ea0c6c274fd60f51e4dfd40a5903",
+    "source_compatible_java_crop_maps": {
+      "csf": "75ef4b26394cea1f3d4fb8a7a9efffa079a9943f55080bb43b0ab4cfce1d6cc7",
+      "gm": "3b3421c7dc7bfa8bfcf0f1fd519cdc1e4ff358f857d25ad15b7edb5ce92878ef",
+      "wm_fill": "151dc4c63a4098f72d976f2ee6c2906438b3897d2476847ecfe0f8d0f86e702f",
+      "wm_mask": "6fede87464d04275aafa7746657911d5b95241fa19cc0e1dea46fb45156ff9a5"
+    }
+  },
+  "jist_crop_route_label_support": {
+    "csf_outside_outer": 1.0,
+    "gm_between_inner_outer": 0.0,
+    "wm_inside_inner": 0.0
+  },
+  "label_support_delta_vs_physical_percentage_points": {
+    "csf_outside_outer": 0.03650476483245679,
+    "gm_between_inner_outer": -0.11229812196167088,
+    "wm_inside_inner": -59.510862357091696
+  },
+  "levelset_changes_vs_physical_route": {
+    "central": {
+      "mean_absolute_levelset_difference": 0.4942928129367498,
+      "sign_differences": 5987
+    },
+    "inner": {
+      "mean_absolute_levelset_difference": 0.46821310595520793,
+      "sign_differences": 841
+    },
+    "outer": {
+      "mean_absolute_levelset_difference": 1.1381552303433262,
+      "sign_differences": 18240
+    }
+  },
+  "p41z_checkpoint": "LesionTOADS iteration 11; nonterminal upstream checkpoint",
+  "passes_97_percent_tissue_support": false,
+  "physical_route_quality_reference": {
+    "csf_outside_outer": 0.9996349523516754,
+    "gm_between_inner_and_outer": 0.0011229812196167088,
+    "wm_inside_inner": 0.595108623570917
+  },
+  "source_crop_bounds_inclusive": [
+    [
+      2,
+      74
+    ],
+    [
+      5,
+      95
+    ],
+    [
+      7,
+      69
+    ]
+  ],
+  "source_crop_grid_shape": [
+    73,
+    91,
+    63
+  ],
+  "source_scope_limit": "This is not a Java surface evolution comparison, a full PLUS run, or real-MRI validation.",
+  "source_transfer_behavior": "JIST-preserved Dura extents and selected Java crop",
+  "surface_topology": {
+    "central": {
+      "n_components": 250,
+      "n_edges": 72684,
+      "n_faces": 48456,
+      "n_nonmanifold_edges": 0,
+      "n_open_edges": 0,
+      "n_vertices": 24656,
+      "watertight_by_edge_incidence": true
+    },
+    "inner": {
+      "n_components": 250,
+      "n_edges": 68058,
+      "n_faces": 45372,
+      "n_nonmanifold_edges": 0,
+      "n_open_edges": 0,
+      "n_vertices": 23114,
+      "watertight_by_edge_incidence": true
+    },
+    "outer": {
+      "n_components": 250,
+      "n_edges": 107454,
+      "n_faces": 71636,
+      "n_nonmanifold_edges": 0,
+      "n_open_edges": 0,
+      "n_vertices": 36246,
+      "watertight_by_edge_incidence": true
+    }
+  },
+  "thickness": {
+    "levelset_mean_mm": 3.3540804059595244,
+    "surface_mean_mm": 0.9167196590356134,
+    "surface_median_mm": 0.4383869824058003,
+    "surface_p05_mm": 0.006729210674201125,
+    "surface_p95_mm": 3.345471806476883
+  }
+}
