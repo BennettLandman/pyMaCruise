@@ -1,0 +1,133 @@
+{
+  "affine_ras_mm": [
+    [
+      2.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      2.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      2.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "description": "2 mm exact decimation of the 1 mm labeled folded cortex TGDM case",
+  "images": {
+    "ace_gray_matter.nii.gz": {
+      "dtype": "float32",
+      "sha256": "3ce7b654c0a77331a48751f19e1c9f5f6597320fce5eeca70fcf439b705a6435",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "ace_skeleton.nii.gz": {
+      "dtype": "uint8",
+      "sha256": "1493909059910bfd5eb7e8889d4941b385574ff71de7c81b445562414f569ecf",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "brain_mask.nii.gz": {
+      "dtype": "uint8",
+      "sha256": "5f6b6925c1f7ce299241df2a5ecc079184bf1f96ccd6fd03d6a94c4bc4824bf6",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "gray_matter.nii.gz": {
+      "dtype": "float32",
+      "sha256": "3ce7b654c0a77331a48751f19e1c9f5f6597320fce5eeca70fcf439b705a6435",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "ground_truth_inner_levelset.nii.gz": {
+      "dtype": "float32",
+      "sha256": "e06ebed1fd4e02394cf775e3da5880024a7745ecac68878cb9a16ed50062d655",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "ground_truth_outer_levelset.nii.gz": {
+      "dtype": "float32",
+      "sha256": "8091856970c8dad6c040d1c3415935b2e46a2b4b5906363ccb348bf8376dda2f",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "initial_membership.nii.gz": {
+      "dtype": "uint8",
+      "sha256": "5f6b6925c1f7ce299241df2a5ecc079184bf1f96ccd6fd03d6a94c4bc4824bf6",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "maseg_labels.nii.gz": {
+      "dtype": "uint8",
+      "sha256": "1acd5c0425caa8699b7382e003bb0762742934b3a2df19fdac4aaa37e6ebf734",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "t1.nii.gz": {
+      "dtype": "float32",
+      "sha256": "ad7faa279d7081a8c3ab31fab5364d3013a6280fbefd938abf62037dbd7f2adc",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "tgdm_brain_bound.nii.gz": {
+      "dtype": "float32",
+      "sha256": "a9df2b90997f8be7f7191d02dfe3a083d488808f8cb69569200d56b840b679cb",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    },
+    "white_matter.nii.gz": {
+      "dtype": "float32",
+      "sha256": "9d681abed503098f7cb8581fda85ea69f3190ceb4895cc85c4b13bc9119dc24c",
+      "shape": [
+        33,
+        33,
+        33
+      ]
+    }
+  },
+  "orientation": "RAS",
+  "sampling": "every second voxel in each axis; same physical field of view",
+  "source_case": "../labeled_folded_cortex"
+}
