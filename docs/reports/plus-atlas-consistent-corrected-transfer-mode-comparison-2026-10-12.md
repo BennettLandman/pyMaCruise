@@ -42,8 +42,10 @@ that the same offset occurred in historical in-vivo runs.
 
 The JIST-mode composition finished all six stages from the saved checkpoint
 and reported iteration 10 convergence. Peak sampled RSS was **3.243 GB** under
-an 8 GB watchdog. The audit remains synthetic workflow evidence, not Java
-equivalence or real-human validation.
+an 8 GB watchdog. A post-run integrity check verified the complete terminal
+manifest, all six stage records, and all three delivered level-set output
+hashes (9/9 recorded references valid). The audit remains synthetic workflow
+evidence, not Java equivalence or real-human validation.
 
 ## Reproduction
 
