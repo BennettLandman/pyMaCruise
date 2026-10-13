@@ -1,0 +1,151 @@
+{
+  "completed_iteration": 10,
+  "evidence_category": "synthetic selected-source surface-extraction comparison",
+  "limitations": [
+    "This isolates triangulation on the exact same level-set arrays; it does not compare level-set evolution or the full Java workflow.",
+    "Reported symmetric distances sample vertices against triangles and do not certify continuous Hausdorff distance.",
+    "The Python thickness function is applied to both mesh sets; this isolates mesh geometry and is not Java thickness equivalence."
+  ],
+  "per_surface": {
+    "central": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 285080,
+        "nonmanifold_edges": 0,
+        "unique_edges": 427620,
+        "vertices": 142532
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 285080,
+        "nonmanifold_edges": 0,
+        "unique_edges": 427620,
+        "vertices": 142532
+      },
+      "triangle_connectivity_after_nearest_vertex_mapping": {
+        "jist_face_count": 285080,
+        "lewiner_face_count": 285080,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_unordered_faces": 285080,
+        "vertex_mapping_is_bijective": true
+      },
+      "vertex_nearest_neighbor_mm": {
+        "jist_vertices_to_lewiner_mean": 1.195686715159372e-06,
+        "lewiner_vertices_to_jist_mean": 1.195686715159372e-06,
+        "symmetric_max": 7.1411132864795945e-06,
+        "symmetric_mean": 1.195686715159372e-06
+      },
+      "vertex_to_triangle_surface_distance_mm": {
+        "jist_vertices_to_lewiner_mean": 3.022668507850534e-08,
+        "lewiner_vertices_to_jist_mean": 3.264654592717392e-08,
+        "symmetric_max": 0.000244140625,
+        "symmetric_mean": 3.143661550283963e-08
+      }
+    },
+    "inner": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 256184,
+        "nonmanifold_edges": 0,
+        "unique_edges": 384276,
+        "vertices": 128084
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 256184,
+        "nonmanifold_edges": 0,
+        "unique_edges": 384276,
+        "vertices": 128084
+      },
+      "triangle_connectivity_after_nearest_vertex_mapping": {
+        "jist_face_count": 256184,
+        "lewiner_face_count": 256184,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_unordered_faces": 256184,
+        "vertex_mapping_is_bijective": true
+      },
+      "vertex_nearest_neighbor_mm": {
+        "jist_vertices_to_lewiner_mean": 1.2420481651780938e-06,
+        "lewiner_vertices_to_jist_mean": 1.2420481651780938e-06,
+        "symmetric_max": 7.1411132864795945e-06,
+        "symmetric_mean": 1.2420481651780938e-06
+      },
+      "vertex_to_triangle_surface_distance_mm": {
+        "jist_vertices_to_lewiner_mean": 1.4261854747082347e-08,
+        "lewiner_vertices_to_jist_mean": 1.0880580257002695e-08,
+        "symmetric_max": 0.000244140625,
+        "symmetric_mean": 1.2571217502042521e-08
+      }
+    },
+    "outer": {
+      "jist_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 395140,
+        "nonmanifold_edges": 0,
+        "unique_edges": 592710,
+        "vertices": 197562
+      },
+      "lewiner_topology": {
+        "boundary_edges": 0,
+        "connected_components": 4,
+        "euler_characteristic": -8,
+        "faces": 395140,
+        "nonmanifold_edges": 0,
+        "unique_edges": 592710,
+        "vertices": 197562
+      },
+      "triangle_connectivity_after_nearest_vertex_mapping": {
+        "jist_face_count": 395140,
+        "lewiner_face_count": 395140,
+        "matching_fraction_of_jist_faces": 1.0,
+        "matching_unordered_faces": 395140,
+        "vertex_mapping_is_bijective": true
+      },
+      "vertex_nearest_neighbor_mm": {
+        "jist_vertices_to_lewiner_mean": 1.2200101205739102e-06,
+        "lewiner_vertices_to_jist_mean": 1.2200101205739102e-06,
+        "symmetric_max": 7.1411132864795945e-06,
+        "symmetric_mean": 1.2200101205739102e-06
+      },
+      "vertex_to_triangle_surface_distance_mm": {
+        "jist_vertices_to_lewiner_mean": 1.5071260285920283e-08,
+        "lewiner_vertices_to_jist_mean": 1.4531013057701587e-08,
+        "symmetric_max": 0.00017263349150062197,
+        "symmetric_mean": 1.4801136671810936e-08
+      }
+    }
+  },
+  "same_levelset_float32_sha256": {
+    "central": "5cc528f9aa79a8d253770d87eb85629891dfab0c3ecc3fe73d0d7ca084d35c10",
+    "inner": "318fcac95da18458d7ab6d77f06a639e19b0436c9bb12d5a0414d96920780dfc",
+    "outer": "2ef4097be867f9ff380087f37d0a8051762de5dcb8f41faf32b5645aa90e4619"
+  },
+  "source_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
+  "source_sha256": "a323ac5eed8b66ad62a68cd93a6bc7bcf01281453fc6541ee5c4ccc529d40c38",
+  "thickness_mean_delta_lewiner_minus_jist_mm": -1.6145316283910915e-07,
+  "thickness_same_python_operator_mm": {
+    "jist": {
+      "mean_mm": 4.141158136061793,
+      "nonzero_inner_vertices": 128082,
+      "standard_deviation_mm": 2.5729127451005205
+    },
+    "lewiner": {
+      "mean_mm": 4.14115797460863,
+      "nonzero_inner_vertices": 128082,
+      "standard_deviation_mm": 2.572912812863165
+    }
+  },
+  "workflow_manifest": "/Users/landmaba/dev/mipav/pymacruise/build/plus-atlas-consistent-corrected-iteration10-compose-2026-10-12/synthetic-plus-terminal-surface-composition.json",
+  "workflow_terminal": true,
+  "wrapper_sha256": "3f7b54e099f2550f42a572e96070642b8124a93ab1b45eca1aa544ecec1758b4"
+}
