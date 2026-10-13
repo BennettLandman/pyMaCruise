@@ -65,6 +65,14 @@ the original array order internally and convert segmentation outputs to RAS;
 that design still needs source-state evidence and must keep every saved output
 in RAS.
 
+The Java logs provide an early localization lead: its LPS and RAS replays
+produce different post-crop translations (`[-0.4999992, 6.5, 14.0]` versus
+`[-0.4999992, 6.0, 14.0]`) and different converged registration transforms.
+This shows divergence is present by registration, before the label-evolution
+loop. The current Python human run did not retain equivalent startup telemetry,
+so the next comparison should record Python crop bounds, transformed atlas,
+initial memberships, and registration transform against both Java runs.
+
 Next, compare the Java LPS and RAS registration/crop/initial-membership states
 with the Python equivalents and determine where the axis reorientation
 changes the branch. Any correction must preserve the project contract that
