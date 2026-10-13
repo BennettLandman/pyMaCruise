@@ -23,8 +23,8 @@ public final class ToadsWorkflowSourceHarness {
     }
 
     public static void main(String[] args) throws Exception {
-        if(args.length!=10)throw new IllegalArgumentException(
-                "input.raw atlas.txt nx ny nz sx sy sz maxIterations output.raw");
+        if(args.length!=10&&args.length!=11)throw new IllegalArgumentException(
+                "input.raw atlas.txt nx ny nz sx sy sz maxIterations output.raw [RAS|LPS]");
         int nx=Integer.parseInt(args[2]),ny=Integer.parseInt(args[3]),nz=Integer.parseInt(args[4]);
         int maxIterations=Integer.parseInt(args[8]);
         byte[] raw=Files.readAllBytes(Paths.get(args[0]));
@@ -37,7 +37,14 @@ public final class ToadsWorkflowSourceHarness {
         FileInfoBase info=image.getFileInfo(0);
         info.setResolutions(new float[]{Float.parseFloat(args[5]),Float.parseFloat(args[6]),Float.parseFloat(args[7])});
         info.setUnitsOfMeasure(new int[]{FileInfoBase.MILLIMETERS,FileInfoBase.MILLIMETERS,FileInfoBase.MILLIMETERS});
-        info.setAxisOrientation(new int[]{FileInfoBase.ORI_L2R_TYPE,FileInfoBase.ORI_P2A_TYPE,FileInfoBase.ORI_I2S_TYPE});
+        String axisFrame=args.length==11?args[10]:"RAS";
+        if("RAS".equalsIgnoreCase(axisFrame)) {
+            info.setAxisOrientation(new int[]{FileInfoBase.ORI_L2R_TYPE,FileInfoBase.ORI_P2A_TYPE,FileInfoBase.ORI_I2S_TYPE});
+        } else if("LPS".equalsIgnoreCase(axisFrame)) {
+            info.setAxisOrientation(new int[]{FileInfoBase.ORI_R2L_TYPE,FileInfoBase.ORI_A2P_TYPE,FileInfoBase.ORI_I2S_TYPE});
+        } else {
+            throw new IllegalArgumentException("axis frame must be RAS or LPS: "+axisFrame);
+        }
         info.setImageOrientation(FileInfoBase.AXIAL);
         image.setImageOrientation(FileInfoBase.AXIAL);
 

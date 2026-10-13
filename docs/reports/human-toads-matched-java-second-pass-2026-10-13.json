@@ -1,0 +1,69 @@
+{
+  "changed_voxels": 0,
+  "java_raw": "build/human-toads-matched-2026-10-13/java-second/classification-java.raw",
+  "java_reshape_order": "F",
+  "labels": {
+    "1": {
+      "dice": 1.0,
+      "java_voxels": 10746209,
+      "python_voxels": 10746209
+    },
+    "14": {
+      "dice": 1.0,
+      "java_voxels": 92188,
+      "python_voxels": 92188
+    },
+    "15": {
+      "dice": 1.0,
+      "java_voxels": 653216,
+      "python_voxels": 653216
+    },
+    "16": {
+      "dice": 1.0,
+      "java_voxels": 9495,
+      "python_voxels": 9495
+    },
+    "17": {
+      "dice": 1.0,
+      "java_voxels": 22739,
+      "python_voxels": 22739
+    },
+    "18": {
+      "dice": 1.0,
+      "java_voxels": 14660,
+      "python_voxels": 14660
+    },
+    "22": {
+      "dice": 1.0,
+      "java_voxels": 16055,
+      "python_voxels": 16055
+    },
+    "24": {
+      "dice": 1.0,
+      "java_voxels": 20344,
+      "python_voxels": 20344
+    },
+    "25": {
+      "dice": 1.0,
+      "java_voxels": 317799,
+      "python_voxels": 317799
+    },
+    "5": {
+      "dice": 1.0,
+      "java_voxels": 159104,
+      "python_voxels": 159104
+    },
+    "6": {
+      "dice": 1.0,
+      "java_voxels": 6815,
+      "python_voxels": 6815
+    }
+  },
+  "python_nifti": "build/human-toads-matched-2026-10-13/python-second/classification.nii.gz",
+  "shape": [
+    184,
+    256,
+    256
+  ],
+  "voxel_count": 12058624
+}
