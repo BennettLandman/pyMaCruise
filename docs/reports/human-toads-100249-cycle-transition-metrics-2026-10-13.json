@@ -1,0 +1,10 @@
+{
+  "cycle1_disagreements_resolved_by_cycle2": 3863,
+  "cycle2_disagreement_fraction": 0.0017161051432291667,
+  "disagreements_persisting_from_cycle1": 1582,
+  "java1_to_java2_changed": 324708,
+  "java1_vs_python1": 5445,
+  "java2_vs_python2": 18557,
+  "new_cycle2_disagreements": 16975,
+  "python1_to_python2_changed": 323787
+}
