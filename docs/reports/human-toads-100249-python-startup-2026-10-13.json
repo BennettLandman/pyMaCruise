@@ -1,0 +1,50 @@
+{
+  "scope": "Python atlas startup through segmentation-statistics/relation initialization; no TOADS iterative loop was run by this probe",
+  "source_input": {
+    "shape_xyz": [176, 240, 256],
+    "orientation": ["R", "A", "S"],
+    "t1_sha256": "26412b0939d3303ac088330f772196f08bf9461342f94e7147a937ee0ad69291",
+    "all_voxel_mask_sha256": "79c7775fcb4132303dd1d32e8c3b54273c6dad98c2a7383a5f5e084b02cc48bf"
+  },
+  "python_startup": {
+    "orientation_signs": [-1.0, -1.0, 1.0],
+    "signed_image_resolutions_mm": [-0.9999983906745911, -1.0, 1.0],
+    "robust_intensity_range": [19.447641372680664, 3559.7275390625],
+    "crop_bounds_inclusive_xyz": [[15, 161], [19, 208], [53, 230]],
+    "cropped_shape_xyz": [167, 210, 198],
+    "initial_crop_transform": [0.0, 0.0, 0.0, -0.49999919533729553, 6.0, 14.0],
+    "registration_levels": [
+      {
+        "scale": 8,
+        "iterations": 29,
+        "transform": [0.13031309843063354, 0.0002334873133804649, -0.0012012855149805546, -9.268776893615723, -14.89504623413086, -31.581104278564453]
+      },
+      {
+        "scale": 4,
+        "iterations": 18,
+        "transform": [0.13089703023433685, 0.001764720887877047, -0.017977379262447357, -6.666274547576904, -11.172404289245605, -31.215627670288086]
+      },
+      {
+        "scale": 2,
+        "iterations": 10,
+        "transform": [0.13547448813915253, 0.000759852584451437, -0.014460265636444092, -4.674710273742676, -9.218413352966309, -30.926525115966797]
+      }
+    ],
+    "post_refresh_crop_bounds_inclusive_xyz": [[15, 161], [15, 186], [88, 230]],
+    "template_refresh_transform": [0.13547448813915253, 0.000759852584451437, -0.014460265636444092, -4.341790676116943, -1.3988113403320312, -10.579708099365234],
+    "post_refresh_transform": [0.13549914956092834, 0.0007845212239772081, -0.014435596764087677, -4.341765880584717, -1.3987866640090942, -10.579683303833008],
+    "post_refresh_registration_iterations": 2,
+    "post_refresh_stop_reason": "energy_tolerance"
+  },
+  "resource_use": {
+    "peak_sampled_rss_gb": 2.206,
+    "watchdog_limit_gb": 8,
+    "watchdog_terminated": false
+  },
+  "comparison": {
+    "java_ras_initial_crop_transform_from_source_log": [0.0, 0.0, 0.0, -0.4999992, 6.0, 14.0],
+    "java_ras_initial_registered_transform_from_source_log": [0.13547449, 0.0007598526, -0.014460266, -4.6747103, -9.218413, -30.926525],
+    "java_ras_refreshed_transform_from_source_log": [0.13547449, 0.0007598526, -0.014460266, -4.3417907, -1.3988113, -10.579708],
+    "interpretation": "Python RAS crop and initial/refreshed registration states agree with the selected Java RAS log values to their printed precision. The terminal Java/Python maps still differ by 66,936 voxels, so the RAS-path divergence is downstream of initial atlas registration; this probe does not isolate post-refresh initialization from loop evolution. Java LPS versus Java RAS differs already in crop/registration."
+  }
+}

@@ -58,24 +58,26 @@ spacing by those signs. Thus the selected source supplies
 `(+sx,+sy,+sz)` for an LPS-ordered array and `(-sx,-sy,+sz)` for a RAS-ordered
 array. Python currently normalizes the voxel data to RAS first and then always
 uses the latter signs. This is a verified source-metadata difference, but it
-does not yet prove that it alone causes the output mismatch. The next useful
-comparison is to expose matched initialization, crop, and registration states
-before changing the workflow. A potential compatibility adapter can retain
-the original array order internally and convert segmentation outputs to RAS;
-that design still needs source-state evidence and must keep every saved output
-in RAS.
+does not yet prove that it alone causes the output mismatch. A potential
+compatibility adapter can retain the original array order internally and
+convert segmentation outputs to RAS; that design still needs source-state
+evidence and must keep every saved output in RAS.
 
 The Java logs provide an early localization lead: its LPS and RAS replays
 produce different post-crop translations (`[-0.4999992, 6.5, 14.0]` versus
 `[-0.4999992, 6.0, 14.0]`) and different converged registration transforms.
 This shows divergence is present by registration, before the label-evolution
-loop. The current Python human run did not retain equivalent startup telemetry,
-so the next comparison should record Python crop bounds, transformed atlas,
-initial memberships, and registration transform against both Java runs.
+loop. A repeatable Python startup probe now records crop bounds, transforms,
+and registration levels. Its initial and refreshed RAS registration values
+match those printed by the Java RAS source log to the logged precision, even
+though the terminal classification maps differ by 66,936 voxels. Therefore,
+the canonical-RAS Python/Java difference occurs after initial atlas
+registration; this probe does not yet distinguish post-refresh initialization
+from loop evolution. See the [machine-readable startup record](human-toads-100249-python-startup-2026-10-13.json). For Java LPS, the mismatch begins earlier, at crop/registration.
 
-Next, compare the Java LPS and RAS registration/crop/initial-membership states
-with the Python equivalents and determine where the axis reorientation
-changes the branch. Any correction must preserve the project contract that
+Next, compare post-refresh segmentation initialization and the first loop
+cycle for the RAS Java/Python pair, then capture equivalent LPS startup state
+to understand the earlier source-orientation branch. Any correction must preserve the project contract that
 saved outputs are RAS, match all labels to Dice ≥0.97, and keep the input
 orientation warning/provenance. Then resume only downstream BASE stages from
 the validated checkpoints. The earlier exact first/second-pass comparison
@@ -87,3 +89,4 @@ Machine-readable comparisons:
 - [Java LPS versus saved source labels](human-toads-100249-lps-vs-source-2026-10-13.json)
 - [Java LPS versus Python RAS](human-toads-100249-lps-vs-python-2026-10-13.json)
 - [Java RAS versus Python RAS](human-toads-100249-ras-java-vs-python-2026-10-13.json)
+- [Python RAS startup telemetry](human-toads-100249-python-startup-2026-10-13.json)
