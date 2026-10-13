@@ -51,6 +51,20 @@ source method therefore has an orientation-sensitive behavior that the
 current canonical-RAS path does not yet preserve on this case. The result is
 an algorithm/source integration failure to resolve, not a validation pass.
 
+The checked source locates one concrete place where this information matters:
+`MultipleToadPreprocess` sets axial axis signs from the image's original
+`FileInfoBase` directions, and `getSignedImageResolutions()` divides voxel
+spacing by those signs. Thus the selected source supplies
+`(+sx,+sy,+sz)` for an LPS-ordered array and `(-sx,-sy,+sz)` for a RAS-ordered
+array. Python currently normalizes the voxel data to RAS first and then always
+uses the latter signs. This is a verified source-metadata difference, but it
+does not yet prove that it alone causes the output mismatch. The next useful
+comparison is to expose matched initialization, crop, and registration states
+before changing the workflow. A potential compatibility adapter can retain
+the original array order internally and convert segmentation outputs to RAS;
+that design still needs source-state evidence and must keep every saved output
+in RAS.
+
 Next, compare the Java LPS and RAS registration/crop/initial-membership states
 with the Python equivalents and determine where the axis reorientation
 changes the branch. Any correction must preserve the project contract that
