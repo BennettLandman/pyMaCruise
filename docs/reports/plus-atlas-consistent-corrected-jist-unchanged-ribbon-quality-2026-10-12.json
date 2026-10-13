@@ -1,0 +1,111 @@
+{
+  "checkpoint_audit": false,
+  "checks": {
+    "explicit_maseg_wm_gm_csf_labels_present": true,
+    "labeled_tissue_regions_agree_with_surfaces": false,
+    "levelset_mean_thickness_within_bounds": false,
+    "nested_voxel_regions": false,
+    "production_surface_thickness_within_bounds": false,
+    "surfaces_closed_connected_euler_two": false
+  },
+  "completed_iteration": 10,
+  "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+  "label_surface_consistency": {
+    "disagreement_voxel_counts": {
+      "csf_voxels_inside_outer": 1579,
+      "gm_voxels_inside_inner": 93623,
+      "gm_voxels_outside_outer": 142721,
+      "wm_voxels_outside_inner": 42151
+    },
+    "minimum_required_support": 0.97,
+    "support_fractions": {
+      "csf_outside_outer": 0.996872028526149,
+      "gm_between_inner_and_outer": 0.6470032978062419,
+      "wm_inside_inner": 0.8887742500686073
+    }
+  },
+  "levelset_subtraction_thickness": {
+    "crossing_voxel_count": 532120,
+    "maximum_mm": 19.835092544555664,
+    "mean_mm": 6.611582783676914,
+    "minimum_mm": 0.01603085920214653,
+    "stdev_mm": 2.916299976798139
+  },
+  "loop_energy_ratio": 4.6406752517214045e-05,
+  "manifest": "build/plus-atlas-consistent-corrected-jist-unchanged-compose-2026-10-12/synthetic-plus-terminal-surface-composition.json",
+  "manifest_run_signature": "a95fc941102c59183e3e902c1740a48f5b1b6b2fef1a09e394a1299771555f6f",
+  "maseg_labels": {
+    "counts": {
+      "0": 4373320,
+      "100": 669536,
+      "44": 378968,
+      "5": 504800,
+      "75": 166304
+    },
+    "present": [
+      0,
+      5,
+      44,
+      75,
+      100
+    ]
+  },
+  "nesting_voxel_counts": {
+    "central_outside_outer_voxels": 0,
+    "inner_outside_central_voxels": 14
+  },
+  "orientation": "RAS",
+  "passed": false,
+  "quality_bounds": {
+    "levelset_mean_tolerance_mm": 1.0,
+    "minimum_label_support": 0.97,
+    "nominal_ribbon_mm": 5.0,
+    "surface_median_tolerance_mm": 1.0,
+    "surface_p05_minimum_mm": 2.0,
+    "surface_p95_maximum_mm": 8.0
+  },
+  "shape": [
+    172,
+    216,
+    164
+  ],
+  "stop_reason": "convergence",
+  "surface_closest_point_thickness": {
+    "mean_mm": 2.2795523501725183,
+    "median_mm": 1.814050697099654,
+    "p05_mm": 0.15831809722521495,
+    "p95_mm": 5.841596969402338,
+    "sample_count": 163943,
+    "stdev_mm": 1.8081995253259364
+  },
+  "surface_meshes": {
+    "central": {
+      "boundary_edges": 0,
+      "connected_components": 30,
+      "euler_characteristic": -884,
+      "faces": 337108,
+      "nonmanifold_edges": 0,
+      "vertices": 167670,
+      "watertight": true
+    },
+    "inner": {
+      "boundary_edges": 0,
+      "connected_components": 30,
+      "euler_characteristic": -884,
+      "faces": 329908,
+      "nonmanifold_edges": 0,
+      "vertices": 164070,
+      "watertight": true
+    },
+    "outer": {
+      "boundary_edges": 0,
+      "connected_components": 30,
+      "euler_characteristic": -884,
+      "faces": 417548,
+      "nonmanifold_edges": 0,
+      "vertices": 207890,
+      "watertight": true
+    }
+  },
+  "workflow_terminal": true
+}

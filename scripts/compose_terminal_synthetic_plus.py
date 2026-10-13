@@ -62,6 +62,12 @@ def main() -> None:
     parser.add_argument("--maseg", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument(
+        "--dura-transfer-mode",
+        choices=("physical-affine", "jist-unchanged"),
+        default="physical-affine",
+        help="native Dura transfer behavior (default: physical-affine)",
+    )
+    parser.add_argument(
         "--allow-checkpoint",
         action="store_true",
         help="compose surfaces from a nonterminal registered-loop checkpoint",
@@ -104,6 +110,7 @@ def main() -> None:
         dura.manifest_path,
         args.t1,
         output_root / "native-dura",
+        transfer_mode=args.dura_transfer_mode,
         resume=args.resume,
     )
     cortical = run_plus_maseg_cortical_checkpoint(
@@ -123,6 +130,7 @@ def main() -> None:
         multi_atlas_mask_path=cortical.outputs["Atlas_BrainTissueMask"],
         brain_mask_path=args.brain_mask,
         output_dir=output_root / "plus-surfaces",
+        dura_transfer_mode=args.dura_transfer_mode,
         options=PlusPipelineOptions(),
         resume=args.resume,
     )
@@ -151,6 +159,7 @@ def main() -> None:
     settings = {
         "plus_pipeline_options": PlusPipelineOptions().as_dict(),
         "tgdm_surface_evolution": asdict(TGDMBaselineParameters()),
+        "dura_transfer_mode": args.dura_transfer_mode,
         "file_workflow_run_manifest": _record(plus.manifest_path),
     }
     composition_stage = (
