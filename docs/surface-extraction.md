@@ -1,47 +1,19 @@
 # Scientific level-set surface extraction
 
-P30 follows MaCRUISE `run_LevelSetToSurf_jist.m` to VandyCRUISE
-`GetMeshSurfaceFromLevelSet` CVS 1.4 and `IsoSurfaceOnGrid.solveOriginal`.
-The selected wrapper passes connectivity 18, iso-level 0, and
-`inclusive=false`. The Java source first subtracts the iso-level and moves
-values in `(-0.1, 0]` to `-0.1`, and values in `(0, 0.1)` to `0.1`; this
-near-zero rule is kept before extraction. The reference implementation uses
-a connectivity-aware marching-cubes family. Python uses scikit-image's
-Lewiner marching cubes implementation, which resolves ambiguous cubes and is
-tested here for closed topology and physical geometry. Exact triangle and
-vertex ordering is not part of this stage's contract.
+## Production method
 
-`pymacruise.surfaces.extract_levelset_surface` accepts a 3D NIfTI image,
-normalizes its voxel axes to RAS with a warning when needed, extracts the
-zero set, then applies the complete voxel-to-world affine. The returned
-`SurfaceMesh` uses RAS+ millimetres and triangular faces. VTK output is ASCII
-legacy `POLYDATA` with an explicit RAS/mm title so scientific geometry can be
-consumed without VTK/PyVista or rendering dependencies. Untagged legacy VTK
-inputs need an explicit `input_frame`; LPS input is warned about, converted by
-flipping R/A coordinate signs, and has face winding reversed to preserve
-orientation.
+MaCRUISEplus calls the VandyCRUISE `GetMeshSurfaceFromLevelSet` wrapper, which calls JIST `IsoSurfaceOnGrid.solveOriginal` with connectivity 18, iso-level zero, and `inclusive=false`. Python production extraction uses a compact 256-case table generated from that supplied Java implementation. It preserves the selected near-zero perturbation, 18/6 case templates, grid-edge interpolation, shared-edge vertex IDs, source traversal order, and face winding. The Java harness is used only for development validation; runtime extraction is Python-native and does not depend on Java or scikit-image.
 
-The synthetic acceptance checks use analytic spheres and ellipsoids to
-validate closed two-manifold edges, Euler characteristic 2, outward winding,
-millimetre bounds, oblique affine handling, RAS normalization, LPS conversion,
-and VTK round-trips. Their radius/ellipsoid errors quantify the triangulation
-and voxel sampling error. On the committed 0.5 mm fixtures, the maximum
-normalized ellipsoid-coordinate error is 0.0152 for the sphere and 0.0186 for
-the ellipsoid; the oblique sphere has a maximum physical radial deviation of
-0.0834 mm. This is scientific mesh data only; visualization
-and rendering are out of scope (P47 discussion).
+`pymacruise.surfaces.extract_levelset_surface` normalizes non-RAS input axes with a warning, applies the source perturbation and source-derived templates, and transforms voxel vertices through the complete normalized NIfTI affine. `SurfaceMesh` coordinates and exported legacy VTK `POLYDATA` are RAS+ millimetres. LPS VTK inputs are converted with a warning and reversed face winding; untagged legacy VTK requires an explicit input frame.
 
-## Known scope
+## Validation
 
-- Only ASCII legacy VTK triangular `POLYDATA` is read/written in this stage.
-- The extractor preserves physical coordinates for oblique NIfTI affines and
-  uses a marching-cubes triangulation. It does not duplicate JIST's exact
-  table topology or mesh vertex ordering; compare the source mesh geometry on
-  representative synthetic implicit fields before relying on subvoxel-level
-  equivalence downstream. This is an explicit P37 risk: run JIST
-  `IsoSurfaceOnGrid.solveOriginal` and scikit-image Lewiner on identical
-  multi-fold level sets, then compare topology, surface distance, and derived
-  thickness. Until that comparison passes, P30 establishes analytic geometry
-  behavior only and does not claim exact JIST surface equivalence.
-- Non-RAS VTK files without frame metadata cannot be interpreted safely from
-  coordinates alone. Callers must identify their frame explicitly.
+The selected Java implementation generated all 256 corner-sign patterns used by the Python table. The exhaustive and saved-volume checks show exact ordered triangle connectivity; paired coordinates differ only by floating point rounding (maximum **7.15×10⁻⁶ mm** in the saved base and PLUS surfaces). See [the case-template port report](reports/jist-connectivity18-case-template-port-2026-10-08.md).
+
+The corrected terminal synthetic PLUS case also compares Java JIST and the Python production extractor on identical level-set arrays. Each of the three meshes has identical topology and face connectivity in both results. Both show four connected components and Euler characteristic −8, confirming that those surface properties originate in the level sets for this case. See [the terminal comparison](reports/plus-terminal-jist-surface-comparison-2026-10-12.md).
+
+Synthetic analytic checks cover spheres and ellipsoids, including closed two-manifold edges, Euler characteristic, winding, millimetre bounds, oblique affine handling, RAS normalization, LPS conversion, and VTK round trips. Historical scikit-image comparisons remain useful for documenting the rejected alternative but do not describe the production method.
+
+## Scope
+
+Only ASCII legacy VTK triangular `POLYDATA` is read and written here. This module handles scientific mesh data, not visualization or rendering. The repository uses NumPy/SciPy for mesh geometry and closest-point thickness; it has no VTK/PyVista rendering requirement. Whole-workflow Java equivalence and real-human PLUS acceptance remain separate validation targets.

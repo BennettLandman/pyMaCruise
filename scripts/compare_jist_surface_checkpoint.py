@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare JIST and Lewiner extraction on one PLUS checkpoint's same level sets."""
+"""Compare the JIST reference with the production Python port on one checkpoint."""
 
 from __future__ import annotations
 
@@ -59,13 +59,34 @@ def main() -> None:
         if tuple(record["dimensions"]) != tuple(values.shape):
             raise AssertionError(f"JIST dimensions mismatch for {name}")
         jist = SurfaceMesh(nib.affines.apply_affine(image.affine, index_mesh.vertices), index_mesh.faces)
-        lewiner = extract_levelset_surface(image, level=0.0)
-        meshes[name] = {"jist": jist, "lewiner": lewiner}
-        details[name] = reference.compare_pair(jist, lewiner)
+        python_mesh = extract_levelset_surface(image, level=0.0)
+        meshes[name] = {"jist": jist, "python_source_matched": python_mesh}
+        comparison = reference.compare_pair(jist, python_mesh)
+        distance = comparison["vertex_to_triangle_surface_distance_mm"]
+        connectivity = comparison["triangle_connectivity_after_nearest_vertex_mapping"]
+        details[name] = {
+            "jist_topology": comparison["jist_topology"],
+            "python_source_matched_topology": comparison["lewiner_topology"],
+            "triangle_connectivity_after_nearest_vertex_mapping": {
+                "matching_unordered_faces": connectivity["matching_unordered_faces"],
+                "jist_face_count": connectivity["jist_face_count"],
+                "python_face_count": connectivity["lewiner_face_count"],
+                "matching_fraction_of_jist_faces": connectivity[
+                    "matching_fraction_of_jist_faces"
+                ],
+                "vertex_mapping_is_bijective": connectivity["vertex_mapping_is_bijective"],
+            },
+            "vertex_to_triangle_surface_distance_mm": {
+                "symmetric_mean": distance["symmetric_mean"],
+                "symmetric_max": distance["symmetric_max"],
+                "jist_vertices_to_python_mean": distance["jist_vertices_to_lewiner_mean"],
+                "python_vertices_to_jist_mean": distance["lewiner_vertices_to_jist_mean"],
+            },
+        }
         input_hashes[name] = digest
 
     thickness = {}
-    for backend in ("jist", "lewiner"):
+    for backend in ("jist", "python_source_matched"):
         value = closest_point_thickness(
             meshes["inner"][backend], meshes["outer"][backend],
             central=meshes["central"][backend],
@@ -81,12 +102,13 @@ def main() -> None:
         "workflow_terminal": manifest.get("terminal"),
         "completed_iteration": manifest.get("completed_iteration"),
         "source_method": "IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0.0f, false)",
+        "python_method": "production source-derived 18/6 templates generated from all 256 selected Java corner-sign cases",
         "source_sha256": reference.sha256(reference.JIST_SOURCE),
         "wrapper_sha256": reference.sha256(reference.JIST_WRAPPER_SOURCE),
         "same_levelset_float32_sha256": input_hashes,
         "per_surface": details,
         "thickness_same_python_operator_mm": thickness,
-        "thickness_mean_delta_lewiner_minus_jist_mm": thickness["lewiner"]["mean_mm"] - thickness["jist"]["mean_mm"],
+        "thickness_mean_delta_python_minus_jist_mm": thickness["python_source_matched"]["mean_mm"] - thickness["jist"]["mean_mm"],
         "limitations": [
             "This isolates triangulation on the exact same level-set arrays; it does not compare level-set evolution or the full Java workflow.",
             "Reported symmetric distances sample vertices against triangles and do not certify continuous Hausdorff distance.",
@@ -98,7 +120,7 @@ def main() -> None:
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     rows = []
     for name, comparison in details.items():
-        jt, lw = comparison["jist_topology"], comparison["lewiner_topology"]
+        jt, lw = comparison["jist_topology"], comparison["python_source_matched_topology"]
         dist = comparison["vertex_to_triangle_surface_distance_mm"]
         rows.append(
             f"| {name} | {jt['vertices']}/{jt['faces']}/{jt['connected_components']}/{jt['euler_characteristic']} | "
@@ -107,17 +129,17 @@ def main() -> None:
         )
     args.markdown.write_text(
         "\n".join([
-            "# JIST surface extraction on the corrected terminal synthetic PLUS case",
+            "# Terminal synthetic PLUS surface extraction: Java JIST and Python source port",
             "",
-            "The source-selected `IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0, false)` and Python Lewiner extractor were given the exact same terminal checkpoint level-set arrays. This is a synthetic stage comparison; it isolates the P37 triangulation substitution and does not establish whole-workflow equivalence.",
+            "The source-selected `IsoSurfaceOnGrid.solveOriginal(ImageDataFloat, 18, 0, false)` and the production Python source-derived 18/6 case-template extractor were given the exact same terminal checkpoint level-set arrays. This is a synthetic stage comparison of the current source port; it does not establish upstream or whole-workflow equivalence.",
             "",
             f"The registered LesionTOADS loop stopped by `{manifest.get('stop_reason')}` at iteration {manifest.get('completed_iteration')}. The input level sets were checked by SHA-256 before comparing the generated meshes.",
             "",
-            "| Surface | JIST V/F/components/χ | Lewiner V/F/components/χ | Symmetric sampled mean (mm) | Sampled max (mm) |",
+            "| Surface | Java JIST V/F/components/χ | Python source-port V/F/components/χ | Symmetric sampled mean (mm) | Sampled max (mm) |",
             "|---|---:|---:|---:|---:|",
             *rows,
             "",
-            f"Using the same Python closest-point thickness operator on both mesh sets, mean thickness is {thickness['jist']['mean_mm']:.6f} mm (JIST) and {thickness['lewiner']['mean_mm']:.6f} mm (Lewiner), delta {report['thickness_mean_delta_lewiner_minus_jist_mm']:+.6f} mm. These are geometry-isolation measurements, not Java thickness equivalence.",
+            f"Using the same Python closest-point thickness operator on both mesh sets, mean thickness is {thickness['jist']['mean_mm']:.9f} mm (JIST) and {thickness['python_source_matched']['mean_mm']:.9f} mm (Python), delta {report['thickness_mean_delta_python_minus_jist_mm']:+.9f} mm. This is not a Java thickness comparison.",
             "",
             "Distance summaries sample mesh vertices against triangles; their maxima are not continuous Hausdorff certificates. See the adjacent JSON for hashes, topology, and method provenance.",
             "",
