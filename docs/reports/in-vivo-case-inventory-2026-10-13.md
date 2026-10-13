@@ -28,21 +28,30 @@ and physical transforms vary across saved stages.
 
 ## Case 100260 (`sub-010260`)
 
-The local input folder currently has 41 files (~602 MB at the latest check).
-The initial inventory found 22 NIfTIs and read all their headers. The
-high-resolution anisotropic FLAIR is 192×512×512 at approximately
-1.000005×0.488281×0.488281 mm; its T1 is 176×240×256 at approximately 1 mm
-isotropic. A T2, GRE magnitude/phase pair, DWI, BOLD, and field maps are
-present. The high-resolution FLAIR needs physical-space registration and
-resampling for comparison with T1-grid stages.
+The local case now has 114 files (~1.20 GB), including 41 BIDS input files
+and 71 NIfTIs. The high-resolution anisotropic FLAIR is 192×512×512 at
+approximately 1.000005×0.488281×0.488281 mm; its T1 is 176×240×256 at
+approximately 1 mm isotropic. A T2, GRE magnitude/phase pair, DWI, BOLD, and
+field maps are present. The high-resolution FLAIR needs physical-space
+registration and resampling for comparison with T1-grid stages.
 
-The reference directory is spelled `Output/` (capital O), unlike case
-100249's `outputs/`. A fresh read-only check on 2026-10-13 found no files in
-that directory; only empty `Surfaces_MNI/`, `Surfaces_FreeView/`, and
-`SegRefine/` directories were present at the initial inventory. The input
-file count and size may change while transfer is ongoing, so recheck before
-using this as a complete case. It is currently an additional FLAIR input, not
-a saved MaCRUISE reference.
+A same-grid BET mask and a SLANT-TICV segmentation are available. Independent
+header/value checks confirm that the T1, mask, and SLANT labels are finite,
+RAS-oriented, and share the same 176×240×256 grid; the mask is binary and the
+SLANT map contains integer BrainCOLOR labels. These are usable inputs for a
+Python BASE run.
+
+**Reference update (2026-10-13):** the previously observed `Output/` folder
+containing a copy of case 100249's outputs is no longer present. The saved
+`MaCRUISEv3.2.0/logs/macruise.log` records MultiAtlas skull stripping ending,
+then a MaCRUISE wrapper exit status 1; required `SEG_refine.nii.gz` and the
+thickness MAT input to the PDF stage were missing. No completed, subject-
+specific source output was found for 100260, so do not score it as an
+independent source reference. A fresh Python BASE run using this subject's T1,
+BET mask, and SLANT labels is underway in ignored `build/`; it is execution
+evidence only, not source equivalence. Its output and anatomy audit must be
+reviewed after completion. The 100260 FLAIR remains an input for later PLUS
+validation, not an existing PLUS reference.
 
 ## Validation use
 
