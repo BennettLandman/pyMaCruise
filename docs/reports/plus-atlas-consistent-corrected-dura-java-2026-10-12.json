@@ -1,0 +1,49 @@
+{
+  "all_exact": true,
+  "case": "saved corrected atlas-aligned synthetic PLUS run",
+  "checkpoint_run_signature": "13cb101e62f93927d3e6bcb28a7f1fd47d9f534ca4ae37e34522b0edfcc06fe4",
+  "coordinate_system": "RAS",
+  "inputs": {
+    "registered_memberships": "de1f6dc83076c9426e493973c660ee432456e24999b3cd9a73ec861b2711e376",
+    "registered_segmentation": "4ecf0957b7c015bd60b96790f72e2ac782d4f0a30925abe7ef5106424344e564"
+  },
+  "outputs": {
+    "csf": {
+      "changed_voxels": 0,
+      "exact_float32_after_source_scale": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 5471360
+    },
+    "gm": {
+      "changed_voxels": 0,
+      "exact_float32_after_source_scale": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 5471360
+    },
+    "wm_fill": {
+      "changed_voxels": 0,
+      "exact_float32_after_source_scale": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 5471360
+    },
+    "wm_mask": {
+      "changed_voxels": 0,
+      "exact_float32_after_source_scale": true,
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "voxel_count": 5471360
+    }
+  },
+  "scope": "Dura output adapter only; upstream lesion memberships and native-grid transfer are not validated by this comparison",
+  "selected_java_source_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+  "shape_xyz": [
+    166,
+    206,
+    160
+  ],
+  "source_method": "LesionToadSegmentation.generateDuraRemovalOutputs followed by scaleFloatValue(255)",
+  "synthetic_only": true
+}
