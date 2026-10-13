@@ -62,6 +62,8 @@ PYTHONNOUSERSITE=1 PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synt
 
 The complete workflow manifest reports all nine stages complete. A recursive manifest audit verified **95/95** input/output hashes and **69/69** finite RAS NIfTIs. The corrected raw-input run peaked at **6.413 GB** sampled RSS; iterations 3–7 peaked at **10.214 GB**, iterations 8–10 at **10.018 GB**, terminal composition at **3.168 GB**, and the ribbon audit below **0.7 GB**, all under their watchdog limits.
 
+The saved corrected terminal run also passes a held-fixed Java comparison for all six TGDM level-set outputs. The initial level set is exact; each evolved output passes zero-level Dice ≥0.97, mean surface distance ≤0.01 mm, and Hausdorff ≤1 mm. The limiting output is outer (Dice 0.999943, mean 0.001837 mm, Hausdorff 0.937940 mm). This narrows the remaining PLUS mismatch to upstream TOADS/LesionTOADS, Dura transfer, or input/anatomy assumptions; it does not validate those upstream stages. See [the held-fixed TGDM comparison](plus-atlas-consistent-corrected-tgdm-java-2026-10-12.md).
+
 ## Ribbon acceptance
 
 The explicit terminal audit still fails five quality gates:
@@ -99,4 +101,4 @@ PYTHONNOUSERSITE=1 PYTHONPATH=src .venv/bin/python \
   --markdown docs/reports/plus-terminal-jist-surface-comparison-2026-10-12.md
 ```
 
-The next PLUS milestone is to diagnose the remaining GM boundary and thickness failures in the level-set evolution and Dura transfer, using the now-correct MaSeg labels and the terminal JIST comparison as fixed references. Keep the independent planted-fold synthetic fixture as a separate acceptance case.
+The next PLUS milestone is to diagnose the remaining GM boundary and thickness failures upstream of TGDM, using the corrected MaSeg labels, held-fixed TGDM comparison, and terminal JIST comparison as fixed references. Keep the independent planted-fold synthetic fixture as a separate acceptance case.
