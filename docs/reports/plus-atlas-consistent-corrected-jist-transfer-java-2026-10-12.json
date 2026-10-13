@@ -1,0 +1,123 @@
+{
+  "all_channels_exact": true,
+  "case": "corrected atlas-aligned synthetic PLUS Dura transfer",
+  "coordinate_note": "The source method preserves the Dura sample extents and values, then assigns reference geometry; it does not physically resample into reference dimensions.",
+  "python_method": "assign_reference_geometry_without_resampling (jist-unchanged)",
+  "reference": {
+    "path": "/Users/landmaba/dev/mipav/pymacruise/tests/data/synthetic/plus_atlas_consistent/t1.nii.gz",
+    "sha256": "7236472d9f34259b666ae15ce758542a7f0daf4c58574f7a6a117ee748205c93",
+    "shape": [
+      172,
+      216,
+      164
+    ]
+  },
+  "results": {
+    "csf": {
+      "bitwise_equal_float32": true,
+      "changed_voxels": 0,
+      "java_extents": [
+        166,
+        206,
+        160
+      ],
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_shape": [
+        166,
+        206,
+        160
+      ],
+      "reference_shape": [
+        172,
+        216,
+        164
+      ],
+      "source_shape": [
+        166,
+        206,
+        160
+      ]
+    },
+    "gm": {
+      "bitwise_equal_float32": true,
+      "changed_voxels": 0,
+      "java_extents": [
+        166,
+        206,
+        160
+      ],
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_shape": [
+        166,
+        206,
+        160
+      ],
+      "reference_shape": [
+        172,
+        216,
+        164
+      ],
+      "source_shape": [
+        166,
+        206,
+        160
+      ]
+    },
+    "wm_fill": {
+      "bitwise_equal_float32": true,
+      "changed_voxels": 0,
+      "java_extents": [
+        166,
+        206,
+        160
+      ],
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_shape": [
+        166,
+        206,
+        160
+      ],
+      "reference_shape": [
+        172,
+        216,
+        164
+      ],
+      "source_shape": [
+        166,
+        206,
+        160
+      ]
+    },
+    "wm_mask": {
+      "bitwise_equal_float32": true,
+      "changed_voxels": 0,
+      "java_extents": [
+        166,
+        206,
+        160
+      ],
+      "max_absolute_error": 0.0,
+      "mean_absolute_error": 0.0,
+      "python_shape": [
+        166,
+        206,
+        160
+      ],
+      "reference_shape": [
+        172,
+        216,
+        164
+      ],
+      "source_shape": [
+        166,
+        206,
+        160
+      ]
+    }
+  },
+  "source_method": "JIST ReorientVolume.solve(UNCHANGED, NEAREST_NEIGHBOR) then reference-header assignment",
+  "synthetic_only": true
+}

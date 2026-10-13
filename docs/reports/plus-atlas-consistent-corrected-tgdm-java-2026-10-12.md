@@ -19,7 +19,7 @@ All five agreed surface tolerances pass: zero-level Dice ≥0.97, symmetric mean
 | inner | no | 79,276 | 5.12×10⁻⁹ | 1.87×10⁻⁵ | 1.000000 | 4.28×10⁻⁹ | 1.34×10⁻⁵ | pass |
 | outer | no | 2,314,773 | 0.001460 | 0.974887 | 0.999943 | 0.001837 | 0.937940 | pass |
 
-These findings narrow the cause of the terminal ribbon failures: the selected Python TGDM stage is within the agreed Java-reference tolerances on the same inputs. The remaining differences must be investigated in upstream TOADS/LesionTOADS, Dura transfer, the input tissue construction, or the anatomy/acceptance assumptions. The outer surface has less than 0.063 mm of Hausdorff margin, so preserve this comparison as a regression case.
+These findings narrow the cause of the terminal ribbon failures: the selected Python TGDM stage is within the agreed Java-reference tolerances on the same inputs. The Dura output adapter also matches its selected Java method bit-for-bit. The remaining differences must be investigated in upstream TOADS/LesionTOADS evolution, native-grid transfer mode, input tissue construction, or anatomy/acceptance assumptions. The outer surface has less than 0.063 mm of Hausdorff margin, so preserve this comparison as a regression case. The selected JIST unchanged transfer is independently compared with Python in [the transfer report](plus-atlas-consistent-corrected-jist-transfer-java-2026-10-12.md); it retains source dimensions, unlike the recommended physical-affine output grid.
 
 ## Reproduction
 
