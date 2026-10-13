@@ -1,0 +1,69 @@
+{
+  "changed_voxels": 5445,
+  "java_raw": "not committed; retained locally under ignored build/",
+  "java_reshape_order": "F",
+  "labels": {
+    "1": {
+      "dice": 0.9999578752218765,
+      "java_voxels": 9270040,
+      "python_voxels": 9270117
+    },
+    "14": {
+      "dice": 0.9979649168079104,
+      "java_voxels": 85294,
+      "python_voxels": 85215
+    },
+    "15": {
+      "dice": 0.9973724110387651,
+      "java_voxels": 553399,
+      "python_voxels": 553319
+    },
+    "16": {
+      "dice": 0.9921370401572592,
+      "java_voxels": 3553,
+      "python_voxels": 3569
+    },
+    "17": {
+      "dice": 0.9811049831935515,
+      "java_voxels": 15367,
+      "python_voxels": 15276
+    },
+    "18": {
+      "dice": 0.9986341907580242,
+      "java_voxels": 8779,
+      "python_voxels": 8793
+    },
+    "22": {
+      "dice": 0.9832405491270512,
+      "java_voxels": 17136,
+      "python_voxels": 17173
+    },
+    "24": {
+      "dice": 0.9893949196883175,
+      "java_voxels": 17797,
+      "python_voxels": 17752
+    },
+    "25": {
+      "dice": 0.9958826274782713,
+      "java_voxels": 300905,
+      "python_voxels": 301178
+    },
+    "5": {
+      "dice": 0.9978046614134333,
+      "java_voxels": 526418,
+      "python_voxels": 526267
+    },
+    "6": {
+      "dice": 0.9846612264246775,
+      "java_voxels": 14752,
+      "python_voxels": 14781
+    }
+  },
+  "python_nifti": "not committed; retained locally under ignored build/",
+  "shape": [
+    176,
+    240,
+    256
+  ],
+  "voxel_count": 10813440
+}

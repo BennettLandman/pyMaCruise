@@ -1,0 +1,8 @@
+{
+  "changed_fraction": 0.0005035400390625,
+  "changed_on_python_26_neighbor_boundary": 5173,
+  "changed_voxels": 5445,
+  "changed_within_one_voxel_of_python_boundary": 5420,
+  "java_one_output_sha256": "311a01d53acb18ee20a59c66aeec2ca560e29c05f807cad4165185fddd43a7ed",
+  "python_output_sha256": "618d74a2dc324841a6885fa0b77adbb5385ed9ba045f3afab91f45e1afcf82b4"
+}
