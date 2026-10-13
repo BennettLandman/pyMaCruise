@@ -17,6 +17,13 @@ that `jist-unchanged` reproduces the selected JIST method. It does not show
 which mode was used for the historical in-vivo examples or establish
 whole-PLUS equivalence.
 
+On this checkpoint, physical mapping from T1 voxel coordinates into the Dura
+image is an integer translation of `(1, -5, 7)` voxels, about `(0.94, -4.69,
+6.56)` mm or 8.12 mm Euclidean. The JIST unchanged path discards this offset
+when it assigns the T1 header. This identifies a concrete source of the two
+transfer modes' downstream differences on this synthetic input, without
+proving the historical human runs had this same geometry.
+
 The selected Java implementation is run through the existing headless MIPAV /
 JIST harness. Java output is converted from MIPAV's x-fastest order to NIfTI
 RAS array order before bitwise comparison.

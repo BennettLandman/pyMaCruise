@@ -32,6 +32,14 @@ semantics and the subsequent Python composition under that geometry contract.
 The user's note that historical in-vivo examples may have followed the JIST
 path remains plausible, but it is not confirmed by this synthetic run.
 
+The Dura affine and T1 affine are aligned in spacing and axis directions, but
+physical mapping from target T1 voxel coordinates to the Dura image is an
+integer translation of `(1, -5, 7)` voxels, approximately `(0.94, -4.69,
+6.56)` mm or 8.12 mm Euclidean. The unchanged JIST path discards that offset
+when it assigns the T1 header. This identifies a concrete source of the two
+modes' downstream differences on this synthetic input, without establishing
+that the same offset occurred in historical in-vivo runs.
+
 The JIST-mode composition finished all six stages from the saved checkpoint
 and reported iteration 10 convergence. Peak sampled RSS was **3.243 GB** under
 an 8 GB watchdog. The audit remains synthetic workflow evidence, not Java
