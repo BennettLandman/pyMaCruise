@@ -116,6 +116,7 @@ def test_registered_startup_field_fit_matches_degree_three_java_reference(tmp_pa
         run.transformed_shape_priors,
         volume_ratio=0.5,
         limit=3.0,
+        initial_skeleton=run.segmentation_constructor.skeleton,
     )
     np.testing.assert_array_equal(result.thinning.segmentation, expected_thinning.segmentation)
     np.testing.assert_array_equal(result.thinning.skeleton, expected_thinning.skeleton)
@@ -140,9 +141,21 @@ def test_registered_wrapper_startup_keeps_unity_field_and_degree_zero(tmp_path: 
         prior_coefficient=np.float32(2.0 / 11.0),
         prior_scale=np.float32(0.05),
     )
+    image_shape = run.template_refresh.recropped_images.shape[1:]
+    border = np.zeros(image_shape, dtype=bool)
+    border[[0, -1], :, :] = True
+    border[:, [0, -1], :] = True
+    border[:, :, [0, -1]] = True
+    # Exercise the constructor-state handoff even though this small fixture's
+    # natural border consists entirely of class zero.
+    run.segmentation_constructor.skeleton[border] = 1
     result = compute_registered_toads_unity_field_startup(run, **settings)
 
-    image_shape = run.template_refresh.recropped_images.shape[1:]
+    assert np.any(run.segmentation_constructor.skeleton[border] != 0)
+    np.testing.assert_array_equal(
+        result.thinning.skeleton[border],
+        run.segmentation_constructor.skeleton[border],
+    )
     assert result.degree_state == 0
     assert result.energy_ratio == np.float32(1.0)
     assert result.fields.shape == image_shape + (1,)
@@ -170,6 +183,7 @@ def test_registered_wrapper_startup_keeps_unity_field_and_degree_zero(tmp_path: 
         run.transformed_shape_priors,
         volume_ratio=0.5,
         limit=3.0,
+        initial_skeleton=run.segmentation_constructor.skeleton,
     )
     np.testing.assert_array_equal(result.thinning.segmentation, direct_thinning.segmentation)
     np.testing.assert_array_equal(result.thinning.skeleton, direct_thinning.skeleton)

@@ -1,3 +1,5 @@
+> **Superseded for the matched RAS comparison:** This report records runs made before the constructor-skeleton handoff fix. See [the corrected replay](human-toads-100249-cycle-replay-after-skeleton-fix-2026-10-13.md), which matches Java exactly at both first and second iteration. The historical LPS/RAS question remains open.
+
 # 100249 human TOADS first-cycle Java/Python comparison (2026-10-13)
 
 ## Scope

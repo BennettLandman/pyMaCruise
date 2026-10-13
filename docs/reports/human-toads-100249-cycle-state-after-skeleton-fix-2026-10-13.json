@@ -1,0 +1,146 @@
+{
+  "case": "100249",
+  "comparison": "captured selected Java vs Python internal states",
+  "grid_xyz": [
+    167,
+    192,
+    163
+  ],
+  "result": "exact match",
+  "stages": {
+    "post_growth": {
+      "available": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          11
+        ],
+        "total_values": 57490752
+      },
+      "boundary_distances": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          11
+        ],
+        "total_values": 57490752
+      },
+      "centroids": {
+        "mismatch_values": 0,
+        "shape": [
+          1,
+          11
+        ],
+        "total_values": 11
+      },
+      "closest_labels": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          4
+        ],
+        "total_values": 20905728
+      },
+      "memberships": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          11
+        ],
+        "total_values": 57490752
+      },
+      "ordering": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      },
+      "segmentation": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      },
+      "skeleton": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      }
+    },
+    "pre_growth": {
+      "available": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          11
+        ],
+        "total_values": 57490752
+      },
+      "centroids": {
+        "mismatch_values": 0,
+        "shape": [
+          1,
+          11
+        ],
+        "total_values": 11
+      },
+      "memberships": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163,
+          11
+        ],
+        "total_values": 57490752
+      },
+      "ordering": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      },
+      "segmentation": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      },
+      "skeleton": {
+        "mismatch_values": 0,
+        "shape": [
+          167,
+          192,
+          163
+        ],
+        "total_values": 5226432
+      }
+    }
+  }
+}

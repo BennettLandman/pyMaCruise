@@ -557,11 +557,12 @@ def toads_initialize_thinning_queue(
         raise ValueError("zero_threshold must be finite and nonnegative")
 
     if initial_skeleton is None:
-        # MultipleToadSegmentation allocates ``skeleton`` as a Java
-        # byte[][][]; its border is therefore class index zero. The source
-        # initThinningLabels method overwrites only interior voxels. The
-        # removed-voxel sentinel remains ``empty_label`` and is distinct from
-        # this constructor default.
+        # This is the zero-filled Java array-allocation default. The selected
+        # MultipleToadSegmentation constructor later seeds its skeleton from
+        # the initial classification; wrapper callers must pass that state so
+        # initThinningLabels can preserve the source's border values while it
+        # overwrites only the interior. The removed-voxel sentinel remains
+        # ``empty_label`` and is distinct from this low-level default.
         skeleton = np.zeros(labels.shape, dtype=np.int16)
     else:
         source_skeleton = np.asarray(initial_skeleton)

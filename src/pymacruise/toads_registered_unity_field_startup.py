@@ -53,6 +53,7 @@ def compute_registered_toads_unity_field_startup(
     try:
         recropped = np.asarray(alignment_run.template_refresh.recropped_images, dtype=np.float32)
         segmentation = np.asarray(alignment_run.segmentation_constructor.segmentation)
+        constructor_skeleton = np.asarray(alignment_run.segmentation_constructor.skeleton)
         initial_memberships = np.asarray(
             alignment_run.segmentation_initialization.memberships, dtype=np.float32
         )
@@ -65,6 +66,8 @@ def compute_registered_toads_unity_field_startup(
     images = np.moveaxis(recropped, 0, -1)
     if segmentation.shape != images.shape[:3]:
         raise ValueError("constructor segmentation must match the recropped image grid")
+    if constructor_skeleton.shape != segmentation.shape:
+        raise ValueError("constructor skeleton must match the recropped image grid")
     if initial_memberships.shape != images.shape[:3] + (11,):
         raise ValueError("initial memberships must match the selected 11-class image grid")
     if shapes.shape != initial_memberships.shape:
@@ -93,6 +96,7 @@ def compute_registered_toads_unity_field_startup(
         shapes,
         volume_ratio=volume_ratio,
         limit=thinning_limit,
+        initial_skeleton=constructor_skeleton,
         record_processed_items=record_thinning_items,
     )
     return ToadsRegisteredUnityFieldStartup(
