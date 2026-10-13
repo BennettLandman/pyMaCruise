@@ -8,13 +8,14 @@ claim equivalence of the full LesionTOADS workflow.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Literal, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .lesion_shapes import _linear_interpolation_with_default
 from .toads_shapes import _rotation_matrix
+from .lesion_registered_shapes_numba import registered_shapes_numba
 
 
 def transform_registered_lesion_shape_priors(
@@ -24,6 +25,7 @@ def transform_registered_lesion_shape_priors(
     image_dimensions_xyz: tuple[int, int, int] | None = None,
     image_resolutions_mm: tuple[float, float, float],
     template_resolutions_mm: tuple[float, float, float],
+    backend: Literal["numba", "python"] = "numba",
 ) -> NDArray[np.float32]:
     """Return selected registered atlas class maps on the image grid.
 
@@ -61,6 +63,8 @@ def transform_registered_lesion_shape_priors(
         raise ValueError("atlas priors must share a 3D template grid")
     if any(not np.isfinite(shape).all() for shape in shapes):
         raise ValueError("atlas priors must be finite")
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
 
     image_res = np.asarray(image_resolutions_mm, dtype=np.float32)
     template_res = np.asarray(template_resolutions_mm, dtype=np.float32)
@@ -93,6 +97,14 @@ def transform_registered_lesion_shape_priors(
         centered = np.float32(centered / template_res[axis])
         matrix[axis, 3] = np.float32(centered + template_center[axis])
 
+    if backend == "numba":
+        source_maps = np.ascontiguousarray(np.stack(shapes, axis=0), dtype=np.float32)
+        source_bounds = np.asarray(
+            [(*box.lower_xyz, *box.upper_xyz) for box in bounds], dtype=np.int64
+        )
+        return registered_shapes_numba(source_maps, matrix, source_bounds, image_dims)
+
+    # Retained scalar Python oracle for source-order and edge-case comparisons.
     output = np.empty((*image_dims, len(shapes)), dtype=np.float32)
     for x in range(image_dims[0]):
         for y in range(image_dims[1]):
