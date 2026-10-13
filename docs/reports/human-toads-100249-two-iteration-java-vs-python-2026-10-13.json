@@ -1,4 +1,11 @@
 {
+  "boundary_localization": {
+    "changed_on_boundary_voxels": 18543,
+    "changed_voxels_total": 18557,
+    "changed_within_1_voxel_of_boundary": 18557,
+    "changed_within_2_voxels_of_boundary": 18557,
+    "definition": "26-neighbor local class boundary in either Java or Python classification; Euclidean distance in voxel units"
+  },
   "changed_voxels": 18557,
   "java_raw": "build/human-toads-source-pipeline-100249/java/classification-java-two.raw (ignored local output; not committed)",
   "java_reshape_order": "F",

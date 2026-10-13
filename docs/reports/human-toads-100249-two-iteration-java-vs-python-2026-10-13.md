@@ -14,6 +14,11 @@ The RAS Python startup probe in the [startup record](human-toads-100249-python-s
 matches Java's logged initial crop transform and first registration transform
 to printed precision. The difference therefore appears after initial atlas
 registration, within post-refresh initialization or the registered loop.
+Boundary localization shows the difference is almost entirely on surfaces:
+18,543 of 18,557 changed voxels lie on a 26-neighbor class boundary in one of
+the two maps, and all 18,557 are within one voxel of such a boundary. This
+supports a small boundary placement/state difference more than a deep-volume
+class reassignment, but does not establish the specific source operation.
 The full natural-run RAS comparison differs at 66,936 voxels, so this early
 comparison establishes that the terminal mismatch is not caused only by a
 different natural stopping iteration.
