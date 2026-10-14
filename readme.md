@@ -17,7 +17,7 @@ Next work is to complete matched BASE and PLUS source comparisons, investigate P
 
 Primary validation uses our own controlled runs of the supplied original Java/MATLAB implementations. Supplied precomputed outputs are secondary comparisons for identifying areas of concern; their uncertain history does not replace fresh source execution. See the [reference evidence hierarchy](docs/validation-tolerances.md#reference-evidence-hierarchy--owner-direction-2026-10-14).
 
-Fresh execution of the original MATLAB refinement routine identified a Python `tabulate` interpretation defect, now corrected. Small and brain-resolution synthetic refinements match MATLAB exactly; earlier human refinement outputs must be refreshed. See the [direct-source report](docs/reports/matlab-refinement-direct-source-comparison-2026-10-14.md).
+Fresh execution of the original MATLAB refinement routine identified a Python `tabulate` interpretation defect, now corrected. Small and brain-resolution synthetic refinements match MATLAB exactly, and the corrected Python refinement matches fresh MATLAB exactly on held-fixed case-100260 human inputs (12,058,624 voxels). A resumed BASE run is rebuilding downstream stages so its final labels and surfaces use the correction; historical downloaded output remains a separate mismatch. See the [direct-source report](docs/reports/matlab-refinement-direct-source-comparison-2026-10-14.md).
 
 ## Scope and target
 

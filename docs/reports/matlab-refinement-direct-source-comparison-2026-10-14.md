@@ -29,11 +29,37 @@ Full logs, original replay scripts, before/after metrics, and the two brain-reso
 /Applications/MATLAB_R2024b.app/bin/matlab -batch "run('/Users/landmaba/dev/mipav/pymacruise/build/matlab-refinement-reference-2026-10-14/run_brain_resolution_refinement.m')"
 ```
 
-These are fresh original-source refinement comparisons on held-fixed synthetic fields. They do not establish complete BASE/PLUS equivalence, human refinement agreement, volume-border compatibility, or behavior of a different historical MATLAB runtime. Supplied precomputed human outputs remain secondary diagnostic evidence; rerun affected human refinement stages with the correction before refreshing those comparisons.
+These are fresh original-source refinement comparisons on held-fixed synthetic fields. They do not establish complete BASE/PLUS equivalence, volume-border compatibility, or behavior of a different historical MATLAB runtime.
+
+## Human BASE refinement comparison
+
+The source routine and corrected Python CLI were also run on the same human
+case-100260 MaSeg and the exact inner/outer fields from the saved BASE
+`cruise-core` stage. The original MATLAB routine used the documented four
+0.2 mm coefficients and central handling. Both outputs use the same
+184×256×256 voxel grid. The newly generated Python result is **bit-for-bit
+identical** to fresh original MATLAB: 0 of 12,058,624 voxels differ, all 134
+label Dice scores are 1.0, and none falls below 0.97. This confirms source
+agreement for the held-fixed human refinement stage.
+
+The previously downloaded full-pipeline `SegRefine/SEG_refine.nii.gz` remains
+a separate historical artifact: it differs from the fresh MATLAB result in
+47,306 voxels; mean label Dice is 0.965159, minimum is 0.382979, and 56/134
+labels are below 0.97. The cause is not established by this comparison, so the
+historical output is not treated as the source reference. The full Python BASE
+workflow is being resumed after the correction to refresh downstream products;
+until that run and its audit finish, this result does not validate refreshed
+whole-workflow outputs.
+
+Machine-readable metrics and input/output hashes are in the ignored
+`build/invivo-base-orientation-only-source-profile-2026-10-12/matlab-refinement-reference/human-comparison.json`.
+The source run log and scripts are in the sibling `matlab-refinement-reference`
+directory. No human imaging data is committed.
 
 ## Focused regression validation
 
 - `tests/test_segmentation_refine.py` plus the affected golden-hash and refinement-lineage regressions: **11 passed in 1.06 s**.
 - Updated brain-resolution TGDM/refined-label metric regression: **1 passed in 55.52 s**.
+- Human held-fixed refinement: **exact array match** to a fresh MATLAB source run (12,058,624 voxels, 134 labels); see the case-specific comparison above.
 - CLI tests passed in the initial focused run. That initial run exposed one stale refinement-golden regression, subsequently repaired by actual MATLAB regeneration and verified above.
 - `git diff --check` passes. No new full-suite result is claimed for this localized correction.
