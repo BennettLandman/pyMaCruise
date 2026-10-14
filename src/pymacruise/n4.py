@@ -77,8 +77,6 @@ def n4_bias_correct(
     values = np.asarray(normalized.dataobj, dtype=np.float32)
     if not np.isfinite(values).all():
         raise ValueError("N4 input must contain finite voxel values")
-    if np.any(values < 0):
-        raise ValueError("N4 input contains negative values; the ANTs log-domain method requires non-negative intensities")
     if not np.any(values > 0):
         raise ValueError("N4 input must contain at least one positive intensity")
 

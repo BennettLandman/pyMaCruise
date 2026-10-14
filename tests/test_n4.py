@@ -44,9 +44,29 @@ def test_n4_config_and_input_contract_errors() -> None:
         N4Config(iterations=(0,))
 
     negative = nib.Nifti1Image(-np.ones((4, 4, 4), dtype=np.float32), np.eye(4))
-    with pytest.raises(ValueError, match="negative"):
+    with pytest.raises(ValueError, match="at least one positive"):
         n4_bias_correct(negative)
 
     four_d = nib.Nifti1Image(np.ones((4, 4, 4, 2), dtype=np.float32), np.eye(4))
     with pytest.raises(ValueError, match="3D"):
         n4_bias_correct(four_d)
+
+
+def test_n4_accepts_interpolation_induced_negative_values() -> None:
+    pytest.importorskip("ants")
+    size = 24
+    axis = np.linspace(-1.0, 1.0, size, dtype=np.float32)
+    x, y, z = np.meshgrid(axis, axis, axis, indexing="ij")
+    values = (100.0 * np.exp(0.12 * x - 0.08 * y + 0.05 * z)).astype(np.float32)
+    # Cubic interpolation near the image boundary can overshoot below zero;
+    # ANTsPy's N4 accepts this mixed-valued image and the source wrapper clips
+    # interpolation negatives after N4/masking.
+    values[:2] = -2.0
+    image = nib.Nifti1Image(values, np.eye(4))
+    corrected = n4_bias_correct(
+        image,
+        config=N4Config(shrink_factor=1, iterations=(2,), spline_mesh=(1, 1, 1)),
+    )
+    result = np.asarray(corrected.dataobj)
+    assert np.isfinite(result).all()
+    assert np.any(result < 0)
