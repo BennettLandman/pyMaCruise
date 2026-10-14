@@ -126,7 +126,9 @@ def test_segmentation_refine_cli_preserves_default_and_explicit_corrected_mode(
     )
     corrected_report = json.loads(corrected_summary.read_text(encoding="utf-8"))
     assert corrected_report["source_faithful"] is False
-    assert np.asarray(faithful_written.dataobj)[3, 3, 3] == 1
+    # Fresh MATLAB tabulate probes show maxind is the winning integer label,
+    # including when labels 1..43 have zero-count histogram rows.
+    assert np.asarray(faithful_written.dataobj)[3, 3, 3] == 44
     assert np.asarray(corrected_written.dataobj)[3, 3, 3] == 44
     final_hashes = [
         hashlib.sha256((FIXTURES / f"{name}.nii.gz").read_bytes()).hexdigest()
