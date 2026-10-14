@@ -30,6 +30,16 @@ def _read_java_volume(root: Path, name: str, shape: tuple[int, int, int]) -> np.
         return np.frombuffer(stream.read(), dtype=">f4").astype(np.float32).reshape(shape)
 
 
+def _voxel_metrics(java: np.ndarray, python: np.ndarray) -> dict[str, float | int]:
+    difference = np.abs(java.astype(np.float64) - python.astype(np.float64))
+    return {
+        "sign_differences": int(np.count_nonzero((java <= 0.0) != (python <= 0.0))),
+        "changed_voxels": int(np.count_nonzero(java != python)),
+        "mean_absolute_voxel_error": float(difference.mean()),
+        "maximum_absolute_voxel_error": float(difference.max(initial=0.0)),
+    }
+
+
 def _surface_metrics(
     java: np.ndarray, python: np.ndarray, affine: np.ndarray
 ) -> dict[str, float | int | bool]:
@@ -94,6 +104,7 @@ def main() -> None:
         external_force=parameters.inner_external,
         region_force=inner_force,
         outer_iterations=parameters.inner_iterations,
+        record_passes=True,
     )
     tissue_sign = np.load(root / "python-tissue_sign.npy").astype(np.uint8)
     central = tgdm_evolve(
@@ -106,6 +117,7 @@ def main() -> None:
         advection=gvf,
         inner_bound=initial_inner.level_set,
         outer_iterations=parameters.central_iterations,
+        record_passes=True,
     )
     central_shrink = tgdm_evolve(
         central.level_set,
@@ -114,6 +126,7 @@ def main() -> None:
         pressure_force=-1.0,
         outer_iterations=parameters.central_shrink_iterations,
         settings=_INNER_FROM_CENTRAL_PROFILE_SETTINGS,
+        record_passes=True,
     )
     inner = tgdm_evolve(
         central_shrink.level_set,
@@ -123,6 +136,7 @@ def main() -> None:
         external_force=parameters.inner_external,
         region_force=-inner_force,
         outer_iterations=parameters.inner_iterations,
+        record_passes=True,
     )
     outer_force = tgdm_outer_pressure_field(
         central.level_set, gm, skeleton, gray_matter_iso=parameters.gray_matter_iso
@@ -137,6 +151,7 @@ def main() -> None:
         inner_bound=central.level_set,
         skeletal_bound=skeleton,
         outer_iterations=parameters.central_iterations,
+        record_passes=True,
     )
     affine = np.asarray(provenance["affine_ras"], dtype=np.float64)
     stages = {
@@ -149,6 +164,48 @@ def main() -> None:
         name: _surface_metrics(_read_java_volume(root, name, shape), field, affine)
         for name, field in stages.items()
     }
+    evolution_passes = {}
+    for name, evolution in (
+        ("initial_inner", initial_inner),
+        ("central", central),
+        ("central_shrink", central_shrink),
+        ("delivered_inner", inner),
+        ("outer", outer),
+    ):
+        stage_passes = []
+        for index, (pre, post) in enumerate(
+            zip(evolution.pre_reinitialization_level_sets, evolution.pass_level_sets),
+            start=1,
+        ):
+            java_pre = _read_java_volume(
+                root,
+                f"evolution-checkpoints/{name}_pass_{index:02d}_pre_reinit",
+                shape,
+            )
+            java_post = _read_java_volume(
+                root,
+                f"evolution-checkpoints/{name}_pass_{index:02d}_post_reinit",
+                shape,
+            )
+            stage_passes.append({
+                "pass": index,
+                "before_reinitialization": _voxel_metrics(java_pre, pre),
+                "after_reinitialization": _voxel_metrics(java_post, post),
+            })
+        first_sign_difference = next(
+            (
+                {"pass": item["pass"], "stage": phase}
+                for item in stage_passes
+                for phase in ("before_reinitialization", "after_reinitialization")
+                if item[phase]["sign_differences"] > 0
+            ),
+            None,
+        )
+        evolution_passes[name] = {
+            "pass_count": len(stage_passes),
+            "first_sign_difference": first_sign_difference,
+            "passes": stage_passes,
+        }
     report = {
         "diagnostic_only": True,
         "synthetic_only": provenance["synthetic_only"],
@@ -163,6 +220,7 @@ def main() -> None:
         "affine_ras": affine.tolist(),
         "settings": parameters.__dict__,
         "outputs": results,
+        "evolution_passes": evolution_passes,
         "surface_thresholds_pass": all(bool(item["thresholds_pass"]) for item in results.values()),
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)

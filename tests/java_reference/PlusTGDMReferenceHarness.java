@@ -23,20 +23,29 @@ public final class PlusTGDMReferenceHarness {
     private static final class CheckpointTGDM extends MaGenericTGDM {
         private final Path output;
         private int pass;
+        private String checkpointStage = "smooth";
 
         CheckpointTGDM(Path output) {
             super(ConnectivityRule.CONNECT_18_6);
             this.output = output;
         }
 
+        void setCheckpointStage(String stage) {
+            checkpointStage = stage;
+            pass = 0;
+        }
+
         @Override
         protected void endNarrowBand(ProfileTGDM profile) {
             int currentPass = ++pass;
             try {
-                writeVolume(output.resolve(String.format("smoothed_pre_reinit_pass_%02d.raw.gz", currentPass)),
+                Path checkpoints = output.resolve("evolution-checkpoints");
+                Files.createDirectories(checkpoints);
+                String baseName = String.format("%s_pass_%02d", checkpointStage, currentPass);
+                writeVolume(checkpoints.resolve(baseName + "_pre_reinit.raw.gz"),
                         implicitLevelSet);
                 super.endNarrowBand(profile);
-                writeVolume(output.resolve(String.format("smoothed_pass_%02d.raw.gz", currentPass)),
+                writeVolume(checkpoints.resolve(baseName + "_post_reinit.raw.gz"),
                         implicitLevelSet);
             } catch (Exception error) {
                 throw new RuntimeException("failed to write TGDM pass checkpoint", error);
@@ -92,11 +101,13 @@ public final class PlusTGDMReferenceHarness {
             ImageDataFloat smoothingInput=new DistanceField(tgdm).solve(
                     new ImageDataFloat(initialLevel),8.0);
             writeVolume(output.resolve("smoothing_input.raw.gz"),smoothingInput.toArray3d());
+            tgdm.setCheckpointStage("smooth");
             ImageDataFloat smoothed=tgdm.solveSmoothSurface(initialLevel,1.0f,6);
             ImageDataFloat white=new ImageDataFloat(wm), gray=new ImageDataFloat(gm);
             ImageDataFloat ace=new ImageDataFloat(aceGm), thin=new ImageDataFloat(skeleton);
             ImageDataFloat vector=new ImageDataFloat(gvf);
 
+            tgdm.setCheckpointStage("initial_inner");
             ImageDataFloat firstInner=tgdm.solveInnerSurfaceFromOuter(
                     smoothed,null,white,null,0.2f,0.0f,1.0f,126.9f,0.5f,4);
             float[][][] sign=new float[nx][ny][nz];
@@ -107,12 +118,16 @@ public final class PlusTGDMReferenceHarness {
                 else { value=(1.0f-csfP-0.4f)/0.4f; if(value>0) value=0; }
                 int q=(int)(value*127+127); sign[x][y][z]=q<254?q:254;
             }
+            tgdm.setCheckpointStage("central");
             ImageDataFloat central=tgdm.solveCentralSurface(
                     firstInner,null,new ImageDataFloat(sign),vector,0.15f,1.0f,1.5f,7);
+            tgdm.setCheckpointStage("central_shrink");
             ImageDataFloat centralShrink=tgdm.solveInnerSurfaceFromCentral(
                     central,null,null,null,0.15f,0.0f,-1.0f,126.9f,0.5f,1);
+            tgdm.setCheckpointStage("delivered_inner");
             ImageDataFloat inner=tgdm.solveInnerSurfaceFromCentral(
                     centralShrink,null,white,null,0.2f,0.0f,-1.0f,126.9f,0.5f,4);
+            tgdm.setCheckpointStage("outer");
             ImageDataFloat outer=tgdm.solveOuterSurface(
                     central,null,gray,null,thin,1.0f,0.0f,1.0f,0.4f,7);
             writeVolume(output.resolve("initial_level_set.raw.gz"),initialLevel.toArray3d());

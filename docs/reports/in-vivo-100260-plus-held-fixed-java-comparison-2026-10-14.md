@@ -49,6 +49,41 @@ The pass summaries below retain the per-outer-iteration error progression (pre-r
 | 5 | `3.18e-8` / `7.36e-4` | `2.76e-8` / `6.39e-4` |
 | 6 | `7.75e-8` / `7.42e-2` | `1.15e-6` / `6.92e-2` |
 
+## Tissue-guided evolution localization
+
+The selected Java harness and the Python replay were instrumented at each outer pass, both before and after fast-marching reinitialization. With the Java smoothed seed held fixed, the four-pass initial-inner evolution had no zero-level-set sign differences in any pass. The first sign changes appear in central-surface pass 1, before reinitialization: **2 voxels**. They grow to 129 by the delivered central surface. Later counts include changes inherited from their input surfaces, so they are not independent failure counts.
+
+| Evolution | Outer passes | First pass with sign differences | Final sign differences |
+|---|---:|---|---:|
+| Initial inner | 4 | None | 0 |
+| Central | 7 | Pass 1, before reinitialization: 2 | 129 |
+| Central shrink | 1 | Pass 1, before reinitialization: 249 (starts from the already-divergent central field) | 249 |
+| Delivered inner | 4 | Pass 1, before reinitialization: 72 (starts from the already-divergent central/shrink path) | 13 |
+| Outer | 7 | Pass 1, before reinitialization: 91 (starts from the already-divergent central field) | 72 |
+
+This localizes the first topology-changing discrepancy to central-surface evolution, after the initial-inner result already passes the agreed surface limits. Java tissue fusion and ACE are exact, the sign-force field is assembled from those same held-fixed arrays, and the GVF field is within its numerical bounds. The remaining likely causes are within the central TGDM force/update/topology semantics or the interaction between their floating-point results and the source's topology test. That is the next source-comparison target; these held-fixed results do not establish independent full PLUS equivalence.
+
+The instrumented Java harness completed under an 8 GB watchdog at **1.306 GB** peak sampled RSS. The Python diagnostic completed at **3.153 GB** under an 8 GB watchdog; its nonzero exit is expected because the already-known central and outer surface limits remain unmet. The machine-readable per-pass output is in ignored `build/in-vivo-100260-plus-java-ace-gvf-2026-10-14/java-smoothed-downstream-with-passes.json`. Reproduce the added checkpoints and Python comparison with:
+
+```bash
+REF=build/in-vivo-100260-plus-java-ace-gvf-2026-10-14
+javac -d "$REF/classes" \
+  -sourcepath tests/java_reference/stubs:tests/java_reference/upstream \
+  tests/java_reference/PlusTGDMReferenceHarness.java
+PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
+  /usr/bin/java -Xms256m -Xmx6g -cp "$REF/classes" \
+  PlusTGDMReferenceHarness "$REF/arrays.bin" "$REF/java" \
+  precomputed_initial_level_set
+PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --report-interval-seconds 30 -- \
+  ./.venv/bin/python scripts/compare_plus_surfaces_from_java_smoothing.py \
+  --reference-dir "$REF" \
+  --report "$REF/java-smoothed-downstream-with-passes.json"
+```
+
+The Python-seed-substitution command returns exit status 1 when the central or outer surfaces fail the agreed distance limits; this is the expected scientific result, while the JSON is still written and the pass comparison completes. The stage-final surface results in this instrumented replay are unchanged from the earlier seed-substitution run: initial inner and delivered inner pass; central and outer Hausdorff distances are `1.4220 mm` and `1.2546 mm`.
+
 ## Reproduction
 
 From the `pymacruise` repository root, prepare held-fixed fields from the saved no-regrid workflow. The Java harness comparisons can then be repeated with the scripts below. The run products and JSON metrics are under ignored `build/` and do not add human images to Git.
