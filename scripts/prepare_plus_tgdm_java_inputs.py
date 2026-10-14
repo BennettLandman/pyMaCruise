@@ -23,7 +23,7 @@ from pymacruise.ace import _tgdm_signed_distance_fmm
 from pymacruise.tgdm import _SMOOTHING_PROFILE_SETTINGS, tgdm_evolve
 
 INPUT_ORDER = (
-    "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm",
+    "segmentation", "toads_wm_mask", "multi_atlas_gm", "multi_atlas_wm",
     "multi_atlas_mask", "toads_gm", "toads_wm_fill", "toads_wm_mask",
 )
 OUTPUT_NAMES = ("initial_level_set", "tissue_sign", "initial_inner", "inner", "central", "outer")

@@ -2,13 +2,13 @@
 
 **Evidence category:** real-human held-fixed source comparison after a fresh Python stage replay. The selected Java MaGenericTGDM wrapper sequence matches all agreed surface limits on the same crop-ready Python stage inputs. This is not an independently composed full PLUS Java workflow.
 
-**Correction, 2026-10-14:** The earlier TGDM divergence results in this report were invalid. That comparison reused a saved Python `tissue_sign` field but reconstructed Java's field from current WM/ACE inputs; they differed at **15,707 voxels**. A separate rerun also passed the fresh membership image to Java in precomputed-level-set mode. Both issues are corrected below. Do not use the earlier central/inner/outer mismatch metrics or the old per-voxel trace.
+**Correction, 2026-10-14:** Earlier TGDM divergence results in this report were invalid for three reasons. One comparison reused a saved Python `tissue_sign` field but reconstructed Java's field from current WM/ACE inputs; they differed at 15,707 voxels. A separate rerun passed the membership image to Java in precomputed-level-set mode. Finally, the Python replay helper passed TOADS WM fill as the boundary-cleanup input, while the full PLUS workflow passes TOADS WM mask. With the source-selected input order corrected, a fresh full Python run reproduces all six saved TGDM outputs bit-for-bit, and the selected Java comparison below passes all surface gates. Do not use the superseded mismatch metrics or point trace.
 
 ## Workflow case
 
 The comparison uses the axis-only RAS case from the [human PLUS integration report](in-vivo-100260-plus-full-run-2026-10-14.md). The crop is `140×178×134` on a RAS grid. The crop inputs and settings are read from the saved workflow manifest; tissue update, topology, ACE, GVF, and TGDM are freshly recomputed by the current Python implementation. Java receives those same current fields and the source membership image, then follows the selected wrapper sequence. All processes used RSS watchdogs.
 
-The fresh Python replay matches the saved workflow's `initial_level_set` and `initial_inner`. Its `tissue_sign`, delivered `inner`, `central`, and `outer` differ from the saved outputs at 15,707, 1,735,466, 1,717,832, and 2,253,466 voxels respectively. This means the older saved full-workflow output needs a separate provenance/reproducibility investigation; it does not invalidate the matched fresh Python-to-Java comparison below.
+The new raw-input no-regrid PLUS run completed all nine stages and naturally converged at LesionTOADS iteration 13. Its run signature is unchanged from the previous no-regrid run (`5061e1a6…`). Seventy manifest-referenced NIfTI/VTK products across the workflow's stage manifests have identical hashes between runs. The six crop-grid TGDM outputs (`tissue_sign`, `initial_level_set`, `initial_inner`, `inner`, `central`, and `outer`) match exactly. The corrected crop-stage replay also reproduced all six Python TGDM products exactly (zero differing voxels per stage), confirming that the earlier mismatch came from the replay helper's boundary input order, not from full-workflow nondeterminism.
 
 ## Results
 
@@ -17,14 +17,14 @@ The fresh Python replay matches the saved workflow's `initial_level_set` and `in
 | `CombineMAandTOADS` tissue fusion | GM, WM, and mask each match all **3,339,280 voxels exactly** | Pass |
 | MaCRUISE ACE mode 3 | Enhanced GM, skeleton, and thinned skeleton each match all **3,339,280 voxels exactly** | Pass |
 | VandyCRUISE GVF (`lambda=0.2`, 200 iterations) | Mean absolute error `2.97e-8`; maximum absolute error `5.22e-7` | Pass current bounds (`1e-5` mean, `5e-5` maximum) |
-| TGDM initial signed-distance seed | Mean absolute voxel error `1.40e-10`; max `4.77e-7`; zero sign differences | Pass |
+| TGDM initial signed-distance seed | 983 differing voxels from float rounding; mean absolute voxel error `1.40e-10`; max `4.77e-7`; zero sign differences | Pass |
 | TGDM initial smoothing | Zero sign changes; Dice `1.0`; mean distance `3.65e-7 mm`; Hausdorff `0.00642 mm` | Pass |
 | TGDM first inner surface | Zero sign changes; Dice `1.0`; mean distance `2.18e-7 mm`; Hausdorff `0.00507 mm` | Pass |
 | TGDM central surface | Zero sign changes; Dice `1.0`; mean distance `1.51e-7 mm`; Hausdorff `0.00432 mm` | Pass |
-| TGDM delivered inner surface | Zero sign changes; Dice `1.0`; mean distance `7.65e-8 mm`; Hausdorff `0.000772 mm` | Pass |
-| TGDM outer surface | 14 sign changes; Dice `0.999991`; mean distance `0.000144 mm`; Hausdorff `0.710 mm` | Pass |
+| TGDM delivered inner surface | Zero sign changes; Dice `1.0`; mean distance `7.68e-8 mm`; Hausdorff `0.000766 mm` | Pass |
+| TGDM outer surface | 10 sign changes; Dice `0.999994`; mean distance `0.000110 mm`; Hausdorff `0.2255 mm` | Pass |
 
-All surface results meet the agreed Dice ≥0.97, symmetric mean distance ≤0.01 mm, and Hausdorff ≤1 mm criteria. Tissue fusion, MaCRUISE ACE, and GVF also match the selected Java operations within the stated bounds above. This validates selected stages on a fresh common input chain, not the full PLUS workflow or old saved outputs.
+All surface results meet the agreed Dice ≥0.97, symmetric mean distance ≤0.01 mm, and Hausdorff ≤1 mm criteria. Tissue fusion, MaCRUISE ACE, and GVF also match the selected Java operations within the stated bounds above. The full Python workflow is reproducible against its previous saved run; the selected Java comparisons remain held-fixed stage evidence, not a complete independent PLUS Java/MATLAB run.
 
 ## Smoothing pass localization
 
@@ -51,33 +51,46 @@ The pass summaries below retain the per-outer-iteration error progression (pre-r
 | 5 | `3.18e-8` / `7.36e-4` | `2.76e-8` / `6.39e-4` |
 | 6 | `7.75e-8` / `7.42e-2` | `1.15e-6` / `6.92e-2` |
 
-The superseded comparison had two input-chain mismatches: the saved `tissue_sign` was not regenerated from the current held-fixed tissue/ACE arrays, and the Java process was initially invoked as though its input array contained a signed-distance level set. The fresh comparison uses the current Python replay, verifies the sign-field formula exactly on the held-fixed arrays, and invokes Java in membership mode so Java performs the source initialization itself. This removed the apparent central-surface divergence.
+The superseded comparisons mixed saved and freshly derived fields, once selected the wrong Java input mode, and once passed WM fill instead of WM mask to the boundary stage. The corrected replay now follows the full PLUS workflow's eight-input order and enforces exact agreement with its saved TGDM products before the Java comparison. Java receives the same membership image and performs the source distance initialization itself.
 
 ## Reproduction
 
-From the `pymacruise` repository root, freshly replay the crop-ready Python chain from the saved case inputs, then run the selected Java TGDM wrapper on those exact current inputs. Run products and metrics stay under ignored `build/`; no human images are committed.
+From the `pymacruise` repository root, freshly run the axis-only RAS full PLUS workflow on the case inputs, then replay its crop-ready Python chain with exact saved-output checks, and run the selected Java TGDM wrapper on those same inputs. Products and metrics stay under ignored `build/`; no human images are committed.
 
 ```bash
+MPLCONFIGDIR=/private/tmp/mpl-pymacruise-fresh-plus \
+PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=src \
+  ./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 16 --report-interval-seconds 30 -- \
+  ./.venv/bin/python -m pymacruise.cli plus-full-run \
+  --t1 /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-mp2rage_T1w.nii.gz \
+  --flair /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-highres_FLAIR.nii.gz \
+  --brain-mask /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-mp2rage_T1w_bet_mask.nii.gz \
+  --maseg /Users/landmaba/dev/mipav/sample-macruise/100260/sub-010260/ses-01/SLANT-TICVv1.2/post/FinalResult/sub-010260_ses-01_T1w_seg.nii.gz \
+  --atlas-descriptor data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14 \
+  --no-regrid-inputs
+
 PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   --limit-gb 8 --report-interval-seconds 30 -- \
   ./.venv/bin/python scripts/prepare_plus_tgdm_java_inputs.py \
-  --workflow-root build/in-vivo-100260-plus-no-regrid-lesionatlas-2026-10-14/plus-surface \
-  --output-dir build/in-vivo-100260-plus-java-fresh-replay-2026-10-14 \
-  --allow-python-stage-differences
+  --workflow-root build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/plus-surface \
+  --output-dir build/in-vivo-100260-plus-java-corrected-replay-2026-10-14
 
-REF=build/in-vivo-100260-plus-java-fresh-replay-2026-10-14
+REF=build/in-vivo-100260-plus-java-corrected-replay-2026-10-14
 mkdir -p "$REF/classes"
 javac -d "$REF/classes" \
   -sourcepath tests/java_reference/stubs:tests/java_reference/upstream \
   tests/java_reference/PlusTGDMReferenceHarness.java
+set -o pipefail
 PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
   --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
   /usr/bin/java -Xms256m -Xmx6g -cp "$REF/classes" \
-  PlusTGDMReferenceHarness "$REF/arrays.bin" "$REF/java"
+  PlusTGDMReferenceHarness "$REF/arrays.bin" "$REF/java" 2>&1 | tee "$REF/java-watchdog.log"
 
 PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python \
   scripts/compare_plus_tgdm_java.py \
-  --workflow-root build/in-vivo-100260-plus-no-regrid-lesionatlas-2026-10-14/plus-surface \
+  --workflow-root build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/plus-surface \
   --reference-dir "$REF" \
   --report "$REF/tgdm-comparison.json"
 
@@ -85,6 +98,19 @@ scripts/compare_plus_tissue_update_saved_java.sh \
   build/in-vivo-100260-plus-no-regrid-lesionatlas-2026-10-14/plus-surface \
   build/in-vivo-100260-plus-java-tissue-2026-10-14 \
   build/in-vivo-100260-plus-java-tissue-2026-10-14/comparison.json
+
+MPLCONFIGDIR=/private/tmp/mpl-pymacruise-fresh-plus \
+PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=src \
+  ./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --report-interval-seconds 30 -- \
+  ./.venv/bin/python -m pymacruise.cli plus-full-run \
+  --t1 /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-mp2rage_T1w.nii.gz \
+  --flair /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-highres_FLAIR.nii.gz \
+  --brain-mask /Users/landmaba/dev/mipav/sample-macruise/100260/input/ses-01/anat/sub-010260_ses-01_acq-mp2rage_T1w_bet_mask.nii.gz \
+  --maseg /Users/landmaba/dev/mipav/sample-macruise/100260/sub-010260/ses-01/SLANT-TICVv1.2/post/FinalResult/sub-010260_ses-01_T1w_seg.nii.gz \
+  --atlas-descriptor data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14 \
+  --no-regrid-inputs --resume
 ```
 
-The fresh TGDM Java run peaked at **1.264 GB**, and the Python mesh-distance comparison peaked at **0.599 GB**, each under an 8 GB watchdog. The selected TGDM surface comparison exited successfully with all five surfaces passing. The saved full-workflow stage differences above remain open, so this report does not close P44 or establish whole-workflow equivalence. No full pytest suite was run for this comparison cycle; the source replay and the comparison command are its focused validation.
+The corrected crop replay peaked at **2.599 GB** under an 8 GB watchdog; all six saved TGDM outputs matched exactly. The selected Java TGDM run peaked at **1.274 GB**, and the mesh-distance comparison peaked at **0.597 GB**, each under an 8 GB watchdog. All five surface outputs pass the agreed limits. This remains selected-stage source evidence, not an independent full PLUS Java/MATLAB comparison; P44 stays open for that workflow-level source evidence. The focused input-order regression passed **1 test in 0.54 s**; no full pytest suite was run for this comparison cycle.
