@@ -1,0 +1,51 @@
+{
+  "case": "100260",
+  "workflow_scope": "held-fixed Dura-to-second-TOADS handoff; selected Java source harness vs Python",
+  "shape_xyz": [176, 240, 256],
+  "spatial_convention": "RAS",
+  "maximum_iterations": 50,
+  "convergence_threshold": 0.0001,
+  "python": {
+    "iterations": 50,
+    "converged": false,
+    "iteration_limit_reached": true,
+    "terminal_energy_ratio": 0.00145347673,
+    "classification_sha256_nifti": "72d6c7acc4f3882967479a813d96a62eb495eec52906acc27dae82afe0c8c936",
+    "peak_sampled_rss_gb": 8.025,
+    "watchdog_limit_gb": 12
+  },
+  "java": {
+    "harness": "ToadsWorkflowSourceHarness",
+    "harness_sha256": "397cb71fc3a8a18186fc132321bae54b7aa3691a9fd5331725f1b8287885c2c2",
+    "iteration_limit_reached": true,
+    "classification_sha256_raw": "d5cb37d0d9bfe63138cfb227b2cab2d5baf9d05c80320eac4539b41e6e8f4cb1",
+    "reported_completed": true,
+    "peak_sampled_rss_gb": 3.504,
+    "watchdog_limit_gb": 12
+  },
+  "comparison": {
+    "java_raw_reshape_order": "F",
+    "voxel_count": 10813440,
+    "changed_voxels": 0,
+    "labels": {
+      "1": {"java_voxels": 9416877, "python_voxels": 9416877, "dice": 1.0},
+      "5": {"java_voxels": 247729, "python_voxels": 247729, "dice": 1.0},
+      "6": {"java_voxels": 11195, "python_voxels": 11195, "dice": 1.0},
+      "14": {"java_voxels": 106305, "python_voxels": 106305, "dice": 1.0},
+      "15": {"java_voxels": 485893, "python_voxels": 485893, "dice": 1.0},
+      "16": {"java_voxels": 8270, "python_voxels": 8270, "dice": 1.0},
+      "17": {"java_voxels": 20025, "python_voxels": 20025, "dice": 1.0},
+      "18": {"java_voxels": 12102, "python_voxels": 12102, "dice": 1.0},
+      "22": {"java_voxels": 35623, "python_voxels": 35623, "dice": 1.0},
+      "24": {"java_voxels": 27963, "python_voxels": 27963, "dice": 1.0},
+      "25": {"java_voxels": 441458, "python_voxels": 441458, "dice": 1.0}
+    }
+  },
+  "source_input": {
+    "t1_n4_sha256": "34ea8cb2999eb92f7c6638209951aae9cd2857013279be0ddcb6f8c7925c3382",
+    "brain_mask_sha256": "ec12f6ce96fe21580e9a4eea472235905527fb7fa139139479249bedc4896b68",
+    "masked_voxels": 1349513,
+    "java_raw_sha256": "9702219547293bc4e4ce60174ae2ed39d54a2f1cc8899cfc42e2747205e19db5"
+  },
+  "interpretation": "Exact selected-source classification match at the 50-iteration cap; neither result establishes natural convergence."
+}
