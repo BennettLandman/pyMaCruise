@@ -26,7 +26,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
     private static final int NY = Integer.getInteger("dura.ny", 17);
     private static final int NZ = Integer.getInteger("dura.nz", 17);
     private static final double SCALE = Math.min(NX, Math.min(NY, NZ)) / 17.0;
-    private static final float MEMBERSHIP = 0.4f;
+    private static final float MEMBERSHIP = Float.parseFloat(System.getProperty("dura.membership", "0.4"));
     private static final float MASK_TRANSLATION = 2.0f;
     private static final float LEVEL_SET_TRANSLATION = 0.0f;
     private static final int ITERATIONS = Integer.getInteger("dura.iterations", 5);

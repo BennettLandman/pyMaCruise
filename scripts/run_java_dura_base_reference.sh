@@ -16,5 +16,5 @@ javac -d "$classes" \
   "$reference_root/DuraAttachedNoDuraReferenceHarness.java" \
   "$reference_root/DuraBaseInputsReferenceHarness.java"
 java -Xmx"$heap" -Ddura.nx="$nx" -Ddura.ny="$ny" -Ddura.nz="$nz" \
-  -Ddura.iterations="$iterations" -cp "$classes" \
+  -Ddura.iterations="$iterations" -Ddura.membership="${DURA_WRAPPER_MEMBERSHIP:-0.4}" -cp "$classes" \
   DuraBaseInputsReferenceHarness "$input" "$output"
