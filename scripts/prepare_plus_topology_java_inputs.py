@@ -78,8 +78,19 @@ def main() -> None:
     ):
         np.save(args.output_dir/f'python-input-{name}.npy',array)
     np.save(args.output_dir/'python-input-maseg.npy',np.asarray(load('segmentation').dataobj))
+    full_manifest_path=root.parent/'plus-full-workflow.json'
+    full_manifest=json.loads(full_manifest_path.read_text())
+    primary_input_paths=[
+        Path(record['path']).resolve()
+        for name,record in full_manifest.get('inputs',{}).items()
+        if name in {'t1','flair','brain_mask','maseg'} and record.get('path')
+    ]
+    synthetic_root=Path(__file__).resolve().parents[1]/'tests/data/synthetic'
+    synthetic_only=bool(primary_input_paths) and all(path.is_relative_to(synthetic_root) for path in primary_input_paths)
     report={
-        'synthetic_only':True,'workflow_manifest':str(root/'run.json'),'workflow_manifest_sha256':sha256(root/'run.json'),
+        'synthetic_only':synthetic_only,
+        'evidence_category':('synthetic held-fixed source comparison' if synthetic_only else 'real-data held-fixed source comparison'),
+        'workflow_manifest':str(root/'run.json'),'workflow_manifest_sha256':sha256(root/'run.json'),
         'workflow_run_signature':manifest['run_signature'],'shape_xyz':list(shape),'coordinate_system':'RAS',
         'affine_ras':tissue.wm.affine.tolist(),'settings':options.as_dict(),
         'held_fixed_input_binary_sha256':sha256(input_path),'tissue_input_binary_sha256':sha256(tissue_binary),

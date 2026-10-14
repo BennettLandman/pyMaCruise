@@ -31,8 +31,8 @@ def main() -> None:
     shape = tuple(provenance["shape_xyz"])
     affine = np.asarray(provenance["affine_ras"], dtype=np.float64)
     watchdog_log = (args.reference_dir / "java-watchdog.log").read_text()
-    peak_match = re.search(r"peak_sampled_rss_gb=([0-9.]+)", watchdog_log)
-    if peak_match is None:
+    peak_matches = re.findall(r"peak_sampled_rss_gb=([0-9.]+)", watchdog_log)
+    if not peak_matches:
         raise SystemExit("Java watchdog log does not contain a peak RSS measurement")
     outputs = {}
     all_pass = True
@@ -74,7 +74,8 @@ def main() -> None:
             all_pass &= bool(item["thresholds_pass"])
         outputs[name] = item
     report = {
-        "synthetic_only": True,
+        "synthetic_only": provenance["synthetic_only"],
+        "evidence_category": provenance["evidence_category"],
         "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
         "scope": "TGDM only; the source signed-distance seed is reused from the hash-checked Python stage, tissue/ACE/GVF inputs are reconstructed on the same crop grid, and TOADS/LesionTOADS remain held fixed",
         "tgdm_input_mode": provenance.get("tgdm_input_mode", "initial_membership"),
@@ -85,7 +86,7 @@ def main() -> None:
         "coordinate_system": "RAS",
         "surface_extractor": "source-matched JIST IsoSurfaceOnGrid connectivity-18 port",
         "surface_gate_note": "Primary distance metrics use production JIST-compatible surfaces; marching_cubes_diagnostic is informational only.",
-        "java_peak_sampled_rss_gb": float(peak_match.group(1)),
+        "java_peak_sampled_rss_gb": float(peak_matches[-1]),
         "java_rss_limit_gb": 8,
         "affine_ras": affine.tolist(),
         "acceptance": {"dice_minimum": 0.97, "symmetric_mean_surface_distance_mm_maximum": 0.01, "symmetric_hausdorff_mm_maximum": 1.0},

@@ -151,7 +151,8 @@ def main() -> None:
     }
     report = {
         "diagnostic_only": True,
-        "synthetic_only": True,
+        "synthetic_only": provenance["synthetic_only"],
+        "evidence_category": provenance["evidence_category"],
         "comparison": "selected Java TGDM outputs vs Python downstream evolution with Java smoothed_initial substituted",
         "scope": "tests stages after initial smoothing only; it is not an end-to-end Python-vs-Java result",
         "workflow_run_signature": provenance["workflow_run_signature"],

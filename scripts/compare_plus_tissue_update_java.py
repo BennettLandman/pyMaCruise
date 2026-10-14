@@ -84,7 +84,8 @@ def main() -> None:
         ),
     }
     report = {
-        "synthetic_only": True,
+        "synthetic_only": provenance["synthetic_only"],
+        "evidence_category": provenance["evidence_category"],
         "comparison": "preserved selected Java CombineMAandTOADS.execute() vs Python combine_multi_atlas_toads on workflow crop inputs",
         "scope": "held-fixed six atlas/TOADS input images from the saved plus run; selected default ErodeMethod=3D and GMconfident=0.001",
         "workflow_run_signature": provenance["workflow_run_signature"],

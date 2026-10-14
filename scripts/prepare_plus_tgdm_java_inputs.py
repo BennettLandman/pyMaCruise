@@ -187,12 +187,27 @@ def main() -> None:
         else root.parent / "plus-full-workflow.json"
     )
     full_manifest = json.loads(full_manifest_path.read_text())
+    primary_input_paths = [
+        Path(record["path"]).resolve()
+        for name, record in full_manifest.get("inputs", {}).items()
+        if name in {"t1", "flair", "brain_mask", "maseg"} and record.get("path")
+    ]
+    synthetic_root = Path(__file__).resolve().parents[1] / "tests/data/synthetic"
+    synthetic_only = bool(primary_input_paths) and all(
+        path.is_relative_to(synthetic_root) for path in primary_input_paths
+    )
+    evidence_category = (
+        "synthetic held-fixed source comparison"
+        if synthetic_only
+        else "real-data held-fixed source comparison"
+    )
     input_records = {
         name: {"path": crop_outputs[name]["path"], "sha256": sha256(Path(crop_outputs[name]["path"]))}
         for name in sorted(set(INPUT_ORDER))
     }
     report = {
-        "synthetic_only": True,
+        "synthetic_only": synthetic_only,
+        "evidence_category": evidence_category,
         "workflow_manifest": str(manifest_path),
         "workflow_manifest_sha256": sha256(manifest_path),
         "workflow_run_signature": manifest["run_signature"],
