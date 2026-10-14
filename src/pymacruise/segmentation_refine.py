@@ -1,9 +1,10 @@
 """Source-mapped MaCRUISE multi-atlas segmentation refinement.
 
-Ports the selected V3 ``run_SegmentationRefine`` thresholds and intended
-neighborhood-mode rules. The MATLAB helper accidentally assigns the row index
-returned by ``max`` instead of the corresponding label value; this module
-returns the actual modal label and records counts/masks for every rule.
+Ports the selected V3 ``run_SegmentationRefine`` thresholds and
+neighborhood-mode rules. For positive integer labels, MATLAB ``tabulate``
+includes rows for every integer from 1 through the maximum label, so its
+``maxind`` row index equals the modal label. This module records counts/masks
+for every rule.
 Source reference: ``MAsegRefineBySurf.m`` and ``run_SegmentationRefine.m``,
 MaCRUISE SVN r9360.
 
@@ -93,8 +94,9 @@ def _fill_by_local_mode(
 
     The source visits MATLAB column-major linear indices and processes updates
     in place, so later voxels in a sweep can use earlier assignments. Ties are
-    resolved to the numerically lowest candidate label, as MATLAB ``tabulate``
-    sorts its distinct values and ``max`` selects the first maximum.
+    resolved to the numerically lowest candidate label. For these positive
+    integer candidates MATLAB ``tabulate`` includes zero-count rows from 1
+    through the maximum label, and ``max`` selects the first maximum.
     """
     pending = np.asarray(pending, dtype=bool).copy()
     initial_count = int(pending.sum())
@@ -124,12 +126,11 @@ def _fill_by_local_mode(
                 continue
             modes, counts = np.unique(values, return_counts=True)
             mode_index = int(np.flatnonzero(counts == counts.max())[0])
-            if source_faithful:
-                # MATLAB assigns the 1-based tabulate row index (`maxind`)
-                # instead of the label in column 1 (`foundtable(maxind,1)`).
-                mode = mode_index + 1
-            else:
-                mode = int(modes[mode_index])
+            # Candidates are positive integers (44/45 or >=100). MATLAB's
+            # tabulate rows span 1:max(values), including zero-count gaps;
+            # maxind therefore equals the winning label, not its index in
+            # np.unique(values). Both compatibility modes agree here.
+            mode = int(modes[mode_index])
             if mode != labels[coordinate]:
                 labels[coordinate] = mode
                 pending[coordinate] = False
@@ -156,11 +157,11 @@ def refine_segmentation_by_surfaces(
 ) -> SegmentationRefinementResult:
     """Refine MaSeg labels around the CRUISE inner/outer surfaces.
 
-    ``source_faithful=True`` is the default and preserves the historical
-    ``maxind`` row-index assignment in MATLAB. Set it to ``False`` to assign
-    the actual modal label; that intentional correction remains opt-in pending
-    project-owner sign-off. The source converts the four millimetre coefficients to voxel values by
-    dividing by the largest segmentation voxel spacing. It changes labels
+    ``source_faithful=True`` is the default. MATLAB's positive-integer
+    ``tabulate`` row index equals the actual modal label for all candidate
+    groups here, so ``False`` produces the same assignments. The flag remains
+    accepted for API compatibility. The source converts the four millimetre
+    coefficients to voxel values by dividing by the largest segmentation voxel spacing. It changes labels
     ``>=100`` on the inner side to local-mode WM labels 44/45, clears remaining
     labels ``>=100`` beyond the outer surface, and optionally fills central
     labels 0/44/45 from the local mode of neighboring ``>=100`` cortical

@@ -1,0 +1,75 @@
+{
+  "evidence_category": "fresh actual MATLAB routine versus Python on controlled synthetic arrays",
+  "scope": "refinement only, shared held-fixed level sets; interior candidates, no border clipping comparison",
+  "shape": [
+    13,
+    13,
+    13
+  ],
+  "parameters": {
+    "coefficients_mm": 0.2,
+    "deal_with_central": true,
+    "source_faithful": true
+  },
+  "files": [
+    {
+      "path": "/Users/landmaba/dev/deleteme/masimatlab/trunk/xnatspiders/matlab/MaCRUISE/pipeline/MAsegRefineBySurf.m",
+      "sha256": "4c901b974dd8b7851758d87cb4bb892b19bf0427409e6dea8b4d0eda668e63e0"
+    },
+    {
+      "path": "/Users/landmaba/dev/deleteme/masimatlab/trunk/utils/matlab/load_untouch_nii_gz.m",
+      "sha256": "2a11f208eba170ef72926438b1e996af0df507a5e3881fd70fe3c7b5a1dd4ae6"
+    },
+    {
+      "path": "/Users/landmaba/dev/deleteme/masimatlab/trunk/utils/matlab/save_untouch_nii_gz.m",
+      "sha256": "dd48d43e5b56101f64179d42df7002e3c2a5803f6dee2d957898a986fcaebf80"
+    },
+    {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/matlab-refinement-reference-2026-10-14/segmentation.nii.gz",
+      "sha256": "f3151b3bf1d4de288834a96ca3012c529e08bee8d569ee3a120f3adabe11b39c"
+    },
+    {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/matlab-refinement-reference-2026-10-14/inner.nii.gz",
+      "sha256": "6e0710dfad97606b9a519dddd10e4b70825cf84f7e47c9fcc5274f79f839cb37"
+    },
+    {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/matlab-refinement-reference-2026-10-14/outer.nii.gz",
+      "sha256": "94a6e7e9ddf1b34cb8b1e5cb064d3c43a285f6e3e6be426c136047eefceffaa9"
+    },
+    {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/matlab-refinement-reference-2026-10-14/python-refined.nii.gz",
+      "sha256": "fb8e68c920a529e355b147783a55e278f049d137a0aaa4e9ef013d83b1e48c6e"
+    }
+  ],
+  "matlab_version": "24.2.0.2863752 (R2024b) Update 5",
+  "comparison_after_fix": {
+    "different_voxels": 0,
+    "exact_array_match": true
+  },
+  "reference_outputs": [
+    {
+      "name": "outer.nii.gz",
+      "sha256": "94a6e7e9ddf1b34cb8b1e5cb064d3c43a285f6e3e6be426c136047eefceffaa9"
+    },
+    {
+      "name": "matlab-refined.nii.gz",
+      "sha256": "f3a3a2eeb9d14a6b05a491758481e2fcd72c9c8965f98d6dad0ba6a0c9af07d8"
+    },
+    {
+      "name": "inner.nii.gz",
+      "sha256": "6e0710dfad97606b9a519dddd10e4b70825cf84f7e47c9fcc5274f79f839cb37"
+    },
+    {
+      "name": "tabulate-probes.json",
+      "sha256": "d3ee733eb4189a5315508fcfeae2a575b2153912a0343aa7f332f6c699ba312f"
+    },
+    {
+      "name": "segmentation.nii.gz",
+      "sha256": "f3151b3bf1d4de288834a96ca3012c529e08bee8d569ee3a120f3adabe11b39c"
+    }
+  ],
+  "source_runtime_helpers": [
+    "MATLAB Statistics and Machine Learning Toolbox tabulate: positive-integer rows 1:max(label)"
+  ],
+  "license_note": "Project-generated synthetic fixture data; original MATLAB source not copied. Preserve supplied-source attribution."
+}

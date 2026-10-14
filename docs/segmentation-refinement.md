@@ -18,20 +18,9 @@ three source rules, in order:
    plus label-0 voxels between the two thresholds, are filled from the local
    mode of neighboring labels `>=100`.
 
-The MATLAB helper clips neither its radius-2 boxes nor their bounds, so its
-edge accesses can fail. The Python version clips boxes to the volume. MATLAB
-also assigns the row index returned by `[maxval,maxind]=max(tabulate(...))`
-instead of the corresponding label value, which can turn a tissue label into
-1 or 2. The default `source_faithful=True` reproduces MATLAB's historical bug:
-it assigns the one-based `maxind` row number returned by `max` over the
-`tabulate` counts instead of the label value in `foundtable(maxind,1)`. Set
-`source_faithful=False` to use the actual modal label; ties choose the lowest
-numeric label, matching the ascending values and first-maximum rule of
-`tabulate`/`max`. The corrected mode stays opt-in until the project owner
-signs off on changing the default. Local updates remain sequential in MATLAB
-column-major index order so a fill can propagate to later candidate voxels
-during the same sweep. The separate source edge-indexing defect is clipped to
-valid image bounds in both modes.
+Fresh execution of the original `MAsegRefineBySurf.m` under MATLAB R2024b Update 5 established that numeric positive-integer `tabulate` includes zero-count rows for every integer from 1 through the largest label. Thus `[~,maxind]=max(foundtable(:,2))` returns the actual modal label for the WM (44/45) and cortical (>=100) candidates. Ties select the lowest label. The earlier claim that the MATLAB source creates labels 1 or 2 was based on treating the table as distinct-values-only and is superseded by this runtime evidence.
+
+The default `source_faithful=True` now assigns the source-equivalent modal label. `source_faithful=False` remains accepted for compatibility and produces the same labels for these candidate groups. Local updates remain sequential in MATLAB column-major index order. The MATLAB helper clips neither its radius-2 boxes nor their bounds, so its edge accesses can fail; Python still clips those boxes. This separate boundary deviation is not validated by the interior reference fixture and must remain explicit.
 
 The API requires co-gridded 3D NIfTI inputs and integer labels. Non-RAS inputs
 warn and are reoriented to RAS; the output preserves the segmentation grid
@@ -54,7 +43,7 @@ surfaces. The selected V3 helper implements that broad relationship: it clears
 cortical labels beyond the outer surface, fills the inner-side region from WM
 neighbors, and assigns cortical labels between surfaces. Exact thresholds,
 label groups, neighborhood size/order, clipping at volume edges, and the
-historical `maxind` assignment bug are defined by MaCRUISE SVN r9360 and its
+`maxind`/positive-integer `tabulate` behavior are defined by MaCRUISE SVN r9360 and its
 V3 wrapper, not inferred from the paper. In particular, the V3 wrapper uses
 0.2 mm coefficients here, while the paper's main evaluation uses 0.5 mm.
 
@@ -75,8 +64,4 @@ non-RAS warnings/output, grid mismatch, integer-label validation, the
 coefficient conversion on a 0.5 mm grid, and invalid options. No actual MRI
 data are used.
 
-Tests explicitly cover both the source-faithful default and corrected
-`source_faithful=False` mode, including the source's wrong category-row values
-and the corrected 44/45 labels. Synthetic measurements and changed-voxel audit
-maps are the basis for review; actual image comparison remains deferred to the
-roadmap's synthetic readiness and reference-data gates.
+Tests cover both compatibility modes and their agreement with the actual MATLAB-written 13³ golden reference in `tests/data/synthetic/matlab_refinement_reference/`. That fixture covers all three refinement rules with interior candidates. Fresh MATLAB probes also cover positive-integer uint16/double labels, missing histogram rows, and tied counts. See [the direct-source comparison](reports/matlab-refinement-direct-source-comparison-2026-10-14.md). Whole-workflow and volume-border comparisons remain open.

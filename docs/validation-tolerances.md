@@ -14,6 +14,14 @@ Analytic synthetic fixtures still check the contracts they were designed to test
 
 Prioritize reproducible stage and complete-workflow reference comparisons and investigate differences. If the reference or its settings are unavailable, report equivalence as unverified rather than substitute ideal anatomy for reference evidence. Historical audit measurements remain valid observations; their earlier wording about anatomical acceptance is superseded by this scope clarification.
 
+## Reference evidence hierarchy — owner direction, 2026-10-14
+
+1. **Primary validation:** run the supplied original Java algorithms and MATLAB routines/workflow wrappers ourselves on controlled, matched inputs. Record source and dependency versions, input/atlas hashes, parameters, geometry, commands, stopping conditions, and all compared outputs. Prefer executing the actual source implementation; a formula reimplementation or harness seeded with a Python intermediate must be labeled with its narrower scope.
+2. **Workflow validation:** connect independently generated original stage outputs through the selected BASE and PLUS sequences and compare with the corresponding Python workflows from the same agreed starting inputs. Held-fixed stage comparisons localize differences, but do not replace this composed comparison. Any excluded legacy preprocessing boundary must be explicit and shared between the compared workflows.
+3. **Secondary diagnostic evidence:** compare against supplied precomputed outputs to identify areas of concern, historical behavior, and possible configuration/version differences. Keep their metrics and provenance uncertainties. They are not the primary acceptance reference and must not drive algorithm changes merely to fit an uncertain historical output.
+
+When fresh original runs disagree with precomputed outputs, investigate source version, settings, preprocessing, transforms, cached files, and compiled behavior. Report both comparisons. Do not assume the fresh original or Python is defective solely because it differs from the precomputed result. Missing runtime tools or unavailable source stages remain explicitly unvalidated; do not silently substitute Python-generated references.
+
 ## Acceptance thresholds
 
 | Output | Metric | Acceptance threshold | Units / interpretation |

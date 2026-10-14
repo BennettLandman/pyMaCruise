@@ -17,11 +17,31 @@
     "java_reference/central.nii.gz": "dd06b1ba10e8fd9a71f032083462d15c355f98be669e15a6c8e4cf7c8a452c22",
     "java_reference/inner.nii.gz": "eaaf58e1f2e29f127bcaca03ceb10137d6615a47f63de698442c3c17a8970901",
     "java_reference/outer.nii.gz": "e0995817d9a576c769832c09b2f66e062f2a6a34be1d51d8699626f3526f744b",
-    "java_reference/source_faithful_refined_labels.nii.gz": "8e666cfa9a54c8097b1c63b1d3121c24f58fe1ee614f1954f20692c7f12fcc40",
+    "java_reference/source_faithful_refined_labels.nii.gz": "f6d9d6d041d1828cd63450bd8e8624dd545fe926364dfb10bc71c441939eb732",
     "python_run/central.nii.gz": "4fdaf13b1d1ffd80df8e7c0e2a6c3b2290cc761da16148987166ecfa6aa0445c",
     "python_run/inner.nii.gz": "31233e72558c488a7e536373571c12293f9ca64d464e84f324c0f4cff056d042",
     "python_run/outer.nii.gz": "1f88ba7b4483fa6e59af759055db54577046cefcb5516045e5b7d469a3ace6c2",
-    "python_run/refined_labels.nii.gz": "689a31da970b635699888452bff9043283c682daf580483c3662ae2a3801bbc6"
+    "python_run/refined_labels.nii.gz": "3187748ed76352e9ca0ecedf1dedcf64b1f544f44637ea4b2e56e0e220bdd875"
+  },
+  "historical_refinement_before_tabulate_fix": {
+    "metrics": {
+      "changed_voxels": 7,
+      "labels": {
+        "1": {
+          "changed_voxels": 0,
+          "dice": 1.0
+        },
+        "100": {
+          "changed_voxels": 7,
+          "dice": 0.9999751513107683
+        },
+        "4": {
+          "changed_voxels": 0,
+          "dice": 1.0
+        }
+      }
+    },
+    "note": "Both earlier refinements were Python-generated using incorrect distinct-label row indices; not MATLAB references."
   },
   "metrics": {
     "central": {
@@ -66,23 +86,45 @@
     "refined_labels": {
       "changed_voxels": 7,
       "labels": {
-        "1": {
-          "changed_voxels": 0,
-          "dice": 1.0
+        "0": {
+          "candidate_voxels": 5526873,
+          "dice": 0.9999993667303465,
+          "reference_voxels": 5526870
         },
         "100": {
-          "changed_voxels": 7,
-          "dice": 0.9999751513107683
+          "candidate_voxels": 141711,
+          "dice": 0.9999753021081415,
+          "reference_voxels": 141714
         },
         "4": {
-          "changed_voxels": 0,
-          "dice": 1.0
+          "candidate_voxels": 424344,
+          "dice": 1.0,
+          "reference_voxels": 424344
         }
       }
     }
   },
   "orientation": "RAS",
   "python_source_commit": "9eb84bc (saved base-workflow run per report; algorithm code unchanged since TGDM correction)",
+  "refinement_reference": {
+    "backend": "actual supplied MATLAB MAsegRefineBySurf.m",
+    "date": "2026-10-14",
+    "python_vs_matlab": {
+      "java_reference": {
+        "different_voxels": 0,
+        "exact": true,
+        "voxel_count": 6092928
+      },
+      "python_run": {
+        "different_voxels": 0,
+        "exact": true,
+        "voxel_count": 6092928
+      }
+    },
+    "scope": "held-fixed Java/Python TGDM level sets; not whole workflow",
+    "source_sha256": "4c901b974dd8b7851758d87cb4bb892b19bf0427409e6dea8b4d0eda668e63e0",
+    "version": "R2024b Update 5"
+  },
   "refinement_source_faithful": true,
   "source_harness": "tests/java_reference/TGDMCoreReferenceHarness.java",
   "source_java_input_grid": {

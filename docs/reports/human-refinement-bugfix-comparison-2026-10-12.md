@@ -1,5 +1,7 @@
 # Human MaSeg surface-refinement compatibility comparison — 2026-10-12
 
+> **Correction, 2026-10-14:** Fresh execution of the actual MATLAB routine shows that positive-integer `tabulate` includes zero-count rows, so `maxind` equals the modal label. The historical metrics below remain observations of the then-current Python implementations, but the claim that the low labels reproduce a MATLAB bug is incorrect. The Python default's distinct-label-row assumption was a port defect, now corrected. This explains the low-label discrepancy without requiring a different deployed MATLAB source, while remaining upstream differences still require comparison. See [fresh MATLAB evidence](matlab-refinement-direct-source-comparison-2026-10-14.md).
+
 ## Scope
 
 The source-profile BASE run used the selected human inputs, identical level

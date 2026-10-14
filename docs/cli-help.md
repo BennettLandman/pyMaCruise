@@ -167,10 +167,11 @@ pymacruise segmentation-refine --segmentation MaSeg.nii.gz \
 
 The three inputs must be 3D `.nii.gz` images on the same physical grid after
 RAS reorientation. `--summary` records the selected mode and per-rule
-candidate, changed, unresolved, sweep, and threshold counts. The historical
-`source_faithful` behavior is the default while owner sign-off is pending; it
-preserves the V3 MATLAB `maxind` row-index result. Use `--no-source-faithful`
-to opt into assigning the actual modal label. The label-refinement output is
+candidate, changed, unresolved, sweep, and threshold counts. The default
+`source_faithful` behavior matches the V3 MATLAB positive-integer `tabulate`
+result: `maxind` equals the actual modal label. `--no-source-faithful` remains
+accepted for compatibility and produces the same labels for the supported
+candidate groups. The label-refinement output is
 written as RAS `.nii.gz`; each non-RAS input produces a visible warning.
 
 ## `pymacruise prepare-raw`

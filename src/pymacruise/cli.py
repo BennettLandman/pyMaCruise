@@ -137,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-faithful",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="preserve the historical MATLAB maxind behavior (default: enabled)",
+        help="match MATLAB positive-integer tabulate/maxind labels (default: enabled; both modes agree)",
     )
     _add_provenance_option(refine)
 

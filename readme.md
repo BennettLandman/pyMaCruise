@@ -15,6 +15,10 @@ The port has runnable restartable BASE and PLUS workflows, selected-stage Java c
 
 Next work is to complete matched BASE and PLUS source comparisons, investigate Python-versus-original differences, and close remaining standalone-tool/documentation tasks. Use human ribbon-quality diagnostics to localize discrepancies rather than require better anatomy than the original. The [plan](plan.md) tracks steps and evidence; detailed comparisons are in [docs/reports](docs/reports/). Visualization remains excluded from the port, and no FreeSurfer runtime is required.
 
+Primary validation uses our own controlled runs of the supplied original Java/MATLAB implementations. Supplied precomputed outputs are secondary comparisons for identifying areas of concern; their uncertain history does not replace fresh source execution. See the [reference evidence hierarchy](docs/validation-tolerances.md#reference-evidence-hierarchy--owner-direction-2026-10-14).
+
+Fresh execution of the original MATLAB refinement routine identified a Python `tabulate` interpretation defect, now corrected. Small and brain-resolution synthetic refinements match MATLAB exactly; earlier human refinement outputs must be refreshed. See the [direct-source report](docs/reports/matlab-refinement-direct-source-comparison-2026-10-14.md).
+
 ## Scope and target
 
 - **Base workflow:** T1-weighted MRI, MaSeg labels, and a user-provided brain mask on the T1 grid.

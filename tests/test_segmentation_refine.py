@@ -143,7 +143,7 @@ def test_surface_coefficient_uses_largest_voxel_spacing() -> None:
     assert np.asarray(above.image.dataobj)[3, 3, 3] == 44
 
 
-def test_source_faithful_mode_preserves_matlab_tabulate_row_index_bug() -> None:
+def test_source_faithful_mode_preserves_positive_integer_matlab_tabulate_rows() -> None:
     segmentation, inner, outer = _load_inputs()
     faithful = refine_segmentation_by_surfaces(
         segmentation, inner, outer, source_faithful=True
@@ -154,7 +154,21 @@ def test_source_faithful_mode_preserves_matlab_tabulate_row_index_bug() -> None:
     np.testing.assert_array_equal(faithful.image.dataobj, default.image.dataobj)
     faithful_labels = np.asarray(faithful.image.dataobj)
     corrected_labels = np.asarray(corrected.image.dataobj)
-    assert faithful_labels[3, 3, 3] == 1
-    assert faithful_labels[2, 8, 2] == 1
+    assert faithful_labels[3, 3, 3] == 44
+    assert faithful_labels[2, 8, 2] == 44
     assert corrected_labels[3, 3, 3] == 44
     assert corrected_labels[2, 8, 2] == 44
+    np.testing.assert_array_equal(faithful_labels, corrected_labels)
+
+
+@pytest.mark.parametrize("source_faithful", [True, False])
+def test_refinement_matches_fresh_original_matlab_output(source_faithful) -> None:
+    root = Path(__file__).parent / "data" / "synthetic" / "matlab_refinement_reference"
+    images = tuple(
+        nib.load(root / f"{name}.nii.gz")
+        for name in ("segmentation", "inner", "outer")
+    )
+    expected = nib.load(root / "matlab-refined.nii.gz")
+    actual = refine_segmentation_by_surfaces(*images, source_faithful=source_faithful)
+    np.testing.assert_array_equal(actual.image.dataobj, expected.dataobj)
+    np.testing.assert_array_equal(actual.image.affine, expected.affine)
