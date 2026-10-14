@@ -1,0 +1,89 @@
+{
+  "case": "100260",
+  "workflow": "BASE",
+  "source_snapshot_commit": "326d96af750d6fdcf5acf00e174740bb861bd701",
+  "workflow_execution": {
+    "status": "complete",
+    "stages_complete": 8,
+    "stage_count": 8,
+    "output_hashes_checked": 68,
+    "hash_mismatches": 0,
+    "nifti_images_checked": 51,
+    "nifti_failures": 0,
+    "flair_used": false,
+    "peak_sampled_rss_gb": 8.46,
+    "watchdog_limit_gb": 16
+  },
+  "toads": {
+    "first": {
+      "iterations": 41,
+      "converged": true,
+      "terminal_energy_ratio": 4.63128818e-05
+    },
+    "second": {
+      "iterations": 50,
+      "converged": false,
+      "iteration_limit_reached": true,
+      "terminal_energy_ratio": 0.00145347673
+    }
+  },
+  "anatomy_quality": {
+    "support_on_supplied_maseg": {
+      "gm_voxels": 373096,
+      "gm_between_inner_outer": 245124,
+      "gm_between_inner_outer_fraction": 0.6569998070201771,
+      "wm_voxels": 478993,
+      "wm_inside_inner": 458402,
+      "wm_inside_inner_fraction": 0.957011897877422
+    },
+    "support_on_source_faithful_refined_maseg": {
+      "gm_voxels": 275235,
+      "gm_between_inner_outer": 245124,
+      "gm_between_inner_outer_fraction": 0.8905989427216742,
+      "wm_voxels": 466744,
+      "wm_inside_inner": 458402,
+      "wm_inside_inner_fraction": 0.9821272474847025
+    },
+    "nesting_and_mask": {
+      "inner_outside_central_voxels": 2,
+      "central_outside_outer_voxels": 0,
+      "inner_outside_brain_mask_voxels": 6427
+    },
+    "meshes": {
+      "inner": {
+        "connected_components": 70,
+        "components_under_100_vertices": 69,
+        "euler_characteristic": 44,
+        "largest_component_euler_characteristic": -94,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "watertight": true
+      },
+      "central": {
+        "connected_components": 70,
+        "components_under_100_vertices": 69,
+        "euler_characteristic": 44,
+        "largest_component_euler_characteristic": -94,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "watertight": true
+      },
+      "outer": {
+        "connected_components": 70,
+        "components_under_100_vertices": 69,
+        "euler_characteristic": 44,
+        "largest_component_euler_characteristic": -94,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "watertight": true
+      }
+    },
+    "thickness": {
+      "levelset_mean_mm": 2.5072906627731912,
+      "levelset_crossing_voxels": 275413,
+      "surface_mean_mm": 1.6261892984954442
+    }
+  },
+  "source_reference": "No complete case-specific historical BASE products are available; the source log indicates the prior run failed.",
+  "interpretation": "Real-human BASE execution and output integrity pass; GM/WM support and mesh component/genus quality fail the declared criteria. This is not whole-workflow source equivalence."
+}
