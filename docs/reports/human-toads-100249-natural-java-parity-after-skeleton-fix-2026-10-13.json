@@ -1,0 +1,77 @@
+{
+  "case": "100249",
+  "changed_voxels": 0,
+  "comparison": "selected Java vs Python natural-convergence TOADS output",
+  "convergence_threshold": 0.0001,
+  "input_orientation": "RAS",
+  "java_iterations": 38,
+  "java_reshape_order": "F",
+  "labels": {
+    "1": {
+      "dice": 1.0,
+      "java_voxels": 9187446,
+      "python_voxels": 9187446
+    },
+    "14": {
+      "dice": 1.0,
+      "java_voxels": 97061,
+      "python_voxels": 97061
+    },
+    "15": {
+      "dice": 1.0,
+      "java_voxels": 467367,
+      "python_voxels": 467367
+    },
+    "16": {
+      "dice": 1.0,
+      "java_voxels": 2331,
+      "python_voxels": 2331
+    },
+    "17": {
+      "dice": 1.0,
+      "java_voxels": 17564,
+      "python_voxels": 17564
+    },
+    "18": {
+      "dice": 1.0,
+      "java_voxels": 9123,
+      "python_voxels": 9123
+    },
+    "22": {
+      "dice": 1.0,
+      "java_voxels": 17490,
+      "python_voxels": 17490
+    },
+    "24": {
+      "dice": 1.0,
+      "java_voxels": 39641,
+      "python_voxels": 39641
+    },
+    "25": {
+      "dice": 1.0,
+      "java_voxels": 411341,
+      "python_voxels": 411341
+    },
+    "5": {
+      "dice": 1.0,
+      "java_voxels": 540397,
+      "python_voxels": 540397
+    },
+    "6": {
+      "dice": 1.0,
+      "java_voxels": 23679,
+      "python_voxels": 23679
+    }
+  },
+  "python_iterations": 38,
+  "python_peak_sampled_rss_gb": 6.488,
+  "python_terminal_energy_ratio": 1.3296979e-05,
+  "rss_watchdog_limit_gb": 8.0,
+  "shape": [
+    176,
+    240,
+    256
+  ],
+  "voxel_count": 10813440,
+  "watchdog_terminated": false
+}
