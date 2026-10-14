@@ -2,7 +2,9 @@
 """Measure ribbon quality on outputs from a completed plus workflow manifest.
 
 This audit deliberately reports failed quality criteria instead of treating a
-completed workflow manifest as evidence that its synthetic anatomy is useful.
+completed workflow manifest as evidence that its anatomy is useful. Select the
+synthetic label profile for purpose-built fixtures or the MaCRUISE profile for
+MaSeg labels produced by the cortical-separation workflow.
 """
 
 from __future__ import annotations
@@ -29,6 +31,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="completed plus-full-workflow.json")
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument(
+        "--maseg-profile",
+        choices=("synthetic", "macruise"),
+        default="synthetic",
+        help="label interpretation: explicit 0/5/44/100 synthetic classes or MaCRUISE cortical-separation sets",
+    )
     parser.add_argument(
         "--allow-checkpoint",
         action="store_true",
@@ -101,6 +109,18 @@ def main() -> None:
     ):
         raise ValueError("MaSeg input is missing or fails its manifest hash")
     labels_image = nib.load(labels_path)
+    if args.maseg_profile == "macruise":
+        from pymacruise.cortical_separation import GM_LABELS, WM_LABELS
+
+        gm_labels = set(GM_LABELS)
+        wm_labels = set(WM_LABELS)
+        csf_labels: set[int] = set()
+        required_label_classes = ("GM", "WM")
+        evidence_category = "MaCRUISE MaSeg-label ribbon audit; not Java equivalence or whole-workflow source equivalence"
+    else:
+        gm_labels, wm_labels, csf_labels = {100}, {44}, {5}
+        required_label_classes = ("background", "CSF", "WM", "GM")
+        evidence_category = "synthetic plus workflow quality audit; not Java equivalence or real-data validation"
     ref = images["plus_inner_level_set"]
     for key, image in {**images, "maseg": labels_image}.items():
         if image.shape != ref.shape or not np.allclose(image.affine, ref.affine):
@@ -144,7 +164,6 @@ def main() -> None:
     label_values, label_counts = np.unique(
         np.asarray(labels_image.dataobj), return_counts=True
     )
-    expected_labels = {0, 5, 44, 100}
     labels = np.asarray(labels_image.dataobj)
     inner_region = np.asarray(images["plus_inner_level_set"].dataobj) <= 0
     central_region = np.asarray(images["plus_central_level_set"].dataobj) <= 0
@@ -153,15 +172,16 @@ def main() -> None:
         "inner_outside_central_voxels": int(np.count_nonzero(inner_region & ~central_region)),
         "central_outside_outer_voxels": int(np.count_nonzero(central_region & ~outer_region)),
     }
-    wm = labels == 44
-    gm = labels == 100
-    csf = labels == 5
+    wm = np.isin(labels, tuple(wm_labels))
+    gm = np.isin(labels, tuple(gm_labels))
+    csf = np.isin(labels, tuple(csf_labels)) if csf_labels else None
     label_disagreements = {
         "wm_voxels_outside_inner": int(np.count_nonzero(wm & ~inner_region)),
         "gm_voxels_inside_inner": int(np.count_nonzero(gm & inner_region)),
         "gm_voxels_outside_outer": int(np.count_nonzero(gm & ~outer_region)),
-        "csf_voxels_inside_outer": int(np.count_nonzero(csf & outer_region)),
     }
+    if csf is not None:
+        label_disagreements["csf_voxels_inside_outer"] = int(np.count_nonzero(csf & outer_region))
     label_support = {
         "wm_inside_inner": 1.0 - label_disagreements["wm_voxels_outside_inner"] / max(1, int(np.count_nonzero(wm))),
         "gm_between_inner_and_outer": (
@@ -169,8 +189,9 @@ def main() -> None:
             - label_disagreements["gm_voxels_inside_inner"]
             - label_disagreements["gm_voxels_outside_outer"]
         ) / max(1, int(np.count_nonzero(gm))),
-        "csf_outside_outer": 1.0 - label_disagreements["csf_voxels_inside_outer"] / max(1, int(np.count_nonzero(csf))),
     }
+    if csf is not None:
+        label_support["csf_outside_outer"] = 1.0 - label_disagreements["csf_voxels_inside_outer"] / max(1, int(np.count_nonzero(csf)))
     quality = {
         "nominal_ribbon_mm": 5.0,
         "minimum_label_support": 0.97,
@@ -190,7 +211,15 @@ def main() -> None:
             and metric["euler_characteristic"] == 2
             for metric in topology.values()
         ),
-        "explicit_maseg_wm_gm_csf_labels_present": expected_labels.issubset(label_set),
+        "required_maseg_label_classes_present": all(
+            {
+                "background": 0 in label_set,
+                "CSF": bool(csf is not None and np.any(csf)),
+                "WM": bool(np.any(wm)),
+                "GM": bool(np.any(gm)),
+            }[name]
+            for name in required_label_classes
+        ),
         "labeled_tissue_regions_agree_with_surfaces": bool(
             min(label_support.values()) >= quality["minimum_label_support"]
         ),
@@ -209,7 +238,8 @@ def main() -> None:
         ),
     }
     report = {
-        "evidence_category": "synthetic plus workflow quality audit; not Java equivalence or real-data validation",
+        "evidence_category": evidence_category,
+        "maseg_profile": args.maseg_profile,
         "workflow_terminal": bool(manifest.get("terminal")),
         "checkpoint_audit": bool(manifest.get("terminal") is not True),
         "completed_iteration": (
@@ -228,6 +258,9 @@ def main() -> None:
         "maseg_labels": {
             "present": [int(value) for value in label_values],
             "counts": {str(int(value)): int(count) for value, count in zip(label_values, label_counts, strict=True)},
+            "selected_gm_labels": sorted(gm_labels),
+            "selected_wm_labels": sorted(wm_labels),
+            "selected_csf_labels": sorted(csf_labels),
         },
         "label_surface_consistency": {
             "disagreement_voxel_counts": label_disagreements,
