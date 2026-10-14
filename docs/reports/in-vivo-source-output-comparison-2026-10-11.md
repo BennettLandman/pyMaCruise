@@ -34,6 +34,12 @@ The mismatch is not explained by orientation, scaling, or the supplied BET mask.
 
 The Python tissue masks compared by the script reconstruct to 642,437 GM and 428,225 WM voxels. Against the downloaded cached masks, binary Dice is 0.9891 for GM, 0.9935 for `Atlas_BrainTissueMask`, and 1.0 for both WM and `Atlas_Mask`.
 
+## Recovered source-run context
+
+The downloaded output tree contains the historical `ToadsSeperate/MultiAtlasStripping` products, the intervening dura-removal products, and later `Surfaces_MNI` volumes including `T1_N4_MNI.nii.gz`, `SEG_raw_MNI.nii.gz`, and the three MNI-space surface volumes. `Surfaces_MNI/aff.txt` stores a nonidentity 4×4 affine. These files support the existing conclusion that this example used a MultiAtlas/SPECTRE and MNI-space path; they do not recover the transform chain from the raw T1 or the exact command-line overrides.
+
+`FreeViewFigures/FreeView_macruise_batch.sh` names a MaCRUISE v3.1.0 color lookup table and FreeSurfer 5.3, and every command in the script invokes `freeview` to render screenshots. This is evidence of a visualization/postprocessing dependency in the example bundle, not evidence that FreeSurfer participates in the segmentation algorithms. Visualization remains excluded from PyMaCRUISE. The downloaded tree still has no workflow log or machine-readable run manifest, so this context does not resolve the source settings, the opaque compiled refinement behavior, or physical alignment of the saved source intermediates.
+
 ## N4 source-stage comparison
 
 The V3 wrapper's `run_N4Correct.m` calls `N4BiasFieldCorrection -i <input> -o <output>` with no extra options. Its `run_Toads_pipeline.m` passes the original T1 into this step before the later skull-strip/TOADS stages. The downloaded N4 result and input T1 have matching shape and affine. Python ANTsPy 0.6.3 documents that its unmasked API defaults to intensity rescaling **off**, while the ANTs CLI default is **on**; the prior `N4Config` inherited the ANTsPy behavior and therefore did not represent the wrapper's bare CLI invocation. The default now enables rescaling, and the standalone CLI supports `--no-rescale-intensities` for an explicit override.
