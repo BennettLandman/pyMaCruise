@@ -53,6 +53,12 @@ whole-workflow outputs.
 
 Machine-readable metrics and input/output hashes are in the ignored
 `build/invivo-base-orientation-only-source-profile-2026-10-12/matlab-refinement-reference/human-comparison.json`.
+The later full Python BASE refresh regenerated its refinement with SHA
+`d3659f46fd46c3d30b8f62970fe07d8b2450913ca330d35848404fe3c2ff5b9f` and again
+matched the fresh MATLAB array exactly. It also confirmed the historical
+downloaded result's 47,306 voxel discrepancy and 56 labels below the 0.97 Dice
+threshold. Details, workflow convergence, audit metrics, and reproduction
+command are in the [human BASE refresh report](in-vivo-base-refinement-refresh-2026-10-14.md).
 The source run log and scripts are in the sibling `matlab-refinement-reference`
 directory. No human imaging data is committed.
 
@@ -60,6 +66,6 @@ directory. No human imaging data is committed.
 
 - `tests/test_segmentation_refine.py` plus the affected golden-hash and refinement-lineage regressions: **11 passed in 1.06 s**.
 - Updated brain-resolution TGDM/refined-label metric regression: **1 passed in 55.52 s**.
-- Human held-fixed refinement: **exact array match** to a fresh MATLAB source run (12,058,624 voxels, 134 labels); see the case-specific comparison above.
+- Human held-fixed refinement and refreshed BASE output: **exact array match** to a fresh MATLAB source run (12,058,624 voxels, 134 labels); the historical downloaded refinement still differs. See the [human BASE refresh report](in-vivo-base-refinement-refresh-2026-10-14.md).
 - CLI tests passed in the initial focused run. That initial run exposed one stale refinement-golden regression, subsequently repaired by actual MATLAB regeneration and verified above.
-- `git diff --check` passes. No new full-suite result is claimed for this localized correction.
+- Focused refinement/CLI regression group: **12 passed in 4.74 s**. Full suite on commit `f03cdfe2c1299bd929abcd4752a747968be40700`: **1,577 passed, 4 skipped, 0 failed**, 18 expected orientation warnings in 732.76 s, peak sampled RSS 10.197 GB under a 16 GB watchdog; see the [full-suite report](full-pytest-2026-10-14-refinement-human-refresh.md).
