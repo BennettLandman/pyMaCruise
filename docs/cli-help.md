@@ -4,7 +4,7 @@ This page is the expanded `--help` contract for the supported inputs and
 outputs. The command line exposes preparation, individual scientific stages,
 restartable base and plus workflows, workflow configuration/preflight, and
 standalone algorithm commands. Synthetic full-workflow validation is available;
-source-equivalence and real-MRI acceptance remain in progress.
+source equivalence on complete workflows and matched real-MRI inputs remains in progress. Anatomical quality audits are diagnostic, not independent port-completion gates; see [the validation policy](validation-tolerances.md#port-acceptance-objective--owner-clarification-2026-10-14).
 
 ## `pymacruise workflow-preflight`
 

@@ -43,6 +43,24 @@ The audit used `scripts/audit_plus_ribbon_quality.py --maseg-profile macruise`, 
 
 The audit report is `build/in-vivo-100260-plus-lesionatlas-2026-10-14/quality-audit-macruise-profile.json` (human data and generated products remain in ignored `build/`). The audit correctly reports `passed: false`. Thus this run demonstrates restartable PLUS execution and natural lesion convergence, but its current surfaces do not satisfy the declared ribbon-quality requirements. The next integration work should trace the GM/support and disconnected-component failures through MaSeg cortical separation, registration/cropping, and TGDM input fields before making algorithm changes.
 
+## Axis-only RAS comparison
+
+Because the historical human examples use axial axis reorientation in the BASE path, the same PLUS inputs were also run with `--no-regrid-inputs`. This is a controlled geometry comparison, not evidence that the historical PLUS example used this setting. The warning records that FLAIR obliquity is discarded while voxel axes are permuted/flipped without interpolation. The workflow implementation remained the same as `ffc40355`; the label-aware audit and status documentation were updated in `c7199912`.
+
+The second run completed and same-settings resume verified all nine stages. LesionTOADS converged naturally at iteration 13 with ratio `5.5984768550843e-05`; peak sampled RSS was 10.041 GB under a 16 GB watchdog. An integrity scan found 88 manifest references with no missing files or hash mismatches, and all 63 NIfTI outputs were finite and RAS. Resume peak sampled RSS was 2.247 GB under an 8 GB watchdog.
+
+| Diagnostic | Default regrid | Axis-only `--no-regrid-inputs` |
+|---|---:|---:|
+| LesionTOADS terminal iteration / ratio | 13 / `8.090717e-05` | 13 / `5.598477e-05` |
+| WM-inside support | 97.63% | 97.63% |
+| GM-between support | 43.57% | 43.49% |
+| Components per inner/central/outer mesh | 127 / 127 / 127 | 121 / 121 / 121 |
+| Inner-surface nesting violations | 41 voxels | 46 voxels |
+| Surface median thickness | 1.064 mm | 1.063 mm |
+| Level-set mean thickness | 2.204 mm | 2.207 mm |
+
+The geometry choice changes some details but does not explain the very low GM ribbon support or thickness. Both modes complete and converge; both anatomy audits flag the same quality concerns. Without a subject-specific PLUS source run and settings, these are diagnostic observations for locating differences rather than source-equivalence failures.
+
 ## Focused validation
 
 After the signed interpolation fix, `tests/test_n4.py` passed **3 tests**. The full pytest result in the README predates commit `ffc40355`; no new full-suite result is claimed here. The MaCRUISE-label audit completed under an 8 GB RSS watchdog with 1.011 GB peak sampled RSS. A synthetic-profile audit remains separate evidence and does not substitute for this human case or for source equivalence.

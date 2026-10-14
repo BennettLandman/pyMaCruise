@@ -2,6 +2,18 @@
 
 **Status:** P08 complete. The project owner confirmed both per-region Dice ≥0.97 and symmetric mean nearest-surface distance for the 0.01 mm surface-position threshold on 2026-09-27. Synthetic comparator fixtures pass.
 
+## Port acceptance objective — owner clarification, 2026-10-14
+
+The objective is to reproduce the selected original Java/MATLAB MaCRUISE workflows within the agreed numerical tolerances, including their limitations. Improving anatomical quality beyond the original is outside the current port scope. Successful execution alone or selected-stage parity alone does not establish whole-workflow equivalence.
+
+The thresholds below measure **Python-versus-reference agreement** on matched inputs, preprocessing, grids, atlas, parameters, source versions, and stopping rules. In particular, per-label Dice ≥0.97 is an equivalence requirement; it is not a requirement that 97% of supplied tissue labels lie within the generated surfaces.
+
+Ribbon tissue support, connected components, Euler characteristic, nesting, and absolute thickness bounds remain diagnostic measurements. Existing audit `passed` fields refer to their stated diagnostic criteria, not overall port acceptance. A source-matched result may pass port acceptance even if both implementations fail those anatomical criteria. An anatomical failure by Python alone neither proves a port defect nor establishes parity: compare the original on the same handoff or complete workflow before assigning a cause. Known source behavior, including defects and iteration-cap stops, is retained and documented unless a separate change is explicitly requested.
+
+Analytic synthetic fixtures still check the contracts they were designed to test. A fixture's prescribed thickness or topology must not become a universal human-workflow requirement. For human thickness, compare Python with the original measurement method and output using stage-specific tolerances; do not require a generic 5 mm thickness.
+
+Prioritize reproducible stage and complete-workflow reference comparisons and investigate differences. If the reference or its settings are unavailable, report equivalence as unverified rather than substitute ideal anatomy for reference evidence. Historical audit measurements remain valid observations; their earlier wording about anatomical acceptance is superseded by this scope clarification.
+
 ## Acceptance thresholds
 
 | Output | Metric | Acceptance threshold | Units / interpretation |
