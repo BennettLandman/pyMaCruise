@@ -24,6 +24,31 @@ To determine how much the small smoothing-value difference contributed, the late
 
 The human comparison shows that selected tissue fusion, ACE, and GVF are not the cause of the observed TGDM disagreement. A difference below the surface thresholds after initial smoothing grows in later evolution; the Java-seed substitution reduces that drift substantially, while central and outer maximum-distance outliers remain. This is now the focused source-localization target. No tolerance was changed, and no claim is made that the absolute ribbon-quality flags imply a source mismatch.
 
+## Smoothing pass localization
+
+The six outer passes of the source `SmoothCortexProfile` wrapper were compared separately, including the curvature update before each reinitialization and the reinitialized field after it. The input fast-marching fields had zero sign differences (mean error `3.67e-11`, maximum `4.77e-7`). None of the six pre- or post-reinitialization pass fields had a sign difference. Post-reinitialization mean absolute voxel error ranged from `4.36e-9` to `1.15e-6`; the final smoothing mesh still passed (Dice `1.0`, mean distance `3.65e-7 mm`, Hausdorff `0.00642 mm`). The final pass has a localized maximum level-set value difference of `0.0692 mm`, without changing the zero-level-set signs. This further narrows the human mismatch to the later tissue-guided surfaces; it does not prove smoothing is mathematically identical everywhere.
+
+The focused replay exited successfully with peak sampled RSS **1.642 GB** under an 8 GB watchdog. Its machine-readable output is in ignored `build/in-vivo-100260-plus-java-ace-gvf-2026-10-14/smoothing-passes-diagnostic.json`. The report correctly labels this as real-data held-fixed source evidence. Reproduce it with:
+
+```bash
+PYTHONNOUSERSITE=1 PYTHONPATH=src ./.venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --report-interval-seconds 30 -- \
+  ./.venv/bin/python scripts/compare_plus_tgdm_smoothing_passes.py \
+  --reference-dir build/in-vivo-100260-plus-java-ace-gvf-2026-10-14 \
+  --report build/in-vivo-100260-plus-java-ace-gvf-2026-10-14/smoothing-passes-diagnostic.json
+```
+
+The pass summaries below retain the per-outer-iteration error progression (pre-reinitialization mean/max, then post-reinitialization mean/max, all in mm); every field had zero sign differences:
+
+| Pass | Before reinit mean / max | After reinit mean / max |
+|---:|---:|---:|
+| 1 | `1.42e-8` / `2.19e-4` | `4.36e-9` / `1.85e-6` |
+| 2 | `1.99e-8` / `1.07e-4` | `7.88e-9` / `1.75e-5` |
+| 3 | `2.43e-8` / `3.33e-4` | `1.23e-8` / `4.51e-4` |
+| 4 | `2.81e-8` / `1.62e-4` | `1.53e-8` / `5.73e-5` |
+| 5 | `3.18e-8` / `7.36e-4` | `2.76e-8` / `6.39e-4` |
+| 6 | `7.75e-8` / `7.42e-2` | `1.15e-6` / `6.92e-2` |
+
 ## Reproduction
 
 From the `pymacruise` repository root, prepare held-fixed fields from the saved no-regrid workflow. The Java harness comparisons can then be repeated with the scripts below. The run products and JSON metrics are under ignored `build/` and do not add human images to Git.

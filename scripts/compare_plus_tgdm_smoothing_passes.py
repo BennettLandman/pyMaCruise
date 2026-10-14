@@ -41,6 +41,7 @@ def main() -> None:
     args = parser.parse_args()
     root = args.reference_dir.resolve()
     provenance = json.loads((root / "input-provenance.json").read_text())
+    synthetic_only = bool(provenance.get("synthetic_only", False))
     shape = tuple(provenance["shape_xyz"])
     affine = np.asarray(provenance["affine_ras"], dtype=np.float64)
     initial = np.load(root / "python-initial_level_set.npy").astype(np.float32)
@@ -97,7 +98,12 @@ def main() -> None:
         None,
     )
     report = {
-        "synthetic_only": True,
+        "synthetic_only": synthetic_only,
+        "evidence_category": (
+            "synthetic held-fixed source comparison"
+            if synthetic_only
+            else "real-data held-fixed source comparison"
+        ),
         "diagnostic_only": True,
         "comparison": "selected Java SmoothCortexProfile pass outputs vs Python TGDM smoother",
         "scope": "isolates input fast marching, per-pass curvature updates, and per-pass fast-marching reinitialization; does not alter production outputs",
