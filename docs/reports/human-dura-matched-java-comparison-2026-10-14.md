@@ -25,6 +25,21 @@ For a geometry check, both final level sets were passed through the same Python 
 
 The Python comparison sampled peak RSS at 2.667 GB under a 12 GB watchdog. Focused Dura tests passed: **29 passed**, with two expected RAS reorientation warnings. The full suite was not rerun because this update changes only a validation script and documentation; the latest full-suite result for the unchanged production implementation is documented in [the 2026-10-14 refinement report](full-pytest-2026-10-14-refinement-human-refresh.md).
 
+## Handoff into the second TOADS pass
+
+The Java Dura run's `stripped_t1.raw.gz` and `brain_mask.raw.gz` were also
+compared with the NIfTI handoff saved by the earlier Python BASE run. Both
+arrays are voxel-identical (0 changed voxels each); the saved Python NIfTI
+hashes are `57f289a0e2916f79cc2b503fe9c0c0d29b0425e401c74e8435be0cf7b5581334`
+and `f4b50c67394f5a6956b30900ebe6442a974f2d6d8206e20b938a798d99e898e9`.
+Those exact NIfTIs are the held-fixed inputs in the human second-pass
+Java/Python comparison, where both natural-convergence classifications match
+exactly. Together these results validate the Dura-to-second-TOADS handoff and
+second-pass label result on this case. This composition still begins from
+held-fixed first-pass tissue maps; it does not validate first-pass TOADS,
+their upstream preprocessing, or the whole BASE workflow as one independent
+Java execution.
+
 ## Reproduction
 
 From the repository root, construct the Java input pack from the four files above, then run the selected Java harness:
