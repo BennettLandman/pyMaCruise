@@ -988,10 +988,22 @@ def tgdm_force(
         np.maximum(backward, 0.0) + np.minimum(forward, 0.0),
         np.minimum(backward, 0.0) + np.maximum(forward, 0.0),
     )
-    region_term = region_coefficient * np.linalg.norm(upwind, axis=-1)
+    # Vecmath Vector3d.length() evaluates x*x + y*y + z*z in component order.
+    # Preserve that order for the upwind region gradient as well as the level
+    # set gradient above; np.linalg.norm may use a different reduction path.
+    upwind_magnitude = np.sqrt(
+        upwind[..., 0] * upwind[..., 0]
+        + upwind[..., 1] * upwind[..., 1]
+        + upwind[..., 2] * upwind[..., 2]
+    )
+    region_term = region_coefficient * upwind_magnitude
     scaled_advection = vector * external_force
     advection_gradient = np.where(scaled_advection > 0, backward, forward)
-    advection_term = np.sum(scaled_advection * advection_gradient, axis=-1)
+    advection_term = (
+        scaled_advection[..., 0] * advection_gradient[..., 0]
+        + scaled_advection[..., 1] * advection_gradient[..., 1]
+        + scaled_advection[..., 2] * advection_gradient[..., 2]
+    )
     return np.asarray(curvature_term + region_term + advection_term, dtype=np.float64)
 
 

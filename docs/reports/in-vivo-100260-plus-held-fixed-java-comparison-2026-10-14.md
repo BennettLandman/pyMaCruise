@@ -63,6 +63,8 @@ The selected Java harness and the Python replay were instrumented at each outer 
 
 This localizes the first topology-changing discrepancy to central-surface evolution, after the initial-inner result already passes the agreed surface limits. Java tissue fusion and ACE are exact, the sign-force field is assembled from those same held-fixed arrays, and the GVF field is within its numerical bounds. The remaining likely causes are within the central TGDM force/update/topology semantics or the interaction between their floating-point results and the source's topology test. That is the next source-comparison target; these held-fixed results do not establish independent full PLUS equivalence.
 
+As a focused source-fidelity check, the Python vector-force calculation now writes the three-component upwind magnitude and advection dot product in the explicit component order used by `Vector3d.length()` and `Vector3d.dot()`. The held-fixed human replay produced identical stage and per-pass metrics before and after this change: the central first-pass sign difference and later surface misses persist. This removes one operation-order ambiguity but does not resolve the discrepancy.
+
 The instrumented Java harness completed under an 8 GB watchdog at **1.306 GB** peak sampled RSS. The Python diagnostic completed at **3.153 GB** under an 8 GB watchdog; its nonzero exit is expected because the already-known central and outer surface limits remain unmet. The machine-readable per-pass output is in ignored `build/in-vivo-100260-plus-java-ace-gvf-2026-10-14/java-smoothed-downstream-with-passes.json`. Reproduce the added checkpoints and Python comparison with:
 
 ```bash
