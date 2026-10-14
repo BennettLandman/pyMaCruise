@@ -27,6 +27,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
     private static final int NZ = Integer.getInteger("dura.nz", 17);
     private static final double SCALE = Math.min(NX, Math.min(NY, NZ)) / 17.0;
     private static final float MEMBERSHIP = Float.parseFloat(System.getProperty("dura.membership", "0.4"));
+    private static final float GM_REGULARIZATION = Float.parseFloat(System.getProperty("dura.gmRegularize", "0.02"));
     private static final float MASK_TRANSLATION = 2.0f;
     private static final float LEVEL_SET_TRANSLATION = 0.0f;
     private static final int ITERATIONS = Integer.getInteger("dura.iterations", 5);
@@ -74,7 +75,7 @@ public final class DuraAttachedNoDuraReferenceHarness {
             out.write("\"dynamic_pressure_tgdm_sha256\":\"53b872a5828539bb51d70db0c048d1fd8162f6b7a6b63176266ef7e2e796b6fc\",");
             out.write("\"cortex_profile_sha256\":\"f85912d621198de297e65d6b9205505b3ac2de72e67e6840f3968c58a850f505\",");
             out.write("\"distance_field_sha256\":\"92294be2db74351446c3e5898fc35b58497f89ccb38772d4d565885f3f0c35b7\",");
-            out.write("\"dimensions_xyz\":["+NX+","+NY+","+NZ+"],\"scale\":"+SCALE+",\"membership_level\":"+MEMBERSHIP+",");
+            out.write("\"dimensions_xyz\":["+NX+","+NY+","+NZ+"],\"scale\":"+SCALE+",\"membership_level\":"+MEMBERSHIP+",\"gm_regularization\":"+GM_REGULARIZATION+",");
             out.write("\"mask_translation\":"+MASK_TRANSLATION+",\"level_set_translation\":"+LEVEL_SET_TRANSLATION+",\"outer_iterations\":"+ITERATIONS+",");
             out.write("\"cases\":[");
             emitCase(out, attached); out.write(','); emitCase(out, clean);
@@ -122,11 +123,11 @@ public final class DuraAttachedNoDuraReferenceHarness {
     }
 
     private static CaseResult execute(CaseResult result, BitSet paintBits) {
-        result.wmTc=topology(result.wm, paintBits, "wm");
+        result.wmTc=topology(result.wm, paintBits, "wm", 0.05f);
         result.union=new float[NX][NY][NZ];
         for(int x=0;x<NX;x++) for(int y=0;y<NY;y++) for(int z=0;z<NZ;z++)
             result.union[x][y][z]=result.wmTc[x][y][z]+result.gm[x][y][z];
-        result.gmTc=topology(result.union, paintBits, "gm");
+        result.gmTc=topology(result.union, paintBits, "gm", GM_REGULARIZATION);
         // The wrapper captures these arrays before handing GM to the TGDM.
         result.gmTc=copy(result.gmTc);
 
@@ -166,12 +167,12 @@ public final class DuraAttachedNoDuraReferenceHarness {
         return result;
     }
 
-    private static float[][][] topology(float[][][] values, BitSet paint, String name) {
+    private static float[][][] topology(float[][][] values, BitSet paint, String name, float regularize) {
         ModelImage source=new ModelImage(new int[]{NX,NY,NZ},name+"_input");
         ModelImage destination=new ModelImage(new int[]{NX,NY,NZ},name+"_output");
         source.setData(flatten(values));
         AlgorithmTopologyCorrection algorithm=new AlgorithmTopologyCorrection(destination,source,
-            "scalar_image",0.05f,3,6,18,"paint_mask",paint,0.0f,1.0f,true,"object->background");
+            "scalar_image",regularize,3,6,18,"paint_mask",paint,0.0f,1.0f,true,"object->background");
         algorithm.runAlgorithm();
         if(!algorithm.isCompleted()) throw new IllegalStateException("topology call failed: "+name);
         return inflate(destination.getData());

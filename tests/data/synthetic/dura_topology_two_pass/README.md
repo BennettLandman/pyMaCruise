@@ -11,7 +11,8 @@ This 9×9×9 deterministic synthetic case follows the selected
 
 The harness uses the selected VandyCRUISE Java topology implementation twice
 and emits the input, paint mask, raw GM, first corrected WM, float32 union, and
-second corrected GM as separate sections. It follows the selected wrapper's
+second corrected GM as separate sections. It uses the MaCRUISE V3 wrapper
+parameters 0.05 for WM and 0.02 for GM. It follows the selected wrapper's
 call order and arithmetic but does not instantiate the full JIST
 `MedicAlgorithmRemoveDura09` class. The selected wrapper source SHA-256 is
 `1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4`.

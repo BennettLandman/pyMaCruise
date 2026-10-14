@@ -196,6 +196,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--membership-level", type=float, default=0.3,
         help="target membership (MaCRUISE run_RemoveDura_jist.m selects 0.3)",
     )
+    dura.add_argument("--wm-topology-regularization", type=float, default=0.05)
+    dura.add_argument("--gm-topology-regularization", type=float, default=0.02)
     _add_provenance_option(dura)
 
     cerebellum = commands.add_parser(
@@ -1517,6 +1519,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "dura":
         dura_parameters = {
             "membership_level": args.membership_level,
+            "wm_topology_regularization": args.wm_topology_regularization,
+            "gm_topology_regularization": args.gm_topology_regularization,
             "curvature_force": 0.5,
             "alignment_force": 1.0,
             "pressure_force": 0.5,

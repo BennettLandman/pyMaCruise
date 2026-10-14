@@ -73,6 +73,7 @@ def main() -> None:
     for name in ("t1", "white-matter", "gray-matter", "white-matter-mask"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--java-output-dir", required=True, type=Path)
+    parser.add_argument("--python-output-dir", type=Path)
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--membership-level", type=float, default=0.3)
     parser.add_argument("--iterations", type=int, default=5)
@@ -125,6 +126,15 @@ def main() -> None:
         f"tgdm_pass_{index:02d}": np.asarray(values, dtype=np.float32)
         for index, values in enumerate(result.evolution.pass_level_sets, start=1)
     })
+
+    if args.python_output_dir is not None:
+        args.python_output_dir.mkdir(parents=True, exist_ok=True)
+        for name, values in python_outputs.items():
+            dtype = np.uint8 if name == "brain_mask" else np.float32
+            nib.save(
+                nib.Nifti1Image(np.asarray(values, dtype=dtype), reference.affine),
+                str(args.python_output_dir / f"{name}.nii.gz"),
+            )
 
     comparisons = {}
     java_hashes = {}

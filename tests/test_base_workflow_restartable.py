@@ -155,8 +155,10 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert len(regridded) == 3
     assert all(nib.aff2axcodes(image.affine) == ("R", "A", "S") for image in regridded)
     assert all(image.shape == regridded[0].shape for image in regridded)
-    assert manifest["stages"]["dura"]["command"][-2:] == [
-        "--membership-level", "0.3"
+    assert manifest["stages"]["dura"]["command"][-6:] == [
+        "--membership-level", "0.3",
+        "--wm-topology-regularization", "0.05",
+        "--gm-topology-regularization", "0.02",
     ]
     assert set(manifest["stages"]) == {
         "n4", "toads-first", "dura", "toads-second", "base-tissue-preparation", "cruise-core",

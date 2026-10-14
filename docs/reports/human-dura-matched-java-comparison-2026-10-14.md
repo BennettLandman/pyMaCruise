@@ -2,13 +2,15 @@
 
 ## Result
 
-The Python Dura-removal stage matches the selected original Java Dura wrapper on the same held-fixed first-pass inputs from human BASE case 100260. This is a stage-level source comparison; it does not establish two-pass TOADS or whole-MaCRUISE equivalence.
+The Python Dura-removal stage matches the selected Java call sequence on the same held-fixed first-pass inputs from human BASE case 100260. This comparison uses the MaCRUISE wrapper's actual topology regularization settings: WM `0.05`, GM `0.02`. It is stage-level source evidence, not whole-BASE equivalence.
 
-The Java harness executes the selected `MedicAlgorithmRemoveDura09` sequence with the original topology-correction and TGDM implementations. Both implementations used the same 184 × 256 × 256 RAS inputs, five outer TGDM passes, and MaCRUISE wrapper membership level 0.3. The source harness supports alternate membership values so this run uses the wrapper-selected 0.3 rather than the synthetic harness's historical default 0.4.
+The selected MATLAB wrapper is `pipeline/run_RemoveDura_jist.m` (SHA-256 `57473ab813e81b89ffed433de89b2fad8e111f6b68fa41e30c920639cd864e80`); it passes `-inWM3 0.05` and `-inGM2 0.02`. The corresponding `toads-cruise` `MedicAlgorithmRemoveDura09.java` exposes and applies those two values (SHA-256 `605c3ef4022d0eaabe8a609a6c08400dd8923c6075f9b4c4fbc34b500c114147`). The older VandyCRUISE copy (SHA-256 `1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4`) hardcodes 0.05 for both topology calls; it is not the MaCRUISE V3 parameter contract. Earlier Dura reports and references that used 0.05 for both are superseded for the V3 wrapper profile.
+
+The Java harness executes the selected Dura call sequence with the original topology-correction, JIST distance-field, and TGDM implementations. It is not a launch of the full MIPAV/JIST wrapper application. Both implementations used the same 184 × 256 × 256 RAS inputs, five TGDM outer passes, and wrapper-selected membership level 0.3.
 
 ## Input identity
 
-The input NIfTIs are from `build/invivo-base-orientation-only-source-profile-2026-10-12/dura-java-first-pass-input/` in the local validation checkout. They are held fixed between implementations and are not copied into this repository.
+The held-fixed NIfTIs are in ignored `build/` output from the local validation checkout and are not committed.
 
 | Input | SHA-256 |
 | --- | --- |
@@ -19,40 +21,28 @@ The input NIfTIs are from `build/invivo-base-orientation-only-source-profile-202
 
 ## Comparison
 
-The two topology-correction maps, their union, stripped T1, corrected WM/GM, and final brain mask are bit-identical. The initial inner and outer distance fields differ by at most `9.54e-7`; neither has a sign disagreement. All five TGDM pass fields retain identical nonpositive regions (Dice 1.0, zero sign disagreements); their largest absolute value difference is `4.34e-5`. The final Dura level set differs by at most `2.91e-5`, with zero sign disagreements, and the final brain-mask voxel arrays are identical.
+Both topology-correction outputs and their union are bit-identical. The inner and outer distance fields differ by at most `9.54e-7`; neither has a sign disagreement. Every one of the five TGDM pass fields has the same nonpositive region (Dice 1.0, zero sign disagreements); the largest pass-field absolute difference is `6.66e-5`. The final level set differs by at most `2.48e-5`, with zero sign disagreements. The final brain-mask arrays are bit-identical.
 
-For a geometry check, both final level sets were passed through the same Python source-derived surface extractor. Each mesh has 188,850 vertices and 377,696 faces. Symmetric vertex-to-triangle mean distance is `1.13e-8 mm`, and sampled Hausdorff distance is `3.44e-5 mm`. This isolates level-set-induced geometry under one extractor; it is not a comparison of Java `IsoSurfaceOnGrid` against the Python mesh extractor.
+The final Java and Python level sets were passed through the same Python source-derived extractor. Both meshes have 175,384 vertices and 350,764 faces; symmetric vertex-to-triangle mean distance is `7.72e-9 mm`, and sampled Hausdorff distance is `3.05e-5 mm`. This checks geometry induced by the held-fixed fields under one extractor; it does not compare Java `IsoSurfaceOnGrid` to the Python extractor.
 
-The Python comparison sampled peak RSS at 2.667 GB under a 12 GB watchdog. Focused Dura tests passed: **29 passed**, with two expected RAS reorientation warnings. The full suite was not rerun because this update changes only a validation script and documentation; the latest full-suite result for the unchanged production implementation is documented in [the 2026-10-14 refinement report](full-pytest-2026-10-14-refinement-human-refresh.md).
+The Java output's stripped T1 and brain mask each differ at **89,885 voxels** from the previously saved Python handoff that was used in the older human second-TOADS comparison. Therefore that prior second-pass comparison is not a downstream validation of this corrected Dura profile. The second TOADS pass and the full no-regrid BASE run need refreshing with this handoff before claiming a composed human result.
 
-## Handoff into the second TOADS pass
-
-The Java Dura run's `stripped_t1.raw.gz` and `brain_mask.raw.gz` were also
-compared with the NIfTI handoff saved by the earlier Python BASE run. Both
-arrays are voxel-identical (0 changed voxels each); the saved Python NIfTI
-hashes are `57f289a0e2916f79cc2b503fe9c0c0d29b0425e401c74e8435be0cf7b5581334`
-and `f4b50c67394f5a6956b30900ebe6442a974f2d6d8206e20b938a798d99e898e9`.
-Those exact NIfTIs are the held-fixed inputs in the human second-pass
-Java/Python comparison, where both natural-convergence classifications match
-exactly. Together these results validate the Dura-to-second-TOADS handoff and
-second-pass label result on this case. This composition still begins from
-held-fixed first-pass tissue maps; it does not validate first-pass TOADS,
-their upstream preprocessing, or the whole BASE workflow as one independent
-Java execution.
+The Python comparison sampled peak RSS at **2.721 GB** under a 12 GB watchdog. The focused Dura suite passed **32 tests**, with two expected RAS reorientation warnings.
 
 ## Reproduction
 
-From the repository root, construct the Java input pack from the four files above, then run the selected Java harness:
+Build the Java input pack from the four held-fixed files, then run the selected Java harness with the wrapper values:
 
 ```sh
 DURA_WRAPPER_NX=184 DURA_WRAPPER_NY=256 DURA_WRAPPER_NZ=256 \
-DURA_WRAPPER_ITERATIONS=5 DURA_WRAPPER_MEMBERSHIP=0.3 DURA_WRAPPER_JAVA_HEAP=8g \
+DURA_WRAPPER_ITERATIONS=5 DURA_WRAPPER_MEMBERSHIP=0.3 \
+DURA_WRAPPER_GM_REGULARIZE=0.02 DURA_WRAPPER_JAVA_HEAP=8g \
   sh scripts/run_java_dura_base_reference.sh \
   build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-input.bin \
-  build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-output-membership-03
+  build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-output-membership-03-gm002
 ```
 
-Then compare the Java output with the Python stage on the identical inputs:
+Compare selected Java and Python on the identical inputs and save the Python NIfTI products for the next stage:
 
 ```sh
 PYTHONPATH=.:src OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
@@ -61,13 +51,14 @@ PYTHONPATH=.:src OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
   --white-matter build/invivo-base-orientation-only-source-profile-2026-10-12/dura-java-first-pass-input/white_matter.nii.gz \
   --gray-matter build/invivo-base-orientation-only-source-profile-2026-10-12/dura-java-first-pass-input/gray_matter.nii.gz \
   --white-matter-mask build/invivo-base-orientation-only-source-profile-2026-10-12/dura-java-first-pass-input/white_matter_mask.nii.gz \
-  --java-output-dir build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-output-membership-03 \
+  --java-output-dir build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-output-membership-03-gm002 \
+  --python-output-dir build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-python-output-membership-03-gm002 \
   --membership-level 0.3 --iterations 5 \
-  --report build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-comparison-membership-03.json
+  --report build/invivo-base-orientation-only-source-profile-2026-10-14/dura-human-java-comparison-membership-03-gm002.json
 ```
 
-The generated input pack, Java outputs, JSON comparison, and human image files reside under ignored `build/` data and are not committed. The Java harness and reusable Python comparison command are committed with this report.
+The input pack, subject images, Java/Python products, and JSON comparison remain under ignored `build/` data.
 
 ## Scope and open work
 
-This validates one Dura invocation on the first-pass handoff. It does not validate SPECTRE registration, TOADS classification, the second TOADS pass, refinement, surfaces from the selected Java meshing implementation, or whole-workflow anatomy and label acceptance. The parent P18/PyMaCRUISE workflow remains open.
+This validates Dura on held-fixed first-pass tissue maps. It does not validate SPECTRE registration, upstream TOADS, the second TOADS pass with the corrected 0.02-GM-regularization handoff, refinement, or whole-workflow anatomy and label acceptance. The parent P18/PyMaCRUISE workflow remains open.

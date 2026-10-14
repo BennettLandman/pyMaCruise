@@ -1,5 +1,12 @@
 # Matched Java/Python TOADS on human BASE inputs — 2026-10-13
 
+> The first-pass comparison remains valid on its held-fixed inputs. The
+> second-pass pair used the old Python Dura handoff with GM topology
+> regularization 0.05. The selected MaCRUISE V3 value is 0.02, and the
+> corrected Java Dura mask differs from that saved handoff at 89,885 voxels.
+> Rerun second TOADS before using its result as evidence for the selected V3
+> composed profile. See the [corrected Dura comparison](human-dura-matched-java-comparison-2026-10-14.md).
+
 ## Result
 
 Both naturally converged human TOADS passes match the selected Java wrapper

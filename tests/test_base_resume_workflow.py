@@ -103,7 +103,8 @@ def _source_run(root: Path, *, shape=(8, 9, 10)) -> tuple[Path, Path]:
             "toads-first": {"status": "complete", "dependency_signature": "f" * 64, "outputs": prior_outputs["toads-first"]},
             "dura": {"status": "complete", "dependency_signature": "1" * 64, "outputs": dura_records,
                      "command": ["dura", "--output-dir", str(dura_dir), "--max-iterations", "1",
-                                 "--membership-level", "0.3"]},
+                                 "--membership-level", "0.3", "--wm-topology-regularization", "0.05",
+                                 "--gm-topology-regularization", "0.02"]},
             "toads-second": {
             "status": "complete", "attempt": 1, "dependency_signature": "c" * 64,
             "command": ["toads-loop", "--t1-n4", str(dura_dir / "stripped_t1.nii.gz"), "--brain-mask", str(dura_dir / "brain_mask.nii.gz"),

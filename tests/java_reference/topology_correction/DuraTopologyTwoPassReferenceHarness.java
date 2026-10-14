@@ -23,10 +23,10 @@ public final class DuraTopologyTwoPassReferenceHarness {
             if (paintValues[index] > 0.5f) paint.set(index);
         }
 
-        float[] wmTC = correct(wm, paint, "wm");
+        float[] wmTC = correct(wm, paint, "wm", 0.05f);
         float[] union = new float[size];
         for (int i = 0; i < size; i++) union[i] = wmTC[i] + gm[i];
-        float[] gmTC = correct(union, paint, "gm");
+        float[] gmTC = correct(union, paint, "gm", 0.02f);
 
         writeSection("WM_INPUT_BEGIN", wm);
         writeSection("PAINT_BEGIN", paintValues);
@@ -36,12 +36,12 @@ public final class DuraTopologyTwoPassReferenceHarness {
         writeSection("GM_TC_BEGIN", gmTC);
     }
 
-    private static float[] correct(float[] values, BitSet paint, String name) {
+    private static float[] correct(float[] values, BitSet paint, String name, float regularize) {
         ModelImage source = new ModelImage(new int[] {NX, NY, NZ}, name + "_input");
         ModelImage destination = new ModelImage(new int[] {NX, NY, NZ}, name + "_output");
         source.setData(values);
         AlgorithmTopologyCorrection algorithm = new AlgorithmTopologyCorrection(
-                destination, source, "scalar_image", 0.05f, 3, 6, 18,
+                destination, source, "scalar_image", regularize, 3, 6, 18,
                 "paint_mask", paint, 0.0f, 1.0f, true, "object->background");
         algorithm.runAlgorithm();
         if (!algorithm.isCompleted()) throw new IllegalStateException("Algorithm did not complete: " + name);

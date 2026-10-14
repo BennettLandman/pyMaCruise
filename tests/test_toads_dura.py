@@ -307,7 +307,7 @@ def test_dura_gray_matter_call_adds_raw_gm_and_reuses_original_wm_mask() -> None
         paint_threshold=0.5,
         lowest_level=0.0,
         highest_level=1.0,
-        regularize=0.05,
+        regularize=0.02,
     ).corrected
 
     np.testing.assert_array_equal(actual.dataobj, expected.dataobj)

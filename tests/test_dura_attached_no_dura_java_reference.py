@@ -12,7 +12,7 @@ from pymacruise.toads_dura import dura_initial_level_sets, run_dura_removal
 
 FIXTURE = Path(__file__).parent / "data" / "synthetic" / "dura_attached_no_dura"
 HARNESS = Path(__file__).parent / "java_reference" / "DuraAttachedNoDuraReferenceHarness.java"
-EXPECTED_HARNESS_SHA256 = "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa"
+EXPECTED_HARNESS_SHA256 = "d949d4499b8ba1b5bc62205b04e6f904ab279a0f7ddc41fdf55b1dab5e0d5e80"
 EXPECTED_SOURCE_HASHES = {
     "MedicAlgorithmRemoveDura09": "1ed180daf4a4334c995ad310828ec91cfd5593413eec17ab15404a421d7805a4",
     "AlgorithmTopologyCorrection": "9dd7cd0db8c83e47a21059fe5acc52c7737cb0001222d6019619bf62526159a8",
@@ -35,6 +35,8 @@ def _assert_ras_output(image: nib.spatialimages.SpatialImage, affine: np.ndarray
 def test_attached_and_clean_dura_cases_match_selected_java_wrapper_sequence() -> None:
     provenance = json.loads((FIXTURE / "provenance.json").read_text())
     assert provenance["scope"] == "synthetic selected-wrapper-sequence comparison"
+    assert provenance["parameters"]["wm_topology_regularization"] == 0.05
+    assert provenance["parameters"]["gm_topology_regularization"] == 0.02
     assert provenance["source_sha256"] == EXPECTED_SOURCE_HASHES
     assert provenance["harness_sha256"] == EXPECTED_HARNESS_SHA256
     assert hashlib.sha256(HARNESS.read_bytes()).hexdigest() == EXPECTED_HARNESS_SHA256

@@ -96,6 +96,8 @@ def run_dura_removal(
     original_white_matter_mask: nib.spatialimages.SpatialImage,
     *,
     membership_level: float = 0.4,
+    wm_topology_regularization: float = 0.05,
+    gm_topology_regularization: float = 0.02,
     curvature_force: float = 0.5,
     alignment_force: float = 1.0,
     pressure_force: float = 0.5,
@@ -144,8 +146,16 @@ def run_dura_removal(
         ):
             raise ValueError(f"{name} must match the original T1 RAS grid")
 
-    wm_tc = dura_correct_white_matter_topology(raw_wm, wm_mask)
-    gm_tc = dura_correct_gray_matter_topology(wm_tc, raw_gm, wm_mask)
+    if not np.isfinite(wm_topology_regularization) or wm_topology_regularization < 0:
+        raise ValueError("WM topology regularization must be finite and nonnegative")
+    if not np.isfinite(gm_topology_regularization) or gm_topology_regularization < 0:
+        raise ValueError("GM topology regularization must be finite and nonnegative")
+    wm_tc = dura_correct_white_matter_topology(
+        raw_wm, wm_mask, regularize=wm_topology_regularization
+    )
+    gm_tc = dura_correct_gray_matter_topology(
+        wm_tc, raw_gm, wm_mask, regularize=gm_topology_regularization
+    )
     wm_values = np.asarray(wm_tc.dataobj, dtype=np.float32)
     gm_values = np.asarray(gm_tc.dataobj, dtype=np.float32)
     levels = dura_initial_level_sets(
@@ -202,6 +212,8 @@ def run_dura_removal(
 def dura_correct_white_matter_topology(
     white_matter: nib.spatialimages.SpatialImage,
     original_white_matter_mask: nib.spatialimages.SpatialImage,
+    *,
+    regularize: float = 0.05,
 ) -> nib.Nifti1Image:
     """Apply the first Dura topology adapter call in the current Python port.
 
@@ -225,7 +237,7 @@ def dura_correct_white_matter_topology(
         paint_threshold=0.5,
         lowest_level=0.0,
         highest_level=1.0,
-        regularize=0.05,
+        regularize=regularize,
     ).corrected
 
 
@@ -233,6 +245,8 @@ def dura_correct_gray_matter_topology(
     topologically_corrected_white_matter: nib.spatialimages.SpatialImage,
     raw_gray_matter: nib.spatialimages.SpatialImage,
     original_white_matter_mask: nib.spatialimages.SpatialImage,
+    *,
+    regularize: float = 0.02,
 ) -> nib.Nifti1Image:
     """Build the Dura WM+raw-GM union and run the second topology adapter.
 
@@ -241,7 +255,9 @@ def dura_correct_gray_matter_topology(
     union and the same original WM mask to a second topology adapter. Generic
     NIfTI addition and physical-grid checks reuse ``calculate_volume``; the
     Dura-specific 6/18, object-to-background settings and regularization are
-    applied by ``topology_correct``. The returned image is ``gmTC``. The
+    applied by ``topology_correct``. The selected wrapper supplies WM
+    regularization 0.05 and distinct GM regularization 0.02. The returned image is
+    ``gmTC``. The
     selected algorithm-pair call sequence and float32 union now match one
     deterministic selected-Java harness fixture exactly; the harness follows
     the wrapper sequence but does not instantiate the full JIST wrapper. This
@@ -258,7 +274,7 @@ def dura_correct_gray_matter_topology(
         paint_threshold=0.5,
         lowest_level=0.0,
         highest_level=1.0,
-        regularize=0.05,
+        regularize=regularize,
     ).corrected
 
 

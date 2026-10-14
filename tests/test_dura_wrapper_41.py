@@ -29,7 +29,9 @@ def test_attached_and_clean_dura_41_match_selected_java_wrapper_sequence() -> No
     provenance = json.loads((FIXTURE / "provenance.json").read_text())
     assert provenance["scope"] == "synthetic selected-wrapper-sequence comparison"
     assert provenance["dimensions_xyz"] == [41, 41, 41]
-    assert provenance["harness_sha256"] == "e1f3030ea31884b1b3ac3aae9eaf42216876bd55be9f1ec88358f00d391dc7aa"
+    assert provenance["harness_sha256"] == "d949d4499b8ba1b5bc62205b04e6f904ab279a0f7ddc41fdf55b1dab5e0d5e80"
+    assert provenance["parameters"]["wm_topology_regularization"] == 0.05
+    assert provenance["parameters"]["gm_topology_regularization"] == 0.02
     for line in (FIXTURE / "SHA256SUMS").read_text().splitlines():
         digest, relative = line.split("  ", 1)
         assert hashlib.sha256((FIXTURE / relative).read_bytes()).hexdigest() == digest

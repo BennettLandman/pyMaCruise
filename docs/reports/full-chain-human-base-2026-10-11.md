@@ -6,6 +6,12 @@
 > metrics below as historical diagnostics, not accepted corrected V3 output.
 > The corrected tail run and current metrics are in the [boundary-enabled
 > human report](in-vivo-base-tail-with-v3-boundary-2026-10-11.md).
+>
+> **Superseded for Dura-derived stages.** The selected MaCRUISE V3 wrapper
+> passes WM/GM topology regularization 0.05/0.02. This run used Python's old
+> 0.05/0.05 pair; refresh Dura, second TOADS, and downstream stages before
+> treating these results as current V3 behavior. See the
+> [corrected human Dura comparison](human-dura-matched-java-comparison-2026-10-14.md).
 
 ## Result and interpretation
 
@@ -27,10 +33,9 @@ those explicit values. Both TOADS passes naturally converged at 24 iterations
 previously selected native-T1 RAS working-space path and caller-supplied brain
 mask, rather than historical BET/SPECTRE preprocessing. This confirms an
 end-to-end human run with the chosen stage settings, not historical
-preprocessing or whole-workflow Java/MATLAB equivalence. Some lower-level
-parameters are hard-coded or absent from the replayable manifest; in
-particular, source interpretation of Dura's `GM2=0.02` versus the Python
-adapter's fixed regularization still needs review.
+preprocessing or whole-workflow Java/MATLAB equivalence. Its Dura-derived
+stages are superseded because Python used 0.05 for both topology calls instead
+of the selected wrapper's 0.05 WM and 0.02 GM values.
 
 The run manifest is `build/invivo-base-source-v3-human-rasgrid-2026-10-11/run.json`.
 It records all eight stages complete, 24 final outputs, RAS geometry, and no
@@ -100,13 +105,13 @@ does not snapshot all effective defaults. TOADS atlas coefficient 2.0,
 smoothing 0.2, rigid alignment, and (18,6) connectivity are hard-coded in the
 CLI rather than present in the run options. The convergence threshold and
 maximum-distance values are both 1e-4, but semantic equivalence is not yet
-demonstrated. The selected MATLAB Dura wrapper passes `GM2=0.02`; Python
-currently uses fixed topology regularization 0.05 for both topology passes.
-The inspected VandyCRUISE Dura source hard-codes 0.05 for both and does not
-expose the wrapper's `inGM2` option, while a newer wrapper-compatible source
-class maps `inGM2` to a distinct GM regularization value. This is a source
-version conflict requiring an owner decision before changing the port. The
-run's `registration_max_iterations=5` is an implementation cap; source
+demonstrated. The selected MATLAB Dura wrapper passes `GM2=0.02`; the Python
+adapter used fixed topology regularization 0.05 for both topology passes in
+this run. The older VandyCRUISE class hard-codes 0.05 for both, while the
+matching MaCRUISE-selected `toads-cruise` class applies the V3 wrapper's
+distinct 0.02 GM value. That source selection is now resolved and implemented;
+see the [correction report](human-dura-matched-java-comparison-2026-10-14.md).
+The run's `registration_max_iterations=5` is an implementation cap; source
 `lastIter=0` is not separately represented in the manifest.
 
 ## Reproduction

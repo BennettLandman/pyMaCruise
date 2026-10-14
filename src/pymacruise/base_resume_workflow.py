@@ -216,11 +216,29 @@ def _selected_v3_profile_record(
     # The source wrapper settings below are known from source inspection but
     # are not serialized in this run manifest. Their absence prevents an
     # affirmative full-profile match even if every recorded setting agrees.
+    regularization_flags = {
+        "wm_topology_regularization": "--wm-topology-regularization",
+        "gm_topology_regularization": "--gm-topology-regularization",
+    }
+    actual_dura_regularization = {}
+    for name, flag in regularization_flags.items():
+        actual_dura_regularization[name] = (
+            float(dura_command[dura_command.index(flag) + 1])
+            if flag in dura_command else None
+        )
+    expected_dura_regularization = {
+        "wm_topology_regularization": 0.05,
+        "gm_topology_regularization": 0.02,
+    }
+    regularization_observed = all(value is not None for value in actual_dura_regularization.values())
     checked["dura_source_wrapper_parameter_set"] = {
-        "expected": "selected run_RemoveDura_jist.m parameter set",
-        "actual": None,
-        "matches": None,
-        "evidence": "the Dura command records iteration count and membership only",
+        "expected": expected_dura_regularization,
+        "actual": actual_dura_regularization,
+        "matches": (
+            all(np.isclose(actual_dura_regularization[name], expected) for name, expected in expected_dura_regularization.items())
+            if regularization_observed else None
+        ),
+        "evidence": "explicit Dura command arguments for selected V3 WM/GM topology regularization",
     }
     checked["toads_source_constructor_parameter_set"] = {
         "expected": "selected run_Toads_jist.m constructor profile",
@@ -252,7 +270,7 @@ def _selected_v3_profile_record(
             ],
             "dura_wrapper_parameters_not_recorded": [
                 "curvature=0.5", "level=1.0", "alignment=0.5", "pressure=0.5",
-                "target=0.3", "mask=2.0", "level2=0.0", "wm3=0.05", "gm2=0.02",
+                "target=0.3", "mask=2.0", "level2=0.0",
             ],
             "toads_constructor_parameters_not_recorded": [
                 "atlas coefficient=2.0", "smoothing=0.2", "rigid alignment",

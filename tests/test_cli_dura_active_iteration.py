@@ -87,6 +87,8 @@ def test_dura_cli_runs_one_active_outer_pass_and_matches_api(tmp_path: Path) -> 
     assert provenance["spatial_convention"] == "RAS"
     assert provenance["parameters"]["max_iterations"] == 1
     assert provenance["parameters"]["membership_level"] == 0.3
+    assert provenance["parameters"]["wm_topology_regularization"] == 0.05
+    assert provenance["parameters"]["gm_topology_regularization"] == 0.02
     assert provenance["inputs"] == {
         "t1": str(t1_path.resolve()),
         "white_matter": str(wm_path.resolve()),

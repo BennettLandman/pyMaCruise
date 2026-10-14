@@ -1,5 +1,13 @@
 # Human BASE refinement refresh — 2026-10-14
 
+> **Dura-derived output refresh pending.** This workflow used the earlier
+> Python Dura settings (0.05 regularization for both WM and GM). The selected
+> MaCRUISE V3 wrapper uses WM 0.05 and GM 0.02. Its Dura mask differs at
+> 89,885 voxels from this run's handoff, so rerun Dura, second TOADS, and
+> downstream BASE stages before treating those results as current V3 output.
+> The direct MATLAB refinement match remains valid for the fixed inputs it
+> tested. See the [Dura source comparison](human-dura-matched-java-comparison-2026-10-14.md).
+
 ## Scope and result
 
 After correcting Python's interpretation of MATLAB `tabulate` rows, the case

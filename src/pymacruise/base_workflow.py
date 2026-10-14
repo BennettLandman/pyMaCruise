@@ -746,6 +746,8 @@ def run_base_workflow(
         "--white-mask", str(first_wmmask), "--output-dir", "{STAGE}",
         "--max-iterations", str(options.dura_iterations),
         "--membership-level", str(options.dura_membership_level),
+        "--wm-topology-regularization", "0.05",
+        "--gm-topology-regularization", "0.02",
     ], [n4, first_wm, first_gm, first_wmmask])
     stripped = active_output("dura", "stripped_t1.nii.gz", dura_dependencies)
     brain = active_output("dura", "brain_mask.nii.gz", dura_dependencies)
