@@ -132,6 +132,35 @@ def test_toads_ras_geometry_reorients_before_deriving_mipav_directions() -> None
     np.testing.assert_array_equal(geometry.image.dataobj, t1.dataobj)
 
 
+def test_toads_source_axis_compatibility_preserves_lps_processing_order() -> None:
+    t1 = nib.load(FIXTURES / "t1_n4.nii.gz")
+    mask = nib.load(FIXTURES / "brain_mask.nii.gz")
+    flip = np.diag((-1.0, -1.0, 1.0, 1.0))
+    flip[0, 3] = t1.shape[0] - 1
+    flip[1, 3] = t1.shape[1] - 1
+    lps = nib.Nifti1Image(np.asanyarray(t1.dataobj)[::-1, ::-1, :], t1.affine @ flip)
+    lps_mask = nib.Nifti1Image(
+        np.asanyarray(mask.dataobj)[::-1, ::-1, :], mask.affine @ flip
+    )
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        intensity = prepare_toads_intensity(
+            lps,
+            lps_mask,
+            preserve_input_axis_order=True,
+        )
+    geometry = toads_ras_geometry(intensity.image, preserve_input_axis_order=True)
+
+    assert nib.aff2axcodes(intensity.image.affine) == ("L", "P", "S")
+    assert nib.aff2axcodes(geometry.image.affine) == ("L", "P", "S")
+    assert geometry.orientation_signs == (1.0, 1.0, 1.0)
+    assert geometry.signed_image_resolutions_mm == (1.0, 1.0, 1.0)
+    np.testing.assert_array_equal(
+        np.asarray(intensity.image.dataobj)[::-1, ::-1, :],
+        np.asarray(prepare_toads_intensity(t1, mask).image.dataobj),
+    )
+
+
 @pytest.mark.parametrize("target_codes", [("A", "R", "S"), ("I", "L", "A")])
 def test_toads_ras_geometry_reorients_permuted_axis_orders(
     target_codes: tuple[str, str, str],

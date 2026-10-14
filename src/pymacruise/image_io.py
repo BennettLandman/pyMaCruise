@@ -62,6 +62,29 @@ def normalize_image_to_ras(
     return normalized
 
 
+def reorient_array_to_ras(
+    values: np.ndarray,
+    source_affine: np.ndarray,
+) -> np.ndarray:
+    """Axis-reorient a voxel array to RAS without interpolation.
+
+    This is for arrays produced in a source-compatible voxel order after the
+    corresponding input image has already been validated and warned about.
+    The returned array preserves the input dtype and values exactly.
+    """
+    array = np.asarray(values)
+    if array.ndim != 3:
+        raise ValueError(f"RAS array reorientation requires a 3D array; got {array.shape}")
+    affine = np.asarray(source_affine, dtype=np.float64)
+    if affine.shape != (4, 4) or not np.isfinite(affine).all():
+        raise ImageGeometryError("source affine must be a finite 4x4 matrix")
+    image = nib.Nifti1Image(array, affine)
+    normalized = nib.as_closest_canonical(image, enforce_diag=False)
+    if nib.aff2axcodes(normalized.affine) != ("R", "A", "S"):
+        raise ImageGeometryError("voxel array could not be reoriented to RAS")
+    return np.asarray(normalized.dataobj)
+
+
 def is_axis_aligned_ras_grid(image: nib.spatialimages.SpatialImage) -> bool:
     """Return whether a 3-D image uses positive, axis-aligned RAS voxel axes."""
     if not is_orthogonal_ras_grid(image):

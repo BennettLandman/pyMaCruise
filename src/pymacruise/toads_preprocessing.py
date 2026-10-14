@@ -41,8 +41,9 @@ def toads_ras_geometry(
     image: nib.spatialimages.SpatialImage,
     *,
     source_name: str = "TOADS image",
+    preserve_input_axis_order: bool = False,
 ) -> ToadsRASGeometry:
-    """Normalize an image to RAS and reproduce axial MIPAV direction signs.
+    """Describe TOADS voxel geometry, normally after normalizing the image to RAS.
 
     The selected ``MultipleToadPreprocess`` axial constructor initializes zero
     rotation/translation, assigns MIPAV axis directions from image metadata,
@@ -59,25 +60,43 @@ def toads_ras_geometry(
     represented by three independent source spacings.
     """
     source_codes = tuple(nib.aff2axcodes(image.affine))
-    normalized = normalize_image_to_ras(image, source_name=source_name)
+    normalized = (
+        image
+        if preserve_input_axis_order
+        else normalize_image_to_ras(image, source_name=source_name)
+    )
     if len(normalized.shape) != 3:
         raise ValueError("TOADS spatial geometry requires a 3D single-volume image")
-    if nib.aff2axcodes(normalized.affine) != ("R", "A", "S"):
+    normalized_codes = tuple(nib.aff2axcodes(normalized.affine))
+    if not preserve_input_axis_order and normalized_codes != ("R", "A", "S"):
         raise ValueError("TOADS image could not be represented on an RAS voxel grid")
-    if not is_orthogonal_ras_grid(normalized):
+    if preserve_input_axis_order:
+        if normalized_codes not in (("R", "A", "S"), ("L", "P", "S")):
+            raise ValueError(
+                "source-axis TOADS compatibility currently supports axial RAS or LPS input order"
+            )
+        directions = np.asarray(normalized.affine[:3, :3], dtype=np.float64)
+        spacing_check = np.linalg.norm(directions, axis=0)
+        unit_directions = directions / spacing_check[np.newaxis, :]
+        if not np.allclose(unit_directions.T @ unit_directions, np.eye(3), rtol=0, atol=1e-6):
+            raise ValueError("TOADS source registration requires orthogonal voxel axes; sheared grids are unsupported")
+    elif not is_orthogonal_ras_grid(normalized):
         raise ValueError("TOADS source registration requires orthogonal RAS voxel axes; sheared grids are unsupported")
     zooms = np.asarray(nib.affines.voxel_sizes(normalized.affine), dtype=np.float64)
     if not np.isfinite(zooms).all() or np.any(zooms <= 0):
         raise ValueError("TOADS image voxel sizes must be finite and positive")
 
-    # MIPAV FileInfoBase enums: AXIAL=0; L2R=2; P2A=3; I2S=5.
-    orientation_signs = (-1.0, -1.0, 1.0)
+    # MIPAV FileInfoBase enums: AXIAL=0; R2L=1; L2R=2; P2A=3;
+    # A2P=4; I2S=5; S2I=6. Java returns spacing / direction-sign.
+    source_sign_by_code = {"R": -1.0, "L": 1.0, "A": -1.0, "P": 1.0, "I": -1.0, "S": 1.0}
+    orientation_signs = tuple(source_sign_by_code[code] for code in normalized_codes)
     signed = tuple(float(value * sign) for value, sign in zip(zooms, orientation_signs, strict=True))
+    enum_by_code = {"R": 2, "L": 1, "A": 3, "P": 4, "I": 6, "S": 5}
     return ToadsRASGeometry(
         normalized,
         source_codes,  # type: ignore[arg-type]
         0,
-        (2, 3, 5),
+        tuple(enum_by_code[code] for code in normalized_codes),
         orientation_signs,
         signed,
         (0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
@@ -113,6 +132,7 @@ def prepare_toads_intensity(
     *,
     robust_fraction: float = 0.01,
     robust_scales: int = 2,
+    preserve_input_axis_order: bool = False,
 ) -> ToadsIntensityResult:
     """Mask corrected T1 and apply TOADS' robust-span normalization.
 
@@ -149,7 +169,14 @@ def prepare_toads_intensity(
             "TOADS robust intensity range is zero; source normalization would divide by zero"
         )
     normalized_values = np.asarray(masked / span, dtype=np.float32)
-    result = nib.Nifti1Image(normalized_values, normalized_t1.affine)
+    result_affine = normalized_t1.affine
+    if preserve_input_axis_order:
+        source_orientation = nib.orientations.io_orientation(t1_n4.affine)
+        ras_orientation = nib.orientations.io_orientation(normalized_t1.affine)
+        ras_to_source = nib.orientations.ornt_transform(ras_orientation, source_orientation)
+        normalized_values = nib.orientations.apply_orientation(normalized_values, ras_to_source)
+        result_affine = t1_n4.affine
+    result = nib.Nifti1Image(normalized_values, result_affine)
     return ToadsIntensityResult(
         result,
         float(low),

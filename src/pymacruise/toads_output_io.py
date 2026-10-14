@@ -10,7 +10,12 @@ import nibabel as nib
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .image_io import normalize_image_to_ras, nifti_ras_on_reference, save_nifti_ras
+from .image_io import (
+    normalize_image_to_ras,
+    nifti_ras_on_reference,
+    reorient_array_to_ras,
+    save_nifti_ras,
+)
 from .toads_cruise_outputs import ToadsCruiseProducts
 from .toads_dura_outputs import ToadsWrapperOutputBuffers
 
@@ -212,4 +217,35 @@ def save_toads_dura_wrapper_outputs(
         input_name=input_name,
         result_mode="DuraRemoval_input",
         cruise_products=products,
+    )
+
+
+def reorient_toads_wrapper_buffers_to_ras(
+    output_buffers: ToadsWrapperOutputBuffers,
+    source_shape_xyz: tuple[int, int, int],
+    source_affine: np.ndarray,
+) -> ToadsWrapperOutputBuffers:
+    """Reorient flattened source-order wrapper buffers to RAS x-fastest order."""
+    if not isinstance(output_buffers, ToadsWrapperOutputBuffers):
+        raise TypeError("output_buffers must be ToadsWrapperOutputBuffers")
+    shape = tuple(int(value) for value in source_shape_xyz)
+    if len(shape) != 3 or any(value <= 0 for value in shape):
+        raise ValueError("source_shape_xyz must contain three positive dimensions")
+    voxel_count = int(np.prod(shape))
+
+    def restore_and_reorient(values: ArrayLike) -> np.ndarray:
+        buffer = np.asarray(values)
+        if buffer.ndim != 1 or buffer.size != voxel_count:
+            raise ValueError("wrapper output buffer length must match source grid size")
+        source_grid = buffer.reshape(shape, order="F")
+        return reorient_array_to_ras(source_grid, source_affine).ravel(order="F")
+
+    return ToadsWrapperOutputBuffers(
+        classification=restore_and_reorient(output_buffers.classification),
+        raw_float_buffers=tuple(
+            restore_and_reorient(buffer) for buffer in output_buffers.raw_float_buffers
+        ),
+        wrapper_float_buffers=tuple(
+            restore_and_reorient(buffer) for buffer in output_buffers.wrapper_float_buffers
+        ),
     )

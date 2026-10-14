@@ -12,6 +12,7 @@ from pymacruise.image_io import (
     normalize_image_to_ras,
     orient_to_ras_without_obliquity,
     regrid_to_orthogonal_ras,
+    reorient_array_to_ras,
     save_nifti_ras,
 )
 
@@ -173,6 +174,19 @@ def test_orientation_only_ras_reorders_left_to_right_axes_without_interpolation(
     assert nib.aff2axcodes(result.affine) == ("R", "A", "S")
     assert is_axis_aligned_ras_grid(result)
     np.testing.assert_array_equal(np.asarray(result.dataobj), np.asarray(normalized.dataobj))
+
+
+def test_source_order_array_is_written_back_in_ras_axis_order() -> None:
+    values = np.arange(5 * 6 * 7, dtype=np.uint8).reshape((5, 6, 7))
+    flip = np.diag((-1.0, -1.0, 1.0, 1.0))
+    flip[0, 3] = values.shape[0] - 1
+    flip[1, 3] = values.shape[1] - 1
+    source_affine = np.eye(4) @ flip
+
+    ras = reorient_array_to_ras(values[::-1, ::-1, :], source_affine)
+
+    np.testing.assert_array_equal(ras, values)
+    assert ras.dtype == values.dtype
 
 
 def test_axis_aligned_ras_regrid_is_a_noop_and_rejects_other_interpolators() -> None:

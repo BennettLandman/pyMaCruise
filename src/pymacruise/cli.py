@@ -16,7 +16,12 @@ from pymacruise.atlas_resources import get_bundled_atlas_descriptor
 from pymacruise.ace import ace_enhance
 from pymacruise.cortical_separation import cortical_separation
 from pymacruise.gvf import generalized_gvf_image
-from pymacruise.image_io import nifti_ras_on_reference, normalize_image_to_ras, save_nifti_ras
+from pymacruise.image_io import (
+    nifti_ras_on_reference,
+    normalize_image_to_ras,
+    reorient_array_to_ras,
+    save_nifti_ras,
+)
 from pymacruise.n4 import N4Config, N4DependencyError, n4_bias_correct
 from pymacruise.raw_preparation import prepare_raw
 from pymacruise.segmentation_refine import refine_segmentation_by_surfaces
@@ -29,7 +34,10 @@ from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.topology import topology_correct
 from pymacruise.toads_dura import run_dura_removal
-from pymacruise.toads_output_io import save_toads_dura_wrapper_outputs
+from pymacruise.toads_output_io import (
+    reorient_toads_wrapper_buffers_to_ras,
+    save_toads_dura_wrapper_outputs,
+)
 from pymacruise.toads_cerebellum import remove_brainstem_and_cerebellum
 from pymacruise.toads_tissue_crop import crop_toads_tissue_maps
 from pymacruise.toads_cruise_preparation import prepare_toads_cruise_inputs
@@ -303,6 +311,14 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument("--convergence-threshold", type=float, default=1e-4)
     toads.add_argument("--relation-limit", type=int, default=3)
     toads.add_argument("--maximum-distance", type=float, default=1e-4)
+    toads.add_argument(
+        "--preserve-input-axis-order",
+        action="store_true",
+        help=(
+            "source-compatibility mode: validate/warn and normalize the input to RAS, "
+            "reconstruct its axial RAS/LPS voxel order internally, then write every image in RAS"
+        ),
+    )
     toads.add_argument(
         "--category-exponents",
         type=float,
@@ -1075,6 +1091,7 @@ def main(argv: list[str] | None = None) -> int:
             energy_tolerance=1e-6,
             minimum_lambda=1e-3,
             progress_callback=report_toads_progress,
+            preserve_input_axis_order=args.preserve_input_axis_order,
         )
         class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
         if args.category_exponents is None:
@@ -1122,18 +1139,31 @@ def main(argv: list[str] | None = None) -> int:
         if result.native_classification is None:
             raise RuntimeError("selected TOADS loop returned without terminal classification")
         ras_t1 = normalize_image_to_ras(t1_n4, source_name="N4-corrected T1 output reference")
+        output_classification = result.native_classification
+        output_buffers = result.wrapper_output_buffers
+        if args.preserve_input_axis_order:
+            output_classification = reorient_array_to_ras(
+                output_classification,
+                t1_n4.affine,
+            )
+            if output_buffers is not None:
+                output_buffers = reorient_toads_wrapper_buffers_to_ras(
+                    output_buffers,
+                    tuple(int(value) for value in t1_n4.shape),
+                    t1_n4.affine,
+                )
         output_image = nifti_ras_on_reference(
             ras_t1,
-            result.native_classification,
+            output_classification,
             dtype=np.uint8,
         )
         _save_nifti_gz(output_image, args.output)
         outputs: dict[str, Path | list[Path]] = {"classification": args.output}
         if args.dura_output_dir is not None:
-            if result.wrapper_output_buffers is None:
+            if output_buffers is None:
                 raise RuntimeError("selected TOADS loop did not return Dura-removal wrapper outputs")
             dura_outputs = save_toads_dura_wrapper_outputs(
-                result.wrapper_output_buffers,
+                output_buffers,
                 ras_t1,
                 args.dura_output_dir,
                 input_name=args.t1_n4,
@@ -1159,6 +1189,7 @@ def main(argv: list[str] | None = None) -> int:
                 "registration_iterations": args.registration_iterations,
                 "maximum_iterations": args.maximum_iterations,
                 "maximum_distance": args.maximum_distance,
+                "preserve_input_axis_order": args.preserve_input_axis_order,
                 "category_exponents": category_exponents[0].tolist(),
             },
             outputs=outputs,

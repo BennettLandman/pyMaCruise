@@ -6,6 +6,7 @@ import shutil
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.cli import build_parser, main
 from pymacruise.toads_dura import run_dura_removal
@@ -86,6 +87,46 @@ def test_toads_loop_cli_writes_terminal_classification_in_native_ras(tmp_path, c
             assert image.get_data_dtype().name == "uint8"
         else:
             assert image.get_data_dtype().name == "float32"
+
+
+def test_toads_loop_source_axis_compatibility_writes_all_products_in_ras(tmp_path, capsys) -> None:
+    t1 = nib.load(FIXTURE / "t1.nii.gz")
+    mask = nib.load(FIXTURE / "brain-mask.nii.gz")
+    flip = np.diag((-1.0, -1.0, 1.0, 1.0))
+    flip[0, 3] = t1.shape[0] - 1
+    flip[1, 3] = t1.shape[1] - 1
+    t1_path = tmp_path / "t1-lps.nii.gz"
+    mask_path = tmp_path / "mask-lps.nii.gz"
+    nib.save(
+        nib.Nifti1Image(np.asarray(t1.dataobj)[::-1, ::-1, :], t1.affine @ flip),
+        t1_path,
+    )
+    nib.save(
+        nib.Nifti1Image(np.asarray(mask.dataobj)[::-1, ::-1, :], mask.affine @ flip),
+        mask_path,
+    )
+    output = tmp_path / "classification-RAS.nii.gz"
+    dura_output_dir = tmp_path / "dura-RAS"
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS"):
+        result = main([
+            "toads-loop", "--t1-n4", str(t1_path), "--brain-mask", str(mask_path),
+            "--atlas-descriptor", str(ATLAS), "--output", str(output),
+            "--dura-output-dir", str(dura_output_dir), "--registration-levels", "1",
+            "--registration-iterations", "1", "--post-refresh-registration-iterations", "1",
+            "--registration-max-iterations", "1", "--padding", "2",
+            "--maximum-iterations", "2", "--relation-limit", "1",
+            "--preserve-input-axis-order",
+        ])
+
+    assert result == 0
+    assert "(RAS)" in capsys.readouterr().out
+    outputs = [output, *dura_output_dir.glob("*.nii.gz")]
+    assert len(outputs) == 6
+    for path in outputs:
+        image = nib.load(path)
+        assert image.shape == t1.shape
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
 
 
 def test_toads_loop_cli_runs_supported_multilevel_pyramid_after_nan_trial(tmp_path, capsys) -> None:

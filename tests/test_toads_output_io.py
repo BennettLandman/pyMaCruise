@@ -7,6 +7,7 @@ import pytest
 from pymacruise.toads_cruise_outputs import ToadsCruiseProducts
 from pymacruise.toads_dura_outputs import ToadsWrapperOutputBuffers
 from pymacruise.toads_output_io import (
+    reorient_toads_wrapper_buffers_to_ras,
     save_toads_dura_wrapper_outputs,
     save_toads_outputs,
     toads_output_images,
@@ -187,3 +188,32 @@ def test_dura_wrapper_flat_buffers_are_reconstructed_in_mipav_x_fast_order(tmp_p
     ):
         image = nib.load(paths[name])
         np.testing.assert_array_equal(image.dataobj, buffer.reshape(shape, order="F"))
+
+
+def test_source_order_dura_buffers_reorient_to_ras_before_writing() -> None:
+    ras_values = np.arange(2 * 3 * 4, dtype=np.float32).reshape((2, 3, 4))
+    flip = np.diag((-1.0, -1.0, 1.0, 1.0))
+    flip[0, 3] = ras_values.shape[0] - 1
+    flip[1, 3] = ras_values.shape[1] - 1
+    source_values = ras_values[::-1, ::-1, :]
+    flat = source_values.ravel(order="F")
+    buffers = ToadsWrapperOutputBuffers(
+        flat.astype(np.int8),
+        tuple((flat + channel).astype(np.float32) for channel in range(4)),
+        tuple((flat + channel + 10).astype(np.float32) for channel in range(4)),
+    )
+
+    result = reorient_toads_wrapper_buffers_to_ras(
+        buffers,
+        tuple(ras_values.shape),
+        flip,
+    )
+
+    np.testing.assert_array_equal(
+        result.classification,
+        ras_values.astype(np.int8).ravel(order="F"),
+    )
+    np.testing.assert_array_equal(
+        result.wrapper_float_buffers[0],
+        (ras_values + 10).ravel(order="F"),
+    )

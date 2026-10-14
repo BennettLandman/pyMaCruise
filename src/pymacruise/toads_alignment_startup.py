@@ -92,6 +92,7 @@ def prepare_toads_alignment_startup(
     padding: int = 10,
     background_label: int = 1,
     background_ratio: float = 0.0,
+    preserve_input_axis_order: bool = False,
 ) -> ToadsAlignmentStartup:
     """Prepare one-channel base TOADS state up to rigid atlas registration.
 
@@ -107,8 +108,15 @@ def prepare_toads_alignment_startup(
     fit, complete TOADS iteration, or segmentation equivalence.
     """
     input_orientation_codes = tuple(nib.aff2axcodes(t1_n4.affine))
-    intensity = prepare_toads_intensity(t1_n4, brain_mask)
-    geometry = toads_ras_geometry(intensity.image)
+    intensity = prepare_toads_intensity(
+        t1_n4,
+        brain_mask,
+        preserve_input_axis_order=preserve_input_axis_order,
+    )
+    geometry = toads_ras_geometry(
+        intensity.image,
+        preserve_input_axis_order=preserve_input_axis_order,
+    )
     values = np.asarray(geometry.image.dataobj, dtype=np.float32)
     topology = np.asarray(topology_ras)
     priors = np.asarray(intensity_priors, dtype=np.float32)
@@ -343,6 +351,7 @@ def register_toads_from_atlas_assets(
     minimum_lambda: float = 1e-3,
     allow_nonfinite_trials: bool = False,
     progress_callback: Callable[[str], None] | None = None,
+    preserve_input_axis_order: bool = False,
 ) -> ToadsAtlasAlignmentRun:
     """Wire descriptor assets through startup and initial rigid registration.
 
@@ -379,6 +388,7 @@ def register_toads_from_atlas_assets(
         padding=padding,
         background_ratio=background_ratio,
         background_label=background_label,
+        preserve_input_axis_order=preserve_input_axis_order,
     )
     if progress_callback is not None:
         progress_callback("cropped intensity and initial memberships prepared")
