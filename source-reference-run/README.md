@@ -82,6 +82,15 @@ make the request portable if the runner uses equivalent source checkouts.
   behavior actually used. The Python reference run manifest and command are
   detailed in
   [`in-vivo-100260-plus-full-run-2026-10-14.md`](../docs/reports/in-vivo-100260-plus-full-run-2026-10-14.md).
+- Resolve the LesionTOADS thinning-limit call path in the exact v3+ runtime.
+  In the supplied VandyCRUISE tree, `MedicAlgorithmLesionToads.java` passes
+  `firstLimit=3.0` to `AlgorithmLesionToads`, but that January 2008 revision-1.3
+  algorithm passes literal `0` to `LesionToadSegmentation`. Record both the
+  plugin-configured and effective segmentation limits from the executed
+  version, and include iteration-level thinning event counts if available.
+  Do not infer the compiled v3+ behavior from the older source alone. The
+  discrepancy and its synthetic method-level probe are documented in
+  [`p41z-source-wrapper-limit0-continuation-2026-10-15.md`](../docs/reports/p41z-source-wrapper-limit0-continuation-2026-10-15.md).
 
 If the source driver cannot accept the supplied mask without invoking BET or
 SPECTRE, return that run as an **unmatched historical-default reference** and
