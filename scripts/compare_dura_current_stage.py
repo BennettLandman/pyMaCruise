@@ -14,13 +14,13 @@ from scipy.ndimage import binary_erosion, distance_transform_edt
 
 
 OUTPUTS = {
-    "wm_tc": ("wm_topology.nii.gz", np.dtype(">f4")),
-    "gm_tc": ("gm_topology.nii.gz", np.dtype(">f4")),
+    "wm_tc": ("wm_tc.nii.gz", np.dtype(">f4")),
+    "gm_tc": ("gm_tc.nii.gz", np.dtype(">f4")),
     "brain_mask_level_set": ("brain_mask_level_set.nii.gz", np.dtype(">f4")),
     "brain_mask": ("brain_mask.nii.gz", np.dtype("u1")),
     "stripped_t1": ("stripped_t1.nii.gz", np.dtype(">f4")),
-    "corrected_wm": ("corrected_white_matter.nii.gz", np.dtype(">f4")),
-    "corrected_gm": ("corrected_gray_matter.nii.gz", np.dtype(">f4")),
+    "corrected_wm": ("corrected_wm.nii.gz", np.dtype(">f4")),
+    "corrected_gm": ("corrected_gm.nii.gz", np.dtype(">f4")),
 }
 
 
@@ -40,6 +40,15 @@ def mask_boundary(mask: np.ndarray) -> np.ndarray:
     six_connected[1, 0, 1] = six_connected[1, 2, 1] = True
     six_connected[1, 1, 0] = six_connected[1, 1, 2] = True
     return mask & ~binary_erosion(mask, structure=six_connected, border_value=0)
+
+
+def mismatch_summary(mask: np.ndarray, *, limit: int = 10) -> dict[str, object]:
+    """Bound JSON size while retaining a few xyz examples for diagnosis."""
+    coordinates = np.argwhere(mask)
+    return {
+        "count": int(coordinates.shape[0]),
+        "first_xyz": coordinates[:limit].tolist(),
+    }
 
 
 def compare(java_dir: Path, stage_dir: Path) -> dict[str, object]:
@@ -72,8 +81,8 @@ def compare(java_dir: Path, stage_dir: Path) -> dict[str, object]:
                 "boundary_voxel_center_hausdorff_mm": float(
                     max(to_python.max(initial=0.0), to_java.max(initial=0.0))
                 ),
-                "java_positive_python_zero_xyz": np.argwhere(java_mask & ~python_mask).tolist(),
-                "java_zero_python_positive_xyz": np.argwhere(~java_mask & python_mask).tolist(),
+                "java_positive_python_zero": mismatch_summary(java_mask & ~python_mask),
+                "java_zero_python_positive": mismatch_summary(~java_mask & python_mask),
             }
             continue
 
