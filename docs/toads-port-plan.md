@@ -1635,9 +1635,10 @@ report](reports/toads-loop-wheel-2026-10-02.md).
 
 The built wheel completed 50 registered TOADS iterations on the compact 13³
 RAS phantom with 189 changed-classification voxels. The uint8 result contains
-all 11 descriptor labels on the native grid. Registration was constrained to
-one level/one iteration to isolate the loop, and the CLI does not expose a
-stop reason, so this does not prove that the convergence threshold triggered.
-The multi-minute runtime on a tiny volume is a performance risk; human-sized
-runtime is not inferred from it. This is manual exploratory evidence, not
-pytest or Java-wrapper evidence. See [the report](reports/toads-50-iteration-cap-smoke-2026-10-02.md).
+all 11 descriptor labels on the native grid. A later source-checkout rerun
+reports terminal ratio `0.547289431`, threshold false, and iteration cap true;
+the added telemetry leaves the packaged-wheel classification bitwise
+unchanged. This establishes a cap stop on the compact case, not Java-wrapper
+equivalence or human-sized runtime. The run remains a performance risk
+indicator only. See the [initial wheel report](reports/toads-50-iteration-cap-smoke-2026-10-02.md)
+and [terminal-condition report](reports/toads-loop-terminal-stop-report-2026-10-02.md).

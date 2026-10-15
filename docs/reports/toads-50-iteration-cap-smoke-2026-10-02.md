@@ -19,17 +19,22 @@ PYTHONPATH=build/wheel-validation/site build/wheel-validation/site/bin/pymacruis
   --maximum-iterations 50 --relation-limit 1
 ```
 
-CLI result: `iterations=50`, `changed_classification_voxels=189`.
+Initial packaged-wheel result: `iterations=50`,
+`changed_classification_voxels=189`. A source-checkout rerun after the CLI
+gained stop telemetry reports terminal ratio `0.547289431`,
+`energy_threshold_reached=false`, and `iteration_limit_reached=true` for the
+same inputs and settings. See the later [terminal-condition report](toads-loop-terminal-stop-report-2026-10-02.md).
 
 ## Output check
 
 The wheel-produced classification is uint8, shape 13×13×13, RAS, finite, and
 contains all 11 expected descriptor labels (1–11). It completed the full
-configured loop cap on the compact case. The CLI result does not expose a
-separate stop reason, so reaching iteration 50 is not evidence that the
-convergence threshold triggered. This is an exploratory wheel smoke check,
-not a pytest or Java-wrapper equivalence result; it is recorded as Started in
-`plan.md` pending a repeatable test and full-suite checkpoint.
+configured loop cap on the compact case and is bitwise identical to the
+pre-change packaged-wheel output (zero differing voxels). The later
+source-checkout report confirms this is an iteration-cap stop, not natural
+convergence. This is not Java-wrapper equivalence; the follow-up telemetry
+change and its focused/full-suite validation are recorded in the linked
+terminal-condition report.
 
 The multi-minute run on a 13³ phantom is a performance risk to quantify before
 human-sized execution. The report does not extrapolate its duration linearly to
