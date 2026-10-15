@@ -109,6 +109,59 @@ PYTHONPATH=src .venv/bin/python scripts/run_with_rss_watchdog.py \
   --maseg-profile synthetic
 ```
 
+## Same-input selected Java TGDM comparison
+
+The TGDM harness was run on the exact cropped membership, tissue, ACE, and
+GVF arrays reconstructed from that surface composition; it consumed the
+hash-verified Python initial level set as its signed-distance seed. This is a
+held-fixed TGDM comparison. Dura, native transfer, MaSeg separation, and the
+loop state remain Python-generated inputs, so it is not full PLUS source
+equivalence.
+
+| Surface | Sign changes | Dice at zero | Symmetric mean distance | Sampled Hausdorff | Gates |
+|---|---:|---:|---:|---:|---|
+| Initial-inner | 0 | 1.000000 | 7.18×10⁻⁹ mm | 0.0000077 mm | Pass |
+| Central | 0 | 1.000000 | 7.21×10⁻⁹ mm | 0.0000076 mm | Pass |
+| Delivered inner | 0 | 1.000000 | 8.81×10⁻⁹ mm | 0.0000111 mm | Pass |
+| Outer | 7 | 0.999970 | 0.001368 mm | 0.570943 mm | Pass |
+
+The outer field is not voxel-identical (mean absolute field error
+`0.000628`, maximum `0.321583`), but its zero-level surface remains within the
+agreed Dice `≥0.97`, symmetric mean `≤0.01 mm`, and Hausdorff `≤1 mm` gates.
+The 73×91×63 RAS comparison peaked at **0.667 GB** Java RSS under an 8 GB
+watchdog. Comparison JSON and serialized arrays remain in ignored
+`build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/`.
+
+Reproduce from repository root (the third Java harness argument
+`precomputed_initial_level_set` is required for this saved seed):
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/prepare_plus_tgdm_java_inputs.py \
+  --workflow-root build/p41z-case-normalization/iteration99-terminal-surface-audit/plus-surfaces \
+  --output-dir build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison \
+  --context-manifest build/p41z-case-normalization/iteration99-terminal-surface-audit/synthetic-plus-terminal-surface-composition.json \
+  --use-saved-tgdm-outputs
+
+mkdir -p build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/java \
+  build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/classes
+javac -d build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/classes \
+  -sourcepath tests/java_reference/stubs:tests/java_reference/upstream \
+  tests/java_reference/PlusTGDMReferenceHarness.java
+PYTHONPATH=src .venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --interval-seconds 1 --report-interval-seconds 30 -- \
+  /usr/bin/java -Xms256m -Xmx6g \
+  -cp build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/classes \
+  PlusTGDMReferenceHarness \
+  build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/arrays.bin \
+  build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/java \
+  precomputed_initial_level_set \
+  > build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/java-watchdog.log 2>&1
+PYTHONPATH=src .venv/bin/python scripts/compare_plus_tgdm_java.py \
+  --workflow-root build/p41z-case-normalization/iteration99-terminal-surface-audit/plus-surfaces \
+  --reference-dir build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison \
+  --report build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/comparison.json
+```
+
 ## Direct comparison to the saved iteration-99 terminal product
 
 The comparator now accepts the iteration-99 cap manifest as the expected
