@@ -340,6 +340,25 @@
       "differing_voxels": 19747,
       "maximum_absolute_voxel_error": 14.594676494598389,
       "mean_absolute_voxel_error": 0.037064934217530224,
+      "python_vs_java": {
+        "differing_voxels": 87418,
+        "maximum_absolute_voxel_error": 1.9073486328125e-06,
+        "mean_absolute_voxel_error": 3.5082987119852945e-09,
+        "sign_differing_voxels": 0,
+        "surface_metrics": {
+          "candidate_to_reference_mean_mm": 3.3793228284540324e-09,
+          "dice_at_zero": 1.0,
+          "hausdorff_mm": 1.525878923181871e-05,
+          "java_faces": 487640,
+          "java_vertices": 243822,
+          "mean_absolute_distance_mm": 3.430559587005581e-09,
+          "n_candidate_vertices": 243822,
+          "n_reference_vertices": 243822,
+          "reference_to_candidate_mean_mm": 3.48179634555713e-09,
+          "source_faces": 487640,
+          "source_vertices": 243822
+        }
+      },
       "sign_differing_voxels": 0,
       "surface_metrics": {
         "candidate_to_reference_mean_mm": 0.0,
@@ -359,6 +378,25 @@
       "differing_voxels": 16823,
       "maximum_absolute_voxel_error": 14.020992755889893,
       "mean_absolute_voxel_error": 0.027467751196172802,
+      "python_vs_java": {
+        "differing_voxels": 92274,
+        "maximum_absolute_voxel_error": 4.500150680541992e-06,
+        "mean_absolute_voxel_error": 4.7227251010296144e-09,
+        "sign_differing_voxels": 0,
+        "surface_metrics": {
+          "candidate_to_reference_mean_mm": 3.885916015916865e-09,
+          "dice_at_zero": 1.0,
+          "hausdorff_mm": 1.4804077222110252e-05,
+          "java_faces": 501744,
+          "java_vertices": 250874,
+          "mean_absolute_distance_mm": 3.913835633999365e-09,
+          "n_candidate_vertices": 250874,
+          "n_reference_vertices": 250874,
+          "reference_to_candidate_mean_mm": 3.941755252081866e-09,
+          "source_faces": 501744,
+          "source_vertices": 250874
+        }
+      },
       "sign_differing_voxels": 0,
       "surface_metrics": {
         "candidate_to_reference_mean_mm": 0.0,
@@ -378,6 +416,25 @@
       "differing_voxels": 24699,
       "maximum_absolute_voxel_error": 15.597418785095215,
       "mean_absolute_voxel_error": 0.056913779144236815,
+      "python_vs_java": {
+        "differing_voxels": 2179517,
+        "maximum_absolute_voxel_error": 0.447066530585289,
+        "mean_absolute_voxel_error": 0.00030767956080643975,
+        "sign_differing_voxels": 33,
+        "surface_metrics": {
+          "candidate_to_reference_mean_mm": 0.00032539932545735126,
+          "dice_at_zero": 0.9999836878749009,
+          "hausdorff_mm": 0.4540270550422979,
+          "java_faces": 599128,
+          "java_vertices": 299566,
+          "mean_absolute_distance_mm": 0.0003243950799359265,
+          "n_candidate_vertices": 299570,
+          "n_reference_vertices": 299566,
+          "reference_to_candidate_mean_mm": 0.00032339083441450175,
+          "source_faces": 599136,
+          "source_vertices": 299570
+        }
+      },
       "sign_differing_voxels": 0,
       "surface_metrics": {
         "candidate_to_reference_mean_mm": 0.0,

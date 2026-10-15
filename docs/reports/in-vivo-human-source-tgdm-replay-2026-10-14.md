@@ -20,7 +20,19 @@ The downloaded file named `TGDMinputs/target_image_GVFimg_uc_invcp_refspace.nii.
 
 The harness compiles the committed source copies of `MaGenericTGDM`, `DistanceFieldyh`, and `GradVecFlowGeneralized`; each copy's SHA-256 is checked against the supplied source checkout and recorded in JSON. The run uses the selected `run_TGDMinvcrop_jist.m` parameter values and call sequence, but does not execute the MIPAV/JIST CLI wrapper class itself. Whole-workflow equivalence, including the upstream TOADS, ACE, inputs, and exact historical GVF, remains open.
 
-The complete replay, including mesh comparisons, peaked at **1.038 GB** under an **8 GB** RSS watchdog. This is strong human-data evidence for the selected TGDM surface stage, not clinical validation or full MaCRUISE acceptance.
+## Python versus Java on identical inputs
+
+The replay now runs `tgdm_nested_arrays` on the same six cropped scalar inputs and regenerated three-component Java GVF used by the Java harness, with the selected WM iso level `0.5`. This removes NIfTI adaptation, vector regeneration, crop construction, and upstream workflow differences from the Python-versus-Java TGDM comparison.
+
+| Output | Differing field voxels | Mean absolute field error | Maximum field error | Sign differences | Dice | Symmetric mean surface distance | Sampled Hausdorff |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Central | 87,418 | 3.51×10⁻⁹ | 1.91×10⁻⁶ | 0 | 1.000000 | 3.43×10⁻⁹ mm | 0.000016 mm |
+| Inner | 92,274 | 4.72×10⁻⁹ | 4.50×10⁻⁶ | 0 | 1.000000 | 3.91×10⁻⁹ mm | 0.000015 mm |
+| Outer | 2,179,517 | 3.08×10⁻⁴ | 0.4471 | 33 | 0.999984 | 0.000324 mm | 0.4541 mm |
+
+All three surfaces meet the agreed Dice ≥0.97, mean surface distance ≤0.01 mm, and Hausdorff ≤1 mm limits. Inner and central level sets differ only at float precision; outer has a small set of sign changes and still passes the surface-position gates. The JSON report includes exact counts, mesh sizes, and metrics. This is held-fixed selected-source stage parity on human-derived inputs; the reconstructed historical GVF and missing independent original full workflow still limit whole-run conclusions.
+
+The complete replay, including the Python evolution and mesh comparisons, peaked at **2.831 GB** under an **8 GB** RSS watchdog. This is strong human-data evidence for the selected TGDM surface stage, not clinical validation or full MaCRUISE acceptance.
 
 ## Reproduction
 

@@ -33,6 +33,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pymacruise.cropping import find_crop_parameters  # noqa: E402
 from pymacruise.validation import dice_coefficient, mesh_surface_distance_metrics  # noqa: E402
 from pymacruise.surfaces import extract_levelset_surface  # noqa: E402
+from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_arrays  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -211,6 +212,21 @@ def main() -> None:
         check=True, cwd=ROOT,
     )
 
+    # Run the Python array implementation on exactly the same crop and vector
+    # as the Java harness. This isolates TGDM implementation parity from NIfTI
+    # orientation, crop construction, GVF generation, and upstream workflows.
+    python_execution = tgdm_nested_arrays(
+        arrays["membership"], arrays["white_matter"], arrays["gray_matter"],
+        arrays["ace_gray_matter"], ace_skeleton=arrays["ace_skeleton"],
+        gvf=vector,
+        parameters=TGDMBaselineParameters(white_matter_iso=0.5),
+    )
+    python_products = {
+        "central": python_execution.central.level_set,
+        "inner": python_execution.inner.level_set,
+        "outer": python_execution.outer.level_set,
+    }
+
     raw_t1 = nib.load(str(source / "Raw/T1.nii.gz"))
     cropped_affine = raw_t1.affine.copy()
     translation = np.eye(4)
@@ -228,13 +244,22 @@ def main() -> None:
             raise ValueError(f"saved source product {name} has an unexpected grid")
         source_crop = np.asarray(source_image.dataobj, dtype=np.float32)[crop_slices]
         java_values = _read_tgdm_output(java_output / f"{name}.raw.gz", shape)
+        python_values = np.asarray(python_products[name], dtype=np.float32)
         difference = np.abs(java_values.astype(np.float64) - source_crop.astype(np.float64))
+        python_java_difference = np.abs(python_values.astype(np.float64) - java_values.astype(np.float64))
         comparisons[name] = {
             "differing_voxels": int(np.count_nonzero(java_values != source_crop)),
             "sign_differing_voxels": int(np.count_nonzero(np.signbit(java_values) != np.signbit(source_crop))),
             "mean_absolute_voxel_error": float(difference.mean()),
             "maximum_absolute_voxel_error": float(difference.max(initial=0.0)),
             "surface_metrics": _surface_metrics(java_values, source_crop, cropped_affine),
+            "python_vs_java": {
+                "differing_voxels": int(np.count_nonzero(python_values != java_values)),
+                "sign_differing_voxels": int(np.count_nonzero(np.signbit(python_values) != np.signbit(java_values))),
+                "mean_absolute_voxel_error": float(python_java_difference.mean()),
+                "maximum_absolute_voxel_error": float(python_java_difference.max(initial=0.0)),
+                "surface_metrics": _surface_metrics(python_values, java_values, cropped_affine),
+            },
         }
 
     result = {
