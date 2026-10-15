@@ -10,6 +10,22 @@ The ANTs source branch can be inspected in [`N4BiasFieldCorrection.cxx`](https:/
 
 `N4Config` and the standalone `n4` CLI now default `rescale_intensities=False`. An explicit `--rescale-intensities` remains available for profiles that intentionally request the post-step. The default no-mask call preserves the wrapper's source command behavior. This corrects the former inference that ANTs CLI's internal `doRescale=true` meant the no-mask invocation rescaled its output.
 
+## Spline-profile check
+
+The bare ANTs CLI's documented B-spline default is one mesh element per image
+axis (`-b [1x1x1,3]`). ANTsPy documents `spline_param=None` as that same
+one-element mesh in every dimension. The installed ANTsPy 0.6.3 adapter
+confirms this directly: `None` becomes `[1] * image.dimension`, and a
+three-element list is serialized as a per-axis mesh. PyMaCRUISE explicitly
+passes `[1, 1, 1]`, so this is equivalent to the selected bare-CLI mesh; this
+parameter does not explain the remaining historical N4 difference. The
+historical ANTs build is unavailable, so equivalence to that exact binary
+cannot be asserted.
+
+Sources: [ANTs CLI N4 source and option defaults](https://github.com/ANTsX/ANTs/blob/main/Examples/N4BiasFieldCorrection.cxx),
+[ANTsPy N4 API](https://antspy.readthedocs.io/en/latest/core.html), and the
+installed `ants/ops/bias_correction.py` implementation (ANTsPy 0.6.3).
+
 ## Validation
 
 Focused command:
