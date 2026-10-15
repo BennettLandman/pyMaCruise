@@ -47,10 +47,67 @@ comparator RSS was **0.958 GB** under 4 GB. This is selected-method parity on
 matched checkpoint data; it does not compare the complete Java application
 or independently validate Java's iteration-limit wrapper branch.
 
-No iteration-99 surface-tail or ribbon audit was run. P41z remains an
-unfinished full-workflow validation row, though its current registered-loop
-continuation has now provided an explicit iteration-cap nonconvergence
-outcome.
+P41z remains an unfinished full-workflow validation row. A terminal surface
+composition and explicit ribbon-quality audit were subsequently run from the
+hash-verified iteration-99 state; those measurements are recorded below as
+diagnostics, separate from source-equivalence evidence.
+
+## Iteration-99 source-profile surface and ribbon audit
+
+The actual terminal cap-99 checkpoint was composed through the selected Dura,
+native-grid transfer, MaSeg separation, and CRUISE surface pipeline. It used
+the committed labeled 81×101×77 RAS fixture and the source-selected TGDM
+profile recorded in the composition manifest: initial/inner/central/outer
+iterations **6/4/7/7**, WM iso `0.5`, GM iso `0.4`, central pressure `1.5`,
+and the selected curvature/external-force settings. This is a composition from
+saved checkpoints, not one uninterrupted PLUS invocation and not an
+independent Java surface-evolution comparison. The loop's selected 98→99
+methods and cap-control branch have separate Java evidence above.
+
+The terminal composition completed at 0.634 GB peak sampled RSS under an 8 GB
+watchdog. The explicit ribbon audit completed at 0.260 GB under a 4 GB
+watchdog. It reports RAS geometry, 0 nesting violations, and watertight
+manifolds with no boundary or nonmanifold edges. All four requested synthetic
+MaSeg label values are present. The measured anatomy/geometry checks are:
+
+- GM-between-surfaces support **93.03%**, below the diagnostic 97% reference;
+  WM-inside-inner **99.42%** and CSF-outside-outer **99.27%**.
+- Meshes have **2 connected components** each and Euler characteristic
+  **−16**, so the connected genus-zero diagnostic fails.
+- Level-set subtraction thickness mean is **4.841 mm** across 71,420 crossing
+  voxels. Closest-surface thickness median/p05/p95 is
+  **6.424/0.232/12.320 mm**; the median and tails miss the audit's nominal
+  5 mm profile ranges.
+- The audit JSON reports `passed=false` for tissue support, topology, and
+  production thickness, with nesting and level-set mean checks passing.
+
+These are diagnostic anatomy results, not criteria for declaring the port
+incorrect; source agreement on matched inputs remains the acceptance test.
+The audit records loop ratio `0.13026626408100128` and
+`stop_reason=iteration_limit`, consistent with the separate nonconvergence
+evidence. Machine output is under ignored
+`build/p41z-case-normalization/iteration99-terminal-surface-audit/`;
+composition signature `5dddf9bed372e20e238bd52390c7b2358289678217575bd20742740d08be825f`.
+
+Reproduce from repository root:
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 8 --interval-seconds 2 --report-interval-seconds 60 -- \
+  .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
+  --loop-manifest build/p41z-case-normalization/iteration99-terminal/lesion-registered-loop.json \
+  --t1 tests/data/synthetic/plus_vandy_atlas_aligned_fine/t1.nii.gz \
+  --brain-mask tests/data/synthetic/plus_vandy_atlas_aligned_fine/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_vandy_atlas_aligned_fine/maseg.nii.gz \
+  --output-dir build/p41z-case-normalization/iteration99-terminal-surface-audit
+
+PYTHONPATH=src .venv/bin/python scripts/run_with_rss_watchdog.py \
+  --limit-gb 4 --interval-seconds 1 --report-interval-seconds 15 -- \
+  .venv/bin/python scripts/audit_plus_ribbon_quality.py \
+  build/p41z-case-normalization/iteration99-terminal-surface-audit/synthetic-plus-terminal-surface-composition.json \
+  --report build/p41z-case-normalization/iteration99-terminal-surface-audit/ribbon-quality.json \
+  --maseg-profile synthetic
+```
 
 ## Direct comparison to the saved iteration-99 terminal product
 
