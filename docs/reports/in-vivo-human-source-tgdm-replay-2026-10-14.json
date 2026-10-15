@@ -1,0 +1,397 @@
+{
+  "case": "downloaded human BASE source TGDM replay",
+  "coordinate_system": "RAS millimetres for surface distances",
+  "crop_affine_ras": [
+    [
+      0.9975703954696655,
+      0.06377802044153214,
+      -0.028031587600708008,
+      -72.2304282411933
+    ],
+    [
+      -0.05765649303793907,
+      0.9816681742668152,
+      0.181668221950531,
+      -88.64074255153537
+    ],
+    [
+      0.0391041561961174,
+      -0.17961063981056213,
+      0.9829602837562561,
+      -10.728213496506214
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "crop_bounds_inclusive": [
+    [
+      21,
+      160
+    ],
+    [
+      33,
+      201
+    ],
+    [
+      71,
+      204
+    ]
+  ],
+  "crop_shape": [
+    140,
+    169,
+    134
+  ],
+  "evidence_category": "held-fixed Java source-stage replay using exported historical workflow inputs",
+  "full_shape": [
+    184,
+    256,
+    256
+  ],
+  "java_input_hashes_and_geometry": [
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "membership",
+      "sha256": "a92a88a58460aed19b213f9baf8efe253ad3bcb2d67334ba3e129159d636b606",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    },
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "white_matter",
+      "sha256": "c30732496899e0c62fa7401ff3434f4eb226e407db863da05b7241561223789c",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    },
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "gray_matter",
+      "sha256": "aa04265eba2a91365a8b150385f44baf5f3c3ed4cc8ebe080152680d5e74c8b3",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    },
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "ace_gray_matter",
+      "sha256": "5cefdd48c7d88bd081a674ba6ecec912bd678a6ab30cd6498c845ba407102a9f",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    },
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "ace_skeleton",
+      "sha256": "fb979e3a51f44f4171f2ac3bf3afc73526db8d6ae3cad242472f5e90d951af6f",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    },
+    {
+      "affine": [
+        [
+          0.9975703358650208,
+          0.06377802044153214,
+          -0.02803158387541771,
+          -93.29383850097656
+        ],
+        [
+          -0.05765648931264877,
+          0.9816681742668152,
+          0.181668221950531,
+          -132.72344970703125
+        ],
+        [
+          0.0391041561961174,
+          -0.17961063981056213,
+          0.9829602241516113,
+          -75.41242980957031
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "name": "saved_scalar_gvf",
+      "sha256": "198d51590ae4c7b380b14df64f317c23ea2e90a3d162ff90f2515e858ee62108",
+      "shape": [
+        184,
+        256,
+        256
+      ]
+    }
+  ],
+  "java_source": {
+    "gvf": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/GVFReferenceHarness.java",
+    "tgdm": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/PlusTGDMReferenceHarness.java"
+  },
+  "saved_scalar_gvf_component_diagnostic": {
+    "0": {
+      "correlation_vs_exported_scalar": 0.9873952975966148,
+      "mae_vs_exported_scalar": 0.004118475364986435,
+      "max_abs_vs_exported_scalar": 0.4184560775756836
+    },
+    "1": {
+      "correlation_vs_exported_scalar": -0.018341164890777216,
+      "mae_vs_exported_scalar": 0.2169355560951977,
+      "max_abs_vs_exported_scalar": 0.9386574327945709
+    },
+    "2": {
+      "correlation_vs_exported_scalar": -0.026184495206313076,
+      "mae_vs_exported_scalar": 0.2623224647886294,
+      "max_abs_vs_exported_scalar": 0.9496540725231171
+    }
+  },
+  "scope_limit": "not a fresh full MaCRUISE Java/MATLAB run; the exported scalar GVF is checked as a missing-vector diagnostic and the three-component vector is regenerated from the exported ACE-GM crop",
+  "source_atlas_gm_sha256": "422fe76211732412f36486426226e11b791474b50148b754c15c5288b6853a99",
+  "source_file_hashes": {
+    "distance_field": {
+      "copy_matches_selected_source": true,
+      "harness_source_copy": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/upstream/edu/vanderbilt/masi/algorithms/CRUISE/ace/DistanceFieldyh.java",
+      "selected_source": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/algorithms/CRUISE/ace/DistanceFieldyh.java",
+      "selected_source_sha256": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811",
+      "sha256": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811"
+    },
+    "generalized_gvf": {
+      "copy_matches_selected_source": true,
+      "harness_source_copy": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/upstream/edu/jhu/ece/iacl/algorithms/gvf/GradVecFlowGeneralized.java",
+      "selected_source": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/src/edu/jhu/ece/iacl/algorithms/gvf/GradVecFlowGeneralized.java",
+      "selected_source_sha256": "90a52c6eeb090cc564cee1b221b0733bb3576b91a663279bcd838a3392b5235f",
+      "sha256": "90a52c6eeb090cc564cee1b221b0733bb3576b91a663279bcd838a3392b5235f"
+    },
+    "ma_generic_tgdm": {
+      "copy_matches_selected_source": true,
+      "harness_source_copy": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/upstream/edu/vanderbilt/masi/plugins/CRUISE/tgdm/MaGenericTGDM.java",
+      "selected_source": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/plugins/CRUISE/tgdm/MaGenericTGDM.java",
+      "selected_source_sha256": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d",
+      "sha256": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d"
+    },
+    "ma_tgdm_crop_wrapper": {
+      "path": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/src/edu/vanderbilt/masi/plugins/CRUISE/tgdm/MaTGDMcrop.java",
+      "sha256": "1d4b5540dd5ea13c2b6eed5235c7ae05574432c39ff4240b0d595ea0342042d0",
+      "used_as": "parameter and stage-order source; the Java CLI wrapper itself is not run"
+    },
+    "matlab_cli_wrapper": {
+      "path": "/Users/landmaba/dev/deleteme/masimatlab/trunk/xnatspiders/matlab/MaCRUISE/pipeline/run_TGDMinvcrop_jist.m",
+      "sha256": "90a40f3330adab3b21615afcc5c373c44637e3a887bed9e509c83c1efc172131",
+      "used_as": "selected workflow parameter defaults and command input ordering"
+    }
+  },
+  "source_output": "/Users/landmaba/dev/mipav/sample-macruise/output",
+  "source_output_segmentation_sha256": "524e088110c616ab261f05f3a09861f2735bde170b5b8495b43118be34005e81",
+  "source_output_t1_sha256": "aae1e3168beea2f26369d34eea60115675e0f0a0123e9f64df8a00d04cfd068b",
+  "source_selected_parameters": {
+    "central_iterations": 7,
+    "connectivity": "18/6",
+    "gm_iso": 0.4,
+    "gvf_lambda": 1.0,
+    "gvf_max_iterations": 200,
+    "initial_iso": 126.9,
+    "initial_smoothing_iterations": 6,
+    "inner_iterations": 4,
+    "outer_iterations": 7,
+    "wm_iso": 0.5
+  },
+  "source_surface_comparisons": {
+    "central": {
+      "differing_voxels": 19747,
+      "maximum_absolute_voxel_error": 14.594676494598389,
+      "mean_absolute_voxel_error": 0.037064934217530224,
+      "sign_differing_voxels": 0,
+      "surface_metrics": {
+        "candidate_to_reference_mean_mm": 0.0,
+        "dice_at_zero": 1.0,
+        "hausdorff_mm": 0.0,
+        "java_faces": 487640,
+        "java_vertices": 243822,
+        "mean_absolute_distance_mm": 0.0,
+        "n_candidate_vertices": 243822,
+        "n_reference_vertices": 243822,
+        "reference_to_candidate_mean_mm": 0.0,
+        "source_faces": 487640,
+        "source_vertices": 243822
+      }
+    },
+    "inner": {
+      "differing_voxels": 16823,
+      "maximum_absolute_voxel_error": 14.020992755889893,
+      "mean_absolute_voxel_error": 0.027467751196172802,
+      "sign_differing_voxels": 0,
+      "surface_metrics": {
+        "candidate_to_reference_mean_mm": 0.0,
+        "dice_at_zero": 1.0,
+        "hausdorff_mm": 0.0,
+        "java_faces": 501744,
+        "java_vertices": 250874,
+        "mean_absolute_distance_mm": 0.0,
+        "n_candidate_vertices": 250874,
+        "n_reference_vertices": 250874,
+        "reference_to_candidate_mean_mm": 0.0,
+        "source_faces": 501744,
+        "source_vertices": 250874
+      }
+    },
+    "outer": {
+      "differing_voxels": 24699,
+      "maximum_absolute_voxel_error": 15.597418785095215,
+      "mean_absolute_voxel_error": 0.056913779144236815,
+      "sign_differing_voxels": 0,
+      "surface_metrics": {
+        "candidate_to_reference_mean_mm": 0.0,
+        "dice_at_zero": 1.0,
+        "hausdorff_mm": 0.0,
+        "java_faces": 599136,
+        "java_vertices": 299570,
+        "mean_absolute_distance_mm": 0.0,
+        "n_candidate_vertices": 299570,
+        "n_reference_vertices": 299570,
+        "reference_to_candidate_mean_mm": 0.0,
+        "source_faces": 599136,
+        "source_vertices": 299570
+      }
+    }
+  }
+}
