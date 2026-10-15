@@ -70,14 +70,15 @@ before execution begins. `--resume` verifies existing checkpoints and resumes
 the configured workflow. Non-RAS inputs are normalized by the runners with
 visible warnings; persisted image outputs are RAS `.nii.gz`.
 
-The base profile executes seven checked stages: N4, first TOADS, Dura removal,
-second TOADS, CRUISE/ACE/GVF/TGDM core, MaSeg refinement, and scientific
-surface/thickness products. The last stage writes inner, central, and outer
-RAS-mm VTK meshes, a measured inner VTK mesh, a level-set-subtraction
-thickness NIfTI, a thickness summary JSON, and provenance. Its use of
-scikit-image Lewiner marching cubes is an explicit substitute for JIST
-`IsoSurfaceOnGrid`; mesh-connectivity equivalence remains open. The selected
-surface closest-point and level-set thickness operations are described in
+The base profile executes eight checked stages: N4, first TOADS, Dura removal,
+second TOADS, MaSeg/TOADS tissue preparation, CRUISE/ACE/GVF/TGDM core, MaSeg
+refinement, and scientific surface/thickness products. The last stage writes
+inner, central, and outer RAS-mm VTK meshes, a measured inner VTK mesh, a
+level-set-subtraction thickness NIfTI, a thickness summary JSON, and
+provenance. Surface extraction now uses the source-derived connectivity-18
+case templates for JIST `IsoSurfaceOnGrid`; selected same-level-set Java
+comparisons pass the surface position gates. The selected surface
+closest-point and level-set thickness operations are described in
 [`thickness-port.md`](thickness-port.md).
 
 ## `pymacruise base-run`
@@ -89,22 +90,26 @@ pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
 ```
 
 Regridding is recommended and enabled by default. It resamples an oblique RAS
-grid to an orthogonal RAS grid at the T1 voxel spacing. T1 uses linear interpolation; the binary mask and MaSeg labels
-use nearest-neighbor interpolation. The shared regridded inputs and hashes are
-recorded under the run's `resources` directory and manifest. Axis-aligned RAS
-inputs are left unchanged. Use `--no-regrid-inputs` to preserve a pre-aligned
-orthogonal grid; TOADS currently rejects oblique grids when regridding is off.
-The run uses the required user-provided T1-grid mask and does not invoke BET or
-SPECTRE.
+grid to an orthogonal RAS grid at the T1 voxel spacing. T1 uses linear
+interpolation; the binary mask and MaSeg labels use nearest-neighbor
+interpolation. The shared regridded inputs and hashes are recorded under the
+run's `resources` directory and manifest. Axis-aligned RAS inputs are left
+unchanged. Use `--no-regrid-inputs` for source-style axis-only geometry: each
+input is reoriented to the closest RAS axis order using only axis permutations
+and flips, while oblique direction cosines are ignored. No interpolation is
+performed; the manifest records this geometry mode. The run uses the required
+user-provided T1-grid mask and does not invoke BET or SPECTRE.
 
 ## `pymacruise plus-full-run`
 
 The full plus workflow accepts the same `[--regrid-inputs | --no-regrid-inputs]`
-option, recommended and enabled by default. When T1 is oblique, it creates a shared orthogonal
-RAS grid for T1, brain mask, and MaSeg under `resources/regridded-inputs`;
-T1 uses linear interpolation and the discrete inputs use nearest neighbor.
-FLAIR stays on its input grid and is registered by the plus preprocessing
-stage. Disabling regridding requires an axis-aligned RAS T1 grid.
+option, recommended and enabled by default. When T1 is oblique, it creates a
+shared orthogonal RAS grid for T1, brain mask, and MaSeg under
+`resources/regridded-inputs`; T1 uses linear interpolation and the discrete
+inputs use nearest neighbor. FLAIR stays on its input grid and is registered
+by the plus preprocessing stage. With `--no-regrid-inputs`, T1, mask, MaSeg,
+and FLAIR are each reoriented by axis permutations/flips to closest RAS;
+oblique direction cosines are ignored and no regridding interpolation is done.
 
 Native Dura transfer defaults to `--dura-transfer-mode physical-affine`,
 which maps source values to the full T1 grid using physical RAS coordinates.
@@ -128,9 +133,9 @@ one physical grid. It extracts all three scientific meshes, computes the
 selected absolute level-set subtraction thickness volume, and writes the
 selected closest-point thickness values on the inner surface. VTK point
 coordinates are RAS+ millimetres; the thickness volume is RAS `.nii.gz`.
-`thickness_summary.json` records means, sample standard
-deviations, crossing/nonzero counts, and the marching-cubes connectivity
-deviation. Undefined summary values are represented as JSON `null`. This
+`thickness_summary.json` records means, sample standard deviations,
+crossing/nonzero counts, and the source-derived JIST connectivity-18 surface
+method. Undefined summary values are represented as JSON `null`. This
 command does not render surfaces or create viewer-specific files.
 
 ## `pymacruise topology-correct`
@@ -361,7 +366,7 @@ deviation documented in the port plan.
 pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
   --output Classification.nii.gz [--atlas-descriptor ATLAS.txt] \
   [--modality T1_MPRAGE] [--registration-levels 4] \
-  [--registration-iterations 50] [--post-refresh-registration-iterations 1] \
+  [--registration-iterations 50] [--post-refresh-registration-iterations 5] \
   [--registration-max-iterations 5] \
   [--padding 10] [--maximum-iterations 50] \
   [--convergence-threshold 1e-4] [--relation-limit 3] \
@@ -386,8 +391,10 @@ The command writes one uint8 classification map on the original T1 grid with
 RAS orientation and affine. Labels are restored from the registered crop using
 the selected TOADS padding and x-fast uncrop semantics. The optional Dura-removal files are inputs for a later stage; this command
 does not execute dura removal, run the second MaCRUISE TOADS pass, create final
-CRUISE output products, or execute the complete base/plus workflow. The broader workflow CLI
-and synthetic full-workflow validation remain open.
+CRUISE output products, or execute a complete base/plus workflow by itself.
+The separate `base-run` and `plus-full-run` commands assemble restartable
+end-to-end workflows; synthetic workflow execution is validated, while
+whole-workflow Java/MATLAB equivalence remains open.
 
 For the selected synthetic handoff, use the three exported maps required by
 the current Dura CLI input contract and retain the original T1 as its reference:
