@@ -1,0 +1,10 @@
+524e088110c616ab261f05f3a09861f2735bde170b5b8495b43118be34005e81  source-reference-run/inputs/base-root/MaSeg.nii.gz
+aae1e3168beea2f26369d34eea60115675e0f0a0123e9f64df8a00d04cfd068b  source-reference-run/inputs/base-root/T1.nii.gz
+c8609e0dee0aa4de9b92f4c102cfd5678290abe1bb18e57415c19cac7c0409ad  source-reference-run/inputs/base-root/brain_mask.nii.gz
+53e889b2d6475981c8d2995842c83eaf65934fcb5a98416d364db4f49a46a6ba  source-reference-run/inputs/100260/FLAIR.nii.gz
+c2327e8fd019b920092047a06b5e7fa6cce82bc23b7e54bb36f1056f96aa70cb  source-reference-run/inputs/100260/MaSeg.nii.gz
+14967cf7f9b56f5341c2b13539667286777d13460661be528d045360a545d8bb  source-reference-run/inputs/100260/T1.nii.gz
+17fc3e22c7d9bab7bcbf76221cb345a09b4e77e0e59ac1f5c80bfc4b50432610  source-reference-run/inputs/100260/brain_mask.nii.gz
+cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939  data/atlases/cruise-atlas-10obj-toads2008.txt
+e42901c860901e0c562e01e8800eda6ac43c528ea4c7bdf27218ad8daab870d7  data/atlases/lesionToads-atlas-2012/cruise-atlas-12obj-lesiontoads2012.txt
+9081e4a70954206a02d61ec817f2f9c8e9e8c6f0d36869ecb64bb812925e5199  data/atlases/lesionToads-atlas-2012/brain-atlas-cruise-12obj-lesions-topology_calc.nii.gz
