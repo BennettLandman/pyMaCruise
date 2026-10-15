@@ -128,9 +128,21 @@ def hydrate_plus_lesion_registered_branch(
     if packed.shape != (*spatial, 17) or diagnostics.shape != (*spatial, 17) or distance_state.shape != (*spatial, 6):
         raise RegisteredBranchStateError("registered-branch state channel shapes are invalid")
     nonfinite_diagnostics = int(np.count_nonzero(~np.isfinite(diagnostics)))
+    reported_nonfinite_diagnostics = summary.get("nonfinite_membership_energy_values")
+    # Older complete checkpoints predate the explicit nonfinite counters. They
+    # remain safe to resume only when the diagnostic volume itself is finite;
+    # unreported NaNs must never be silently accepted.
+    unreported_nonfinite_diagnostics = (
+        reported_nonfinite_diagnostics is None and nonfinite_diagnostics != 0
+    )
+    diagnostic_count_mismatch = (
+        reported_nonfinite_diagnostics is not None
+        and nonfinite_diagnostics != int(reported_nonfinite_diagnostics)
+    )
     if (
         not np.isfinite(packed).all()
-        or nonfinite_diagnostics != int(summary.get("nonfinite_membership_energy_values", -1))
+        or unreported_nonfinite_diagnostics
+        or diagnostic_count_mismatch
         or (nonfinite_diagnostics and not summary.get("source_zero_variance_nan"))
     ):
         raise RegisteredBranchStateError("registered-branch state contains unreported nonfinite values")

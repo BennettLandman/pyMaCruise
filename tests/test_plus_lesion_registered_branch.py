@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -249,7 +250,21 @@ def test_registered_branch_checkpoint_completes_and_resumes(tmp_path: Path, monk
         ), axis=-1),
     )
 
+    # Simulate a complete checkpoint written before explicit nonfinite counters
+    # were added to the summary schema. It is safe to hydrate because the
+    # actual diagnostic volume above was verified finite.
+    summary_path = Path(manifest["outputs"]["summary"]["path"])
+    original_summary_bytes = summary_path.read_bytes()
+    original_manifest_bytes = result.manifest_path.read_bytes()
+    legacy_summary = json.loads(summary_path.read_text())
+    legacy_summary.pop("nonfinite_membership_energy_values", None)
+    legacy_summary.pop("nonfinite_membership_values", None)
+    summary_path.write_text(json.dumps(legacy_summary, indent=2, sort_keys=True) + "\n")
+    manifest["outputs"]["summary"]["sha256"] = hashlib.sha256(summary_path.read_bytes()).hexdigest()
+    result.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     hydrated, registration, distance_state = hydrate_plus_lesion_registered_branch(result.manifest_path)
+    summary_path.write_bytes(original_summary_bytes)
+    result.manifest_path.write_bytes(original_manifest_bytes)
     np.testing.assert_array_equal(
         hydrated.membership_result.membership.class_memberships,
         membership.class_memberships,
