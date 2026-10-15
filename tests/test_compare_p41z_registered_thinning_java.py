@@ -28,3 +28,18 @@ def test_resumable_checkpoint_comparison_reports_all_requested_arrays():
 
     assert available == list(names)
     assert unavailable == []
+
+
+def test_nonnegative_thinning_override_is_applied_without_changing_checkpoint():
+    settings = {"thinning_limit": 1000.0}
+    selected = _MODULE._settings_with_thinning_override(settings, 0.0)
+
+    assert selected["thinning_limit"] == 0.0
+    assert settings["thinning_limit"] == 1000.0
+
+
+def test_negative_thinning_override_is_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="finite and nonnegative"):
+        _MODULE._settings_with_thinning_override({"thinning_limit": 3.0}, -1.0)

@@ -61,6 +61,16 @@ def _available_checkpoint_arrays(expected_names: set[str], names: tuple[str, ...
     return available, unavailable
 
 
+def _settings_with_thinning_override(settings: dict, override: float | None) -> dict:
+    selected = dict(settings)
+    if override is None:
+        return selected
+    if not math.isfinite(override) or override < 0:
+        raise ValueError("thinning_limit override must be finite and nonnegative")
+    selected["thinning_limit"] = float(override)
+    return selected
+
+
 def _json_safe(value):
     """Keep source-faithful nonfinite scalars explicit in strict JSON reports."""
     if isinstance(value, dict):
@@ -586,6 +596,7 @@ def compare(
     java: str = "java",
     javac: str = "javac",
     expected_next_manifest: Path | None = None,
+    thinning_limit: float | None = None,
 ) -> dict:
     manifest_file = manifest_path.expanduser().resolve()
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
@@ -624,7 +635,7 @@ def compare(
         image_resolutions_mm=image_resolution,
         template_resolutions_mm=template_resolution,
     )
-    settings = manifest["settings"]
+    settings = _settings_with_thinning_override(manifest["settings"], thinning_limit)
     thinning = run_lesion_toads_next_iteration_thinning(
         branch,
         shapes,
@@ -864,6 +875,7 @@ def compare(
             f"hash-verified P41z iteration-{workflow_iteration} registered state"
         ),
         "workflow_iteration": workflow_iteration,
+        "thinning_limit": float(settings["thinning_limit"]),
         "shape_grid_xyz": list(dimensions),
         "shape_exact": shape_exact,
         "shape_values": int(shapes.size),
@@ -933,6 +945,10 @@ def main() -> None:
     parser.add_argument("--java", default="java")
     parser.add_argument("--javac", default="javac")
     parser.add_argument("--expected-next-checkpoint", type=Path)
+    parser.add_argument(
+        "--thinning-limit", type=float,
+        help="override the checkpoint setting for a source-selected or diagnostic method comparison",
+    )
     args = parser.parse_args()
     compare(
         args.checkpoint_manifest,
@@ -940,6 +956,7 @@ def main() -> None:
         java=args.java,
         javac=args.javac,
         expected_next_manifest=args.expected_next_checkpoint,
+        thinning_limit=args.thinning_limit,
     )
 
 
