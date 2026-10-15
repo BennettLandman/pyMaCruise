@@ -64,7 +64,13 @@ mask/registration path differs from this owner-selected workflow. It is a
 secondary diagnostic, not a controlled source oracle. The source `Raw/T1`
 and `Raw/Seg` arrays still match the provided input files voxel-for-voxel;
 files were compared by voxel index after the explicitly requested axis-only
-RAS handling.
+RAS handling. A nearby case-100260 v3.2.0 log does not supply provenance for
+this output: it names a different 176×240×256 BIDS MP2RAGE/SLANT input, records
+MultiAtlas skull stripping, and ends in status 1 with `SEG_refine.nii.gz`
+missing; the associated versioned `Output` tree has no files. The downloaded
+root `output/Raw` arrays are 184×256×256 and exactly match the separate
+provided `sample-macruise/input` files. Thus the root output remains a useful
+secondary comparison, but its run settings are still unknown.
 
 - Historical N4 vs current no-mask ANTsPy N4: whole-volume MAE **6,165.91**,
   RMSE **14,573.26**, max absolute difference **137,189.73** intensity units.

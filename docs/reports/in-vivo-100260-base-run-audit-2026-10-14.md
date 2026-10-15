@@ -25,8 +25,21 @@ Reported diagnostic thickness is 2.507 mm mean from level-set subtraction
 (275,413 crossing voxels) and 1.626 mm mean from symmetric closest-point
 surface distance. These are internal measurements; no complete subject-
 specific historical reference is available to assess the agreed Java/Python
-surface-position gates. The supplied source log reports an unsuccessful
-MaCRUISE run, and the old copied output directory is absent.
+surface-position gates. The adjacent `MaCRUISEv3.2.0/logs/macruise.log`
+(SHA-256 `6092d5aad1f8797e382ff1a6c3964da81dad8df1588a5e635554d22ad9191302`)
+is not a successful reference run: it uses a separate 176×240×256 BIDS
+MP2RAGE/SLANT input, records MultiAtlas skull stripping, exits with status 1,
+and reports `SEG_refine.nii.gz` missing. Its neighboring `Output` tree has
+only empty subdirectories. The downloaded root `sample-macruise/output`
+instead contains `Raw/T1` and `Raw/Seg` arrays exactly matching the local
+184×256×256 `sample-macruise/input/T1.nii.gz` and `orig_target_seg.nii.gz`.
+Their compressed-file SHA-256 values are
+`aae1e3168beea2f26369d34eea60115675e0f0a0123e9f64df8a00d04cfd068b` (T1)
+and `524e088110c616ab261f05f3a09861f2735bde170b5b8495b43118be34005e81`
+(MaSeg). The BIDS T1 named in the log has shape 176×240×256 and file SHA-256
+`14967cf7f9b56f5341c2b13539667286777d13460661be528d045360a545d8bb`; it is
+not the 184×256×256 T1 in the downloaded root output. The root output still
+has no run log, so the v3.2.0 log cannot establish its settings or provenance.
 
 The second TOADS pass reached the configured 50-iteration cap without meeting
 the `1e-4` threshold. The first pass stopped naturally at iteration 41 and
