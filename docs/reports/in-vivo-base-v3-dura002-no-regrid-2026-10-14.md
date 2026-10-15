@@ -68,6 +68,32 @@ segmentation/surface tolerances. Fresh, controlled execution of the original
 full MaCRUISE source remains necessary to distinguish a Python mismatch from
 different historical settings or inputs.
 
+## Earliest historical intermediate differences
+
+To help localize the final mismatch, the historical intermediate NIfTIs were
+reoriented to closest RAS using axis permutations/flips only, then compared to
+the current run on the shared 184×256×256 voxel grid. No interpolation was
+used. The historical first/second TOADS files carry LPS orientation; they were
+flipped to RAS before label comparisons.
+
+| Historical intermediate vs current Python | Difference |
+| --- | --- |
+| N4 output | Same shape and RAS axis order, but values are not equal: MAE 1,094.82, RMSE 2,905.36, maximum absolute error 36,014.49 intensity units. Historical mean is 9,807.52; ANTsPy result mean is 8,716.97. |
+| MultiAtlasStripping mask vs supplied T1 BET mask | Dice 0.95797; 111,925 differing voxels (1,357,775 vs 1,305,326 positive voxels). |
+| First TOADS labels after LPS-to-RAS flips | 508,454 differing voxels; mean Dice 0.8071 across nonzero labels. The historical first-pass WM mask Dice is 0.92926. |
+| Dura brain mask after LPS-to-RAS flips | Dice 0.96795; 90,404 differing voxels. |
+| Second TOADS labels after LPS-to-RAS flips | 198,133 differing voxels; mean Dice 0.8814 across nonzero labels. |
+
+These measurements identify substantial differences before the final CRUISE
+surfaces. They do not isolate a Python defect: the historical run uses a
+MultiAtlasStripping mask while this port uses the user-supplied BET mask, and
+its N4 product differs from the selected ANTsPy-backed operation. The matched
+Java/Python TOADS result above shows that TOADS itself agrees when the corrected
+Python Dura handoff is held fixed. The intermediate comparison script and its
+machine-readable output are
+[`compare_human_base_intermediates.py`](../../scripts/compare_human_base_intermediates.py)
+and the ignored `intermediate-comparison.json` in the run directory.
+
 ## Reproduction
 
 The implementation tree is commit `9ee3ee92965a7b71f8107086dc51334f9ffd6935`;
