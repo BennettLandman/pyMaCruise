@@ -132,6 +132,21 @@ The 73×91×63 RAS comparison peaked at **0.667 GB** Java RSS under an 8 GB
 watchdog. Comparison JSON and serialized arrays remain in ignored
 `build/p41z-case-normalization/iteration99-terminal-surface-audit/tgdm-java-comparison/`.
 
+The Java outputs were then uncropped to the 81×101×77 native fixture grid
+using the selected JIST exclusive-maximum behavior and audited against the
+same MaSeg. This repeats the ribbon diagnostic on the actual Java TGDM result:
+GM support is **93.03%** (Python TGDM: 93.03%), WM support **99.42%** (same),
+and CSF-outside support **99.27%** (same). Java and Python have the same
+watertight two-component meshes with Euler −16, no nesting violations, and
+similar thickness: level-set means **4.842 vs 4.841 mm** and closest-surface
+medians **6.422 vs 6.424 mm** (Java vs Python). Thus the low GM support,
+fragmented topology, and thickness tails are reproduced by selected Java
+TGDM on these held-fixed Python-generated upstream inputs; they are not
+evidence of a Python-vs-Java TGDM surface discrepancy. Full PLUS upstream
+equivalence remains open. The Java ribbon audit peaked at **0.259 GB** under a
+4 GB watchdog. Its audit record is under the ignored
+`java-tgdm-ribbon-audit/` directory.
+
 Reproduce from repository root (the third Java harness argument
 `precomputed_initial_level_set` is required for this saved seed):
 
