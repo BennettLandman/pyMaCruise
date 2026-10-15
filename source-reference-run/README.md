@@ -46,7 +46,8 @@ The source trees already provided to the project are:
 - MaCRUISE MATLAB: `/Users/landmaba/dev/deleteme/masimatlab/trunk/xnatspiders/matlab/MaCRUISE/`
 - MIPAV: `/Users/landmaba/dev/mipav/mipav-src/`
 - JIST: `/Users/landmaba/dev/mipav/jist-scm-2026-09-26/`
-- VandyCRUISE/TOADS: `/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/`
+- VandyCRUISE algorithms: `/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/`
+- MaCRUISE-specific JIST adapters and `MaGenericTGDM`: `/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/`
 
 Record the actual revision or source-tree hashes used by the runner. The
 paths above describe the current machine; the staged inputs and atlas hashes
