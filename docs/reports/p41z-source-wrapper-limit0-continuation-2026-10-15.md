@@ -2,20 +2,27 @@
 
 ## Source setting and scope
 
-In the supplied VandyCRUISE source, `AlgorithmLesionToads.java` constructs
-`LesionToadSegmentation` with `firstLimit=0` at the call near line 512.
-`LesionToadSegmentation.java` assigns this argument to `limit` near line 290,
-and `propagateThinning()` processes its queue only while `val > -limit` (near
-line 2113). With zero, that pass has no thinning events. The prior P41z
-iteration-1–99 continuation used Python `--thinning-limit 1000` to explore the
-loop's continuation behavior. Its exact Java replays are valid for that
-explicit method setting, but do not establish the wrapper-configured limit.
+In the supplied VandyCRUISE source, the plugin passes `firstLimit=3.0` to
+`AlgorithmLesionToads` near line 488 of `MedicAlgorithmLesionToads.java`.
+However, `AlgorithmLesionToads.java` constructs `LesionToadSegmentation` with
+`firstLimit=0` near line 512, rather than forwarding its stored field. The
+segmentation class assigns that argument to `limit` near line 290, and
+`propagateThinning()` processes its queue only while `val > -limit` (near line
+2113). With zero, that pass has no thinning events. The algorithm identifies
+itself as CVS revision 1.3 (January 2008); this source does not establish that
+this exact call path is the implementation used by the owner's bug-fixed V3
+runtime. Therefore, zero is a **source-call-path probe**, not a confirmed V3
+production setting. The prior P41z iteration-1–99 continuation used Python
+`--thinning-limit 1000` to explore loop continuation behavior. Its exact Java
+replays are valid for that explicit method setting, but neither setting
+establishes the compiled V3 workflow's behavior.
 
-To isolate the source-passed value without relabeling prior work, iteration 89
+To examine this call-path probe without relabeling prior work, iteration 89
 was continued with limit zero through iteration 99. This is a **hybrid
 synthetic continuation**: iterations before 90 remain the saved limit-1000
 state; only iterations 90–99 use limit zero. It is not a fresh full Java
-workflow or source-equivalent end-to-end PLUS run.
+workflow, source-equivalent end-to-end PLUS run, or validation of the V3
+compiled workflow.
 
 ## Loop result and selected Java evidence
 
@@ -35,9 +42,10 @@ evidence, not a full Java loop execution.
 The limit-0 profile changes behavior materially from the exploratory
 limit-1000 profile: the 91–99 energy ratios are about **0.152**, compared with
 about **0.130** in the earlier continuation. Both synthetic continuations hit
-their configured cap and neither naturally converges. The wrapper source
-setting should therefore be represented explicitly in future source-profile
-runs rather than inferred from prior method-comparison settings.
+their configured cap and neither naturally converges. The plugin's 3.0
+argument, the algorithm's internal zero, and the compiled V3 behavior need to
+be resolved against an executable original reference or version-matched
+runtime log.
 
 ## Source-profile surface and ribbon audit
 
@@ -67,7 +75,7 @@ validate upstream TOADS/LesionTOADS or complete PLUS equivalence.
 
 ## Reproduction
 
-From the repository root, the source-passed setting run, Java transition
+From the repository root, the zero-limit call-path probe, Java transition
 comparison, surface composition, and ribbon audit can be recreated with:
 
 ```sh
