@@ -49,6 +49,18 @@ UPSTREAM = JAVA_ROOT / "upstream/edu/jhmi/rad/medic"
 TYPE_CODES = {"lesion": 1, "blackhole": 2}
 
 
+def _available_checkpoint_arrays(expected_names: set[str], names: tuple[str, ...]) -> tuple[list[str], list[str]]:
+    """Split stored voxel outputs into comparable and unavailable products.
+
+    Iteration-cap manifests intentionally retain a smaller terminal product
+    set than resumable intermediate checkpoints. Report that distinction
+    instead of indexing an absent array and aborting the selected-method run.
+    """
+    available = [name for name in names if name in expected_names]
+    unavailable = [name for name in names if name not in expected_names]
+    return available, unavailable
+
+
 def _json_safe(value):
     """Keep source-faithful nonfinite scalars explicit in strict JSON reports."""
     if isinstance(value, dict):
@@ -334,6 +346,14 @@ def _compare_growth_java(
     voxel_count = int(np.prod(spatial))
     cursor = 0
     arrays_match = {}
+    summary = json.loads(expected_outputs["summary"].read_text(encoding="utf-8"))
+    checkpoint_array_names = ("segmentation", "skeleton", "availability", "ordering", "class_volume")
+    checkpoint_names = set(expected_outputs)
+    if summary.get("class_volume") is not None:
+        checkpoint_names.add("class_volume")
+    checkpoint_available, checkpoint_unavailable = _available_checkpoint_arrays(
+        checkpoint_names, checkpoint_array_names
+    )
     for name, count, dtype in (
         ("segmentation", voxel_count, np.int8),
         ("skeleton", voxel_count, np.int8),
@@ -344,8 +364,9 @@ def _compare_growth_java(
         width = np.dtype(dtype).itemsize
         actual = np.frombuffer(java_bytes[cursor:cursor + count * width], dtype=dtype)
         cursor += count * width
+        if name not in checkpoint_available:
+            continue
         if name == "class_volume":
-            summary = json.loads(expected_outputs["summary"].read_text(encoding="utf-8"))
             reference = np.asarray(summary["class_volume"], dtype=np.float32).ravel(order="C")
         else:
             reference = np.asarray(nib.load(str(expected_outputs[name])).dataobj)
@@ -367,8 +388,11 @@ def _compare_growth_java(
     )
     return {
         "all_exact": True,
-        "checkpoint_outputs_exact": all(arrays_match.values()),
+        "checkpoint_outputs_exact": (
+            all(arrays_match.values()) if not checkpoint_unavailable else None
+        ),
         "checkpoint_arrays_exact": arrays_match,
+        "checkpoint_arrays_unavailable": checkpoint_unavailable,
         "event_count": len(python.events),
         "java_bytes": len(java_bytes),
         "java_sha256": hashlib.sha256(java_bytes).hexdigest(),
@@ -416,8 +440,14 @@ def _compare_relations_java(
     ))
     java_bytes = output_path.read_bytes()
     summary = json.loads(expected_outputs["summary"].read_text(encoding="utf-8"))
-    checkpoint_map = np.asarray(nib.load(str(expected_outputs["relation_map"])).dataobj, dtype=np.int16)
-    checkpoint_membership = np.asarray(summary["relation_membership"], dtype=np.uint8)
+    checkpoint_map = (
+        np.asarray(nib.load(str(expected_outputs["relation_map"])).dataobj, dtype=np.int16)
+        if "relation_map" in expected_outputs else None
+    )
+    checkpoint_membership = (
+        np.asarray(summary["relation_membership"], dtype=np.uint8)
+        if summary.get("relation_membership") is not None else None
+    )
     offset = int(np.prod(spatial)) * 2
     java_map = np.frombuffer(java_bytes[:offset], dtype=">i2").astype(np.int16).reshape(spatial)
     count = struct.unpack(">i", java_bytes[offset:offset + 4])[0]
@@ -427,10 +457,17 @@ def _compare_relations_java(
     iterations = struct.unpack(">i", java_bytes[rel_stop:rel_stop + 4])[0]
     return {
         "all_exact": java_bytes == expected,
-        "checkpoint_outputs_exact": np.array_equal(java_map, checkpoint_map)
-        and np.array_equal(java_membership, checkpoint_membership),
-        "map_exact": np.array_equal(java_map, checkpoint_map),
-        "relation_membership_exact": np.array_equal(java_membership, checkpoint_membership),
+        "checkpoint_outputs_exact": (
+            np.array_equal(java_map, checkpoint_map)
+            and np.array_equal(java_membership, checkpoint_membership)
+            if checkpoint_map is not None and checkpoint_membership is not None else None
+        ),
+        "checkpoint_arrays_unavailable": (
+            ([] if checkpoint_map is not None else ["relation_map"])
+            + ([] if checkpoint_membership is not None else ["relation_membership"])
+        ),
+        "map_exact": np.array_equal(java_map, python.relation_map),
+        "relation_membership_exact": np.array_equal(java_membership, python.relation_membership),
         "relation_count": count,
         "diffusion_iterations": iterations,
         "java_bytes": len(java_bytes),
@@ -881,9 +918,9 @@ def compare(
         or not membership_report["all_exact"]
         or (registration_report is not None and not registration_report.get("all_exact"))
         or (growth_report is not None and not growth_report.get("all_exact"))
-        or (growth_report is not None and not growth_report.get("checkpoint_outputs_exact"))
+        or (growth_report is not None and growth_report.get("checkpoint_outputs_exact") is False)
         or (growth_report is not None and not growth_report["post_growth_relations"].get("all_exact"))
-        or (growth_report is not None and not growth_report["post_growth_relations"].get("checkpoint_outputs_exact"))
+        or (growth_report is not None and growth_report["post_growth_relations"].get("checkpoint_outputs_exact") is False)
     ):
         raise SystemExit(1)
     return report

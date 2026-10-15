@@ -52,6 +52,32 @@ unfinished full-workflow validation row, though its current registered-loop
 continuation has now provided an explicit iteration-cap nonconvergence
 outcome.
 
+## Direct comparison to the saved iteration-99 terminal product
+
+The comparator now accepts the iteration-99 cap manifest as the expected
+next checkpoint and explicitly lists products that the terminal manifest
+does not save. Replaying from the hash-verified iteration-98 checkpoint
+matched Java exactly for shape sampling (5,503,849 values), next thinning
+(267,472 queue events), statistics, membership and energy, registration
+transform/bounds, growth (254,382 events), and relations (130 rows, 14
+diffusion passes). The saved terminal segmentation matches the Java growth
+result bit-for-bit. The terminal manifest has no skeleton, availability,
+ordering, class-volume image, relation map, or relation-membership array, so
+these checkpoint-output comparisons are reported as unavailable. This does
+not compare the outer wrapper's iteration-limit stop decision; that remains
+confirmed from the Python cap manifest only. Focused comparator regressions:
+**2 passed**; combined with the Dura comparator regression, **3 passed**.
+
+The reproduction command compares the iteration-98 checkpoint directly to
+the terminal cap-99 manifest:
+
+```sh
+.venv/bin/python scripts/compare_p41z_registered_thinning_java.py \
+  build/p41z-case-normalization/iterations95-98/lesion-registered-loop.json \
+  --expected-next-checkpoint build/p41z-case-normalization/iteration99-terminal/lesion-registered-loop.json \
+  --output-dir build/p41z-case-normalization/iteration99-terminal-java-comparison
+```
+
 ## Reproduction
 
 Continue the iteration-89 checkpoint to iteration 94 with
