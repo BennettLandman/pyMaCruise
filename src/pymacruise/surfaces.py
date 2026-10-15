@@ -289,7 +289,11 @@ def write_legacy_vtk(mesh: SurfaceMesh, path: str | Path) -> Path:
         stream.write("PyMaCRUISE coordinate_frame=RAS units=mm\n")
         stream.write("ASCII\nDATASET POLYDATA\n")
         stream.write(f"POINTS {len(mesh.vertices)} double\n")
-        np.savetxt(stream, mesh.vertices, fmt="%.10g %.10g %.10g")
+        # Keep the full binary64 RAS coordinates through the ASCII VTK
+        # round-trip. Ten significant digits shifted some human-scan vertices
+        # by ~1e-5 mm, enough to change near-tied thickness ray hits on the
+        # fragmented source-compatible meshes.
+        np.savetxt(stream, mesh.vertices, fmt="%.17g %.17g %.17g")
         stream.write(f"POLYGONS {len(mesh.faces)} {4 * len(mesh.faces)}\n")
         polygons = np.column_stack((np.full(len(mesh.faces), 3), mesh.faces))
         np.savetxt(stream, polygons, fmt="%d %d %d %d")

@@ -108,7 +108,7 @@ def test_vtk_ascii_surface_roundtrip_and_legacy_lps_frame(tmp_path: Path) -> Non
     mesh = extract_levelset_surface(nib.load(SURFACE_FIXTURES / "sphere.nii.gz"))
     output = write_legacy_vtk(mesh, tmp_path / "sphere.vtk")
     restored = read_legacy_vtk(output)
-    np.testing.assert_allclose(restored.vertices, mesh.vertices, atol=1e-8)
+    np.testing.assert_array_equal(restored.vertices, mesh.vertices)
     np.testing.assert_array_equal(restored.faces, mesh.faces)
 
     lps_path = tmp_path / "lps.vtk"
