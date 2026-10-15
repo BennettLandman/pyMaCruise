@@ -64,9 +64,19 @@ diffusion passes). The saved terminal segmentation matches the Java growth
 result bit-for-bit. The terminal manifest has no skeleton, availability,
 ordering, class-volume image, relation map, or relation-membership array, so
 these checkpoint-output comparisons are reported as unavailable. This does
-not compare the outer wrapper's iteration-limit stop decision; that remains
-confirmed from the Python cap manifest only. Focused comparator regressions:
-**2 passed**; combined with the Dura comparator regression, **3 passed**.
+not compare the complete Java application or loop wrapper. A separate Java
+control-branch harness evaluated the source-selected wrapper decision using
+the actual iteration-98 and iteration-99 energies at threshold `1e-4`, with
+iteration and cap both set to 99 and narrow-band mode disabled. The Java
+float32 ratio bits (`3e056485`) equal Python's; Java reports
+`convergence_stop=false`, `iteration_limit_stop=true`, `stop=true`,
+`run_growing=true`, and `refresh_relations=false`, matching the Python cap
+manifest and the selected 98→99 growth comparison. Harness source SHA256:
+`dceb95289dea92bb97665fdb96b7bd71ad28dc2f75a3b4dfa7f4968cf444deb8`;
+embedded source excerpt SHA256: `556940249cb3a8191f53f23a76308f11823789f7b41f7a83b071d784ae4a20cb`.
+This validates that control branch only, not orchestration or application-level
+behavior. Focused comparator regressions: **2 passed**; combined with the Dura
+comparator regression, **3 passed**.
 
 The reproduction command compares the iteration-98 checkpoint directly to
 the terminal cap-99 manifest:
