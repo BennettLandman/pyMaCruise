@@ -39,6 +39,17 @@ both processed **0 thinning events** and left **97,507 queue items**. The
 replay peaked at **0.899 GB** sampled RSS. This remains selected-method
 evidence, not a full Java loop execution.
 
+As a sensitivity check, iteration 95 was also continued once with limit **3.0**,
+the plugin argument, from the same exact checkpoint. The selected Java replay
+at limit 3.0 also matched its Python transition exactly. The Java/Python
+comparison records **174,376 growth events**, versus **0** at limit zero. The
+two Python iteration-96 segmentations differ at **419 voxels**; skeletons at
+424 voxels, availability at 65 voxels, and ordering at 13,427 voxels. Energy
+ratios are 0.152386740 (limit 3) and 0.151989207 (limit 0). The small ratio
+change therefore does not imply equivalent state evolution. This does not
+decide whether the compiled V3 runner uses the plugin argument or the older
+algorithm's hard-coded zero.
+
 The limit-0 profile changes behavior materially from the exploratory
 limit-1000 profile: the 91–99 energy ratios are about **0.152**, compared with
 about **0.130** in the earlier continuation. Both synthetic continuations hit
@@ -108,6 +119,19 @@ PYTHONPATH=src .venv/bin/python scripts/compare_p41z_registered_thinning_java.py
   --expected-next-checkpoint build/p41z-case-normalization/iteration96-source-wrapper-limit0/lesion-registered-loop.json \
   --thinning-limit 0 \
   --output-dir build/p41z-case-normalization/iteration89-source-wrapper-limit0-java-comparison
+
+# From the same iteration-95 checkpoint, test the plugin's configured value.
+PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
+  --registered-checkpoint-manifest build/p41z-case-normalization/iterations90-94-source-wrapper-limit0/lesion-registered-loop.json \
+  --atlas-descriptor tests/data/synthetic/plus_vandy_atlas_aligned_fine/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/p41z-case-normalization/iteration96-plugin-limit3 \
+  --iterations 99 --thinning-limit 3 --max-passes 1
+
+PYTHONPATH=src .venv/bin/python scripts/compare_p41z_registered_thinning_java.py \
+  build/p41z-case-normalization/iterations90-94-source-wrapper-limit0/lesion-registered-loop.json \
+  --expected-next-checkpoint build/p41z-case-normalization/iteration96-plugin-limit3/lesion-registered-loop.json \
+  --thinning-limit 3 \
+  --output-dir build/p41z-case-normalization/iteration96-plugin-limit3-java-comparison
 
 PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
   --loop-manifest build/p41z-case-normalization/iteration99-source-wrapper-limit0/lesion-registered-loop.json \
