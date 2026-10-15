@@ -1,0 +1,161 @@
+{
+  "affine_ras": [
+    [
+      1.0000015497207642,
+      0.0,
+      0.0,
+      -63.32928466796875
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      -112.69482421875
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      -50.49781799316406
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "case": "case-100260 human PLUS held-fixed Java ribbon audit",
+  "coordinate_system": "RAS",
+  "crop_maseg_sha256": "3f5e9df019a22f54623f7545e7e6cff9505bb53962aa24c91356161a25950d80",
+  "evidence_category": "real-human anatomy diagnostics on selected Java TGDM replay with Python workflow inputs held fixed",
+  "field_comparison": {
+    "central": {
+      "differing_voxels": 77225,
+      "sign_differing_voxels": 0
+    },
+    "inner": {
+      "differing_voxels": 88052,
+      "sign_differing_voxels": 0
+    },
+    "outer": {
+      "differing_voxels": 1972234,
+      "sign_differing_voxels": 10
+    }
+  },
+  "provenance_sha256": "ec61b582aac72629fe075e40cb214519624d1d1ba032cd1e58af74a6570a14f1",
+  "python_tgdm": {
+    "label_counts": {
+      "gm": 373096,
+      "wm": 478993
+    },
+    "levelset_thickness_mm": {
+      "crossing_voxels": 181112,
+      "mean": 2.206755296915303
+    },
+    "nesting_voxel_counts": {
+      "central_outside_outer_voxels": 0,
+      "inner_outside_central_voxels": 46
+    },
+    "support_fractions": {
+      "gm_between_inner_and_outer": 0.43488271115208954,
+      "wm_inside_inner": 0.9763357710864251
+    },
+    "surface_thickness_mm": {
+      "mean": 1.185082338345876,
+      "median": 1.0627313787957022,
+      "p05": 0.2433790180896942,
+      "p95": 2.5286434400088806,
+      "sample_count": 206425
+    },
+    "surfaces": {
+      "central": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 427988,
+        "nonmanifold_edges": 0,
+        "vertices": 214064,
+        "watertight": true
+      },
+      "inner": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 412884,
+        "nonmanifold_edges": 0,
+        "vertices": 206512,
+        "watertight": true
+      },
+      "outer": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 450492,
+        "nonmanifold_edges": 0,
+        "vertices": 225316,
+        "watertight": true
+      }
+    }
+  },
+  "scope_limit": "not an independent full PLUS Java/MATLAB workflow; Java TGDM starts from the same crop inputs produced by the Python run",
+  "shape_xyz": [
+    140,
+    178,
+    134
+  ],
+  "source_tgdm": {
+    "label_counts": {
+      "gm": 373096,
+      "wm": 478993
+    },
+    "levelset_thickness_mm": {
+      "crossing_voxels": 181114,
+      "mean": 2.206766799321079
+    },
+    "nesting_voxel_counts": {
+      "central_outside_outer_voxels": 0,
+      "inner_outside_central_voxels": 46
+    },
+    "support_fractions": {
+      "gm_between_inner_and_outer": 0.4348800308767717,
+      "wm_inside_inner": 0.9763357710864251
+    },
+    "surface_thickness_mm": {
+      "mean": 1.1850967341253626,
+      "median": 1.0627136086016997,
+      "p05": 0.24339164847952732,
+      "p95": 2.528595473068331,
+      "sample_count": 206422
+    },
+    "surfaces": {
+      "central": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 427988,
+        "nonmanifold_edges": 0,
+        "vertices": 214064,
+        "watertight": true
+      },
+      "inner": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 412884,
+        "nonmanifold_edges": 0,
+        "vertices": 206512,
+        "watertight": true
+      },
+      "outer": {
+        "boundary_edges": 0,
+        "connected_components": 121,
+        "euler_characteristic": 70,
+        "faces": 450492,
+        "nonmanifold_edges": 0,
+        "vertices": 225316,
+        "watertight": true
+      }
+    }
+  }
+}
