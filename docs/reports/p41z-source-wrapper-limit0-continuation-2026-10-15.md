@@ -50,6 +50,13 @@ change therefore does not imply equivalent state evolution. This does not
 decide whether the compiled V3 runner uses the plugin argument or the older
 algorithm's hard-coded zero.
 
+The same limit-3 branch continued from iteration 96 through 99 and also hit
+the cap (ratio **0.131115973**, `stop_reason=iteration_limit`,
+`convergence_stop=false`). The 98→99 Java transition matched the selected
+methods exactly; terminal-only omitted arrays are listed as unavailable by
+the comparator rather than treated as mismatch. This confirms that neither
+candidate limit naturally converges on this hybrid synthetic state.
+
 The limit-0 profile changes behavior materially from the exploratory
 limit-1000 profile: the 91–99 energy ratios are about **0.152**, compared with
 about **0.130** in the earlier continuation. Both synthetic continuations hit
@@ -83,6 +90,19 @@ the agreed gates (Dice ≥0.97, symmetric mean distance ≤0.01 mm, Hausdorff
 Java TGDM RSS peaked at **0.658 GB**. This localizes these surface differences
 away from the selected TGDM implementation on these fixed inputs; it does not
 validate upstream TOADS/LesionTOADS or complete PLUS equivalence.
+
+The limit-3 branch was independently composed and audited as well. GM support
+is **93.34%**, WM support **99.44%**, and CSF-outside support **99.25%**. Its
+meshes are watertight and connected, but each has Euler characteristic **−16**;
+level-set mean thickness is **4.850 mm**, and closest-surface median/p05/p95
+is **6.509/0.237/12.341 mm**. The anatomy diagnostic still reports
+`passed=false` for support, topology, and thickness. Thus the limit change
+alters components and some support values, but neither branch passes the
+diagnostic ribbon checks. Selected Java TGDM on the limit-3 branch's same
+Python upstream arrays also passes all three delivered-surface gates: the
+outer has 9 sign changes, Dice **0.999962**, mean distance **0.001917 mm**, and
+Hausdorff **0.465420 mm**; inner and central have zero sign changes. Java TGDM
+RSS peaked at **0.662 GB**.
 
 ## Reproduction
 
@@ -143,6 +163,31 @@ PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
 PYTHONPATH=src .venv/bin/python scripts/audit_plus_ribbon_quality.py \
   build/p41z-case-normalization/iteration99-source-wrapper-limit0-surface-audit/synthetic-plus-terminal-surface-composition.json \
   --report build/p41z-case-normalization/iteration99-source-wrapper-limit0-surface-audit/ribbon-quality.json \
+  --maseg-profile synthetic
+
+# Continue the independent limit-3 branch and audit its terminal surfaces.
+PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
+  --registered-checkpoint-manifest build/p41z-case-normalization/iteration96-plugin-limit3/lesion-registered-loop.json \
+  --atlas-descriptor tests/data/synthetic/plus_vandy_atlas_aligned_fine/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/p41z-case-normalization/iterations97-98-plugin-limit3 \
+  --iterations 99 --thinning-limit 3 --max-passes 2
+
+PYTHONPATH=src .venv/bin/python -m pymacruise.cli plus-lesion-registered-loop \
+  --registered-checkpoint-manifest build/p41z-case-normalization/iterations97-98-plugin-limit3/lesion-registered-loop.json \
+  --atlas-descriptor tests/data/synthetic/plus_vandy_atlas_aligned_fine/cruise-atlas-12obj-lesiontoads2012.txt \
+  --output-dir build/p41z-case-normalization/iteration99-plugin-limit3 \
+  --iterations 99 --thinning-limit 3 --max-passes 1
+
+PYTHONPATH=src .venv/bin/python scripts/compose_terminal_synthetic_plus.py \
+  --loop-manifest build/p41z-case-normalization/iteration99-plugin-limit3/lesion-registered-loop.json \
+  --t1 tests/data/synthetic/plus_vandy_atlas_aligned_fine/t1.nii.gz \
+  --brain-mask tests/data/synthetic/plus_vandy_atlas_aligned_fine/brain-mask.nii.gz \
+  --maseg tests/data/synthetic/plus_vandy_atlas_aligned_fine/maseg.nii.gz \
+  --output-dir build/p41z-case-normalization/iteration99-plugin-limit3-surface-audit
+
+PYTHONPATH=src .venv/bin/python scripts/audit_plus_ribbon_quality.py \
+  build/p41z-case-normalization/iteration99-plugin-limit3-surface-audit/synthetic-plus-terminal-surface-composition.json \
+  --report build/p41z-case-normalization/iteration99-plugin-limit3-surface-audit/ribbon-quality.json \
   --maseg-profile synthetic
 ```
 
