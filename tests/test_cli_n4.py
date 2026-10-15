@@ -69,7 +69,7 @@ def test_n4_cli_matches_api_and_writes_ras_provenance(tmp_path: Path) -> None:
         "iterations": [3],
         "convergence_tolerance": 0.0,
         "spline_mesh": [1, 1, 1],
-        "rescale_intensities": True,
+        "rescale_intensities": False,
     }
     assert provenance["outputs"] == {"corrected_image": str(output_path.resolve())}
 

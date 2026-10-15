@@ -37,7 +37,7 @@ def test_n4_reduces_a_smooth_synthetic_bias_and_preserves_ras_grid() -> None:
 
 
 def test_n4_config_and_input_contract_errors() -> None:
-    assert N4Config().rescale_intensities is True
+    assert N4Config().rescale_intensities is False
     with pytest.raises(ValueError, match="shrink factor"):
         N4Config(shrink_factor=0)
     with pytest.raises(ValueError, match="iteration counts"):

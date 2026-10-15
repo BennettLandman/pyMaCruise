@@ -169,8 +169,8 @@ def build_parser() -> argparse.ArgumentParser:
     n4.add_argument(
         "--rescale-intensities",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="rescale corrected values to the input range (default: enabled, matching ANTs CLI)",
+        default=False,
+        help="rescale corrected values to the input range (default: disabled without an explicit mask)",
     )
     _add_provenance_option(n4)
 

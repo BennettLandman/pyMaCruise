@@ -257,7 +257,8 @@ Reads a finite, non-negative 3D intensity image and writes its N4-corrected
 image as `.nii.gz` in RAS orientation. The defaults match the selected
 wrapper's unadorned ANTs N4 command: shrink factor 4, four 50-iteration
 levels, zero convergence tolerance, a 1×1×1 spline mesh, and intensity
-rescaling on (disable with `--no-rescale-intensities`). ANTsPy is optional; install PyMaCRUISE with its `ants` extra
+rescaling off because the source wrapper supplies no mask (enable explicitly
+with `--rescale-intensities`). ANTsPy is optional; install PyMaCRUISE with its `ants` extra
 to run this command. The N4 estimation itself is provided by ANTsPy/ANTs.
 
 ### `pymacruise ace`
