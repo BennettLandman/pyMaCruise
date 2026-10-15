@@ -1,28 +1,49 @@
-# Clean dependency-install attempt — 2026-10-15
+# Clean dependency install and synthetic BASE run — 2026-10-15
 
 ## Result
 
-A separate target installation was attempted from the local PyMaCRUISE source
-with build isolation disabled. Metadata generation succeeded, but pip could not
-resolve the configured package index hostname while requesting NumPy; all
-retries ended with `nodename nor servname provided, or not known`, followed by
-`No matching distribution found for numpy<3,>=1.23`. No dependency package was
-installed into the target directory.
+The initial attempt in the restricted shell could not resolve the package
+index. Retrying with network access succeeded and exposed a separate
+compatibility issue: the unconstrained resolver selected SciPy 1.15.3 and
+NumPy 2.3.5, but SciPy's `_propack` extension failed to load on this macOS 27
+host. SciPy 1.14.1 and NumPy 2.2.6 imported and ran correctly with ANTsPy
+0.6.3.
 
-This is an environment/network blocker, not evidence that the package metadata
-or dependency declarations are invalid. It leaves clean dependency resolution
-and installation unverified on this host. The installed-wheel synthetic BASE
-check used the existing project environment's runtime libraries and should be
-interpreted only as a wheel/entry-point/workflow smoke test.
+The `ants` extra now constrains NumPy to `<2.3` and SciPy to `<1.15` alongside
+ANTsPy 0.6.x. A fresh target installation from the updated project metadata
+resolved these versions automatically, without manual overrides. This host's
+`pip --target` layout does not install console scripts, so the run used the
+existing `pymacruise` entry-point script with `PYTHONPATH` pointing only at the
+fresh target. The resolved package, NumPy, SciPy, nibabel, numba, and ANTsPy
+imports came from that target.
+
+The synthetic BASE run completed all eight checked stages, including the real
+ANTsPy N4 stage. It wrote 24 final outputs; all manifest hashes verified, and
+all 13 NIfTIs were finite and RAS. A same-arguments resume verified and skipped
+all eight stages. Both TOADS passes used a two-iteration cap and did not reach
+natural convergence. This validates dependency resolution, native imports,
+packaged atlases, the installed entry point, workflow execution, and restart;
+it is not source-equivalence or natural-convergence evidence.
 
 ## Reproduction
 
-From the project root, with the current virtual environment:
+From the project root, resolve and install all runtime dependencies plus the
+ANTsPy extra into a fresh target:
 
 ```sh
-.venv/bin/python -m pip install --no-build-isolation --target build/clean-install/site .
+.venv/bin/python -m pip install --no-build-isolation \
+  --target build/clean-install/with-ants-constrained-site '.[ants]'
 ```
 
-The failure is due to the host not resolving the configured package index; a
-network-enabled runner or a complete local wheelhouse is needed to finish this
-check.
+Then set `PYTHONPATH` to that target and run `pymacruise base-run` using the
+fixtures under `tests/data/synthetic/toads_registered_first_iteration_cycle/`
+and `tests/data/synthetic/base_workflow/maseg.nii.gz`. The tested run used one
+registration level/iteration, two TOADS iterations, one Dura iteration, one
+ACE diffusion iteration, and one TGDM iteration; its exact settings and
+outputs are saved in the ignored run manifest at
+`build/clean-install/base-run-constrained/run.json`. Repeat the same command
+with `--resume` to verify all eight stages.
+
+The optional-extra bounds are supported by this current host's package set and
+the successful workflow run. Cross-platform dependency resolution, including
+other operating systems and Python versions, remains unverified.
