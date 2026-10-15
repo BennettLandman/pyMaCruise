@@ -2,7 +2,8 @@
 
 `maseg.nii.gz` is an intentionally sparse, deterministic integer label map on
 the compact 13³ TOADS loop phantom's T1 grid. It contains all eight selected
-MaCRUISE brainstem/cerebellum cleanup labels. Regenerate it with:
+MaCRUISE brainstem/cerebellum cleanup labels and a small cortical label-100
+region needed to define the base-workflow crop. Regenerate it with:
 
 ```bash
 python tests/data/synthetic/base_workflow/generate_maseg.py

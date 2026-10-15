@@ -1,4 +1,4 @@
-"""Generate the sparse integer MaSeg labels used by the base workflow run."""
+"""Generate a compact MaSeg with cleanup labels and cortical crop support."""
 
 from pathlib import Path
 
@@ -21,6 +21,10 @@ def main() -> None:
     labels = np.zeros(source.shape, dtype=np.uint8)
     for coordinate, label in zip(COORDINATES, LABELS, strict=True):
         labels[coordinate] = label
+    # The base workflow crops from MaSeg-derived gray matter. Keep a small
+    # valid cortical region so the checked-in image can run end-to-end; the
+    # eight cleanup labels remain isolated at the surrounding corners.
+    labels[4:9, 4:9, 4:9] = 100
     output = nib.Nifti1Image(labels, source.affine, header=source.header.copy())
     output.set_data_dtype(np.uint8)
     nib.save(output, str(OUTPUT))
