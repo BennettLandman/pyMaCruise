@@ -10,7 +10,12 @@ import pytest
 
 from pymacruise.atlas_em_registration import (
     build_atlas_em_rigid_registration_pyramid,
+    register_and_recrop_atlas_em,
     register_atlas_em_rigid_pyramid,
+)
+from pymacruise.atlas_em_preprocessing import (
+    AtlasEMNormalizedImages,
+    crop_atlas_em_images,
 )
 from pymacruise.toads_registration_sampling import register_toads_atlas_rigid_pyramid
 
@@ -112,3 +117,47 @@ def test_atlas_em_rigid_registration_selects_demon_source_profile() -> None:
         assert observed.energy == expected.energy
         assert observed.lambda_value == expected.lambda_value
         assert observed.relative_change == expected.relative_change
+
+
+def test_atlas_em_registration_hands_transform_into_native_recrop() -> None:
+    axis = np.arange(12, dtype=np.float32)
+    x, y, z = np.meshgrid(axis, axis, axis, indexing="ij")
+    image = np.zeros((12, 12, 12, 1), dtype=np.float32)
+    foreground = (x - 5.5) ** 2 + (y - 5.5) ** 2 + (z - 5.5) ** 2 < 17
+    image[..., 0][foreground] = 0.5 + 0.02 * x[foreground]
+    normalized = AtlasEMNormalizedImages(image, np.array([0.0], np.float32), np.array([1.0], np.float32))
+    crop = crop_atlas_em_images(
+        image,
+        (2, 2, 2),
+        (9, 9, 9),
+        border=2,
+        signed_resolutions_mm=(1.0, 1.0, 1.0),
+        transform=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    )
+    cx, cy, cz = np.meshgrid(np.arange(12), np.arange(12), np.arange(12), indexing="ij")
+    raw = np.stack(
+        [
+            np.ones((12, 12, 12), np.float32),
+            np.exp(-((cx - 4) ** 2 + (cy - 5) ** 2 + (cz - 6) ** 2) / 18).astype(np.float32),
+            np.exp(-((cx - 7) ** 2 + (cy - 6) ** 2 + (cz - 5) ** 2) / 18).astype(np.float32),
+        ],
+        axis=-1,
+    )
+    memberships = raw / raw.sum(axis=-1, keepdims=True)
+    shapes = np.array(raw, dtype=np.float32)
+
+    result = register_and_recrop_atlas_em(
+        crop,
+        memberships,
+        shapes,
+        normalized,
+        background_ratio=0.1,
+        levels=2,
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        registration_iterations=1,
+    )
+    assert [level.scale for level in result.registration.levels] == [2]
+    assert result.recropped.original_dimensions_xyz == (12, 12, 12)
+    assert result.recropped.images.shape[3] == 1
+    assert np.isfinite(result.registration.transform).all()
+    assert np.isfinite(result.recropped.images).all()
