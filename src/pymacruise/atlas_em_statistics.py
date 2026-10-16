@@ -38,6 +38,35 @@ def compute_atlas_em_mixing_coefficients(
     return coefficients
 
 
+def normalize_atlas_em_priors(atlas_priors: ArrayLike, mask: ArrayLike) -> NDArray[np.float32]:
+    """Normalize transformed Atlas-mode class priors on masked voxels.
+
+    This reproduces the normalization loop at the end of
+    ``AtlasEMSegmentation.computeAtlas`` after atlas resampling. A zero-sum
+    voxel is left as-is, and values outside the mask remain untouched.
+    """
+    priors = np.asarray(atlas_priors, dtype=np.float32)
+    active = np.asarray(mask, dtype=bool)
+    if priors.ndim != 4 or any(n < 1 for n in priors.shape[:3]) or priors.shape[3] < 1:
+        raise ValueError("atlas_priors must have shape (x, y, z, classes)")
+    if active.shape != priors.shape[:3]:
+        raise ValueError("mask must match the atlas prior grid")
+    if not np.isfinite(priors).all():
+        raise ValueError("atlas priors must be finite")
+    result = np.array(priors, dtype=np.float32, copy=True)
+    for x in range(priors.shape[0]):
+        for y in range(priors.shape[1]):
+            for z in range(priors.shape[2]):
+                if active[x, y, z]:
+                    norm = np.float32(0.0)
+                    for k in range(priors.shape[3]):
+                        norm = np.float32(norm + result[x, y, z, k])
+                    if norm != 0.0:
+                        for k in range(priors.shape[3]):
+                            result[x, y, z, k] = np.float32(result[x, y, z, k] / norm)
+    return result
+
+
 def compute_atlas_em_centroids(
     images: ArrayLike,
     memberships: ArrayLike,
