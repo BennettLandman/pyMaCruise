@@ -1,5 +1,7 @@
 # Original MaCRUISE reference-run packet
 
+For testing against the complete external product, first read the [end-to-end external comparison protocol](../docs/testing/end-to-end-external.md). The drivers below implement a selected-mask scientific profile; they bypass the original skull-stripping path and are not unchanged invocations of the external application. Full external execution and acceptance remain unverified.
+
 This packet is prepared for someone who has access to the original MATLAB,
 MIPAV, and JIST runtime. It contains the exact `.nii.gz` inputs used for the
 current human BASE and PLUS Python runs, with SHA-256 hashes in
