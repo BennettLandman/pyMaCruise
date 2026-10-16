@@ -2,6 +2,8 @@
 
 Revised October 16, 2026. This supersedes the Python-only readiness recommendation.
 
+For concrete commands, use the [full BASE walkthrough](full-base-walkthrough.md). It selects the documented public v3.1.0 container by immutable digest and includes venv setup and a portable final-output comparator. That comparator has synthetic verification; complete external execution remains unverified here. The broader acceptance limitations below still apply.
+
 ## Required outcome
 
 The tester must execute the complete external MaCRUISE workflow and the complete corresponding PyMaCRUISE workflow from the same agreed starting inputs, then compare independently generated scientific outputs. The primary deliverable is a quantitative external-versus-Python comparison report, accompanied by both full run records and visual review.
@@ -66,7 +68,7 @@ A report needs separate conclusions for external-run completion, Python-run comp
 
 - Select and pin the exact external build; verify its complete launch command, input discovery, output tree and runtime requirements on a suitable machine.
 - Record the full published Git commit used for testing. The selected-mask reference drivers, input packet, run-record template, output auditor, and these instructions are in the repository; a verified full-product launch/comparison interface remains to be completed.
-- Provide a portable full-run comparator that follows the current Python manifest's active attempt paths, maps the selected external output layout, validates geometry and frames, reports the criteria above, and fails clearly on missing products. Existing historical-comparison scripts include machine/layout assumptions and do not yet constitute this verified interface.
+- Verify `scripts/compare_external_base_run.py` against the fresh pinned-container outputs. It follows active Python attempt paths, checks input identity/output hashes, and compares final labels, level sets, surfaces and thickness. Nine synthetic checks cover its mapping and rejection behavior. The native source voxel/frame contract, fresh full-runtime execution, detailed intermediate mapping and vertexwise thickness correspondence still need verification; the historical scripts alone do not supply those checks.
 - Complete one fresh external run and one independent Python run through the proposed instructions, then exercise the report generator. Record pass/fail honestly; the test can expose disagreement and still be a successful validation experiment.
 - For PLUS, complete or explicitly report the missing AtlasEM initialization and pre-LesionTOADS Dura stage, obtain the selected `ibsr8obj` atlas payload, and validate the original-versus-Python registration boundary. Current PLUS execution alone cannot be represented as a complete reproduction of that external workflow.
 

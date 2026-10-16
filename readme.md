@@ -4,7 +4,7 @@ Python-native implementation of the MaCRUISE cortical segmentation workflow. The
 
 [plan.md](plan.md) is the detailed, step-by-step port and validation plan. This README keeps only the current project status and stable project guidance; historical validation reports remain under [docs/reports](docs/reports/).
 
-For human testing against the complete external MaCRUISE workflow, start with the [end-to-end external comparison protocol](docs/testing/end-to-end-external.md). It defines independent runs, output comparisons, current readiness gaps, and the distinction between the unchanged external product and adapted selected-mask source drivers. [Python BASE installation and execution checks](docs/testing/python-base-checks.md) are supplemental preflight checks.
+For human testing against the complete external MaCRUISE workflow, use the [full BASE walkthrough](docs/testing/full-base-walkthrough.md), including Linux prerequisites, virtual environment, a pinned external container, both full runs, comparisons, and return files. External execution is not yet verified on the authoring host. The [end-to-end comparison protocol](docs/testing/end-to-end-external.md) defines the acceptance boundary and remaining gaps; [Python BASE checks](docs/testing/python-base-checks.md) provide supplemental preflight checks.
 
 ## Current status — 2026-10-16
 
