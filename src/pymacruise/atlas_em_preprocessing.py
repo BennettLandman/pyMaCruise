@@ -7,7 +7,10 @@ from typing import Sequence
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pymacruise.atlas_em_statistics import normalize_atlas_em_priors
 from pymacruise.toads_preprocessing import robust_intensity_bounds
+from pymacruise.toads_shape_volume import transform_toads_shape_priors
+from pymacruise.toads_shapes import compute_toad_shape_bounds
 
 
 @dataclass(frozen=True)
@@ -15,6 +18,58 @@ class AtlasEMNormalizedImages:
     images: NDArray[np.float32]
     robust_minima: NDArray[np.float32]
     robust_maxima: NDArray[np.float32]
+
+
+def transform_atlas_em_rigid_priors(
+    atlas_shapes: ArrayLike,
+    mask: ArrayLike,
+    *,
+    image_dimensions_xyz: Sequence[int],
+    image_resolutions_mm: Sequence[float],
+    template_resolutions_mm: Sequence[float],
+    transform: ArrayLike,
+    shape_slope: float = 2.0,
+) -> NDArray[np.float32]:
+    """Transform and normalize fixed rigid AtlasEM priors using the TOADS sampler.
+
+    The selected ``DemonToadDeformableAtlas`` rigid branch uses the same
+    precomputed transform, positive-support bounds, closest-edge trilinear
+    sampler, and shape-slope restoration already ported for TOADS. This
+    adapter computes those class bounds, reuses that source-checked sampler,
+    then applies AtlasEM's masked prior normalization. It does not estimate
+    the rigid transform or implement deformable registration.
+    """
+    shapes = np.asarray(atlas_shapes, dtype=np.float32)
+    active = np.asarray(mask, dtype=bool)
+    if shapes.ndim != 4 or any(n < 2 for n in shapes.shape[:3]) or shapes.shape[3] < 1:
+        raise ValueError("atlas_shapes must have shape (template_x, template_y, template_z, classes)")
+    dimensions = tuple(int(value) for value in image_dimensions_xyz)
+    if len(dimensions) != 3 or min(dimensions) < 2:
+        raise ValueError("image_dimensions_xyz must contain three dimensions >= 2")
+    if active.shape != dimensions:
+        raise ValueError("mask must match image_dimensions_xyz")
+    if not np.isfinite(shapes).all():
+        raise ValueError("atlas_shapes must be finite")
+    bounds = tuple(
+        compute_toad_shape_bounds(
+            shapes[..., k],
+            image_dimensions_xyz=dimensions,
+            image_resolutions_mm=tuple(image_resolutions_mm),
+            template_resolutions_mm=tuple(template_resolutions_mm),
+            transform=tuple(np.asarray(transform, dtype=np.float32)),
+        )
+        for k in range(shapes.shape[3])
+    )
+    transformed = transform_toads_shape_priors(
+        shapes,
+        image_dimensions_xyz=dimensions,
+        image_resolutions_mm=tuple(image_resolutions_mm),
+        template_resolutions_mm=tuple(template_resolutions_mm),
+        transform=transform,
+        class_bounds=bounds,
+        shape_slope=shape_slope,
+    )
+    return normalize_atlas_em_priors(transformed, active)
 
 
 def normalize_atlas_em_images(images: ArrayLike) -> AtlasEMNormalizedImages:
