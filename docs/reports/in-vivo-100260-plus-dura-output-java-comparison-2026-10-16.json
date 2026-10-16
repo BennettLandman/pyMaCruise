@@ -1,0 +1,89 @@
+{
+  "all_four_outputs_bit_exact_after_wrapper_scale": true,
+  "atlas_class_names": [
+    "Background",
+    "Sulcal-CSF",
+    "Ventricles",
+    "Cerebellum-GM",
+    "Cerebrum-GM",
+    "Caudate",
+    "Thalamus",
+    "Putamen",
+    "Brainstem",
+    "Cerebellum-WM",
+    "OuterVentricular-WM",
+    "InterVentricular-WM",
+    "Frontal-WM"
+  ],
+  "case": "human PLUS case 100260, registered LesionTOADS-to-Dura handoff",
+  "comparison": {
+    "csf": {
+      "differing_values_after_wrapper_scale": 0,
+      "java_nonzero_voxels": 2413069,
+      "maximum_absolute_scaled_error": 0.0,
+      "mean_absolute_scaled_error": 0.0,
+      "saved_nonzero_voxels": 2413069
+    },
+    "gm": {
+      "differing_values_after_wrapper_scale": 0,
+      "java_nonzero_voxels": 2248345,
+      "maximum_absolute_scaled_error": 0.0,
+      "mean_absolute_scaled_error": 0.0,
+      "saved_nonzero_voxels": 2248345
+    },
+    "wm_fill": {
+      "differing_values_after_wrapper_scale": 0,
+      "java_nonzero_voxels": 1935772,
+      "maximum_absolute_scaled_error": 0.0,
+      "mean_absolute_scaled_error": 0.0,
+      "saved_nonzero_voxels": 1935772
+    },
+    "wm_mask": {
+      "differing_values_after_wrapper_scale": 0,
+      "java_nonzero_voxels": 749585,
+      "maximum_absolute_scaled_error": 0.0,
+      "mean_absolute_scaled_error": 0.0,
+      "saved_nonzero_voxels": 749585
+    }
+  },
+  "evidence_category": "held-fixed selected Java method replay on Python-generated human memberships",
+  "inputs": {
+    "packed_java_input_sha256": "6d044659ca7b86d1003c07ff076e3c65de83477876aa8374f71d4fbfd22c5573",
+    "registered_memberships_sha256": "b60c1d7af18921fcfedab526aa45a6d89c00c1b7fec6ce3b216bbb76d1a094a2",
+    "registered_segmentation_sha256": "3e79bf307eec45ec2b4fe410d2ba527160b60b787b04979e56912509d18c300b"
+  },
+  "outputs": {
+    "csf": {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/dura-outputs/lesion_toads_csf.nii.gz",
+      "sha256": "b07064c6aff50b14556da2bea2de8b5997d268a36fac540afe718629365f3b35"
+    },
+    "gm": {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/dura-outputs/lesion_toads_gm.nii.gz",
+      "sha256": "feeddb30ce096ac4896cc4abe0c7e9f33c7f0381029e3db425bda8c810cae826"
+    },
+    "wm_fill": {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/dura-outputs/lesion_toads_wm_fill.nii.gz",
+      "sha256": "65cb98d71706b824ecd3928c465cb3c5b79328b3be8a899610f4f43b4349f38b"
+    },
+    "wm_mask": {
+      "path": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14/dura-outputs/lesion_toads_wm_mask.nii.gz",
+      "sha256": "b72909965c2910bf1bbb9eef1243cb1c9008e021417a4dcb125ba97a0245f38c"
+    }
+  },
+  "scope_limit": "does not compare the full LesionTOADS iteration or independent original PLUS workflow",
+  "selected_source": {
+    "expected_sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99",
+    "harness": "/Users/landmaba/dev/mipav/pymacruise/tests/java_reference/LesionToadsHumanDuraOutputsReferenceHarness.java",
+    "harness_sha256": "ae568dc061b929dcae73b8d03b2aa7c73494aba5fc91655bd52eff1f07856be5",
+    "path": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/src/edu/jhmi/rad/medic/methods/LesionToadSegmentation.java",
+    "sha256": "545a61027d22efcc5d07d6bea960039c938808867707cbbd61811cad46cc3a99"
+  },
+  "shape_xyz": [
+    164,
+    207,
+    196
+  ],
+  "spatial_convention": "RAS",
+  "workflow_root": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-fresh-current-no-regrid-2026-10-14",
+  "wrapper_scale": 255.0
+}
