@@ -235,3 +235,57 @@ def compute_atlas_em_atlas_prior_memberships(
                 if mem[x, y, z, best] > 0:
                     labels[x, y, z] = best
     return mem, labels, distance
+
+
+def compute_atlas_em_diagonal_covariances(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    centroids: ArrayLike,
+    *,
+    fields: ArrayLike | None = None,
+) -> NDArray[np.float32]:
+    """Reproduce ``computeDiagonalCovariances``' standard-deviation estimates.
+
+    The source adds ``membership² + 1e-30f`` to numerator and denominator for
+    every voxel, including outside the constructor's mask. The returned
+    standard deviations are installed directly as diagonal covariance values
+    by the selected wrapper, preserving that historical behavior.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    mem = np.asarray(memberships, dtype=np.float32)
+    if values.ndim != 4 or any(n < 1 for n in values.shape) or values.shape[3] < 1:
+        raise ValueError("images must have shape (x, y, z, channels)")
+    if mem.ndim != 4 or mem.shape[:3] != values.shape[:3] or mem.shape[3] < 1:
+        raise ValueError("memberships must match the image grid and contain classes")
+    channels, classes = values.shape[3], mem.shape[3]
+    means = np.asarray(centroids, dtype=np.float32)
+    if means.shape != (channels, classes):
+        raise ValueError("centroids must have shape (channels, classes)")
+    field = None if fields is None else np.asarray(fields, dtype=np.float32)
+    if field is not None and field.shape != values.shape:
+        raise ValueError("fields must match image shape")
+    if not np.isfinite(values).all() or not np.isfinite(mem).all() or not np.isfinite(means).all() or (field is not None and not np.isfinite(field).all()):
+        raise ValueError("images, memberships, centroids, and fields must be finite")
+
+    result = np.zeros((channels, classes), dtype=np.float32)
+    epsilon = np.float32(1.0e-30)
+    for c in range(channels):
+        for k in range(classes):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(values.shape[0]):
+                for y in range(values.shape[1]):
+                    for z in range(values.shape[2]):
+                        membership = mem[x, y, z, k]
+                        weight = np.float32(np.float32(membership * membership) + epsilon)
+                        if field is None:
+                            difference = np.float32(values[x, y, z, c] - means[c, k])
+                        else:
+                            corrected = np.float32(field[x, y, z, c] * values[x, y, z, c])
+                            difference = np.float32(corrected - means[c, k])
+                        term = np.float32(weight * difference)
+                        term = np.float32(term * difference)
+                        numerator = np.float32(numerator + term)
+                        denominator = np.float32(denominator + weight)
+            result[c, k] = np.float32(np.sqrt(np.float64(numerator / denominator))) if denominator > 0.0 else np.float32(0.0)
+    return result

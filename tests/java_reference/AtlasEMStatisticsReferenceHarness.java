@@ -65,6 +65,19 @@ public final class AtlasEMStatisticsReferenceHarness {
         }
         return out;
     }
+    static float[][] diagonal(float[][] means){
+        float[][] out=new float[NC][K];
+        for(int c=0;c<NC;c++)for(int k=0;k<K;k++){
+            float num=0.0f,den=0.0f;
+            for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++){
+                float m=mem[x][y][z][k],diff=image[x][y][z][c]-means[c][k];
+                float weight=m*m+1e-30f;
+                num+=weight*diff*diff;den+=weight;
+            }
+            out[c][k]=den>0.0f?(float)Math.sqrt(num/den):0.0f;
+        }
+        return out;
+    }
     static int bits(float x){return Float.floatToRawIntBits(x);}
     static String vector(float[] a){String s="[";for(int i=0;i<a.length;i++){if(i>0)s+=",";s+=bits(a[i]);}return s+"]";}
     static String matrix(float[][] a){String s="[";for(int i=0;i<a.length;i++){if(i>0)s+=",";s+=vector(a[i]);}return s+"]";}
@@ -72,6 +85,6 @@ public final class AtlasEMStatisticsReferenceHarness {
     public static void main(String[] args) {
         init(); float[][] mean=centroids();
         System.out.print("{\"source_sha256\":\""+SOURCE_SHA+"\",\"prior\":"+vector(priors(false))+",\"equal_prior\":"+vector(priors(true))
-            +",\"centroid\":"+matrix(mean)+",\"covariance\":"+tensor(covariance(mean))+"}");
+            +",\"centroid\":"+matrix(mean)+",\"covariance\":"+tensor(covariance(mean))+",\"diagonal\":"+matrix(diagonal(mean))+"}");
     }
 }

@@ -11,6 +11,7 @@ import pytest
 from pymacruise.atlas_em_statistics import (
     compute_atlas_em_centroids,
     compute_atlas_em_covariances,
+    compute_atlas_em_diagonal_covariances,
     compute_atlas_em_mixing_coefficients,
 )
 
@@ -68,12 +69,14 @@ def test_fixed_input_atlas_em_statistics_match_java_source_excerpt(tmp_path: Pat
     equal = compute_atlas_em_mixing_coefficients(mem, mask, mode="Equal")
     means = compute_atlas_em_centroids(image, mem, mask, initial=initial)
     covariance = compute_atlas_em_covariances(image, mem, mask, means)
+    diagonal = compute_atlas_em_diagonal_covariances(image, mem, means)
 
     assert ref["source_sha256"] == "b938bbe5631e41d53bf76c56cce5d7ff745fd000ea2b92e5debf1af7233ba35a"
     assert _float_bits(priors) == ref["prior"]
     assert _float_bits(equal) == ref["equal_prior"]
     assert _float_bits(means) == ref["centroid"]
     assert _float_bits(covariance) == _unsigned_tree(ref["covariance"])
+    assert _float_bits(diagonal) == ref["diagonal"]
     assert np.all(covariance[2] == 0.0)  # empty class matches Java zero covariance
 
 
