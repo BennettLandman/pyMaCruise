@@ -157,6 +157,7 @@ def test_atlas_em_registration_hands_transform_into_native_recrop() -> None:
         registration_iterations=1,
     )
     assert [level.scale for level in result.registration.levels] == [2]
+    assert len(result.registration.levels[0].result.iterations) == 1
     assert result.recropped.original_dimensions_xyz == (12, 12, 12)
     assert result.recropped.images.shape[3] == 1
     assert np.isfinite(result.registration.transform).all()
