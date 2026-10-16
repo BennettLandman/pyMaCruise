@@ -58,6 +58,35 @@ signature and every completed stage before skipping work.
   **51/51 NIfTIs finite and RAS**. The output run manifest and products are
   retained under ignored `build/sample-singularity-base-source-profile-2026-10-15/`.
 
+## Controlled selected-Java TOADS handoffs
+
+To separate TOADS implementation parity from the uncertain historical run, the
+selected VandyCRUISE Java wrapper was run on each exact intensity array
+prepared for Python TOADS. For each pass, its input is the same float32 array
+with voxels outside the supplied brain mask set to zero; dimensions are
+184×256×256, spacing is 1 mm, atlas descriptor is the bundled
+`cruise-atlas-10obj-toads2008.txt`, and the selected-wrapper iteration ceiling
+is 50. Java's raw result is reshaped in source-compatible Fortran order and
+compared voxel-for-voxel with the Python stage classification.
+
+- First handoff: **0/12,058,624 changed voxels**; all 11 labels have Dice
+  **1.0**. Java completed successfully under a 16 GB RSS watchdog with peak
+  sampled RSS **3.299 GB**.
+- Second handoff: **0/12,058,624 changed voxels**; all 11 labels have Dice
+  **1.0**. Java completed successfully under the same watchdog with peak
+  sampled RSS **4.409 GB**.
+
+These are controlled, held-fixed **TOADS-stage source equivalence results on
+this human-derived data**, not whole-workflow equivalence: Python generated
+the N4/Dura handoff arrays and the complete original workflow provenance is
+still unavailable. Machine-readable per-label results are in the run's
+ignored `build/sample-singularity-base-source-profile-2026-10-15/java-first/comparison.json`
+and `.../java-second/comparison.json`; the raw Java inputs and outputs are
+also retained in ignored `build/` for local reproduction. The source harness
+is `tests/java_reference/ToadsWorkflowSourceHarness.java`; invoke it with the
+bundled source classpath, the 10-object atlas descriptor, dimensions,
+spacing, 50 iterations, and each handoff's raw input/output paths.
+
 ## Historical-output comparison
 
 The comparison first verified exact source/Python input voxel identity, then
