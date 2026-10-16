@@ -12,6 +12,7 @@ import pytest
 from pymacruise.atlas_em_preprocessing import (
     crop_atlas_em_images,
     find_atlas_em_crop_bounds,
+    recrop_atlas_em_after_registration,
     uncrop_atlas_em_images,
 )
 
@@ -97,3 +98,20 @@ def test_atlas_em_crop_and_uncrop_match_java_excerpt(tmp_path: Path) -> None:
     uncropped, restored_transform = uncrop_atlas_em_images(cropped)
     assert _sha(uncropped) == reference["uncrop_sha256"]
     assert _bits(restored_transform) == reference["restored_transform_bits"]
+
+    registered_transform = cropped.transform.copy()
+    registered_transform[3] = np.float32(registered_transform[3] + np.float32(0.17))
+    registered_transform[4] = np.float32(registered_transform[4] - np.float32(0.09))
+    registered_transform[5] = np.float32(registered_transform[5] + np.float32(0.04))
+    recropped = recrop_atlas_em_after_registration(
+        cropped,
+        registered_transform,
+        [0.1, 0.1],
+        [1.1, 1.1],
+        background_ratio=0.15,
+    )
+    assert list(recropped.lower_xyz) == reference["recrop_lower"]
+    assert list(recropped.upper_xyz) == reference["recrop_upper"]
+    assert list(recropped.images.shape[:3]) == reference["recrop_dims"]
+    assert _sha(recropped.images) == reference["recrop_sha256"]
+    assert _bits(recropped.transform) == reference["registered_transform_bits"]

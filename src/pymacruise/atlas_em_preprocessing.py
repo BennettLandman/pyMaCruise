@@ -1,7 +1,7 @@
 """Selected input normalization and FCM initialization for AtlasEM."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Sequence
 
 import numpy as np
@@ -158,6 +158,42 @@ def uncrop_atlas_em_images(crop: AtlasEMCroppedImages) -> tuple[NDArray[np.float
             rotated = np.float32(rotated + np.float32(rotation[axis, source_axis] * physical_delta[source_axis]))
         parameters[axis + 3] = np.float32(parameters[axis + 3] - rotated)
     return output, parameters
+
+
+def recrop_atlas_em_after_registration(
+    crop: AtlasEMCroppedImages,
+    registered_transform: ArrayLike,
+    robust_minima: ArrayLike,
+    robust_maxima: ArrayLike,
+    *,
+    background_ratio: float,
+) -> AtlasEMCroppedImages:
+    """Reproduce AtlasEM's uncrop, recompute-boundaries, and crop sequence.
+
+    The optimizer's current crop-space transform is first installed into the
+    crop state, as the Java atlas and preprocessing object share that array.
+    The routine then returns to native-grid coordinates, finds the updated
+    robust-span foreground box, and applies the requested zero border again.
+    """
+    current = np.asarray(registered_transform, dtype=np.float32)
+    if current.shape != (6,) or not np.isfinite(current).all():
+        raise ValueError("registered_transform must contain six finite values")
+    registered_crop = replace(crop, transform=current.copy())
+    native_images, native_transform = uncrop_atlas_em_images(registered_crop)
+    lower, upper = find_atlas_em_crop_bounds(
+        native_images,
+        robust_minima,
+        robust_maxima,
+        background_ratio=background_ratio,
+    )
+    return crop_atlas_em_images(
+        native_images,
+        lower,
+        upper,
+        border=crop.border,
+        signed_resolutions_mm=crop.signed_resolutions_mm,
+        transform=native_transform,
+    )
 
 
 def transform_atlas_em_rigid_priors(
