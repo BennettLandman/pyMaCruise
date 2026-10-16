@@ -8,7 +8,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pymacruise.atlas_em_registration import build_atlas_em_rigid_registration_pyramid
+from pymacruise.atlas_em_registration import (
+    build_atlas_em_rigid_registration_pyramid,
+    register_atlas_em_rigid_pyramid,
+)
+from pymacruise.toads_registration_sampling import register_toads_atlas_rigid_pyramid
 
 
 ROOT = Path(__file__).parent
@@ -69,3 +73,42 @@ def test_atlas_em_rigid_registration_pyramid_matches_java_subsampling_excerpt(
         assert list(level.memberships.shape[:3]) == expected["dims"]
         assert _bits(level.memberships) == expected["membership_bits"]
         assert _bits(level.atlas_shapes) == expected["shape_bits"]
+
+
+def test_atlas_em_rigid_registration_selects_demon_source_profile() -> None:
+    memberships = _field(3)
+    memberships /= memberships.sum(axis=-1, keepdims=True, dtype=np.float32)
+    shapes = _field(19)
+    kwargs = {
+        "levels": 2,
+        "image_resolutions_mm": (1.0, 1.2, 1.5),
+        "template_resolutions_mm": (1.0, 1.0, 1.0),
+        "initial_transform": (0.01, -0.02, 0.015, 0.0, 0.0, 0.0),
+    }
+
+    actual = register_atlas_em_rigid_pyramid(
+        memberships, shapes, registration_iterations=2, **kwargs
+    )
+    reference = register_toads_atlas_rigid_pyramid(
+        memberships,
+        shapes,
+        **kwargs,
+        max_iterations=2,
+        subsample_factor=2,
+        energy_tolerance=1e-6,
+        minimum_lambda=1e-3,
+        source_faithful=False,
+        allow_nonfinite_trials=True,
+    )
+    assert [level.scale for level in actual.levels] == [2]
+    assert np.array_equal(actual.transform, reference.transform)
+    assert len(actual.levels[0].result.iterations) == len(reference.levels[0].result.iterations)
+    for observed, expected in zip(
+        actual.levels[0].result.iterations,
+        reference.levels[0].result.iterations,
+        strict=True,
+    ):
+        assert np.array_equal(observed.transform, expected.transform)
+        assert observed.energy == expected.energy
+        assert observed.lambda_value == expected.lambda_value
+        assert observed.relative_change == expected.relative_change
