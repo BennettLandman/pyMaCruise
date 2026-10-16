@@ -1,8 +1,17 @@
 # TOADS atlas registration port notes
 
-**Status:** Investigation started 2026-09-28. This document identifies the
-selected rigid registration behavior and the next source-comparison work. It
-does not claim that atlas registration is implemented.
+**Status as of 2026-10-16:** The selected rigid registration method is
+implemented and compared directly against the supplied VandyCRUISE source on
+asymmetric and larger folded synthetic cases. Bundled-atlas startup matches
+the selected Java registration iterations, line-search traces, and final
+transform. Both natural-convergence human BASE TOADS classifications also
+match selected Java exactly on held-fixed inputs. These results cover the
+selected registration path, but do not establish a fresh complete independent
+BASE/PLUS workflow or exact parity for every internal TOADS state. See the
+[registration comparisons](reports/toads-registration-pyramid-actual-source-2026-10-08.md),
+[folded comparison](reports/toads-registration-pyramid-folded-2026-10-08.md),
+[atlas startup report](reports/toads-atlas-startup-composition-2026-10-02.md),
+and [human TOADS comparison](reports/human-toads-matched-java-comparison-2026-10-13.md).
 
 ## Selected execution path
 
@@ -254,27 +263,30 @@ the complete optimized likelihood, membership evolution, or TOADS output.
 
 ### Remaining implementation and validation slices
 
-The current Python loop is integrated only on small synthetic arrays. Continue
-with these source-grounded items before using bundled atlas grids or proceeding
-to full segmentation:
+The remaining gaps are composition and evidence scope, not an absent rigid
+optimizer:
 
-1. Build a Java harness that executes the selected full rigid-registration
-   method body and compare accepted/rejected trials and the final transform on
-   known asymmetric synthetic alignment cases. The existing Java harnesses
-   compare source-formula kernels and Python multilevel integration, not the
-   private Java atlas registration method.
-2. Exercise registration-driven crop changes and transformed-bound refresh
-   during optimizer iterations. P18ab compares the standalone fixed-transform
-   bound scan with Java on a larger folded prior at three transforms; an
-   optimizer-driven multi-iteration crop update remains unvalidated.
-3. P18ac resolves the spacing source for the selected Java loader: it uses
-   descriptor resolutions and raw voxel data, ignoring the topology NIfTI
-   affine. The 0.9375 mm descriptor versus 1.0 mm NIfTI header remains a
-   warning and must not be hidden by metadata rewriting. Full atlas execution
-   and alignment still require validation.
-4. Integrate rigid registration into TOADS preprocessing, then continue the
-   deformable membership/topology evolution and inter-pass dura-removal port;
-   this document does not close P18 or unblock P34.
+1. The full selected `AlgorithmMultipleToads` wrapper has not been compared
+   stage-by-stage with all internal membership, relation, topology, and
+   correction-field states exposed. Existing Java harnesses pin many individual
+   formulas and selected continuations, and terminal human classifications
+   match, but full intermediate-state parity is still open.
+2. The selected human TOADS runs are held-fixed Java replays on Python-built
+   handoffs. A fresh independent original BASE/PLUS pipeline comparison is
+   still required for end-to-end acceptance.
+3. The selected loader contract is known: it reads atlas arrays by descriptor
+   dimensions/resolution and ignores the topology NIfTI affine. The atlas
+   descriptor states 0.9375 mm while the converted NIfTI header states 1.0 mm;
+   keep this documented warning visible and do not rewrite metadata to conceal
+   it. This is a source-header inconsistency, not a Python resampling step.
+4. The historical SPECTRE affine stage is intentionally omitted from the
+   selected Python workflow by the owner's native-T1-RAS and supplied-mask
+   decision. Do not describe its absence as numerical equivalence; document
+   it as an explicit workflow difference in matched-run reports.
+
+P18 remains open until the missing wrapper/intermediate comparison scope and
+whole-workflow reference evidence are resolved. The completed selected-method
+registration evidence is not itself a P18 completion claim.
 
 The rigid optimizer currently preserves the source coefficient normalization
 call order by default. It does not establish that the source call order is
