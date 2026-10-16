@@ -53,6 +53,17 @@ Record the actual revision or source-tree hashes used by the runner. The
 paths above describe the current machine; the staged inputs and atlas hashes
 make the request portable if the runner uses equivalent source checkouts.
 
+The original JIST drivers also require their selected atlas resources under
+`MIPAV-install/plugins/Atlas/`; both drivers stop with a clear error if the
+primary descriptors are absent. BASE needs
+`cruise-atlas-10obj-toads2008.txt`. PLUS needs the `ibsr8obj` EM descriptor
+`cruise-atlas-8obj-noBG-EM.txt` and the three LesionTOADS descriptors
+`cruise-atlas-12obj-lesiontoads2012.txt`, `cruise-atlas-12obj-toads2012.txt`,
+and `cruise-atlas-10obj-toads2010.txt`. Record hashes for each descriptor and
+all referenced payload files in `RUN_INFO.md`; the installed plugin's files
+must be the same files used by the run. PyMaCRUISE's own runtime atlas assets
+are separately bundled in `data/atlases/`.
+
 ## BASE run driver
 
 The packet includes run-only MATLAB drivers for BASE and PLUS and a NiBabel

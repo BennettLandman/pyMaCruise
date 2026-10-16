@@ -30,6 +30,8 @@ def test_base_reference_driver_preserves_selected_stage_order_and_mask_contract(
     assert "opts.N3orN4 = 'N4';" in text
     assert "opts.ToadsOutput = 'dura removal inputs';" in text
     assert "opts.ToadsOutput = 'cruise inputs';" in text
+    assert "'cruise-atlas-10obj-toads2008.txt'" in text
+    assert "Missing selected BASE TOADS atlas" in text
     assert "run_Bet(" not in text
     assert "run_Spectre(" not in text
     assert "write_FreeViewBatch(" not in text

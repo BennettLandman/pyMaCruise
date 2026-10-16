@@ -33,6 +33,9 @@ def test_plus_reference_driver_preserves_selected_stage_order_and_mask_contract(
     assert positions == sorted(positions)
     assert "opts.rigOnly = 1;" in text
     assert "opts.LesionToadsOutput = 'dura removal inputs';" in text
+    assert "'cruise-atlas-8obj-noBG-EM.txt'" in text
+    assert "'cruise-atlas-12obj-lesiontoads2012.txt'" in text
+    assert "Missing selected PLUS atlas" in text
     assert "FlairRegistration" in text and "aladin_reg" not in text
     assert "run_Bet(" not in text
     assert "run_Spectre(" not in text

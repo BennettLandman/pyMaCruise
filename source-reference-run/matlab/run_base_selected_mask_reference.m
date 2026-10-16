@@ -67,6 +67,10 @@ opts.T1_sequence = 'T1_MPRAGE';
 opts.FinalToadsMethod = 'cruise inputs';
 opts.ErodeMethod = '3D';
 opts.OverLookLabels = '120,121,202,203,156,157';
+toads_atlas = fullfile(opts.plugindir, 'Atlas', 'cruise-atlas-10obj-toads2008.txt');
+if ~isfile(toads_atlas)
+    error('Missing selected BASE TOADS atlas in MIPAV plugins: %s', toads_atlas);
+end
 
 % Keep the original V3 raw preparation and multi-atlas tissue preparation.
 [T1_file, Seg_file] = prepare_raw(t1_raw, seg_raw, working_dir, 'Raw', 'STEP0');

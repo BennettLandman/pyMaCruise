@@ -51,6 +51,16 @@ opts.multiatlas_code_dir = multiatlas_code_dir;
 opts.N4correctBIN_dir = n4_binary;
 opts.rigOnly = 1;
 opts.interp = [];
+required_atlases = { ...
+    fullfile(opts.plugindir, 'Atlas', 'ibsr8obj', 'cruise-atlas-8obj-noBG-EM.txt'), ...
+    fullfile(opts.plugindir, 'Atlas', 'lesionToads-atlas-2012', 'cruise-atlas-12obj-lesiontoads2012.txt'), ...
+    fullfile(opts.plugindir, 'Atlas', 'lesionToads-atlas-2012', 'cruise-atlas-12obj-toads2012.txt'), ...
+    fullfile(opts.plugindir, 'Atlas', 'lesionToads-atlas-2012', 'cruise-atlas-10obj-toads2010.txt')};
+for atlas_index = 1:numel(required_atlases)
+    if ~isfile(required_atlases{atlas_index})
+        error('Missing selected PLUS atlas in MIPAV plugins: %s', required_atlases{atlas_index});
+    end
+end
 
 % run_maCRUISEplus first rigidly registers FLAIR to T1 with NiftyReg/Aladin.
 flair_reg_dir = fullfile(working_dir, 'FlairReg');
