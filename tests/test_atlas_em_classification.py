@@ -8,7 +8,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pymacruise.atlas_em_outputs import generate_atlas_em_classification
+from pymacruise.atlas_em_outputs import (
+    generate_atlas_em_classification,
+    generate_atlas_em_segmentation,
+)
 
 
 ROOT = Path(__file__).parent
@@ -36,8 +39,10 @@ def test_atlas_em_classification_matches_java_excerpt(tmp_path: Path) -> None:
     memberships[1, 1, 1] = 0.0  # source emits label zero when all memberships are zero
 
     labels = generate_atlas_em_classification(memberships, np.asarray([4, 17, 91], np.int8))
+    segmentation = generate_atlas_em_segmentation(memberships)
     assert reference["source_sha256"] == "b938bbe5631e41d53bf76c56cce5d7ff745fd000ea2b92e5debf1af7233ba35a"
     assert labels.ravel().tolist() == reference["labels"]
+    assert segmentation.ravel().tolist() == reference["segmentation"]
 
 
 def test_atlas_em_classification_rejects_non_byte_template_labels() -> None:

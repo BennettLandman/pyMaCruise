@@ -13,11 +13,20 @@ public final class AtlasEMClassificationReferenceHarness {
         }
         return out;
     }
+    static byte[][][] segment(){
+        byte[][][] out=new byte[NX][NY][NZ];
+        for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++){
+            out[x][y][z]=-1;int best=0;
+            for(int k=0;k<K;k++)if(mem[x][y][z][k]>mem[x][y][z][best])best=k;
+            if(mem[x][y][z][best]>0)out[x][y][z]=(byte)best;
+        }
+        return out;
+    }
     static String tensor(byte[][][] a){String s="[";boolean first=true;for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++){if(!first)s+=",";first=false;s+=(int)a[x][y][z];}return s+"]";}
     public static void main(String[] args){
         for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<K;k++)mem[x][y][z][k]=(x+y+z+k)%5==0?0.0f:(float)(1+x*2+y+z+k)/9.0f;
         mem[0][0][0][0]=0.5f;mem[0][0][0][1]=0.5f;mem[0][0][0][2]=0.1f;
         mem[1][1][1][0]=0.0f;mem[1][1][1][1]=0.0f;mem[1][1][1][2]=0.0f;
-        System.out.print("{\"source_sha256\":\""+SOURCE_SHA+"\",\"labels\":"+tensor(classify())+"}");
+        System.out.print("{\"source_sha256\":\""+SOURCE_SHA+"\",\"labels\":"+tensor(classify())+",\"segmentation\":"+tensor(segment())+"}");
     }
 }

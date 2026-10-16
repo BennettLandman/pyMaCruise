@@ -17,6 +17,31 @@ _GM_NAMES = frozenset(
 _CEREBELLAR_NAMES = ("Cerebellum-GM", "CerebellarGM")
 
 
+def generate_atlas_em_segmentation(memberships: ArrayLike) -> NDArray[np.int8]:
+    """Reproduce the hard tissue-index segmentation from current memberships.
+
+    The source starts from class zero, keeps the first index on ties, and
+    writes ``-1`` when the winning membership is not positive. This index map
+    feeds the AtlasEM Dura-input output adapter.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    if mem.ndim != 4 or any(n < 1 for n in mem.shape[:3]) or not 1 <= mem.shape[3] <= 127:
+        raise ValueError("memberships must have shape (x, y, z, classes) with 1..127 classes")
+    if not np.isfinite(mem).all():
+        raise ValueError("memberships must be finite")
+    result = np.full(mem.shape[:3], -1, dtype=np.int8)
+    for x in range(mem.shape[0]):
+        for y in range(mem.shape[1]):
+            for z in range(mem.shape[2]):
+                best = 0
+                for k in range(1, mem.shape[3]):
+                    if mem[x, y, z, k] > mem[x, y, z, best]:
+                        best = k
+                if mem[x, y, z, best] > 0.0:
+                    result[x, y, z] = best
+    return result
+
+
 def generate_atlas_em_classification(
     memberships: ArrayLike,
     template_labels: ArrayLike,
