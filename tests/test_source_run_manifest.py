@@ -31,7 +31,8 @@ def test_source_run_manifest_records_hashes_and_ras_geometry(tmp_path: Path):
     image.set_qform(affine, code=1)
     image.set_sform(affine, code=1)
     nib.save(image, str(run_dir / "inner.nii.gz"))
-    (run_dir / "RUN_INFO.md").write_text("source revision: example\n", encoding="utf-8")
+    run_info_template = ROOT / "source-reference-run/RUN_INFO.template.md"
+    (run_dir / "RUN_INFO.md").write_text(run_info_template.read_text(encoding="utf-8"), encoding="utf-8")
     (run_dir / "inner.vtk").write_text("synthetic surface placeholder\n", encoding="utf-8")
 
     result = _run_audit(run_dir, "--require-ras", "--require-run-info")

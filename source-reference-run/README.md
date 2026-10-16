@@ -197,6 +197,11 @@ fine), including:
 5. The stopping iteration, energy ratio, stop reason, and whether stopping was
    natural convergence or an iteration limit.
 
+Copy [`RUN_INFO.template.md`](RUN_INFO.template.md) into each run directory as
+`RUN_INFO.md` and complete it. The output auditor's `--require-run-info` flag
+checks that the record is present; a human still needs to check that its values
+are complete and consistent with the logs.
+
 Do not include FreeSurfer surface conversion, MNI export, figures, or viewer
 files in the archive. Retaining them is unnecessary for this port comparison.
 
