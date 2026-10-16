@@ -1502,9 +1502,10 @@ optional output directory writes the selected classification plus four
 source-scaled float32 Dura-removal input maps in RAS. The compact synthetic
 run and help contract passed 2 tests in 15.24 seconds. This
 command omits N4 execution, dura removal, the second MaCRUISE pass, and the
-full base/plus workflow CLI. See [the input/output reference](cli-help.md) and
-[validation report](reports/toads-loop-cli-2026-10-02.md). P18cyn remains
-Started pending full-suite and packaged-wheel checks.
+full base/plus workflow CLI. The standalone command step P18cybn is complete
+in the main [port plan](../plan.md#standalone-algorithm-port-status), including
+its packaged-wheel check; see [the input/output reference](cli-help.md) and
+[validation report](reports/toads-loop-cli-2026-10-02.md).
 
 
 ### Terminal TOADS Dura-input export (P18cybo)
@@ -1515,9 +1516,10 @@ wrapper's unconditional 255 scaling. `toads-loop --dura-output-dir` persists
 the classification plus four float32 Dura inputs as RAS `.nii.gz`. Its compact
 synthetic CLI checks passed 2 tests in 15.24 seconds; output shapes, types, and
 RAS orientation were verified. This exports Dura inputs but does not run Dura
-removal or the second TOADS pass. See [the export
-report](reports/toads-terminal-dura-input-export-2026-10-02.md). P18cybo
-remains Started.
+removal or the second TOADS pass. P18cybo is complete in the main
+[port plan](../plan.md#standalone-algorithm-port-status); its focused tests and
+full-suite evidence are linked in that row. See [the export
+report](reports/toads-terminal-dura-input-export-2026-10-02.md).
 
 ### Registered TOADS-to-Dura command handoff (P18cybp)
 
