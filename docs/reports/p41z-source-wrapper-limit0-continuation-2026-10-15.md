@@ -74,6 +74,47 @@ Continue from each completed loop manifest using the same loop command and
 keeps each execution bounded. Detailed per-iteration comparison output and
 checkpoints are in ignored `build/p41z-source-limit3/`.
 
+## Completed source-aligned continuation and downstream audit
+
+The fresh limit-3 chain continued to the configured iteration-99 cap. It
+stopped with `stop_reason=iteration_limit`, `convergence_stop=false`, and
+energy ratio **0.1319493502** (threshold `1e-4`). Across the five-pass chunks,
+peak sampled RSS stayed at or below **1.060 GB** under a 4 GB watchdog. The
+terminal manifest's seven output hashes verify; its six NIfTIs are finite RAS
+arrays on `(71, 89, 67)` (the terminal manifest intentionally omits internal
+skeleton/availability/ordering arrays).
+
+Additional selected Java transition replays on this fresh limit-3 trajectory
+matched exact serialized thinning, registered shapes, membership energy,
+statistics, registration, growth, and relations at iterations **32→33** and
+**97→98**. The selected **98→99** transition also matches every method output
+that the terminal manifest exposes; the terminal manifest omits skeleton,
+availability, ordering, and relation products, which are correctly reported as
+unavailable rather than mismatches. At 98→99 the ratio is **0.1319493502**,
+Java/Python thinning serialization matches, and both process 175,162 growth
+events. The terminal control reaches the 99 cap. This remains selected-method
+evidence with upstream state held fixed, not a complete Java workflow run.
+
+The terminal loop state was composed through Dura transfer, MaSeg fusion, ACE,
+GVF, TGDM, surfaces, and thickness. Explicit labeled-ribbon diagnostics found
+GM support **92.94%**, WM support **99.46%**, and CSF-outside support **99.26%**;
+all surfaces are nested and each mesh is watertight and connected with Euler
+characteristic **−16**. Level-set mean thickness is **4.841 mm**; closest-
+surface median/p05/p95 is **6.496/0.236/12.335 mm**. These are anatomy
+diagnostics, not port-acceptance gates.
+
+Selected Java TGDM was run on the exact Python-generated terminal upstream
+arrays. All five compared TGDM surfaces pass the agreed gates. The outer has
+7 sign changes, Dice **0.9999704**, symmetric mean distance **0.001817 mm**,
+and Hausdorff **0.526571 mm**; Java peak sampled RSS was **0.630 GB**. This
+shows selected TGDM surface agreement at the terminal state, not independent
+upstream or whole PLUS equivalence. The terminal synthetic quality audit is
+`build/p41z-source-limit3/iteration-99-surface-audit/ribbon-quality.json`, and
+the selected Java comparison is
+`build/p41z-source-limit3/iteration-99-java-tgdm/comparison.json` (ignored
+build products, reproducible from the commands and scripts above and in the
+linked iteration-99 report).
+
 To examine sensitivity without relabeling prior work, iteration 89 was
 continued with limit zero through iteration 99. This is a **hybrid synthetic
 continuation**: iterations before 90 remain the saved limit-1000 state; only
