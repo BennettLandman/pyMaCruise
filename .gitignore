@@ -7,3 +7,5 @@ build/
 dist/
 .cache/
 .pytest-tmp/
+/source-reference-run/outputs/*
+!/source-reference-run/outputs/.gitkeep

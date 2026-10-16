@@ -53,6 +53,45 @@ Record the actual revision or source-tree hashes used by the runner. The
 paths above describe the current machine; the staged inputs and atlas hashes
 make the request portable if the runner uses equivalent source checkouts.
 
+## BASE run driver
+
+The packet includes a run-only MATLAB driver at
+[`matlab/run_base_selected_mask_reference.m`](matlab/run_base_selected_mask_reference.m)
+and a small NiBabel helper at
+[`matlab/apply_brain_mask_nifti.py`](matlab/apply_brain_mask_nifti.py). The
+driver follows `maCRUISEpipeline.m`'s selected V3 stage order but calls its
+stages directly so it can supply the user mask without invoking BET or
+SPECTRE. It runs source N4 without a mask, applies the supplied binary mask to
+the corrected T1, executes TOADS pass 1 → Dura removal → TOADS pass 2, then
+continues through the original crop, boundary, tissue-fusion, ACE/GVF/TGDM,
+and refinement functions. It omits MNI export, FreeSurfer conversion, figures,
+viewer files, and cleanup/deletion. A timestamped output directory is created
+under `outputs/`; it is ignored by Git so human outputs are not committed, and the
+driver refuses to reuse an existing run directory.
+
+From the repository root, with MATLAB, the selected MIPAV/JIST install, MASI
+fusion checkout, ANTs N4 executable, and Python with `nibabel` available, run:
+
+```matlab
+addpath('source-reference-run/matlab');
+run_base_selected_mask_reference( ...
+  '/path/to/MaCRUISE', ...
+  '/path/to/MIPAV-install', ...
+  '/path/to/full-multi-atlas', ...
+  '/path/to/ANTs/bin/N4BiasFieldCorrection', ...
+  'python3');
+```
+
+The Python mask helper has two committed synthetic tests covering mask values,
+RAS geometry, qform/sform preservation, and mismatched-grid rejection. The MATLAB
+driver has not been executed in this environment because MATLAB and the selected
+MIPAV/JIST application runtime are unavailable. Before using its
+outputs as evidence, confirm the logged effective options, source hashes,
+TOADS stop iterations, generated outputs, and mask/grid identity. Its stages
+are the original MATLAB/JIST functions; the driver itself is new orchestration
+that should be treated as an external-run recipe until someone completes and
+returns this run.
+
 ### BASE
 
 - Inputs: `inputs/base-root/{T1.nii.gz,brain_mask.nii.gz,MaSeg.nii.gz}`.
