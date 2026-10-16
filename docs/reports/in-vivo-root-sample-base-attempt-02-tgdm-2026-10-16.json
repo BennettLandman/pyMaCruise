@@ -1,0 +1,127 @@
+{
+  "case": "regenerated human BASE attempt-02",
+  "coordinate_system": "RAS millimetres",
+  "crop_bounds_inclusive": [
+    [
+      21,
+      160
+    ],
+    [
+      33,
+      201
+    ],
+    [
+      71,
+      204
+    ]
+  ],
+  "evidence_category": "held-fixed selected Java TGDM stage comparison on Python-generated inputs",
+  "input_and_python_output_sha256": {
+    "ace_enhanced_gm": "2729071088600b592faef856d4d72396ed2373f06e67f0d70472f09f07a13706",
+    "ace_thinned_skeleton": "fc843a2d6113788636c64763597b5e54a77a2ab0dbd45776a64e9bdadcb007f5",
+    "central": "8cb3068899ac4160cb4281e6b2327dcb492ff5899069998776b26fb66c44812e",
+    "gm_cropped": "cdb0abec04be4003fe282499a5f4126fcb2a251af5ec521d4c3727ca55382d32",
+    "gvf": "d81e74d1afb9c65f3acb7e661b1eef1eabb8382bd3d729dcc1e5753186477cf7",
+    "inner": "6536165218b845364b8302575a9eb9ad3a239191c6783eb5245728da29123c23",
+    "outer": "61c35a9d455b035398d4dc0a0709380c0c3684df6c8784952e44ff6fffe2f37c",
+    "wmfill_cropped": "658c54d5891d6762e3cf19827d2d71e0ee05d61a447a3f7d3d26ba5620ee80ea",
+    "wmfill_topology_corrected": "a3c0bca3b73f20d6777d905e1c02f1619c64b9d53187230e3c16d9767a3aa85d"
+  },
+  "interpretation": "Surface-position tolerances pass; full level-set arrays are not identical.",
+  "java_runtime": {
+    "max_heap_gb": 6,
+    "peak_sampled_rss_gb": 1.317,
+    "rss_watchdog_limit_gb": 16,
+    "watchdog_triggered": false
+  },
+  "java_source_sha256": {
+    "DistanceFieldyh.java": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811",
+    "MaGenericTGDM.java": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d",
+    "PlusTGDMReferenceHarness.java": "a5b7c53b94d0d70a68999ec8c35b8985a5c1a8b2b114fe12be07afee884a4a3a"
+  },
+  "packed_java_input_sha256": "bbfff1a34629f652c6677ab47439de59f7b4c2221ce78659fc2d13610e6c8391",
+  "parameters": {
+    "central_iterations": 7,
+    "central_shrink_iterations": 1,
+    "connectivity": "18/6",
+    "gray_matter_iso": 0.4,
+    "initial_iso": 126.9,
+    "initial_smoothing_iterations": 6,
+    "inner_iterations": 4,
+    "outer_iterations": 7,
+    "white_matter_iso": 0.5
+  },
+  "shape": [
+    140,
+    169,
+    134
+  ],
+  "surfaces": {
+    "central": {
+      "candidate_to_reference_mean_mm": 3.4712234511393385e-09,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 1.5160263052359162e-05,
+      "java_mesh_faces": 481152,
+      "java_mesh_vertices": 240378,
+      "java_vs_python_differing_values": 104423,
+      "java_vs_python_sign_differing_voxels": 0,
+      "max_absolute_levelset_error": 14.514082908630371,
+      "mean_absolute_distance_mm": 3.461582418466367e-09,
+      "mean_absolute_levelset_error": 0.03394322512636205,
+      "n_candidate_vertices": 240378,
+      "n_reference_vertices": 240378,
+      "python_mesh_faces": 481152,
+      "python_mesh_vertices": 240378,
+      "reference_to_candidate_mean_mm": 3.451941385793395e-09,
+      "shape": [
+        140,
+        169,
+        134
+      ]
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 4.216342295636053e-09,
+      "dice_at_zero": 1.0,
+      "hausdorff_mm": 1.4884168070065527e-05,
+      "java_mesh_faces": 482352,
+      "java_mesh_vertices": 240978,
+      "java_vs_python_differing_values": 107195,
+      "java_vs_python_sign_differing_voxels": 0,
+      "max_absolute_levelset_error": 13.418097496032715,
+      "mean_absolute_distance_mm": 4.205469569043142e-09,
+      "mean_absolute_levelset_error": 0.024625667656770253,
+      "n_candidate_vertices": 240978,
+      "n_reference_vertices": 240978,
+      "python_mesh_faces": 482352,
+      "python_mesh_vertices": 240978,
+      "reference_to_candidate_mean_mm": 4.194596842450233e-09,
+      "shape": [
+        140,
+        169,
+        134
+      ]
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.0003607039506099681,
+      "dice_at_zero": 0.9999724343247788,
+      "hausdorff_mm": 0.7101197769523154,
+      "java_mesh_faces": 615968,
+      "java_mesh_vertices": 307786,
+      "java_vs_python_differing_values": 2160842,
+      "java_vs_python_sign_differing_voxels": 55,
+      "max_absolute_levelset_error": 15.586701393127441,
+      "mean_absolute_distance_mm": 0.00035291636537153304,
+      "mean_absolute_levelset_error": 0.054736430172398036,
+      "n_candidate_vertices": 307792,
+      "n_reference_vertices": 307786,
+      "python_mesh_faces": 615980,
+      "python_mesh_vertices": 307792,
+      "reference_to_candidate_mean_mm": 0.00034512878013309803,
+      "shape": [
+        140,
+        169,
+        134
+      ]
+    }
+  }
+}
