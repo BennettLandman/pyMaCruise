@@ -93,3 +93,19 @@ def test_source_run_manifest_rejects_complex_nifti(tmp_path: Path):
     manifest = json.loads((run_dir / "source-run-manifest.json").read_text())
     assert "could not audit NIfTI complex.nii.gz" in manifest["errors"][0]
     assert "nonnumeric NIfTI datatype" in manifest["errors"][0]
+
+
+def test_source_run_manifest_scans_4d_images_in_bounded_spatial_chunks(tmp_path: Path):
+    run_dir = tmp_path / "source-run"
+    run_dir.mkdir()
+    values = np.arange(2 * 7 * 9 * 3, dtype=np.float32).reshape(2, 7, 9, 3)
+    nib.save(nib.Nifti1Image(values, np.eye(4)), str(run_dir / "four-dimensional.nii.gz"))
+
+    result = _run_audit(run_dir, "--slab-voxels", "5")
+    assert result.returncode == 0, result.stderr
+    manifest = json.loads((run_dir / "source-run-manifest.json").read_text())
+    image_record = manifest["files"]["four-dimensional.nii.gz"]["nifti"]
+    assert image_record["shape"] == [2, 7, 9, 3]
+    assert image_record["finite_voxels"] is True
+    assert image_record["minimum"] == 0.0
+    assert image_record["maximum"] == float(values.max())

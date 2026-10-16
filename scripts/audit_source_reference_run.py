@@ -35,17 +35,31 @@ def audit_nifti(path: Path, *, slab_voxels: int) -> dict[str, Any]:
     finite = True
     minimum: float | None = None
     maximum: float | None = None
-    x_chunk = max(1, min(int(image.shape[0]), slab_voxels // max(1, int(np.prod(image.shape[1:])))))
-    for start in range(0, int(image.shape[0]), x_chunk):
-        slab = np.asarray(image.dataobj[start : start + x_chunk])
-        finite_values = slab[np.isfinite(slab)]
-        if finite_values.size != slab.size:
-            finite = False
-        if finite_values.size:
-            slab_min = float(np.min(finite_values))
-            slab_max = float(np.max(finite_values))
-            minimum = slab_min if minimum is None else min(minimum, slab_min)
-            maximum = slab_max if maximum is None else max(maximum, slab_max)
+    spatial_shape = tuple(int(size) for size in image.shape[:3])
+    z_chunk = max(1, min(spatial_shape[2], slab_voxels))
+    y_chunk = max(1, min(spatial_shape[1], slab_voxels // z_chunk))
+    x_chunk = max(1, min(spatial_shape[0], slab_voxels // (y_chunk * z_chunk)))
+    frame_count = int(image.shape[3]) if len(image.shape) == 4 else 1
+    for frame in range(frame_count):
+        for x_start in range(0, spatial_shape[0], x_chunk):
+            for y_start in range(0, spatial_shape[1], y_chunk):
+                for z_start in range(0, spatial_shape[2], z_chunk):
+                    slices = (
+                        slice(x_start, x_start + x_chunk),
+                        slice(y_start, y_start + y_chunk),
+                        slice(z_start, z_start + z_chunk),
+                    )
+                    if len(image.shape) == 4:
+                        slices += (frame,)
+                    slab = np.asarray(image.dataobj[slices])
+                    finite_values = slab[np.isfinite(slab)]
+                    if finite_values.size != slab.size:
+                        finite = False
+                    if finite_values.size:
+                        slab_min = float(np.min(finite_values))
+                        slab_max = float(np.max(finite_values))
+                        minimum = slab_min if minimum is None else min(minimum, slab_min)
+                        maximum = slab_max if maximum is None else max(maximum, slab_max)
 
     affine = np.asarray(image.affine, dtype=np.float64)
     if not np.isfinite(affine).all():
