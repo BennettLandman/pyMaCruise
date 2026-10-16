@@ -94,6 +94,20 @@ are the original MATLAB/JIST functions; the driver itself is new orchestration
 that should be treated as an external-run recipe until someone completes and
 returns this run.
 
+Static checks pin both drivers' selected call order, required source options,
+scope restoration, and omission of BET/SPECTRE/visualization entry points:
+
+```sh
+PYTHONPATH=src .venv/bin/python -m pytest -q \
+  tests/test_source_reference_base_driver.py \
+  tests/test_source_reference_plus_driver.py \
+  tests/test_source_run_manifest.py \
+  tests/test_source_reference_mask_helper.py
+```
+
+These are wiring checks only. They do not parse MATLAB, launch Aladin, or
+validate any source-stage output.
+
 ### PLUS run driver
 
 [`matlab/run_plus_selected_mask_reference.m`](matlab/run_plus_selected_mask_reference.m)

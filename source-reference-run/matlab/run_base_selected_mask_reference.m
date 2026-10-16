@@ -104,6 +104,9 @@ opts.ToadsOutput = 'cruise inputs';
     dura_t1, opts, 'Toads2ndPass', 'STEP2.4');
 
 % Continue the original BASE source sequence from transfer/crop through TGDM.
+% The parent maCRUISEpipeline retains working_dir while run_Toads uses its
+% local opts copy for ToadsSeperate; restore the same parent scope here.
+opts.working_dir = working_dir;
 transfer_orig = run_TransferToOriginSpace( ...
     Seg_file, {toads2_gm, toads2_wmfill, toads2_wmmask}, ...
     opts, 'TransferToOriginSpace', 'STEP3');
