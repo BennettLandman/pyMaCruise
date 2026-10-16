@@ -67,8 +67,12 @@ def _assert_ace_stages_match_selected_java(fixture_root: Path, java_root: Path) 
     initial_levelset = _ace_initial_levelset(white, 126.9)
     initial_phi = _signed_distance_fmm(initial_levelset, 1000.0)
     seed = ace_seed_fields(gray, white, initial_phi, intensity_threshold=126.9)
-    guide = ace_gaussian_blur(initial_phi, 1.8)
-    diffused = ace_anisotropic_diffusion(seed.initial_csf_speed, guide, tensor_alpha=1.6, iterations=25)
+    # The V3 wrapper passes its initial-guide and tensor alphas as Java float
+    # literals 1.8f and 1.6f; the later speed Gaussian uses double alphaG=1.8.
+    guide = ace_gaussian_blur(initial_phi, float(np.float32(1.8)))
+    diffused = ace_anisotropic_diffusion(
+        seed.initial_csf_speed, guide, tensor_alpha=float(np.float32(1.6)), iterations=25
+    )
     merged = diffused.copy()
     merged[atlas > 0] = 1.0
     speed_before_blur = 1.0 - 0.9 * merged

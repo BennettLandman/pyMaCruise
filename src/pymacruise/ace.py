@@ -387,7 +387,10 @@ def ace_enhance_arrays(
     initial_levelset = _ace_initial_levelset(white, intensity_threshold)
     initial_phi = _signed_distance_fmm(initial_levelset, 1000.0)
     seeds = ace_seed_fields(gray, white, initial_phi, intensity_threshold=intensity_threshold)
-    guide = ace_gaussian_blur(initial_phi, gaussian_alpha)
+    # The selected V3 wrapper hard-codes the initial guide alpha as Java
+    # ``1.8f`` (float32); its separately configured ``alphaG`` is a double
+    # passed only to the later speed-function Gaussian.
+    guide = ace_gaussian_blur(initial_phi, float(np.float32(1.8)))
     initial_csf = seeds.initial_csf_speed
     if atlas_csf is not None and use_updated_csf_in_ace == 1:
         initial_csf = _merge_updated_csf(
@@ -396,7 +399,9 @@ def ace_enhance_arrays(
     diffused_csf = ace_anisotropic_diffusion(
         initial_csf,
         guide,
-        tensor_alpha=tensor_alpha,
+        # The wrapper calls solve(..., 1.6f, ...), so preserve Java float
+        # argument rounding before the diffusion routine receives its double.
+        tensor_alpha=float(np.float32(tensor_alpha)),
         iterations=diffusion_iterations,
     )
     speed = ace_update_speed(
