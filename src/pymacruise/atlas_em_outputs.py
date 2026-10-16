@@ -17,6 +17,43 @@ _GM_NAMES = frozenset(
 _CEREBELLAR_NAMES = ("Cerebellum-GM", "CerebellarGM")
 
 
+def generate_atlas_em_classification(
+    memberships: ArrayLike,
+    template_labels: ArrayLike,
+) -> NDArray[np.int8]:
+    """Reproduce ``AtlasEMSegmentation.generateClassification``.
+
+    The source selects the first class with strictly greatest positive
+    membership, maps it through the template's signed-byte label table, and
+    emits label zero when every class membership is nonpositive. This product
+    is independent of the hard tissue-index segmentation used by other
+    AtlasEM output methods.
+    """
+    mem = np.asarray(memberships, dtype=np.float32)
+    labels = np.asarray(template_labels)
+    if mem.ndim != 4 or any(n < 1 for n in mem.shape[:3]) or mem.shape[3] < 1:
+        raise ValueError("memberships must have shape (x, y, z, classes)")
+    if labels.shape != (mem.shape[3],) or not np.issubdtype(labels.dtype, np.integer):
+        raise ValueError("template_labels must contain one integer byte label per class")
+    if np.any(labels < -128) or np.any(labels > 127):
+        raise ValueError("template_labels must fit the Java signed-byte range [-128, 127]")
+    if not np.isfinite(mem).all():
+        raise ValueError("memberships must be finite")
+    result = np.zeros(mem.shape[:3], dtype=np.int8)
+    for x in range(mem.shape[0]):
+        for y in range(mem.shape[1]):
+            for z in range(mem.shape[2]):
+                maximum = np.float32(0.0)
+                best = -1
+                for k in range(mem.shape[3]):
+                    if mem[x, y, z, k] > maximum:
+                        best = k
+                        maximum = mem[x, y, z, k]
+                if best > -1:
+                    result[x, y, z] = np.int8(labels[best])
+    return result
+
+
 def generate_atlas_em_dura_inputs(
     memberships: ArrayLike,
     segmentation: ArrayLike,
