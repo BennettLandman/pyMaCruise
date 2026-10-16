@@ -87,6 +87,27 @@ is `tests/java_reference/ToadsWorkflowSourceHarness.java`; invoke it with the
 bundled source classpath, the 10-object atlas descriptor, dimensions,
 spacing, 50 iterations, and each handoff's raw input/output paths.
 
+## Regenerated generation after ACE source-call correction
+
+After preserving the selected Java wrapper's float-call semantics in the Python
+ACE entry point, the complete command above was rerun with `--resume`. The
+implementation signature correctly started a fresh generation (attempt 02)
+and recomputed all eight BASE stages. Both TOADS passes converged naturally at
+iterations 20 and 18, with terminal ratios `4.29838547e-05` and
+`4.44517791e-05`. Every stage check passed; peak sampled RSS was **5.016 GB**
+under a 16 GB watchdog. A same-code resume then verified and skipped all eight
+stages, peaking at **0.700 GB** under an 8 GB watchdog. The final run manifest
+contains 68 stage output hashes; independent verification found **68/68
+valid**, and all **51/51 NIfTIs are finite and RAS**.
+
+For an independent repeatability check, the saved attempt-01 and attempt-02
+stage directories were compared. All **58 shared data/artifact files** (NIfTI
+images, VTK products, and other algorithm outputs) are byte-identical. Only
+run logs, provenance files, and the refinement summary contain run-specific
+metadata differences. This shows that the ACE call-semantics change left the
+human workflow products unchanged on this case while the selected Java ACE
+comparison remains bit-exact.
+
 ## Historical-output comparison
 
 The comparison first verified exact source/Python input voxel identity, then
