@@ -161,3 +161,17 @@ files in the archive. Retaining them is unnecessary for this port comparison.
 After the output archive is available here, I can map its intermediates to the
 Python manifests and run the voxel, Dice, transform, and surface comparisons.
 The original runtime remains the only item this host cannot execute itself.
+
+Before comparison, audit the returned directory with the repository tool:
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/audit_source_reference_run.py \
+  /path/to/returned/base-run --require-run-info --require-ras
+```
+
+The audit writes `source-run-manifest.json` with SHA-256 for every regular file,
+and NIfTI shape, affine, qform/sform, voxel size, orientation, and finite-value
+checks. `--require-ras` fails on non-RAS image outputs; omit it only when
+deliberately collecting a legacy orientation for later conversion/comparison.
+It rejects uncompressed `.nii` images and symlinks but never modifies source
+outputs. Mesh and log files are hashed without interpretation.
