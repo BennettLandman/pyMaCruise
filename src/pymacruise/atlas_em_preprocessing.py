@@ -53,21 +53,19 @@ def find_atlas_em_crop_bounds(
         raise ValueError("robust minima/maxima must match image channels")
     if not np.isfinite(values).all() or not np.isfinite(low).all() or not np.isfinite(high).all() or not np.isfinite(ratio):
         raise ValueError("images, bounds, and background_ratio must be finite")
-    lower = np.asarray(values.shape[:3], dtype=np.int64) - 1
-    upper = np.zeros(3, dtype=np.int64)
-    found = False
-    for x in range(values.shape[0]):
-        for y in range(values.shape[1]):
-            for z in range(values.shape[2]):
-                for channel in range(values.shape[3]):
-                    threshold = ratio if normalized else np.float32(ratio * np.float32(high[channel] - low[channel]))
-                    if values[x, y, z, channel] > threshold:
-                        lower = np.minimum(lower, (x, y, z))
-                        upper = np.maximum(upper, (x, y, z))
-                        found = True
-    if not found:
+    thresholds = np.full(values.shape[3], ratio, dtype=np.float32)
+    if not normalized:
+        thresholds = np.multiply(ratio, np.subtract(high, low, dtype=np.float32), dtype=np.float32)
+    foreground = np.any(values > thresholds.reshape((1, 1, 1, -1)), axis=3)
+    if not np.any(foreground):
         raise ValueError("AtlasEM crop predicate found no foreground voxels")
-    return tuple(int(v) for v in lower), tuple(int(v) for v in upper)
+    lower: list[int] = []
+    upper: list[int] = []
+    for axis in range(3):
+        present = np.any(foreground, axis=tuple(i for i in range(3) if i != axis))
+        lower.append(int(np.argmax(present)))
+        upper.append(int(present.size - 1 - np.argmax(present[::-1])))
+    return tuple(lower), tuple(upper)
 
 
 def crop_atlas_em_images(
@@ -129,10 +127,14 @@ def uncrop_atlas_em_images(crop: AtlasEMCroppedImages) -> tuple[NDArray[np.float
     values = np.asarray(crop.images, dtype=np.float32)
     output = np.zeros(crop.original_dimensions_xyz + (values.shape[3],), dtype=np.float32)
     lower, upper, pad = crop.lower_xyz, crop.upper_xyz, crop.border
-    for x in range(max(lower[0] - pad, 0), min(upper[0] + pad, output.shape[0] - 1) + 1):
-        for y in range(max(lower[1] - pad, 0), min(upper[1] + pad, output.shape[1] - 1) + 1):
-            for z in range(max(lower[2] - pad, 0), min(upper[2] + pad, output.shape[2] - 1) + 1):
-                output[x, y, z] = values[x - lower[0] + pad, y - lower[1] + pad, z - lower[2] + pad]
+    destination: list[slice] = []
+    source: list[slice] = []
+    for axis in range(3):
+        low = max(lower[axis] - pad, 0)
+        high = min(upper[axis] + pad, output.shape[axis] - 1)
+        destination.append(slice(low, high + 1))
+        source.append(slice(low - lower[axis] + pad, high - lower[axis] + pad + 1))
+    output[tuple(destination) + (slice(None),)] = values[tuple(source) + (slice(None),)]
     parameters = np.asarray(crop.transform, dtype=np.float32).copy()
     rotation = _rotation_matrix(parameters[:3], java_float32_norm=True)
     cropped_dims = values.shape[:3]
