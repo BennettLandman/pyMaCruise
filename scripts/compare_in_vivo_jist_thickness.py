@@ -37,13 +37,21 @@ def load_meshes(mesh_dir: Path, surfaces_dir: Path, core_dir: Path):
     python_meshes = {}
     for name in ("inner", "central", "outer"):
         payload = json.loads((mesh_dir / f"{name}.jist.json").read_text())
-        # The JIST harness serializes cropped voxel coordinates. Reconstruct
-        # full-volume voxel coordinates and then convert to RAS millimetres,
-        # exactly as the matched surface comparator does.
-        vertices = np.asarray(payload["vertices"], dtype=np.float64)
-        vertices += np.asarray(comparison["per_surface"][name]["crop_start_index"])
+        # The JIST harness serializes voxel coordinates on either the full
+        # source grid or an explicit diagnostic crop. Reconstruct source-grid
+        # coordinates and convert to RAS millimetres as the surface comparator
+        # does.
+        # The selected Java extractor emits float32 point coordinates. Keep
+        # that source precision through offsetting and the RAS transform;
+        # promoting its JSON decimal strings directly to float64 first can
+        # shift sensitive closest-hit results by microns.
+        vertices = np.asarray(payload["vertices"], dtype=np.float32)
+        vertices += np.asarray(
+            comparison["per_surface"][name]["crop_start_index"], dtype=np.float32
+        )
         affine = nib.load(str(core_dir / f"{name}.nii.gz")).affine
-        vertices = vertices @ affine[:3, :3].T + affine[:3, 3]
+        vertices = vertices.astype(np.float64) @ affine[:3, :3].T + affine[:3, 3]
+        vertices = vertices.astype(np.float32).astype(np.float64)
         java_meshes[name] = SurfaceMesh(
             vertices.astype(np.float32).astype(np.float64),
             np.asarray(payload["faces"], dtype=np.int64),

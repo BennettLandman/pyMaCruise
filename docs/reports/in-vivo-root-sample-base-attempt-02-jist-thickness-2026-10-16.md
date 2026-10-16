@@ -1,5 +1,12 @@
 # In-vivo selected Java thickness comparison — attempt 02 — 2026-10-16
 
+> **Superseded for production-mesh source-precision conclusions.** This report
+> used cropped Java level sets and promoted serialized float32 vertices to
+> float64 before applying the affine. The production JIST wrapper processes
+> full-image fields. The corrected full-grid comparison matches all seven
+> thickness outputs bit-for-bit; see
+> [full-grid surface and thickness report](in-vivo-root-sample-base-attempt-02-jist-full-grid-2026-10-16.md).
+
 ## Scope
 
 This runs the selected VandyCRUISE `ClosestPointThicknessForInner` mesh

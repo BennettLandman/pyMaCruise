@@ -1,0 +1,109 @@
+{
+  "core_dir": "/Users/landmaba/dev/mipav/pymacruise/build/sample-singularity-base-source-profile-2026-10-15/stages/cruise-core/attempt-02",
+  "corresponding_vertex_geometry_max_mm": {
+    "central": 4.5627735159408185e-06,
+    "inner": 4.467168312681134e-06,
+    "outer": 4.732849009300546e-06
+  },
+  "java_heap_limit": "-Xmx2g",
+  "limitations": [
+    "This is held-fixed human mesh thickness evidence, not whole-workflow equivalence.",
+    "Python production VTK geometry was independently compared with Java JIST on the same human level sets.",
+    "The source wrapper's serialized VTK/NIfTI outputs are not exercised."
+  ],
+  "mesh_counts": {
+    "central": {
+      "faces": 481152,
+      "vertices": 240378
+    },
+    "inner": {
+      "faces": 482352,
+      "vertices": 240978
+    },
+    "outer": {
+      "faces": 615980,
+      "vertices": 307792
+    }
+  },
+  "mesh_dir": "/Users/landmaba/dev/mipav/pymacruise/build/sample-singularity-base-source-profile-2026-10-15/java-surface-full-grid-2026-10-16",
+  "metrics": {
+    "central.distance_central_to_inner_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.distance_inner_to_outer_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.distance_to_inner_vertex_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.nearest_inner_vertex_index": {
+      "mismatches": 0,
+      "query_count": 240378
+    },
+    "inner.distance_inner_to_outer_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "inner.distance_outer_to_inner_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "inner.mean_thickness_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    }
+  },
+  "python_on_java_mesh_summary": {
+    "mean_thickness_mm": 2.6527893568691625,
+    "nonzero_inner_vertices": 240966,
+    "standard_deviation_mm": 0.9472585764530103
+  },
+  "python_summary": {
+    "mean_thickness_mm": 2.6527893568691625,
+    "nonzero_inner_vertices": 240966,
+    "standard_deviation_mm": 0.9472585764530103
+  },
+  "same_java_mesh_python_metrics": {
+    "central.distance_central_to_inner_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.distance_inner_to_outer_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.distance_to_inner_vertex_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "central.nearest_inner_vertex_index": {
+      "mismatches": 0,
+      "query_count": 240378
+    },
+    "inner.distance_inner_to_outer_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "inner.distance_outer_to_inner_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    },
+    "inner.mean_thickness_mm": {
+      "max_abs_difference": 0.0,
+      "mean_abs_difference": 0.0
+    }
+  },
+  "scope": "selected Java ClosestPointThicknessForInner source vs production Python on held-fixed human meshes",
+  "source_sha256": {
+    "ClosestPointThicknessForInner": "9fc19e8b9caf3defd8278a7dec1dfd417f37b0431f579da4cd17123d662534b6",
+    "IntersectorTriangle": "8fee2adf76b6cc74122d1a76914615229fb01fbced3d0ec4694a93907dd54759",
+    "KdTree": "155a5e0b2a09ed1cb00a73ec99eff2288f75f6cfad55d26e659e4c72db7207f3",
+    "KdTriangle": "66ae0741225bd1f57031d6122866ff5940c5975c09a98e0940a1e1810120faf1",
+    "SurfaceIntersector": "0450c8cbb76770ef4458f9540980748959e0c6ec1c780f3b638173491f92916d"
+  },
+  "surfaces_dir": "/Users/landmaba/dev/mipav/pymacruise/build/sample-singularity-base-source-profile-2026-10-15/stages/surface-thickness/attempt-02",
+  "synthetic_only": false
+}

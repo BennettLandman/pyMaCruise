@@ -153,20 +153,30 @@ def compile_java() -> None:
     )
 
 
-def extract_java(name: str, affine: np.ndarray) -> tuple[SurfaceMesh, dict[str, object]]:
+def extract_java(
+    name: str, affine: np.ndarray, *, crop_for_small_reference: bool = False
+) -> tuple[SurfaceMesh, dict[str, object]]:
     image_path = CORE / f"{name}.nii.gz"
     image = nib.load(str(image_path))
     values = np.asarray(image.dataobj, dtype=np.float32)
     negative = np.argwhere(values < 0.0)
     if not len(negative):
         raise ValueError(f"{name} level set has no negative samples")
-    low = np.maximum(negative.min(axis=0) - 2, 0)
-    high = np.minimum(negative.max(axis=0) + 3, values.shape)
+    if crop_for_small_reference:
+        low = np.maximum(negative.min(axis=0) - 2, 0)
+        high = np.minimum(negative.max(axis=0) + 3, values.shape)
+    else:
+        # The production JIST wrapper calls solveOriginal on the full image.
+        # Cropping is useful to reduce synthetic harness work, but changes
+        # float32 interpolation coordinates and can perturb downstream
+        # nearest-surface thickness at sensitive points.
+        low = np.zeros(3, dtype=np.int64)
+        high = np.asarray(values.shape, dtype=np.int64)
     crop = np.asarray(values[tuple(slice(int(lo), int(hi)) for lo, hi in zip(low, high))], dtype="<f4")
     # The two-voxel positive halo means all crossing cubes are retained. Verify
     # the cropped boundary is strictly positive before using the smaller field.
     boundary = np.concatenate((crop[0].ravel(), crop[-1].ravel(), crop[:, 0].ravel(), crop[:, -1].ravel(), crop[:, :, 0].ravel(), crop[:, :, -1].ravel()))
-    if np.any(boundary <= 0):
+    if crop_for_small_reference and np.any(boundary <= 0):
         raise AssertionError(f"{name} crop boundary contains nonpositive values; crop may truncate the surface")
     raw = BUILD / f"{name}.crop.f32le"
     raw.parent.mkdir(parents=True, exist_ok=True)
@@ -183,9 +193,13 @@ def extract_java(name: str, affine: np.ndarray) -> tuple[SurfaceMesh, dict[str, 
     record = json.loads(out.read_text(encoding="utf-8"))
     if record["input_sha256"] != hashlib.sha256(crop.tobytes(order="C")).hexdigest():
         raise AssertionError(f"{name} Java extractor did not consume the exact cropped float32 field")
-    vertices = np.asarray(record["vertices"], dtype=np.float64)
-    vertices += low
-    vertices = vertices @ affine[:3, :3].T + affine[:3, 3]
+    # EmbeddedSurface stores its source points as float32. Preserve that
+    # quantization before adding any crop offset, then quantize the transformed
+    # points at the same Java mesh boundary before measuring RAS geometry.
+    vertices = np.asarray(record["vertices"], dtype=np.float32)
+    vertices += low.astype(np.float32)
+    vertices = (vertices.astype(np.float64) @ affine[:3, :3].T + affine[:3, 3])
+    vertices = vertices.astype(np.float32).astype(np.float64)
     faces = np.asarray(record["faces"], dtype=np.int64)
     # Match production's convention of positive signed volume, without altering
     # geometry/connectivity beyond winding.
@@ -198,6 +212,7 @@ def extract_java(name: str, affine: np.ndarray) -> tuple[SurfaceMesh, dict[str, 
         "input_file_sha256": sha(image_path),
         "crop_start_index": low.tolist(),
         "crop_shape": list(crop.shape),
+        "source_grid_mode": "cropped-positive-halo" if crop_for_small_reference else "full-image",
         "crop_boundary_min": float(boundary.min()),
         "crop_boundary_max": float(boundary.max()),
         "java_input_sha256": record["input_sha256"],
@@ -220,6 +235,10 @@ def main() -> int:
                         help="ignored directory for Java classes and comparison artifacts")
     parser.add_argument("--report-path", type=Path, default=REPORT,
                         help="Markdown summary path")
+    parser.add_argument(
+        "--crop-for-small-reference", action="store_true",
+        help="use the legacy positive-halo crop (not the production wrapper's full-image grid)",
+    )
     args = parser.parse_args()
     CORE = args.core_dir.resolve()
     SURFACES = (args.surfaces_dir or (CORE / "surface-thickness")).resolve()
@@ -250,7 +269,9 @@ def main() -> int:
         image = nib.load(str(CORE / f"{name}.nii.gz"))
         affine = image.affine.copy()
         python_mesh = read_legacy_vtk(SURFACES / f"{name}_surface.vtk", input_frame="RAS")
-        java_mesh, input_info = extract_java(name, affine)
+        java_mesh, input_info = extract_java(
+            name, affine, crop_for_small_reference=args.crop_for_small_reference
+        )
         result = compare_meshes(java_mesh, python_mesh)
         result.update(input_info)
         result["python_vtk_sha256"] = sha(SURFACES / f"{name}_surface.vtk")
@@ -276,7 +297,7 @@ def main() -> int:
         "",
         f"Selected source SHA-256: `{report['source']['isosurface_source_sha256']}`. Wrapper SHA-256: `{report['source']['wrapper_source_sha256']}`.",
         "",
-        "The Java runner uses the selected source body with small JIST container/progress/normal-generator stubs. The field is cropped around all negative samples with a two-voxel positive halo; each crop boundary is verified strictly positive, so the crop does not truncate a zero crossing. Java heap is limited to 2 GiB. Java vertices are translated by the crop start and transformed with the source NIfTI affine to RAS millimetres. The Python meshes are the saved production RAS-mm VTK outputs from the same level sets.",
+        "The Java runner uses the selected source body with small JIST container/progress/normal-generator stubs. By default it consumes the complete image grid, matching `GetMeshSurfaceFromLevelSet.execute()`. The legacy `--crop-for-small-reference` mode uses a two-voxel positive halo; although it preserves topology, it changes float32 interpolation coordinates and is not suitable for source-precision thickness comparison. Java vertices are translated by the recorded grid offset and transformed with the source NIfTI affine to RAS millimetres. Java heap is limited to 2 GiB. The Python meshes are the saved production RAS-mm VTK outputs from the same level sets.",
         "",
         "## Geometry and topology",
         "",

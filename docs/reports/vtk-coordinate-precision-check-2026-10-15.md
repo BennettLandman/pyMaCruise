@@ -19,17 +19,15 @@ the selected Java output exactly; symmetric mean vertex-to-triangle distances
 were `1.08–1.19e-7 mm`, and sampled Hausdorff estimates were
 `0.000345–0.000488 mm`. Peak sampled RSS was `0.943 GB`.
 
-I also repeated the selected Java thickness comparison with the newly written
-VTK meshes. It still has sparse nearest-hit sensitivity: `1,962 / 240,378`
-central nearest-inner-vertex indices differ, with maximum central projected
-thickness difference `2.282 mm` and mean absolute difference `0.001397 mm`.
-The previous report recorded `1,956` differing indices. Thus VTK decimal
-truncation was not the cause, and this change does not resolve the thickness
-interaction. Python still matches selected Java bit-for-bit when both receive
-the exact same Java mesh coordinates. The user has not set a thickness-field
-acceptance threshold; the approved surface-position gates pass. This remains
-a precision-sensitive downstream diagnostic, not evidence of whole-workflow
-equivalence.
+The cropped Java thickness replay reported sparse nearest-hit sensitivity,
+but a later audit showed that the crop changes float32 interpolation
+coordinates and that the comparison promoted Java's serialized float32 mesh
+coordinates before the RAS transform. The production wrapper uses full-image
+fields. Its full-grid replay matches Python's production VTK coordinates and
+ordered faces exactly and all seven Java thickness outputs bit-for-bit. This
+resolves the apparent thickness discrepancy as a harness-coordinate artifact;
+it does not establish whole-workflow equivalence. See the [corrected full-grid
+report](in-vivo-root-sample-base-attempt-02-jist-full-grid-2026-10-16.md).
 
 ## Reproduction
 
