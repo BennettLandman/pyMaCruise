@@ -15,14 +15,14 @@ ROOT = Path(__file__).parent
 HARNESS = ROOT / "java_reference" / "AtlasEMGaussianMembershipReferenceHarness.java"
 
 
-def _run_java(tmp_path: Path) -> dict:
+def _run_java(tmp_path: Path, *arguments: str) -> dict:
     javac, java = shutil.which("javac"), shutil.which("java")
     if not javac or not java:
         pytest.skip("JDK is required for pinned Java method references")
     classes = tmp_path / "classes"
     classes.mkdir()
     subprocess.run([javac, "-d", str(classes), str(HARNESS)], check=True, capture_output=True, text=True)
-    output = subprocess.run([java, "-cp", str(classes), "AtlasEMGaussianMembershipReferenceHarness"], check=True, capture_output=True, text=True)
+    output = subprocess.run([java, "-cp", str(classes), "AtlasEMGaussianMembershipReferenceHarness", *arguments], check=True, capture_output=True, text=True)
     return json.loads(output.stdout)
 
 
@@ -68,3 +68,14 @@ def test_gaussian_membership_update_requires_source_padding_and_positive_covaria
     covariance[0, 0, 0] = 0.0
     with pytest.raises(ValueError, match="covariance must be positive"):
         update_atlas_em_gaussian_memberships(image, memberships, mask, means, covariance, prior)
+
+
+def test_source_zero_membership_energy_nan_is_preserved(tmp_path: Path) -> None:
+    reference = _run_java(tmp_path, "zero")
+    image, memberships, mask, means, covariance, prior = _input()
+    memberships[1, 1, 1, 0] = 0.0
+    prior[1, 1, 1, 0] = 0.0
+    _, metrics = update_atlas_em_gaussian_memberships(image, memberships, mask, means, covariance, prior, smoothing=0.625)
+    java_energy_bits = int(reference["metrics"][0]) & 0xFFFFFFFF
+    assert np.isnan(metrics[0])
+    assert java_energy_bits in {0x7FC00000, 0xFFC00000}

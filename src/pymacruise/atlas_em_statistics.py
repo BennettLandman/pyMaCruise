@@ -390,7 +390,9 @@ def update_atlas_em_gaussian_memberships(
                             distance = change
                         # Java evaluates the log/product in double, then rounds
                         # the compound float addition back to float.
-                        contribution = float(energy_terms[k]) + np.log(float(mem[x, y, z, k])) * float(old[k])
+                        with np.errstate(divide="ignore", invalid="ignore"):
+                            contribution = (float(energy_terms[k])
+                                           + np.log(float(mem[x, y, z, k])) * float(old[k]))
                         total_energy = np.float32(float(total_energy) + contribution)
                 else:
                     mem[x, y, z, :] = 0.0

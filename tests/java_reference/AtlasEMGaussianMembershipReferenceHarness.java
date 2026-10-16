@@ -57,5 +57,10 @@ public final class AtlasEMGaussianMembershipReferenceHarness {
     }
     static String vector(float[] a){String s="[";for(int i=0;i<a.length;i++){if(i>0)s+=",";s+=Float.floatToRawIntBits(a[i]);}return s+"]";}
     static String tensor(){String s="[";boolean first=true;for(int x=0;x<NX;x++)for(int y=0;y<NY;y++)for(int z=0;z<NZ;z++)for(int k=0;k<K;k++){if(!first)s+=",";first=false;s+=Float.floatToRawIntBits(mem[x][y][z][k]);}return s+"]";}
-    public static void main(String[] args){init();float[] metrics=update();System.out.print("{\"source_sha256\":\""+SOURCE_SHA+"\",\"memberships\":"+tensor()+",\"metrics\":"+vector(metrics)+"}");}
+    public static void main(String[] args){
+        init();
+        if(args.length>0&&args[0].equals("zero")){mem[1][1][1][0]=0.0f;prior[1][1][1][0]=0.0f;}
+        float[] metrics=update();
+        System.out.print("{\"source_sha256\":\""+SOURCE_SHA+"\",\"memberships\":"+tensor()+",\"metrics\":"+vector(metrics)+"}");
+    }
 }
