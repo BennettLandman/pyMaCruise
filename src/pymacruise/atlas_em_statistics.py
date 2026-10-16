@@ -140,3 +140,98 @@ def compute_atlas_em_covariances(
                 for c2 in range(channels):
                     covariance[k, c1, c2] = np.float32(covariance[k, c1, c2] / denominator)
     return covariance
+
+
+def compute_atlas_em_atlas_prior_memberships(
+    images: ArrayLike,
+    memberships: ArrayLike,
+    mask: ArrayLike,
+    centroids: ArrayLike,
+    covariance: ArrayLike,
+    atlas_priors: ArrayLike,
+    *,
+    smoothing: float,
+) -> tuple[NDArray[np.float32], NDArray[np.int8], np.float32]:
+    """Apply one selected single-channel Atlas-prior EM membership pass.
+
+    This is the wrapper's ``priorMode='Atlas'`` fixed-state branch, with source
+    x/y/z and class iteration order and in-place six-neighbor smoothing. It
+    returns updated memberships, selected hard class indices (-1 outside
+    positive support), and maximum membership change. It does not deform the
+    atlas or implement the full AtlasEM stopping/output wrapper.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    mem = np.array(memberships, dtype=np.float32, copy=True)
+    active = np.asarray(mask, dtype=bool)
+    means = np.asarray(centroids, dtype=np.float32)
+    cov = np.asarray(covariance, dtype=np.float32)
+    priors = np.asarray(atlas_priors, dtype=np.float32)
+    if values.ndim != 4 or values.shape[3] != 1 or any(n < 3 for n in values.shape[:3]):
+        raise ValueError("images must be a padded (x, y, z, 1) T1 grid with dimensions >= 3")
+    if mem.ndim != 4 or mem.shape[:3] != values.shape[:3] or mem.shape[3] < 1:
+        raise ValueError("memberships must match images and contain classes")
+    classes = mem.shape[3]
+    if active.shape != values.shape[:3] or priors.shape != mem.shape:
+        raise ValueError("mask and atlas priors must match the image/membership grid")
+    if means.shape != (1, classes) or cov.shape != (classes, 1, 1):
+        raise ValueError("single-channel centroids/covariances must have one entry per class")
+    if not np.isfinite(values).all() or not np.isfinite(mem).all() or not np.isfinite(means).all() or not np.isfinite(cov).all() or not np.isfinite(priors).all():
+        raise ValueError("images, memberships, model parameters, and atlas priors must be finite")
+    smooth = np.float32(smoothing)
+    if not np.isfinite(smooth) or smooth < 0:
+        raise ValueError("smoothing must be finite and nonnegative")
+    determinants = np.abs(cov[:, 0, 0]).astype(np.float32)
+    if np.any(determinants == 0):
+        raise ValueError("selected AtlasEM covariance must be nonsingular")
+    inverses = np.reciprocal(cov[:, 0, 0], dtype=np.float32)
+    distance = np.float32(0.0)
+
+    for x in range(values.shape[0]):
+        for y in range(values.shape[1]):
+            for z in range(values.shape[2]):
+                if not active[x, y, z]:
+                    mem[x, y, z, :] = 0.0
+                    continue
+                old = mem[x, y, z, :].copy()
+                denominator = np.float32(1.0e-30)
+                for k in range(classes):
+                    prior = priors[x, y, z, k]
+                    if prior > 0.0:
+                        difference = np.float32(values[x, y, z, 0] - means[0, k])
+                        exponent = np.float32(inverses[k] * difference)
+                        exponent = np.float32(exponent * difference)
+                        exponent = np.float32(exponent / np.float32(2.0))
+                        if smooth > 0.0:
+                            neighbor_sum = np.float32(0.0)
+                            for nx, ny, nz in ((x + 1, y, z), (x - 1, y, z), (x, y + 1, z),
+                                               (x, y - 1, z), (x, y, z + 1), (x, y, z - 1)):
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[nx, ny, nz, m])
+                            exponent = np.float32(exponent + np.float32(smooth * neighbor_sum))
+                        raw = np.exp(np.float64(-exponent)) * np.float64(prior) / np.sqrt(np.float64(determinants[k]))
+                        mem[x, y, z, k] = np.float32(raw)
+                        denominator = np.float32(denominator + mem[x, y, z, k])
+                    else:
+                        mem[x, y, z, k] = 0.0
+                if denominator > 0.0:
+                    for k in range(classes):
+                        mem[x, y, z, k] = np.float32(mem[x, y, z, k] / denominator)
+                else:
+                    mem[x, y, z, :] = 0.0
+                for k in range(classes):
+                    change = np.float32(abs(np.float32(mem[x, y, z, k] - old[k])))
+                    if change > distance:
+                        distance = change
+
+    labels = np.full(values.shape[:3], -1, dtype=np.int8)
+    for x in range(values.shape[0]):
+        for y in range(values.shape[1]):
+            for z in range(values.shape[2]):
+                best = 0
+                for k in range(1, classes):
+                    if mem[x, y, z, k] > mem[x, y, z, best]:
+                        best = k
+                if mem[x, y, z, best] > 0:
+                    labels[x, y, z] = best
+    return mem, labels, distance
