@@ -18,6 +18,8 @@ def test_plus_reference_driver_preserves_selected_stage_order_and_mask_contract(
         "run_EM(",
         "run_RemoveDura(",
         "apply_mask(python_executable, mask_helper, flair_masked, dura_mask",
+        "moveFile(t1_dura, opts, 'removeDura_final'",
+        "moveFile(flair_dura_stripped, opts, 'removeDura_final'",
         "run_LesionToads(",
         "run_TransferToOriginSpace(",
         "run_CropBaseOnGM(",

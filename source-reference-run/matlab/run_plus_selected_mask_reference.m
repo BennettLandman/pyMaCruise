@@ -92,9 +92,13 @@ opts.T1_bname = t1_bname;
     t1_masked, opts, 'EMsegmentation', 'STEP2.7');
 [t1_dura, dura_mask] = run_RemoveDura( ...
     t1_masked, EM_gm, EM_wmfill, EM_wmmask, opts, 'removeDura_init', 'STEP2.8');
-flair_dura = fullfile(lesion_dir, 'StripOrigin_Dura', 'FLAIR_dura_stripped.nii.gz');
-apply_mask(python_executable, mask_helper, flair_masked, dura_mask, flair_dura);
+opts.T1_bname = get_basename(flair_masked);
+flair_dura_stripped = fullfile(lesion_dir, 'StripOrigin_Dura', ...
+    [opts.T1_bname '_strip.nii.gz']);
+apply_mask(python_executable, mask_helper, flair_masked, dura_mask, flair_dura_stripped);
 opts.T1_bname = t1_bname;
+t1_dura = moveFile(t1_dura, opts, 'removeDura_final', 'T1_dura_stripped');
+flair_dura = moveFile(flair_dura_stripped, opts, 'removeDura_final', 'Flair_dura_stripped');
 opts.LesionToadsOutput = 'dura removal inputs';
 opts.LesionToadsCorrect = 'false';
 [Toads_gm, Toads_wmfill, Toads_wmmask] = run_LesionToads( ...
