@@ -55,18 +55,20 @@ make the request portable if the runner uses equivalent source checkouts.
 
 ## BASE run driver
 
-The packet includes a run-only MATLAB driver at
-[`matlab/run_base_selected_mask_reference.m`](matlab/run_base_selected_mask_reference.m)
-and a small NiBabel helper at
-[`matlab/apply_brain_mask_nifti.py`](matlab/apply_brain_mask_nifti.py). The
-driver follows `maCRUISEpipeline.m`'s selected V3 stage order but calls its
-stages directly so it can supply the user mask without invoking BET or
-SPECTRE. It runs source N4 without a mask, applies the supplied binary mask to
-the corrected T1, executes TOADS pass 1 → Dura removal → TOADS pass 2, then
-continues through the original crop, boundary, tissue-fusion, ACE/GVF/TGDM,
-and refinement functions. It omits MNI export, FreeSurfer conversion, figures,
-viewer files, and cleanup/deletion. A timestamped output directory is created
-under `outputs/`; it is ignored by Git so human outputs are not committed, and the
+The packet includes run-only MATLAB drivers for BASE and PLUS and a NiBabel
+mask helper at [`matlab/apply_brain_mask_nifti.py`](matlab/apply_brain_mask_nifti.py).
+They follow the selected V3 stage order but call source stages directly to
+accept the user mask without BET or SPECTRE. BASE applies the mask after
+unmasked source N4, then runs both TOADS passes, Dura removal, the original
+crop/boundary/tissue-fusion/ACE/GVF/TGDM stages, and refinement. PLUS calls the
+original `FlairRegistration`/NiftyReg rigid wrapper, then source N4, applies
+the supplied mask, and runs AtlasEM, Dura, LesionTOADS, tissue fusion,
+ACE/GVF/TGDM, and refinement. This PLUS source reference uses Aladin while the
+Python workflow uses ANTsPy; compare and report the resulting registration
+transform separately, and do not interpret the end-to-end comparison as
+registration-backend equivalence. Both drivers omit MNI export, FreeSurfer
+conversion, figures, viewer files, and cleanup/deletion. Timestamped output
+directories are created under `outputs/`; these are Git-ignored, and each
 driver refuses to reuse an existing run directory.
 
 From the repository root, with MATLAB, the selected MIPAV/JIST install, MASI
@@ -91,6 +93,32 @@ TOADS stop iterations, generated outputs, and mask/grid identity. Its stages
 are the original MATLAB/JIST functions; the driver itself is new orchestration
 that should be treated as an external-run recipe until someone completes and
 returns this run.
+
+### PLUS run driver
+
+[`matlab/run_plus_selected_mask_reference.m`](matlab/run_plus_selected_mask_reference.m)
+implements the corresponding selected-mask PLUS orchestration. It retains the
+original `run_maCRUISEplus.m` rigid FLAIR registration and the
+`maCRUISEpluspipeline.m` stage order, but replaces SPECTRE-derived masking with
+the supplied T1-grid mask. It additionally applies the Dura mask to registered
+FLAIR before LesionTOADS. From the repository root, call it with the same five
+arguments as the BASE driver:
+
+```matlab
+addpath('source-reference-run/matlab');
+run_plus_selected_mask_reference( ...
+  '/path/to/MaCRUISE', ...
+  '/path/to/MIPAV-install', ...
+  '/path/to/full-multi-atlas', ...
+  '/path/to/ANTs/bin/N4BiasFieldCorrection', ...
+  'python3');
+```
+
+The driver and its stage order have only static source-review checks here; it
+has not been parsed or executed by MATLAB. Original Aladin and the selected
+MIPAV/JIST application must be present. Its selected-mask path is a run-only
+adaptation, not an unchanged invocation of the historical wrapper. Return all
+outputs and logs even if a stage fails so any driver mismatch can be corrected.
 
 ### BASE
 
