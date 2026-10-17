@@ -20,7 +20,7 @@ All compared zero-level surfaces meet the agreed gates: Dice ≥0.97, symmetric 
 | Inner | 1.000000 | 0.000000044 | 0.000349 | 0 |
 | Outer | 1.000000 | 0.000016482 | 0.226406 | 0 |
 
-The Java replay peaked at **1.356 GB** under an **8 GB RSS watchdog**; Python evolution peaked at **2.493 GB**, and the mesh comparison at **0.571 GB**. The focused regression selection passed **31 tests in 22.76 seconds** before this evidence run. Full-suite validation remains pending for the latest code commit.
+The Java replay peaked at **1.356 GB** under an **8 GB RSS watchdog**; Python evolution peaked at **2.493 GB**, and the mesh comparison at **0.571 GB**. The focused regression selection passed **31 tests in 22.76 seconds** before this evidence run. The full suite on implementation commit `50ad2ea1b25ecde845bc8c399813c9da3297b419` passed **1,681 tests, skipped 4, and had 0 failures** in **991.89 seconds**; there were 30 warnings, all from expected RAS reorientation paths. Peak sampled RSS was **7.758 GB** under a **16 GB watchdog**. See the [full-suite evidence](full-pytest-2026-10-17-mask-aware-tgdm.md).
 
 ## Reproduction
 
