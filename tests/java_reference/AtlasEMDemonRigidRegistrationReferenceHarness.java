@@ -39,13 +39,18 @@ public final class AtlasEMDemonRigidRegistrationReferenceHarness {
         String mode = args[5];
         Path directory = Path.of(args[6]);
         int voxels = nx * ny * nz;
-        float[] shapeValues = readFloats(directory.resolve("shapes.f32le"), 2 * voxels);
-        float[] membershipValues = readFloats(directory.resolve("memberships.f32le"), 2 * voxels);
+        byte[] shapeBytes = Files.readAllBytes(directory.resolve("shapes.f32le"));
+        if (shapeBytes.length % (voxels * Float.BYTES) != 0) {
+            throw new IllegalArgumentException("shape payload is not an integral class count");
+        }
+        int classes = shapeBytes.length / (voxels * Float.BYTES);
+        float[] shapeValues = readFloats(directory.resolve("shapes.f32le"), classes * voxels);
+        float[] membershipValues = readFloats(directory.resolve("memberships.f32le"), classes * voxels);
 
-        float[][][][] shapes = new float[2][nx][ny][nz];
-        float[][][][] memberships = new float[nx][ny][nz][2];
+        float[][][][] shapes = new float[classes][nx][ny][nz];
+        float[][][][] memberships = new float[nx][ny][nz][classes];
         int offset = 0;
-        for (int k = 0; k < 2; k++)
+        for (int k = 0; k < classes; k++)
             for (int x = 0; x < nx; x++)
                 for (int y = 0; y < ny; y++)
                     for (int z = 0; z < nz; z++) shapes[k][x][y][z] = shapeValues[offset++];
@@ -53,20 +58,28 @@ public final class AtlasEMDemonRigidRegistrationReferenceHarness {
         for (int x = 0; x < nx; x++)
             for (int y = 0; y < ny; y++)
                 for (int z = 0; z < nz; z++)
-                    for (int k = 0; k < 2; k++) memberships[x][y][z][k] = membershipValues[offset++];
+                    for (int k = 0; k < classes; k++) memberships[x][y][z][k] = membershipValues[offset++];
 
         PrintStream standardOutput = System.out;
         System.setOut(new PrintStream(new ByteArrayOutputStream()));
-        DemonToadDeformableAtlas atlas = new DemonToadDeformableAtlas(2);
+        DemonToadDeformableAtlas atlas = new DemonToadDeformableAtlas(classes);
         atlas.setShapes(shapes, new int[] {nx, ny, nz}, new float[] {0.8f, 1.0f, 1.25f});
         atlas.setImageInfo(nx, ny, nz, 1.0f, 1.2f, 1.5f, 0, 0, 1, 2);
-        atlas.setName(0, "background");
-        atlas.setName(1, "registered");
-        atlas.setLabel(0, (byte) 0);
-        atlas.setLabel(1, (byte) 1);
+        for (int k = 0; k < classes; k++) {
+            atlas.setName(k, k == 0 ? "background" : "class-" + k);
+            atlas.setLabel(k, (byte) k);
+        }
+        boolean[] registered = new boolean[classes];
+        for (int k = 1; k < classes; k++) registered[k] = true;
+        Path registeredPath = directory.resolve("registered.u8");
+        if (Files.exists(registeredPath)) {
+            byte[] flags = Files.readAllBytes(registeredPath);
+            if (flags.length != classes) throw new IllegalArgumentException("registered.u8 has wrong class count");
+            for (int k = 0; k < classes; k++) registered[k] = flags[k] != 0;
+        }
         Field registeredField = DemonToadDeformableAtlas.class.getDeclaredField("registeredShape");
         registeredField.setAccessible(true);
-        registeredField.set(atlas, new boolean[] {false, true});
+        registeredField.set(atlas, registered);
 
         atlas.initShapeRegistration(memberships, "rigid", iterations, levels);
         if (mode.equals("single")) atlas.registerShapes();
