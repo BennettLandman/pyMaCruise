@@ -13,6 +13,11 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike
 
+from pymacruise.atlas_em_descriptor import (
+    AtlasEMRegistrationAtlasInputs,
+    load_atlas_em_registration_inputs,
+    parse_atlas_em_descriptor,
+)
 from pymacruise.atlas_em_preprocessing import (
     AtlasEMCroppedImages,
     AtlasEMNormalizedImages,
@@ -32,6 +37,14 @@ class AtlasEMRegistrationRecropResult:
 
     registration: ToadsRigidRegistrationPyramidResult
     recropped: AtlasEMCroppedImages
+
+
+@dataclass(frozen=True)
+class AtlasEMDescriptorRegistrationResult:
+    """Descriptor-loaded atlas and the rigid registration computed from it."""
+
+    atlas: AtlasEMRegistrationAtlasInputs
+    registration: ToadsRigidRegistrationPyramidResult
 
 
 def build_atlas_em_rigid_registration_pyramid(
@@ -96,6 +109,42 @@ def register_atlas_em_rigid_pyramid(
         source_faithful=False,
         allow_nonfinite_trials=True,
     )
+
+
+def register_atlas_em_descriptor_pyramid(
+    memberships: ArrayLike,
+    descriptor_path: str,
+    *,
+    levels: int,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float] | None = None,
+    initial_transform: tuple[float, float, float, float, float, float] = (0.0,) * 6,
+    registration_iterations: int,
+) -> AtlasEMDescriptorRegistrationResult:
+    """Load a source-ordered `.nii.gz` atlas and run its rigid registration.
+
+    The descriptor supplies the class order, registered-class mask, and atlas
+    resolution; subject spacing/initial transform and the iteration cap remain
+    explicit run inputs. This is the selected adapter composition and still
+    requires same-input Java class comparison for optimizer equivalence.
+    """
+    descriptor = parse_atlas_em_descriptor(descriptor_path)
+    atlas = load_atlas_em_registration_inputs(descriptor)
+    template_resolution = (
+        descriptor.shape_resolutions_mm
+        if template_resolutions_mm is None else template_resolutions_mm
+    )
+    registration = register_atlas_em_rigid_pyramid(
+        memberships,
+        atlas.shape_priors,
+        levels=levels,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolution,
+        initial_transform=initial_transform,
+        registration_iterations=registration_iterations,
+        registered_classes=atlas.registered_classes,
+    )
+    return AtlasEMDescriptorRegistrationResult(atlas, registration)
 
 
 def register_and_recrop_atlas_em(
