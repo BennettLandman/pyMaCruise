@@ -180,6 +180,33 @@ def test_nifti_payload_loader_rejects_shape_prior_on_another_grid(tmp_path: Path
 
 
 @pytest.mark.parametrize(
+    ("topology_values", "message"),
+    (
+        (np.full((5, 6, 7), np.nan, dtype=np.float32), "non-finite"),
+        (np.full((5, 6, 7), 0.5, dtype=np.float32), "integer labels"),
+    ),
+)
+def test_nifti_payload_loader_rejects_invalid_topology_values(
+    tmp_path: Path, topology_values: np.ndarray, message: str
+) -> None:
+    affine = np.diag((0.8, 0.9, 1.2, 1.0))
+    shape = np.ones((5, 6, 7), dtype=np.float32)
+    nib.save(nib.Nifti1Image(topology_values, affine), tmp_path / "topology.nii.gz")
+    nib.save(nib.Nifti1Image(shape, affine), tmp_path / "background.nii.gz")
+    nib.save(nib.Nifti1Image(shape, affine), tmp_path / "cortex.nii.gz")
+    path = tmp_path / "atlas.txt"
+    path.write_text(
+        _descriptor_text("topology.nii.gz", "background.nii.gz").replace(
+            "cortex.img", "cortex.nii.gz"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AtlasEMDescriptorError, match=message):
+        load_atlas_em_nifti_payloads(parse_atlas_em_descriptor(path))
+
+
+@pytest.mark.parametrize(
     "replacement",
     (
         ("Cortex\t2\tclosed", "Cortex\t2"),
