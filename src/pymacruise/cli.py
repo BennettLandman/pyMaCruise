@@ -13,6 +13,7 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.atlas_resources import get_bundled_atlas_descriptor
+from pymacruise.atlas_em_descriptor import parse_atlas_em_descriptor
 from pymacruise.ace import ace_enhance
 from pymacruise.plus_atlas_em_dura import run_atlas_em_prelesion_dura
 from pymacruise.cortical_separation import cortical_separation
@@ -220,6 +221,16 @@ def build_parser() -> argparse.ArgumentParser:
     atlasem_dura.add_argument("--output-dir", required=True, type=Path)
     atlasem_dura.add_argument("--max-iterations", type=int, default=5)
     _add_provenance_option(atlasem_dura)
+
+    atlasem_inventory = commands.add_parser(
+        "atlasem-atlas-inventory",
+        help="inspect AtlasEM descriptor metadata and report referenced atlas files",
+        description=(
+            "Read descriptor metadata only. Report class order, required payload paths, "
+            "and whether payload files are available as .nii.gz. Voxel data are not loaded."
+        ),
+    )
+    atlasem_inventory.add_argument("--descriptor", required=True, type=Path)
 
     cerebellum = commands.add_parser(
         "remove-cerebellum",
@@ -1580,6 +1591,37 @@ def main(argv: list[str] | None = None) -> int:
             parameters=dura_parameters,
             outputs=dura_outputs,
         )
+    elif args.command == "atlasem-atlas-inventory":
+        descriptor = parse_atlas_em_descriptor(args.descriptor)
+        shape_roles = {path: name for name, path in descriptor.shape_files.items()}
+        assets = []
+        for path in descriptor.referenced_files:
+            role = "topology" if path == descriptor.topology_file else f"shape:{shape_roles[path]}"
+            assets.append({
+                "role": role,
+                "path": str(path),
+                "exists": path.is_file(),
+                "compressed_nifti": path.suffixes[-2:] == [".nii", ".gz"],
+            })
+        inventory = {
+            "descriptor": str(descriptor.path),
+            "class_order": [
+                {"name": item.name, "label": item.label, "topology": item.topology}
+                for item in descriptor.structures
+            ],
+            "registered_classes": list(descriptor.registered_shapes),
+            "topology_dimensions_xyz": list(descriptor.topology_dimensions_xyz),
+            "topology_resolutions_mm": list(descriptor.topology_resolutions_mm),
+            "shape_samples": descriptor.shape_samples,
+            "shape_resolutions_mm": list(descriptor.shape_resolutions_mm),
+            "assets": assets,
+            "voxel_data_loaded": False,
+            "resources_present_as_nifti_gz": all(
+                asset["exists"] and asset["compressed_nifti"] for asset in assets
+            ),
+        }
+        print(json.dumps(inventory, indent=2, sort_keys=True))
+        return 0 if inventory["resources_present_as_nifti_gz"] else 1
     elif args.command == "atlasem-prelesion-dura":
         try:
             class_names = json.loads(args.class_names)
