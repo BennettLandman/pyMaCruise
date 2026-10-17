@@ -14,6 +14,7 @@ import numpy as np
 
 from pymacruise.atlas_resources import get_bundled_atlas_descriptor
 from pymacruise.ace import ace_enhance
+from pymacruise.plus_atlas_em_dura import run_atlas_em_prelesion_dura
 from pymacruise.cortical_separation import cortical_separation
 from pymacruise.gvf import generalized_gvf_image
 from pymacruise.image_io import (
@@ -199,6 +200,26 @@ def build_parser() -> argparse.ArgumentParser:
     dura.add_argument("--wm-topology-regularization", type=float, default=0.05)
     dura.add_argument("--gm-topology-regularization", type=float, default=0.02)
     _add_provenance_option(dura)
+
+    atlasem_dura = commands.add_parser(
+        "atlasem-prelesion-dura",
+        help="run the AtlasEM-output to pre-LesionTOADS Dura handoff",
+        description=(
+            "Consume an existing channels-last AtlasEM membership NIfTI and a matching T1/mask. "
+            "This runs AtlasEM output generation and the Dura stage; it does not load an atlas, "
+            "estimate registration, or run the AtlasEM EM loop."
+        ),
+    )
+    atlasem_dura.add_argument("--t1", required=True, type=Path)
+    atlasem_dura.add_argument("--memberships", required=True, type=Path,
+                              help="existing float membership image with classes on the last axis")
+    atlasem_dura.add_argument("--brain-mask", required=True, type=Path,
+                              help="binary mask on the T1 physical grid")
+    atlasem_dura.add_argument("--class-names", required=True,
+                              help='JSON array in membership channel order, e.g. \'["BG","CSF","GM","WM"]\'')
+    atlasem_dura.add_argument("--output-dir", required=True, type=Path)
+    atlasem_dura.add_argument("--max-iterations", type=int, default=5)
+    _add_provenance_option(atlasem_dura)
 
     cerebellum = commands.add_parser(
         "remove-cerebellum",
@@ -1558,6 +1579,48 @@ def main(argv: list[str] | None = None) -> int:
             },
             parameters=dura_parameters,
             outputs=dura_outputs,
+        )
+    elif args.command == "atlasem-prelesion-dura":
+        try:
+            class_names = json.loads(args.class_names)
+        except json.JSONDecodeError as exc:
+            parser.error(f"--class-names must be a JSON string array: {exc.msg}")
+        if not isinstance(class_names, list) or any(not isinstance(name, str) for name in class_names):
+            parser.error("--class-names must be a JSON string array in membership channel order")
+        result = run_atlas_em_prelesion_dura(
+            _load_nifti_gz(args.t1),
+            _load_nifti_gz(args.memberships),
+            _load_nifti_gz(args.brain_mask),
+            class_names,
+            max_iterations=args.max_iterations,
+        )
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        products = {"atlasem_dura_inputs": result.products}
+        segmentation = nib.Nifti1Image(
+            np.asarray(result.segmentation, dtype=np.int8),
+            result.products.affine,
+            header=result.products.header.copy(),
+        )
+        segmentation.set_data_dtype(np.int8)
+        products["atlasem_segmentation"] = segmentation
+        for name in (
+            "stripped_t1", "corrected_white_matter", "corrected_gray_matter",
+            "brain_mask_level_set", "brain_mask", "wm_topology", "gm_topology",
+        ):
+            products[f"dura_{name}"] = getattr(result.dura, name)
+        output_paths: dict[str, Path] = {}
+        for name, image in products.items():
+            path = args.output_dir / f"{name}.nii.gz"
+            _save_nifti_gz(image, path)
+            output_paths[name] = path
+            print(f"Wrote {path}")
+        parameters = {"class_names": class_names, "max_iterations": args.max_iterations}
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"t1": args.t1, "memberships": args.memberships, "brain_mask": args.brain_mask},
+            parameters=parameters,
+            outputs=output_paths,
         )
     elif args.command == "remove-cerebellum":
         maps = {
