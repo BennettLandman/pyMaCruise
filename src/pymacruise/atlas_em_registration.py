@@ -33,6 +33,7 @@ from pymacruise.toads_registration_sampling import (
     register_toads_atlas_rigid,
     register_toads_atlas_rigid_pyramid,
 )
+from pymacruise.toads_shapes import compute_toad_shape_bounds
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,18 @@ class AtlasEMInitialRegistrationResult:
     atlas: AtlasEMRegistrationAtlasInputs
     registration: ToadsRigidRegistrationPyramidResult
     recropped: AtlasEMCroppedImages
+
+
+@dataclass(frozen=True)
+class AtlasEMTwoStageRegistrationResult:
+    """Initial pyramid registration, recrop, and post-recrop rigid update."""
+
+    initialization: AtlasEMDescriptorInitialization
+    atlas: AtlasEMRegistrationAtlasInputs
+    initial_registration: ToadsRigidRegistrationPyramidResult
+    recropped: AtlasEMCroppedImages
+    post_recrop_initialization: AtlasEMDescriptorInitialization
+    post_recrop_registration: ToadsRigidRegistrationResult
 
 
 def register_atlas_em_rigid_single_scale(
@@ -339,4 +352,80 @@ def initialize_register_recrop_atlas_em_from_descriptor(
         handoff.atlas,
         handoff.registration,
         handoff.recropped,
+    )
+
+
+def initialize_register_recrop_register_atlas_em_from_descriptor(
+    crop: AtlasEMCroppedImages,
+    normalized: AtlasEMNormalizedImages,
+    descriptor_path: str,
+    modalities: tuple[str, ...],
+    *,
+    background_ratio: float,
+    levels: int,
+    initial_registration_iterations: int,
+    post_recrop_registration_iterations: int,
+    template_resolutions_mm: tuple[float, float, float] | None = None,
+) -> AtlasEMTwoStageRegistrationResult:
+    """Compose both source-ordered AtlasEM rigid-registration stages.
+
+    The first registration runs on the initial crop and is followed by native
+    grid uncrop/rebound/recrop. AtlasEM then rebuilds initial memberships on
+    that recropped grid before its one-level full-resolution rigid update.
+    Iteration limits remain explicit because plugin defaults are not specified
+    by the selected MATLAB run wrapper.
+    """
+    first = initialize_register_recrop_atlas_em_from_descriptor(
+        crop,
+        normalized,
+        descriptor_path,
+        modalities,
+        background_ratio=background_ratio,
+        levels=levels,
+        registration_iterations=initial_registration_iterations,
+        template_resolutions_mm=template_resolutions_mm,
+    )
+    template_resolution = (
+        parse_atlas_em_descriptor(descriptor_path).shape_resolutions_mm
+        if template_resolutions_mm is None else template_resolutions_mm
+    )
+    recropped_normalized = AtlasEMNormalizedImages(
+        np.asarray(first.recropped.images, dtype=np.float32),
+        normalized.robust_minima,
+        normalized.robust_maxima,
+    )
+    second_initialization = initialize_atlas_em_memberships_from_descriptor(
+        recropped_normalized, descriptor_path, modalities
+    )
+    dimensions = tuple(int(value) for value in first.recropped.images.shape[:3])
+    bounds = tuple(
+        compute_toad_shape_bounds(
+            first.atlas.shape_priors[..., klass],
+            image_dimensions_xyz=dimensions,
+            image_resolutions_mm=first.recropped.signed_resolutions_mm,
+            template_resolutions_mm=template_resolution,
+            transform=tuple(float(value) for value in first.recropped.transform),
+        )
+        for klass in range(first.atlas.shape_priors.shape[-1])
+    )
+    low = np.asarray([bound.lower_xyz for bound in bounds], dtype=np.int64)
+    high = np.asarray([bound.upper_xyz for bound in bounds], dtype=np.int64)
+    final_registration = register_atlas_em_rigid_single_scale(
+        second_initialization.memberships,
+        first.atlas.shape_priors,
+        image_resolutions_mm=first.recropped.signed_resolutions_mm,
+        template_resolutions_mm=template_resolution,
+        initial_transform=tuple(float(value) for value in first.recropped.transform),
+        class_bounds_low_xyz=low,
+        class_bounds_high_xyz=high,
+        registration_iterations=post_recrop_registration_iterations,
+        registered_classes=first.atlas.registered_classes,
+    )
+    return AtlasEMTwoStageRegistrationResult(
+        first.initialization,
+        first.atlas,
+        first.registration,
+        first.recropped,
+        second_initialization,
+        final_registration,
     )

@@ -10,7 +10,7 @@ from pymacruise.atlas_em_preprocessing import (
     crop_atlas_em_images,
 )
 from pymacruise.atlas_em_registration import (
-    initialize_register_recrop_atlas_em_from_descriptor,
+    initialize_register_recrop_register_atlas_em_from_descriptor,
     register_atlas_em_rigid_single_scale,
     register_atlas_em_descriptor_pyramid,
 )
@@ -116,22 +116,26 @@ def test_descriptor_registration_completes_native_grid_recrop_handoff(tmp_path: 
         ) + "\n",
         encoding="utf-8",
     )
-    result = initialize_register_recrop_atlas_em_from_descriptor(
+    result = initialize_register_recrop_register_atlas_em_from_descriptor(
         crop,
         normalized,
         str(descriptor),
         ("T1_MPRAGE",),
         background_ratio=0.1,
         levels=2,
-        registration_iterations=1,
+        initial_registration_iterations=1,
+        post_recrop_registration_iterations=1,
     )
 
-    assert len(result.registration.levels) == 1
-    assert result.registration.levels[0].scale == 2
-    assert len(result.registration.levels[0].result.iterations) == 1
+    assert len(result.initial_registration.levels) == 1
+    assert result.initial_registration.levels[0].scale == 2
+    assert len(result.initial_registration.levels[0].result.iterations) == 1
     assert result.initialization.class_names == ("Background", "Cortex")
     assert result.initialization.memberships.shape == (*crop.images.shape[:3], 2)
     assert np.isfinite(result.initialization.memberships).all()
+    assert result.post_recrop_initialization.memberships.shape == (*result.recropped.images.shape[:3], 2)
+    assert len(result.post_recrop_registration.iterations) == 1
+    assert np.isfinite(result.post_recrop_registration.transform).all()
     assert result.recropped.original_dimensions_xyz == shape
     assert result.recropped.images.shape[3] == 1
     assert np.isfinite(result.recropped.images).all()
