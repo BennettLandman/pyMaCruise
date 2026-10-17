@@ -94,3 +94,14 @@ descriptor test now composes registration, recropping, prior transformation,
 the initial Atlas membership update, a one-iteration fixed-prior EM loop, and
 Dura-input generation. This stays within synthetic selected-slice evidence;
 the one-iteration cap does not establish convergence or Dura evolution.
+
+## Follow-up after native-grid NIfTI output
+
+Code under test: commit `4b123555` (`Restore AtlasEM products as native RAS NIfTI`).
+
+The same command as the previous follow-up in this report was rerun. Result:
+**43 passed, 3 expected RAS orientation warnings in 6.38 s**. The synthetic
+descriptor integration now also restores membership, tissue-index, internal
+mask and Dura-input NIfTIs to the native T1 grid and verifies RAS geometry,
+compressed filenames, and output files. No selected-atlas or Dura-evolution
+claim is made.
