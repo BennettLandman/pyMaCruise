@@ -33,7 +33,6 @@ from pymacruise.toads_registration_sampling import (
     register_toads_atlas_rigid,
     register_toads_atlas_rigid_pyramid,
 )
-from pymacruise.toads_shapes import compute_toad_shape_bounds
 
 ATLAS_EM_PLUGIN_DEFAULT_LEVELS = 4
 ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS = 50
@@ -96,8 +95,6 @@ def register_atlas_em_rigid_single_scale(
     image_resolutions_mm: tuple[float, float, float],
     template_resolutions_mm: tuple[float, float, float],
     initial_transform: tuple[float, float, float, float, float, float],
-    class_bounds_low_xyz: ArrayLike,
-    class_bounds_high_xyz: ArrayLike,
     registration_iterations: int,
     registered_classes: ArrayLike | None = None,
 ) -> ToadsRigidRegistrationResult:
@@ -110,9 +107,11 @@ def register_atlas_em_rigid_single_scale(
     normalized Hessian into the gradient slot before normalizing again. The
     source-faithful shared registration kernel preserves that call order.
 
-    This adapter covers the registration stage only. The membership arrays,
-    class bounds and transform must already reflect the preceding AtlasEM
-    initialization and recrop. Iteration count is explicit because the
+    This adapter covers the registration stage only. Membership arrays and
+    transform must already reflect the preceding AtlasEM initialization and
+    recrop. The Java coefficient loop samples the complete current image grid;
+    its per-class shape bounds are recomputed after registration and do not
+    constrain optimizer samples. Iteration count is explicit because the
     MATLAB run wrapper does not expose the Java plugin's main-registration
     default.
     """
@@ -120,14 +119,28 @@ def register_atlas_em_rigid_single_scale(
         registration_iterations, (int, np.integer)
     ) or registration_iterations < 1:
         raise ValueError("registration_iterations must be a positive integer")
+    membership_values = np.asarray(memberships)
+    shape_values = np.asarray(atlas_shapes)
+    if membership_values.ndim != 4 or shape_values.ndim != 4:
+        raise ValueError("memberships and atlas_shapes must be 4D arrays")
+    if membership_values.shape[-1] != shape_values.shape[-1]:
+        raise ValueError("memberships and atlas_shapes must contain the same classes")
+    # DemonToadDeformableAtlas.computeRegistrationCoefficients() has no class
+    # bounding-box check; it samples every stride-two image-grid point. Bounds
+    # retained from the shared TOADS registration API must therefore span the
+    # image for this source-specific adapter.
+    full_low = np.zeros((membership_values.shape[-1], 3), dtype=np.int64)
+    full_high = np.broadcast_to(
+        np.asarray(membership_values.shape[:3], dtype=np.int64), full_low.shape
+    ).copy()
     return register_toads_atlas_rigid(
         memberships,
         atlas_shapes,
         image_resolutions_mm=image_resolutions_mm,
         template_resolutions_mm=template_resolutions_mm,
         initial_transform=initial_transform,
-        class_bounds_low_xyz=class_bounds_low_xyz,
-        class_bounds_high_xyz=class_bounds_high_xyz,
+        class_bounds_low_xyz=full_low,
+        class_bounds_high_xyz=full_high,
         registered_classes=registered_classes,
         offset=0,
         subsample=2,
@@ -406,27 +419,12 @@ def initialize_register_recrop_register_atlas_em_from_descriptor(
     second_initialization = initialize_atlas_em_memberships_from_descriptor(
         recropped_normalized, descriptor_path, modalities
     )
-    dimensions = tuple(int(value) for value in first.recropped.images.shape[:3])
-    bounds = tuple(
-        compute_toad_shape_bounds(
-            first.atlas.shape_priors[..., klass],
-            image_dimensions_xyz=dimensions,
-            image_resolutions_mm=first.recropped.signed_resolutions_mm,
-            template_resolutions_mm=template_resolution,
-            transform=tuple(float(value) for value in first.recropped.transform),
-        )
-        for klass in range(first.atlas.shape_priors.shape[-1])
-    )
-    low = np.asarray([bound.lower_xyz for bound in bounds], dtype=np.int64)
-    high = np.asarray([bound.upper_xyz for bound in bounds], dtype=np.int64)
     final_registration = register_atlas_em_rigid_single_scale(
         second_initialization.memberships,
         first.atlas.shape_priors,
         image_resolutions_mm=first.recropped.signed_resolutions_mm,
         template_resolutions_mm=template_resolution,
         initial_transform=tuple(float(value) for value in first.recropped.transform),
-        class_bounds_low_xyz=low,
-        class_bounds_high_xyz=high,
         registration_iterations=post_recrop_registration_iterations,
         registered_classes=first.atlas.registered_classes,
     )

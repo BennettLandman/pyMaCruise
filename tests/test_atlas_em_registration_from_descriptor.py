@@ -200,8 +200,6 @@ def test_atlas_em_post_recrop_single_scale_update_runs_source_faithful() -> None
         image_resolutions_mm=(1.0, 1.0, 1.0),
         template_resolutions_mm=(1.0, 1.0, 1.0),
         initial_transform=(0.01, -0.015, 0.02, 0.0, 0.0, 0.0),
-        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
-        class_bounds_high_xyz=np.full((2, 3), 7, dtype=np.int64),
         registration_iterations=1,
         registered_classes=np.array([False, True]),
     )
