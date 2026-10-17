@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pymacruise.atlas_em_statistics import normalize_atlas_em_priors
+from pymacruise.mipav_morphology import mipav_fill_holes_25d
 from pymacruise.toads_preprocessing import robust_intensity_bounds
 from pymacruise.toads_shape_volume import transform_toads_shape_priors
 from pymacruise.toads_shapes import compute_toad_shape_bounds
@@ -42,6 +43,24 @@ class AtlasEMDescriptorInitialization:
     class_names: tuple[str, ...]
     centroids: NDArray[np.float32]
     memberships: NDArray[np.float32]
+
+
+def build_atlas_em_internal_mask(images: ArrayLike) -> NDArray[np.bool_]:
+    """Construct AtlasEM's internal statistical mask from positive channels.
+
+    ``AtlasEMSegmentation`` marks a voxel active only when every input channel
+    is strictly positive, then runs MIPAV ``AlgorithmMorphology25D.FILL_HOLES``
+    on the resulting mask. This is the selected algorithm's internal mask; it
+    does not replace or modify the user-supplied brain mask used by the outer
+    MaCRUISE workflow.
+    """
+    values = np.asarray(images, dtype=np.float32)
+    if values.ndim != 4 or any(size < 2 for size in values.shape[:3]) or values.shape[3] < 1:
+        raise ValueError("images must be a 4D (x, y, z, channel) grid with nonempty dimensions")
+    if not np.isfinite(values).all():
+        raise ValueError("images must contain only finite values")
+    positive_all_channels = np.all(values > np.float32(0.0), axis=-1)
+    return mipav_fill_holes_25d(positive_all_channels)
 
 
 def find_atlas_em_crop_bounds(

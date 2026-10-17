@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pymacruise.atlas_em_preprocessing import (
+    build_atlas_em_internal_mask,
     initialize_atlas_em_centroids,
     initialize_atlas_em_memberships,
     normalize_atlas_em_images,
@@ -32,6 +33,21 @@ def _run_java(tmp_path: Path) -> dict:
 
 def _bits(array) -> list[int]:
     return np.asarray(array, dtype=np.float32).view(np.uint32).astype(np.uint64).tolist()
+
+
+def test_atlas_em_internal_mask_uses_all_positive_channels_then_fills_slice_holes() -> None:
+    images = np.ones((7, 7, 3, 2), dtype=np.float32)
+    images[3, 3, 1, 0] = 0.0
+    images[2, 2, 1, 1] = -0.25
+
+    mask = build_atlas_em_internal_mask(images)
+
+    expected = np.ones((7, 7, 3), dtype=bool)
+    expected[0, :, :] = False
+    expected[-1, :, :] = False
+    expected[:, 0, :] = False
+    expected[:, -1, :] = False
+    np.testing.assert_array_equal(mask, expected)
 
 
 def test_atlas_em_initial_centroids_and_memberships_match_java_excerpt(tmp_path: Path) -> None:
