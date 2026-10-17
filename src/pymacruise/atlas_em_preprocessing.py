@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from typing import Sequence
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -32,6 +33,15 @@ class AtlasEMCroppedImages:
     original_dimensions_xyz: tuple[int, int, int]
     signed_resolutions_mm: tuple[float, float, float]
     transform: NDArray[np.float32]
+
+
+@dataclass(frozen=True)
+class AtlasEMDescriptorInitialization:
+    """Descriptor-derived initial class means and source inverse-distance memberships."""
+
+    class_names: tuple[str, ...]
+    centroids: NDArray[np.float32]
+    memberships: NDArray[np.float32]
 
 
 def find_atlas_em_crop_bounds(
@@ -353,3 +363,44 @@ def initialize_atlas_em_memberships(
                         numerator = np.float32(group_sizes[k] * result[x, y, z, k])
                         result[x, y, z, k] = np.float32(numerator / denominator)
     return result
+
+
+def initialize_atlas_em_memberships_from_descriptor(
+    normalized: AtlasEMNormalizedImages,
+    descriptor_path: str | Path,
+    modalities: Sequence[str],
+    *,
+    interior: Sequence[slice] | None = None,
+) -> AtlasEMDescriptorInitialization:
+    """Build initial memberships from descriptor intensity priors in class order.
+
+    The source `initialCentroids` combines per-modality robust bounds and the
+    descriptor's intensity profile, then `initialMemberships` computes the
+    inverse squared-distance memberships. The input is the output of
+    :func:`normalize_atlas_em_images`; image loading, cropping, brain-mask
+    handling, registration, and later EM updates remain separate stages.
+    """
+    from pymacruise.atlas_em_descriptor import parse_atlas_em_descriptor
+
+    values = np.asarray(normalized.images, dtype=np.float32)
+    names = tuple(str(modality) for modality in modalities)
+    if values.ndim != 4 or len(names) != values.shape[3]:
+        raise ValueError("modalities must name each normalized image channel in source order")
+    aliases = {
+        "T1": "T1_SPGR", "T1_SPGR": "T1_SPGR", "T2": "T2", "FLAIR": "FLAIR",
+        "MPRAGE": "T1_MPRAGE", "T1_MPRAGE": "T1_MPRAGE",
+        "MPRAGE_RAW": "T1_RAW", "T1_RAW": "T1_RAW", "PD": "PD",
+        "PDFSE": "PDFSE", "DIR": "DIR",
+    }
+    descriptor = parse_atlas_em_descriptor(descriptor_path)
+    try:
+        profiles = np.asarray(
+            [descriptor.intensity_atlas[aliases[name]] for name in names], dtype=np.float32
+        )
+    except KeyError as exc:
+        raise ValueError(f"unsupported AtlasEM modality {exc.args[0]!r}") from exc
+    centroids = initialize_atlas_em_centroids(
+        normalized.robust_minima, normalized.robust_maxima, profiles
+    )
+    memberships = initialize_atlas_em_memberships(values, centroids, interior=interior)
+    return AtlasEMDescriptorInitialization(tuple(item.name for item in descriptor.structures), centroids, memberships)
