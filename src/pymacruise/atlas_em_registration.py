@@ -19,8 +19,10 @@ from pymacruise.atlas_em_descriptor import (
     parse_atlas_em_descriptor,
 )
 from pymacruise.atlas_em_preprocessing import (
+    AtlasEMDescriptorInitialization,
     AtlasEMCroppedImages,
     AtlasEMNormalizedImages,
+    initialize_atlas_em_memberships_from_descriptor,
     recrop_atlas_em_after_registration,
 )
 from pymacruise.toads_registration_sampling import (
@@ -51,6 +53,16 @@ class AtlasEMDescriptorRegistrationResult:
 class AtlasEMDescriptorRegistrationRecropResult:
     """Descriptor-loaded AtlasEM registration and its native-grid recrop."""
 
+    atlas: AtlasEMRegistrationAtlasInputs
+    registration: ToadsRigidRegistrationPyramidResult
+    recropped: AtlasEMCroppedImages
+
+
+@dataclass(frozen=True)
+class AtlasEMInitialRegistrationResult:
+    """Descriptor-driven memberships followed by registration and recropping."""
+
+    initialization: AtlasEMDescriptorInitialization
     atlas: AtlasEMRegistrationAtlasInputs
     registration: ToadsRigidRegistrationPyramidResult
     recropped: AtlasEMCroppedImages
@@ -236,4 +248,42 @@ def register_and_recrop_atlas_em_from_descriptor(
     )
     return AtlasEMDescriptorRegistrationRecropResult(
         atlas, handoff.registration, handoff.recropped
+    )
+
+
+def initialize_register_recrop_atlas_em_from_descriptor(
+    crop: AtlasEMCroppedImages,
+    normalized: AtlasEMNormalizedImages,
+    descriptor_path: str,
+    modalities: tuple[str, ...],
+    *,
+    background_ratio: float,
+    levels: int,
+    registration_iterations: int,
+    template_resolutions_mm: tuple[float, float, float] | None = None,
+) -> AtlasEMInitialRegistrationResult:
+    """Compose descriptor-driven initial memberships, registration, and recrop."""
+    crop_normalized = AtlasEMNormalizedImages(
+        np.asarray(crop.images, dtype=np.float32),
+        normalized.robust_minima,
+        normalized.robust_maxima,
+    )
+    initialization = initialize_atlas_em_memberships_from_descriptor(
+        crop_normalized, descriptor_path, modalities
+    )
+    handoff = register_and_recrop_atlas_em_from_descriptor(
+        crop,
+        initialization.memberships,
+        normalized,
+        descriptor_path,
+        background_ratio=background_ratio,
+        levels=levels,
+        registration_iterations=registration_iterations,
+        template_resolutions_mm=template_resolutions_mm,
+    )
+    return AtlasEMInitialRegistrationResult(
+        initialization,
+        handoff.atlas,
+        handoff.registration,
+        handoff.recropped,
     )
