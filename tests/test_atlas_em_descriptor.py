@@ -3,9 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import nibabel as nib
+import numpy as np
 
 from pymacruise.atlas_em_descriptor import (
     AtlasEMDescriptorError,
+    load_atlas_em_nifti_payloads,
     parse_atlas_em_descriptor,
     require_atlas_em_payloads,
 )
@@ -120,6 +123,60 @@ def test_registered_shape_values_follow_java_equals_one_semantics(tmp_path: Path
     parsed = parse_atlas_em_descriptor(path)
 
     assert parsed.registered_shapes == (False, True)
+
+
+def test_nifti_payloads_reorient_to_ras_and_keep_descriptor_geometry(tmp_path: Path) -> None:
+    raw = np.arange(5 * 6 * 7, dtype=np.int16).reshape(5, 6, 7)
+    topology = raw % 3
+    first_shape = raw.astype(np.float32) / raw.size
+    second_shape = (raw.astype(np.float32) + 2.0) / raw.size
+    las_affine = np.diag((-0.8, 0.9, 1.2, 1.0))
+    nib.save(nib.Nifti1Image(topology, las_affine), tmp_path / "topology.nii.gz")
+    nib.save(nib.Nifti1Image(first_shape, las_affine), tmp_path / "background.nii.gz")
+    nib.save(nib.Nifti1Image(second_shape, las_affine), tmp_path / "cortex.nii.gz")
+    path = tmp_path / "atlas.txt"
+    path.write_text(
+        _descriptor_text("topology.nii.gz", "background.nii.gz").replace(
+            "cortex.img", "cortex.nii.gz"
+        ),
+        encoding="utf-8",
+    )
+    descriptor = parse_atlas_em_descriptor(path)
+
+    with pytest.warns(UserWarning, match="reorienting the image to RAS") as captured:
+        loaded = load_atlas_em_nifti_payloads(descriptor)
+
+    assert len(captured) == 3
+    assert loaded.source_axis_codes == {
+        "topology": ("L", "A", "S"),
+        "shape:Background": ("L", "A", "S"),
+        "shape:Cortex": ("L", "A", "S"),
+    }
+    np.testing.assert_array_equal(loaded.topology, np.flip(topology, axis=0))
+    np.testing.assert_array_equal(loaded.shapes["Background"], np.flip(first_shape, axis=0))
+    np.testing.assert_array_equal(loaded.shapes["Cortex"], np.flip(second_shape, axis=0))
+    assert loaded.shapes["Background"].dtype == np.float32
+    assert loaded.topology.shape == (5, 6, 7)
+
+
+def test_nifti_payload_loader_rejects_shape_prior_on_another_grid(tmp_path: Path) -> None:
+    data = np.ones((5, 6, 7), dtype=np.float32)
+    affine = np.diag((0.8, 0.9, 1.2, 1.0))
+    nib.save(nib.Nifti1Image(data.astype(np.uint8), affine), tmp_path / "topology.nii.gz")
+    nib.save(nib.Nifti1Image(data, affine), tmp_path / "background.nii.gz")
+    shifted = affine.copy()
+    shifted[0, 3] = 1.0
+    nib.save(nib.Nifti1Image(data, shifted), tmp_path / "cortex.nii.gz")
+    path = tmp_path / "atlas.txt"
+    path.write_text(
+        _descriptor_text("topology.nii.gz", "background.nii.gz").replace(
+            "cortex.img", "cortex.nii.gz"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AtlasEMDescriptorError, match="grid does not match"):
+        load_atlas_em_nifti_payloads(parse_atlas_em_descriptor(path))
 
 
 @pytest.mark.parametrize(

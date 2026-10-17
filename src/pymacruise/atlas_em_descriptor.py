@@ -1,14 +1,20 @@
-"""Metadata reader for the selected VandyCRUISE AtlasEM text descriptor.
+"""Read selected AtlasEM descriptor metadata and compressed NIfTI payloads.
 
-This reads descriptor metadata and inventories paths only. The Java class loads
-the referenced topology bytes and little-endian shape-float files; this module
-does not load those payloads or claim AtlasEM execution parity.
+The source Java loader consumes raw topology bytes and little-endian shape
+floats. PyMaCRUISE's payload path requires NIfTI and keeps its RAS storage
+contract; this does not claim byte-identical raw-file loading or AtlasEM parity.
 """
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
+
+import nibabel as nib
+import numpy as np
+
+from pymacruise.image_io import normalize_image_to_ras
 
 
 class AtlasEMDescriptorError(ValueError):
@@ -45,6 +51,15 @@ class AtlasEMDescriptor:
     shape_slope: float
     referenced_files: tuple[Path, ...]
     missing_files: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class AtlasEMNiftiPayloads:
+    """Selected AtlasEM atlas voxels loaded from compressed NIfTI assets."""
+
+    topology: np.ndarray
+    shapes: dict[str, np.ndarray]
+    source_axis_codes: dict[str, tuple[str, str, str]]
 
 
 def _fields(line: str, tag: str, count: int, line_number: int) -> list[str]:
@@ -326,3 +341,66 @@ def require_atlas_em_payloads(descriptor: AtlasEMDescriptor) -> None:
     if descriptor.missing_files:
         missing = ", ".join(str(item) for item in descriptor.missing_files)
         raise FileNotFoundError(f"AtlasEM descriptor payloads are missing: {missing}")
+
+
+def load_atlas_em_nifti_payloads(descriptor: AtlasEMDescriptor) -> AtlasEMNiftiPayloads:
+    """Load topology and per-structure maps from project-standard `.nii.gz` assets.
+
+    Java consumes raw byte and little-endian float arrays. This Python path
+    reads NIfTI headers, warns and reorients non-RAS maps, and returns arrays in
+    RAS order. Descriptor dimensions/resolutions remain the source algorithm's
+    registration geometry; header spacing discrepancies are reported instead
+    of silently replacing descriptor values.
+    """
+    require_atlas_em_payloads(descriptor)
+
+    def load_one(path: Path, role: str, expected_dimensions: tuple[int, int, int]):
+        if path.suffixes[-2:] != [".nii", ".gz"]:
+            raise AtlasEMDescriptorError(f"{role} payload must be stored as .nii.gz: {path}")
+        try:
+            source = nib.load(str(path))
+        except (OSError, nib.filebasedimages.ImageFileError) as exc:
+            raise AtlasEMDescriptorError(f"Cannot load {role} NIfTI {path}: {exc}") from exc
+        if len(source.shape) != 3:
+            raise AtlasEMDescriptorError(f"{role} payload must be a 3D scalar image: {path}")
+        axis_codes = tuple(str(value) for value in nib.aff2axcodes(source.affine))
+        ras = normalize_image_to_ras(source, source_name=f"AtlasEM {role}")
+        if tuple(ras.shape) != expected_dimensions:
+            raise AtlasEMDescriptorError(
+                f"{role} payload RAS dimensions {ras.shape} disagree with descriptor {expected_dimensions}"
+            )
+        header_spacing = tuple(float(value) for value in nib.affines.voxel_sizes(ras.affine))
+        reference_spacing = (
+            descriptor.topology_resolutions_mm if role == "topology"
+            else descriptor.shape_resolutions_mm
+        )
+        if not np.allclose(header_spacing, reference_spacing, rtol=0.0, atol=1e-4):
+            warnings.warn(
+                f"AtlasEM {role} NIfTI voxel sizes {header_spacing} mm differ from descriptor "
+                f"resolutions {reference_spacing} mm; descriptor geometry is retained.",
+                UserWarning,
+                stacklevel=2,
+            )
+        values = np.asanyarray(ras.dataobj)
+        if not np.isfinite(values).all():
+            raise AtlasEMDescriptorError(f"{role} payload contains non-finite voxels: {path}")
+        return values, axis_codes, np.asarray(ras.affine, dtype=np.float64)
+
+    topology, topology_codes, reference_affine = load_one(
+        descriptor.topology_file, "topology", descriptor.topology_dimensions_xyz
+    )
+    if not np.issubdtype(topology.dtype, np.integer):
+        if not np.equal(topology, np.floor(topology)).all():
+            raise AtlasEMDescriptorError("topology NIfTI must contain integer labels")
+        topology = topology.astype(np.int32)
+    shapes = {}
+    axis_codes = {"topology": topology_codes}
+    for name, path in descriptor.shape_files.items():
+        values, codes, affine = load_one(path, f"shape {name}", descriptor.topology_dimensions_xyz)
+        if not np.allclose(affine, reference_affine, rtol=0.0, atol=1e-4):
+            raise AtlasEMDescriptorError(
+                f"shape {name} NIfTI grid does not match the topology NIfTI grid"
+            )
+        shapes[name] = np.asarray(values, dtype=np.float32)
+        axis_codes[f"shape:{name}"] = codes
+    return AtlasEMNiftiPayloads(topology, shapes, axis_codes)
