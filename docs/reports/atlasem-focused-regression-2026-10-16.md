@@ -16,3 +16,30 @@ PYTHONPATH=.:src PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL
 ```
 
 Result: **22 passed in 5.76 s**. This covers synthetic selected-source method excerpts, Python component behavior, the AtlasEM registration-result recrop sequence, registration-pyramid preparation, and the synthetic AtlasEM-output-to-Dura handoff. Crop-bound reduction and uncropping are vectorized for brain-resolution volumes while preserving the source-comparison results. It does not validate the missing selected `ibsr8obj` bundle, the AtlasEM rigid optimizer, registration convergence, a full PLUS run with the historical pre-stages, or fresh MATLAB/MIPAV/JIST workflow equivalence. The last full-suite result remains the separate report at [`full-pytest-2026-10-16-atlasem-dura-handoff.md`](full-pytest-2026-10-16-atlasem-dura-handoff.md).
+
+## Follow-up after two-stage registration composition
+
+Code under test: commit `db1a68c9` (`Compose both AtlasEM rigid registration stages`).
+
+Command:
+
+```sh
+PYTHONPATH=.:src PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  .venv/bin/pytest -q tests/test_atlas_em_descriptor.py \
+  tests/test_atlas_em_descriptor_initialization.py \
+  tests/test_atlas_em_registration_from_descriptor.py \
+  tests/test_atlas_em_inventory_cli.py tests/test_atlas_em_iteration.py \
+  tests/test_atlas_em_gaussian_memberships.py tests/test_atlas_em_cli.py \
+  tests/test_atlas_em_prior_normalization.py tests/test_atlas_em_cropping.py \
+  tests/test_atlas_em_classification.py tests/test_atlas_em_preprocessing.py \
+  tests/test_atlas_em_outputs.py tests/test_atlas_em_rigid_priors.py \
+  tests/test_atlas_em_statistics.py tests/test_atlas_em_registration_pyramid.py \
+  tests/test_plus_atlas_em_dura_integration.py
+```
+
+Result: **39 passed, 3 expected RAS orientation warnings in 7.05 s**. This
+includes the descriptor-driven two-stage rigid-registration/recrop composition
+and the shared source-faithful rigid-update Java fixture. This remains
+synthetic and selected-slice evidence; it does not supply the missing
+`ibsr8obj` assets or establish direct `DemonToadDeformableAtlas` optimizer
+parity or complete PLUS source equivalence.
