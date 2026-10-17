@@ -26,9 +26,11 @@ from pymacruise.atlas_em_preprocessing import (
     recrop_atlas_em_after_registration,
 )
 from pymacruise.toads_registration_sampling import (
+    ToadsRigidRegistrationResult,
     ToadsRigidRegistrationPyramidResult,
     ToadsRegistrationPyramidLevel,
     build_toads_registration_pyramid,
+    register_toads_atlas_rigid,
     register_toads_atlas_rigid_pyramid,
 )
 
@@ -66,6 +68,57 @@ class AtlasEMInitialRegistrationResult:
     atlas: AtlasEMRegistrationAtlasInputs
     registration: ToadsRigidRegistrationPyramidResult
     recropped: AtlasEMCroppedImages
+
+
+def register_atlas_em_rigid_single_scale(
+    memberships: ArrayLike,
+    atlas_shapes: ArrayLike,
+    *,
+    image_resolutions_mm: tuple[float, float, float],
+    template_resolutions_mm: tuple[float, float, float],
+    initial_transform: tuple[float, float, float, float, float, float],
+    class_bounds_low_xyz: ArrayLike,
+    class_bounds_high_xyz: ArrayLike,
+    registration_iterations: int,
+    registered_classes: ArrayLike | None = None,
+) -> ToadsRigidRegistrationResult:
+    """Run AtlasEM's post-recrop, full-resolution rigid registration stage.
+
+    The selected ``AlgorithmAtlasEMSegmentation`` calls ``updateShapeRegistration``
+    with one level after initializing priors and recomputing memberships, then
+    calls ``registerShapes()``. ``DemonToadDeformableAtlas`` leaves voxel
+    subsampling at 2 and its exact single-scale coefficient routine assigns the
+    normalized Hessian into the gradient slot before normalizing again. The
+    source-faithful shared registration kernel preserves that call order.
+
+    This adapter covers the registration stage only. The membership arrays,
+    class bounds and transform must already reflect the preceding AtlasEM
+    initialization and recrop. Iteration count is explicit because the
+    MATLAB run wrapper does not expose the Java plugin's main-registration
+    default.
+    """
+    if isinstance(registration_iterations, bool) or not isinstance(
+        registration_iterations, (int, np.integer)
+    ) or registration_iterations < 1:
+        raise ValueError("registration_iterations must be a positive integer")
+    return register_toads_atlas_rigid(
+        memberships,
+        atlas_shapes,
+        image_resolutions_mm=image_resolutions_mm,
+        template_resolutions_mm=template_resolutions_mm,
+        initial_transform=initial_transform,
+        class_bounds_low_xyz=class_bounds_low_xyz,
+        class_bounds_high_xyz=class_bounds_high_xyz,
+        registered_classes=registered_classes,
+        offset=0,
+        subsample=2,
+        max_iterations=int(registration_iterations),
+        energy_tolerance=1e-6,
+        minimum_lambda=1e-3,
+        source_faithful=True,
+        allow_nonfinite_trials=True,
+        scale=1.0,
+    )
 
 
 def build_atlas_em_rigid_registration_pyramid(

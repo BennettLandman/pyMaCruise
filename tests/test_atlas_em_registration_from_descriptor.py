@@ -11,6 +11,7 @@ from pymacruise.atlas_em_preprocessing import (
 )
 from pymacruise.atlas_em_registration import (
     initialize_register_recrop_atlas_em_from_descriptor,
+    register_atlas_em_rigid_single_scale,
     register_atlas_em_descriptor_pyramid,
 )
 
@@ -134,3 +135,30 @@ def test_descriptor_registration_completes_native_grid_recrop_handoff(tmp_path: 
     assert result.recropped.original_dimensions_xyz == shape
     assert result.recropped.images.shape[3] == 1
     assert np.isfinite(result.recropped.images).all()
+
+
+def test_atlas_em_post_recrop_single_scale_update_runs_source_faithful() -> None:
+    shape = (7, 7, 7)
+    x, y, z = np.indices(shape, dtype=np.float32)
+    prior = np.exp(-((x - 3.2) ** 2 / 6.0 + (y - 2.8) ** 2 / 8.0 + (z - 3.5) ** 2 / 5.0))
+    prior *= (0.75 + 0.025 * x + 0.015 * y).astype(np.float32)
+    atlas = np.stack((np.ones(shape, dtype=np.float32), prior.astype(np.float32)), axis=-1)
+    memberships = np.stack((0.25 + 0.01 * z, 0.3 + 0.02 * x + 0.01 * y), axis=-1).astype(np.float32)
+
+    result = register_atlas_em_rigid_single_scale(
+        memberships,
+        atlas,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.01, -0.015, 0.02, 0.0, 0.0, 0.0),
+        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
+        class_bounds_high_xyz=np.full((2, 3), 7, dtype=np.int64),
+        registration_iterations=1,
+        registered_classes=np.array([False, True]),
+    )
+
+    assert len(result.iterations) == 1
+    assert result.iterations[0].rejected_trials <= 11
+    assert np.isfinite(result.energy)
+    assert np.isfinite(result.transform).all()
+    assert result.stop_reason in {"iteration_limit", "energy_tolerance"}
