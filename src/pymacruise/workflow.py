@@ -30,6 +30,7 @@ _WORKFLOW_CONFIG_KEYS = {
     "brain_mask_path",
     "output_dir",
     "flair_path",
+    "atlasem_descriptor_path",
     "bias_correction",
     "plus_options",
     "run_options",
@@ -58,6 +59,7 @@ class WorkflowConfig:
     brain_mask_path: Path | str
     output_dir: Path | str
     flair_path: Path | str | None = None
+    atlasem_descriptor_path: Path | str | None = None
     bias_correction: str = "N4"
     plus_options: PlusPipelineOptions | None = None
     run_options: dict[str, Any] | None = None
@@ -81,6 +83,10 @@ class WorkflowConfig:
             object.__setattr__(self, name, Path(getattr(self, name)))
         if self.flair_path is not None:
             object.__setattr__(self, "flair_path", Path(self.flair_path))
+        if self.atlasem_descriptor_path is not None:
+            object.__setattr__(
+                self, "atlasem_descriptor_path", Path(self.atlasem_descriptor_path)
+            )
         for name in ("t1_path", "maseg_path", "brain_mask_path", "flair_path"):
             path = getattr(self, name)
             if path is not None and not path.name.lower().endswith(".nii.gz"):
@@ -89,6 +95,8 @@ class WorkflowConfig:
             raise ValueError("The plus profile requires flair_path")
         if profile is WorkflowProfile.BASE and self.flair_path is not None:
             raise ValueError("The base profile does not accept flair_path")
+        if profile is WorkflowProfile.BASE and self.atlasem_descriptor_path is not None:
+            raise ValueError("The base profile does not accept atlasem_descriptor_path")
         if self.bias_correction != "N4":
             raise ValueError("Only the source-selected N4 bias correction is supported")
 
@@ -101,6 +109,8 @@ class WorkflowConfig:
             result["plus_options"] = self.plus_options.as_dict()
         if self.run_options is None:
             result.pop("run_options")
+        if self.atlasem_descriptor_path is None:
+            result.pop("atlasem_descriptor_path")
         return {
             key: (str(value) if isinstance(value, Path) else value.value if isinstance(value, WorkflowProfile) else value)
             for key, value in result.items()
@@ -172,8 +182,9 @@ def _validate_run_options(profile: WorkflowProfile, values: Any) -> dict[str, An
 def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
     """Read the version-1 JSON workflow config and resolve paths beside it.
 
-    The config file contains input/output paths and profile settings only; it
-    does not select or override bundled atlas resources.
+    The config file contains input/output paths and profile settings. The
+    optional PLUS AtlasEM descriptor selects the AtlasEM/Dura handoff atlas;
+    profile-specific MaCRUISE/LesionTOADS atlases remain bundled resources.
     """
     config_path = Path(path).expanduser().resolve()
     try:
@@ -197,7 +208,7 @@ def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
         raise ValueError(f"Unsupported workflow config schema_version: {raw['schema_version']!r}")
 
     def resolve_config_path(value: Any, name: str) -> Path | None:
-        if value is None and name == "flair_path":
+        if value is None and name in {"flair_path", "atlasem_descriptor_path"}:
             return None
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"Workflow config {name} must be a nonempty path string")
@@ -236,6 +247,9 @@ def load_workflow_config_file(path: str | Path) -> WorkflowConfig:
         brain_mask_path=resolve_config_path(raw["brain_mask_path"], "brain_mask_path"),
         output_dir=resolve_config_path(raw["output_dir"], "output_dir"),
         flair_path=resolve_config_path(raw.get("flair_path"), "flair_path"),
+        atlasem_descriptor_path=resolve_config_path(
+            raw.get("atlasem_descriptor_path"), "atlasem_descriptor_path"
+        ),
         bias_correction=raw.get("bias_correction", "N4"),
         plus_options=plus_options,
         run_options=run_options,
@@ -299,6 +313,59 @@ def _workflow_atlas_preflight(profile: WorkflowProfile) -> dict[str, Any]:
     }
 
 
+def _workflow_atlasem_preflight(descriptor_path: Path) -> dict[str, Any]:
+    """Validate selected PLUS AtlasEM metadata and NIfTI headers without voxels."""
+    from pymacruise.atlas_em_descriptor import parse_atlas_em_descriptor
+
+    descriptor = parse_atlas_em_descriptor(descriptor_path)
+    if descriptor.missing_files:
+        missing = ", ".join(str(item) for item in descriptor.missing_files)
+        raise FileNotFoundError(f"AtlasEM descriptor payloads are missing: {missing}")
+    assets: list[dict[str, Any]] = []
+    for role, path in (("topology", descriptor.topology_file), *[
+        (f"shape:{name}", asset) for name, asset in descriptor.shape_files.items()
+    ]):
+        if path.suffixes[-2:] != [".nii", ".gz"]:
+            raise ValueError(f"AtlasEM {role} payload must use .nii.gz: {path}")
+        try:
+            image = nib.load(str(path))
+        except (OSError, nib.filebasedimages.ImageFileError) as exc:
+            raise ValueError(f"Cannot load AtlasEM {role} header {path}: {exc}") from exc
+        codes = tuple(str(code) for code in nib.aff2axcodes(image.affine))
+        if len(image.shape) != 3 or codes != ("R", "A", "S"):
+            raise ValueError(f"AtlasEM {role} must be a 3D RAS NIfTI image: {path}")
+        expected_dimensions = (
+            descriptor.topology_dimensions_xyz if role == "topology"
+            else descriptor.shape_dimensions_xyz
+        )
+        if tuple(image.shape) != expected_dimensions:
+            raise ValueError(
+                f"AtlasEM {role} dimensions {image.shape} disagree with descriptor "
+                f"{expected_dimensions}: {path}"
+            )
+        if assets and not np.allclose(
+            image.affine, reference_affine, rtol=0.0, atol=1e-5
+        ):
+            raise ValueError(
+                f"AtlasEM {role} grid does not match the preceding atlas asset: {path}"
+            )
+        if not assets:
+            reference_affine = np.asarray(image.affine, dtype=np.float64)
+        assets.append({
+            "path": str(path),
+            "sha256": _sha256(path),
+            "shape": [int(size) for size in image.shape],
+            "axis_codes": list(codes),
+        })
+    return {
+        "descriptor": str(descriptor.path),
+        "descriptor_sha256": _sha256(descriptor.path),
+        "assets_checked": len(assets),
+        "assets": assets,
+        "payloads_materialized": False,
+    }
+
+
 def _check_workflow_dependencies(config: WorkflowConfig) -> dict[str, str]:
     """Check importability of core requirements and selected optional N4."""
     dependencies = {
@@ -351,6 +418,10 @@ def preflight_workflow(
         brain_mask_path=config.brain_mask_path,
     )
     atlas = _workflow_atlas_preflight(config.profile)
+    atlasem = (
+        None if config.atlasem_descriptor_path is None
+        else _workflow_atlasem_preflight(config.atlasem_descriptor_path)
+    )
 
     output_dir = Path(config.output_dir).expanduser()
     if output_dir.exists() and not output_dir.is_dir():
@@ -383,6 +454,7 @@ def preflight_workflow(
         "workflow_executed": False,
         "dependencies": dependencies,
         "atlas": atlas,
+        **({"atlasem": atlasem} if atlasem is not None else {}),
         "orientation_conversions": {
             role: {
                 "from": list(codes),
@@ -459,6 +531,7 @@ def run_workflow_config(
         brain_mask_path=config.brain_mask_path,
         maseg_path=config.maseg_path,
         atlas_descriptor_path=descriptor,
+        atlasem_descriptor_path=config.atlasem_descriptor_path,
         output_dir=config.output_dir,
         pipeline_options=config.plus_options or PlusPipelineOptions(),
         registration_config=RegistrationConfig(**runner_options.get("registration", {})),
@@ -521,6 +594,23 @@ def create_initial_manifest(
             "input_axis_codes": list(validated.input_orientations[role]),
             "output_axis_codes": list(nib.aff2axcodes(image.affine)),
         }
+    if config.atlasem_descriptor_path is not None:
+        from pymacruise.atlas_em_descriptor import parse_atlas_em_descriptor
+
+        descriptor = parse_atlas_em_descriptor(config.atlasem_descriptor_path)
+        if descriptor.missing_files:
+            missing = ", ".join(str(item) for item in descriptor.missing_files)
+            raise FileNotFoundError(f"AtlasEM descriptor payloads are missing: {missing}")
+        resource_paths = {
+            "atlasem_descriptor": descriptor.path,
+            "atlasem_topology": descriptor.topology_file,
+            **{
+                f"atlasem_shape_{name}": asset
+                for name, asset in descriptor.shape_files.items()
+            },
+        }
+        for role, path in resource_paths.items():
+            input_records[role] = {"path": str(path), "sha256": _sha256(path)}
 
     config_data = config.as_dict()
     signature_data = {

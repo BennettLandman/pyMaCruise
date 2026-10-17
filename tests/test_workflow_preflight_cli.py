@@ -55,9 +55,42 @@ def _write_config(root: Path, paths: dict[str, Path], *, profile: str = "base") 
     if profile == "plus":
         config["flair_path"] = f"../inputs/{paths['flair_path'].name}"
         config["plus_options"] = {"boundary_overlook_labels": [120, 121]}
+        if "atlasem_descriptor_path" in paths:
+            config["atlasem_descriptor_path"] = (
+                f"../inputs/{paths['atlasem_descriptor_path'].name}"
+            )
     path = root / "workflow.json"
     path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def _write_atlasem_descriptor(root: Path) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    affine = np.diag([0.8, 0.9, 1.2, 1.0])
+    shape = (5, 6, 7)
+    nib.save(nib.Nifti1Image(np.zeros(shape, dtype=np.uint8), affine), root / "topology.nii.gz")
+    nib.save(nib.Nifti1Image(np.zeros(shape, dtype=np.float32), affine), root / "background.nii.gz")
+    nib.save(nib.Nifti1Image(np.ones(shape, dtype=np.float32), affine), root / "cortex.nii.gz")
+    descriptor = root / "atlasem.txt"
+    descriptor.write_text(
+        "\n".join((
+            "Structure Atlas File (edit at your own risks)", "", "Structures:\t2",
+            "Background\t1\tmask", "Cortex\t2\tclosed", "", "Topology Atlas:",
+            "File:\ttopology.nii.gz", "Dimensions:\t5\t6\t7", "Resolutions:\t0.8\t0.9\t1.2",
+            "", "Shape Atlas:\t4", "Dimensions:\t5\t6\t7", "Resolutions:\t0.8\t0.9\t1.2",
+            "Orientations:\t1\t1\t6\t3", "Structure:\tBackground", "File:\tbackground.nii.gz",
+            "Dimensions:\t5\t6\t7", "Resolutions:\t0.8\t0.9\t1.2", "Center:\t0\t0\t0",
+            "Structure:\tCortex", "File:\tcortex.nii.gz", "Dimensions:\t5\t6\t7",
+            "Resolutions:\t0.8\t0.9\t1.2", "Center:\t0\t0\t0", "",
+            "Registered Shapes (0/1: true/false)", "0\t1", "0\t1", "Intensity Atlas:\t12",
+            "T1\t0.1\t0.9", "Intensity Variance:", "T1_MPRAGE\t1.5\t2.5",
+            "Lesions:", "T1\t0.2\tFLAIR\t0.3", "Black Holes:", "MPRAGE\t0.05",
+            "Slope:\t3.5", "Modality weights:", "T1_SPGR\t0.4\t0.6",
+            "Optimized factors:", "MPRAGE_RAW\t1.1\t1.2\t1.3\t1.4", "",
+        )),
+        encoding="utf-8",
+    )
+    return descriptor
 
 
 def test_workflow_preflight_cli_writes_explicit_nonexecuting_manifest(
@@ -110,6 +143,70 @@ def test_plus_config_preflight_accepts_separate_flair_grid_and_options(
     assert manifest["inputs"]["flair"]["output_axis_codes"] == ["R", "A", "S"]
     assert manifest["config"]["plus_options"]["boundary_overlook_labels"] == [120, 121]
     assert manifest["preflight"]["workflow_executed"] is False
+
+
+def test_plus_config_preflight_tracks_selected_atlasem_assets_and_relative_path(
+    tmp_path, monkeypatch
+) -> None:
+    inputs = _write_input_set(tmp_path / "inputs", include_flair=True)
+    inputs["atlasem_descriptor_path"] = _write_atlasem_descriptor(tmp_path / "inputs")
+    config_path = _write_config(tmp_path / "config", inputs, profile="plus")
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+
+    config = workflow.load_workflow_config_file(config_path)
+    assert config.atlasem_descriptor_path == inputs["atlasem_descriptor_path"].resolve()
+    manifest_path, manifest = workflow.preflight_workflow(config)
+    assert manifest_path.is_file()
+    atlasem = manifest["preflight"]["atlasem"]
+    assert atlasem["assets_checked"] == 3
+    assert atlasem["payloads_materialized"] is False
+    assert {Path(item["path"]).name for item in atlasem["assets"]} == {
+        "topology.nii.gz", "background.nii.gz", "cortex.nii.gz"
+    }
+    assert manifest["config"]["atlasem_descriptor_path"] == str(
+        inputs["atlasem_descriptor_path"].resolve()
+    )
+    assert {key for key in manifest["inputs"] if key.startswith("atlasem_")} == {
+        "atlasem_descriptor", "atlasem_topology", "atlasem_shape_Background",
+        "atlasem_shape_Cortex",
+    }
+
+
+def test_plus_config_preflight_rejects_missing_selected_atlasem_payload(
+    tmp_path, monkeypatch
+) -> None:
+    inputs = _write_input_set(tmp_path / "inputs", include_flair=True)
+    descriptor = _write_atlasem_descriptor(tmp_path / "inputs")
+    (tmp_path / "inputs" / "cortex.nii.gz").unlink()
+    inputs["atlasem_descriptor_path"] = descriptor
+    config = workflow.load_workflow_config_file(
+        _write_config(tmp_path / "config", inputs, profile="plus")
+    )
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+
+    with pytest.raises(FileNotFoundError, match="AtlasEM descriptor payloads are missing"):
+        workflow.preflight_workflow(config)
+
+
+def test_plus_config_preflight_rejects_atlasem_payload_on_different_grid(
+    tmp_path, monkeypatch
+) -> None:
+    inputs = _write_input_set(tmp_path / "inputs", include_flair=True)
+    descriptor = _write_atlasem_descriptor(tmp_path / "inputs")
+    shifted_affine = np.diag([0.8, 0.9, 1.2, 1.0])
+    shifted_affine[0, 3] = 0.5
+    nib.save(
+        nib.Nifti1Image(np.ones((5, 6, 7), dtype=np.float32), shifted_affine),
+        tmp_path / "inputs" / "cortex.nii.gz",
+    )
+    inputs["atlasem_descriptor_path"] = descriptor
+    config = workflow.load_workflow_config_file(
+        _write_config(tmp_path / "config", inputs, profile="plus")
+    )
+    monkeypatch.setattr(workflow, "_ants_available", lambda: True)
+
+    with pytest.raises(ValueError, match="grid does not match"):
+        workflow.preflight_workflow(config)
 
 
 def test_workflow_preflight_cli_subprocess_is_dry_run(tmp_path) -> None:
@@ -252,16 +349,30 @@ def test_workflow_config_rejects_unknown_fields_and_non_array_labels(tmp_path) -
     with pytest.raises(ValueError, match="Unknown workflow config field"):
         workflow.load_workflow_config_file(path)
 
-    config = json.loads(path.read_text())
-    config.pop("unexpected")
-    config["plus_options"] = {"boundary_overlook_labels": "120,121"}
-    path.write_text(json.dumps(config), encoding="utf-8")
+
+def test_base_config_rejects_atlasem_descriptor(tmp_path) -> None:
+    path = tmp_path / "workflow.json"
+    path.write_text(json.dumps({
+        "schema_version": 1, "profile": "base", "t1_path": "t1.nii.gz",
+        "maseg_path": "maseg.nii.gz", "brain_mask_path": "mask.nii.gz",
+        "output_dir": "out", "atlasem_descriptor_path": "atlas.txt",
+    }), encoding="utf-8")
+    with pytest.raises(ValueError, match="only valid|does not accept"):
+        workflow.load_workflow_config_file(path)
+
+    plus_config = {
+        "schema_version": 1, "profile": "plus", "t1_path": "t1.nii.gz",
+        "maseg_path": "maseg.nii.gz", "brain_mask_path": "mask.nii.gz",
+        "flair_path": "flair.nii.gz", "output_dir": "out",
+        "plus_options": {"boundary_overlook_labels": "120,121"},
+    }
+    path.write_text(json.dumps(plus_config), encoding="utf-8")
     with pytest.raises(ValueError, match="must be a JSON array"):
         workflow.load_workflow_config_file(path)
 
-    config["plus_options"] = {}
-    config["run_options"] = {"plus": {"unexpected": 1}}
-    path.write_text(json.dumps(config), encoding="utf-8")
+    plus_config["plus_options"] = {}
+    plus_config["run_options"] = {"plus": {"unexpected": 1}}
+    path.write_text(json.dumps(plus_config), encoding="utf-8")
     with pytest.raises(ValueError, match="Unknown run_options.plus field"):
         workflow.load_workflow_config_file(path)
 
@@ -316,3 +427,26 @@ def test_workflow_run_cli_dispatches_config_to_restartable_runner(
     assert calls["maseg_path"] == inputs["maseg_path"]
     if profile == "plus":
         assert calls["pipeline_options"].boundary_overlook_labels == (120, 121)
+
+
+def test_workflow_run_forwards_configured_atlasem_descriptor(tmp_path, monkeypatch, capsys) -> None:
+    inputs = _write_input_set(tmp_path / "inputs", include_flair=True)
+    inputs["atlasem_descriptor_path"] = _write_atlasem_descriptor(tmp_path / "inputs")
+    config_path = _write_config(tmp_path / "config", inputs, profile="plus")
+    descriptor = tmp_path / "lesion-atlas.txt"
+    descriptor.write_text("bundled descriptor", encoding="utf-8")
+    monkeypatch.setattr(workflow, "get_bundled_atlas_descriptor", lambda _name: descriptor)
+    calls = {}
+    expected_manifest = tmp_path / "run" / "run.json"
+    output_dir = tmp_path / "config" / "run-output"
+    output_dir.mkdir(parents=True)
+    from pymacruise import plus_full_workflow
+
+    def fake_runner(**kwargs):
+        calls.update(kwargs)
+        return SimpleNamespace(manifest_path=expected_manifest)
+
+    monkeypatch.setattr(plus_full_workflow, "run_plus_full_workflow", fake_runner)
+    assert main(["workflow-run", "--config", str(config_path)]) == 0
+    assert "Workflow complete" in capsys.readouterr().out
+    assert calls["atlasem_descriptor_path"] == inputs["atlasem_descriptor_path"].resolve()
