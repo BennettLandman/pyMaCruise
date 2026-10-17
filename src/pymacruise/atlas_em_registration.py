@@ -35,6 +35,12 @@ from pymacruise.toads_registration_sampling import (
 )
 from pymacruise.toads_shapes import compute_toad_shape_bounds
 
+ATLAS_EM_PLUGIN_DEFAULT_LEVELS = 4
+ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS = 50
+ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS = 1
+ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SMOOTHING = 1.0
+ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SCALE = 2.0
+
 
 @dataclass(frozen=True)
 class AtlasEMRegistrationRecropResult:
@@ -362,9 +368,9 @@ def initialize_register_recrop_register_atlas_em_from_descriptor(
     modalities: tuple[str, ...],
     *,
     background_ratio: float,
-    levels: int,
-    initial_registration_iterations: int,
-    post_recrop_registration_iterations: int,
+    levels: int = ATLAS_EM_PLUGIN_DEFAULT_LEVELS,
+    initial_registration_iterations: int = ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS,
+    post_recrop_registration_iterations: int = ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS,
     template_resolutions_mm: tuple[float, float, float] | None = None,
 ) -> AtlasEMTwoStageRegistrationResult:
     """Compose both source-ordered AtlasEM rigid-registration stages.
@@ -372,8 +378,8 @@ def initialize_register_recrop_register_atlas_em_from_descriptor(
     The first registration runs on the initial crop and is followed by native
     grid uncrop/rebound/recrop. AtlasEM then rebuilds initial memberships on
     that recropped grid before its one-level full-resolution rigid update.
-    Iteration limits remain explicit because plugin defaults are not specified
-    by the selected MATLAB run wrapper.
+    Defaults are taken from the selected MIPAV plugin constructor call; callers
+    can override both caps for reduced synthetic cases or matched settings.
     """
     first = initialize_register_recrop_atlas_em_from_descriptor(
         crop,
