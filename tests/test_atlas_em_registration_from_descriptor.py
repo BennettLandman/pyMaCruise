@@ -24,6 +24,8 @@ from pymacruise.atlas_em_execution import (
     restore_atlas_em_native_nifti_products,
     save_atlas_em_native_nifti_products,
 )
+from pymacruise.toads_registration_sampling import register_toads_atlas_rigid
+from pymacruise.toads_registration_sampling import register_toads_atlas_rigid
 
 
 def test_atlas_em_selected_plugin_registration_defaults_are_recorded() -> None:
@@ -209,3 +211,63 @@ def test_atlas_em_post_recrop_single_scale_update_runs_source_faithful() -> None
     assert np.isfinite(result.energy)
     assert np.isfinite(result.transform).all()
     assert result.stop_reason in {"iteration_limit", "energy_tolerance"}
+
+    expected = register_toads_atlas_rigid(
+        memberships,
+        atlas,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.01, -0.015, 0.02, 0.0, 0.0, 0.0),
+        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
+        class_bounds_high_xyz=np.full((2, 3), 7, dtype=np.int64),
+        max_iterations=1,
+        registered_classes=np.array([False, True]),
+        offset=0,
+        subsample=2,
+        energy_tolerance=1e-6,
+        minimum_lambda=1e-3,
+        source_faithful=True,
+        allow_nonfinite_trials=True,
+        scale=1.0,
+        precomputed_affine=True,
+    )
+    np.testing.assert_array_equal(result.transform, expected.transform)
+    np.testing.assert_equal(result.energy, expected.energy)
+    assert len(result.iterations) == len(expected.iterations)
+    for actual, source in zip(result.iterations, expected.iterations, strict=True):
+        np.testing.assert_array_equal(actual.transform, source.transform)
+        np.testing.assert_equal(actual.energy, source.energy)
+        np.testing.assert_equal(actual.lambda_value, source.lambda_value)
+        np.testing.assert_equal(actual.relative_change, source.relative_change)
+        assert actual.accepted == source.accepted
+        assert actual.rejected_trials == source.rejected_trials
+
+    expected = register_toads_atlas_rigid(
+        memberships,
+        atlas,
+        image_resolutions_mm=(1.0, 1.0, 1.0),
+        template_resolutions_mm=(1.0, 1.0, 1.0),
+        initial_transform=(0.01, -0.015, 0.02, 0.0, 0.0, 0.0),
+        class_bounds_low_xyz=np.zeros((2, 3), dtype=np.int64),
+        class_bounds_high_xyz=np.full((2, 3), 7, dtype=np.int64),
+        max_iterations=1,
+        registered_classes=np.array([False, True]),
+        offset=0,
+        subsample=2,
+        energy_tolerance=1e-6,
+        minimum_lambda=1e-3,
+        source_faithful=True,
+        allow_nonfinite_trials=True,
+        scale=1.0,
+        precomputed_affine=True,
+    )
+    np.testing.assert_array_equal(result.transform, expected.transform)
+    np.testing.assert_equal(result.energy, expected.energy)
+    assert len(result.iterations) == len(expected.iterations)
+    for actual, source in zip(result.iterations, expected.iterations, strict=True):
+        np.testing.assert_array_equal(actual.transform, source.transform)
+        np.testing.assert_equal(actual.energy, source.energy)
+        np.testing.assert_equal(actual.lambda_value, source.lambda_value)
+        np.testing.assert_equal(actual.relative_change, source.relative_change)
+        assert actual.accepted == source.accepted
+        assert actual.rejected_trials == source.rejected_trials

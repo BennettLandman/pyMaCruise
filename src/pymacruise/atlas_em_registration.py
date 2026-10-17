@@ -137,6 +137,9 @@ def register_atlas_em_rigid_single_scale(
         source_faithful=True,
         allow_nonfinite_trials=True,
         scale=1.0,
+        # DemonToadDeformableAtlas enables matrix-first coordinates for linear
+        # rigid transforms; keep its float32 rounding path in this second stage.
+        precomputed_affine=True,
     )
 
 
