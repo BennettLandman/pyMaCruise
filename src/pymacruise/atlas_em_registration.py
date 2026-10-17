@@ -47,6 +47,15 @@ class AtlasEMDescriptorRegistrationResult:
     registration: ToadsRigidRegistrationPyramidResult
 
 
+@dataclass(frozen=True)
+class AtlasEMDescriptorRegistrationRecropResult:
+    """Descriptor-loaded AtlasEM registration and its native-grid recrop."""
+
+    atlas: AtlasEMRegistrationAtlasInputs
+    registration: ToadsRigidRegistrationPyramidResult
+    recropped: AtlasEMCroppedImages
+
+
 def build_atlas_em_rigid_registration_pyramid(
     memberships: ArrayLike,
     atlas_shapes: ArrayLike,
@@ -194,3 +203,37 @@ def register_and_recrop_atlas_em(
         background_ratio=background_ratio,
     )
     return AtlasEMRegistrationRecropResult(registration, recropped)
+
+
+def register_and_recrop_atlas_em_from_descriptor(
+    crop: AtlasEMCroppedImages,
+    memberships: ArrayLike,
+    normalized: AtlasEMNormalizedImages,
+    descriptor_path: str,
+    *,
+    background_ratio: float,
+    levels: int,
+    registration_iterations: int,
+    template_resolutions_mm: tuple[float, float, float] | None = None,
+) -> AtlasEMDescriptorRegistrationRecropResult:
+    """Load the AtlasEM atlas, register it, then perform native-grid recropping."""
+    descriptor = parse_atlas_em_descriptor(descriptor_path)
+    atlas = load_atlas_em_registration_inputs(descriptor)
+    template_resolution = (
+        descriptor.shape_resolutions_mm
+        if template_resolutions_mm is None else template_resolutions_mm
+    )
+    handoff = register_and_recrop_atlas_em(
+        crop,
+        memberships,
+        atlas.shape_priors,
+        normalized,
+        background_ratio=background_ratio,
+        levels=levels,
+        template_resolutions_mm=template_resolution,
+        registration_iterations=registration_iterations,
+        registered_classes=atlas.registered_classes,
+    )
+    return AtlasEMDescriptorRegistrationRecropResult(
+        atlas, handoff.registration, handoff.recropped
+    )
