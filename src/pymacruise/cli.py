@@ -232,6 +232,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     atlasem_inventory.add_argument("--descriptor", required=True, type=Path)
 
+    atlasem_run = commands.add_parser(
+        "atlasem-run",
+        help="run descriptor-driven AtlasEM registration, EM and RAS product export",
+        description=(
+            "Run the supported single-channel AtlasEM workflow from a T1 .nii.gz and a descriptor "
+            "whose referenced atlas payloads are compressed NIfTI files. This produces native-grid "
+            "RAS AtlasEM products; it does not run Dura evolution or establish optimizer parity."
+        ),
+    )
+    atlasem_run.add_argument("--t1", required=True, type=Path)
+    atlasem_run.add_argument("--descriptor", required=True, type=Path)
+    atlasem_run.add_argument("--output-dir", required=True, type=Path)
+    atlasem_run.add_argument("--modality", default="T1_MPRAGE")
+    atlasem_run.add_argument("--background-ratio", type=float, default=0.0)
+    atlasem_run.add_argument("--crop-border", type=int, default=10)
+    atlasem_run.add_argument("--levels", type=int, default=4)
+    atlasem_run.add_argument("--initial-registration-iterations", type=int, default=50)
+    atlasem_run.add_argument("--post-recrop-registration-iterations", type=int, default=1)
+    atlasem_run.add_argument("--max-em-iterations", type=int, default=99)
+    atlasem_run.add_argument("--max-membership-change", type=float, default=0.01)
+    atlasem_run.add_argument("--smoothing", type=float, default=10.0)
+    _add_provenance_option(atlasem_run)
+
     cerebellum = commands.add_parser(
         "remove-cerebellum",
         help="zero brainstem/cerebellum labels from second-pass TOADS tissue maps",
@@ -1622,6 +1645,45 @@ def main(argv: list[str] | None = None) -> int:
         }
         print(json.dumps(inventory, indent=2, sort_keys=True))
         return 0 if inventory["resources_present_as_nifti_gz"] else 1
+    elif args.command == "atlasem-run":
+        from pymacruise.atlas_em_execution import run_atlas_em_descriptor_workflow
+
+        result = run_atlas_em_descriptor_workflow(
+            _load_nifti_gz(args.t1),
+            args.descriptor,
+            args.output_dir,
+            modality=args.modality,
+            background_ratio=args.background_ratio,
+            crop_border=args.crop_border,
+            levels=args.levels,
+            initial_registration_iterations=args.initial_registration_iterations,
+            post_recrop_registration_iterations=args.post_recrop_registration_iterations,
+            max_em_iterations=args.max_em_iterations,
+            max_membership_change=args.max_membership_change,
+            smoothing=args.smoothing,
+        )
+        for path in result.output_paths.values():
+            print(f"Wrote {path}")
+        parameters = {
+            "modality": args.modality,
+            "background_ratio": args.background_ratio,
+            "crop_border": args.crop_border,
+            "levels": args.levels,
+            "initial_registration_iterations": args.initial_registration_iterations,
+            "post_recrop_registration_iterations": args.post_recrop_registration_iterations,
+            "max_em_iterations": args.max_em_iterations,
+            "max_membership_change": args.max_membership_change,
+            "smoothing": args.smoothing,
+            "em_iterations_completed": result.execution.iterations.iterations,
+        }
+        _write_provenance(
+            args.provenance,
+            command=args.command,
+            inputs={"t1": args.t1, "atlas_descriptor": args.descriptor},
+            parameters=parameters,
+            outputs=result.output_paths,
+        )
+        print("AtlasEM descriptor workflow complete (single-channel support).")
     elif args.command == "atlasem-prelesion-dura":
         try:
             class_names = json.loads(args.class_names)

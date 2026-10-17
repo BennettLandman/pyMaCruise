@@ -27,6 +27,17 @@ from pymacruise.atlas_em_outputs import (
     generate_atlas_em_segmentation,
 )
 from pymacruise.atlas_em_descriptor import parse_atlas_em_descriptor
+from pymacruise.atlas_em_preprocessing import (
+    crop_atlas_em_images,
+    find_atlas_em_crop_bounds,
+    normalize_atlas_em_images,
+)
+from pymacruise.atlas_em_registration import (
+    ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS,
+    ATLAS_EM_PLUGIN_DEFAULT_LEVELS,
+    ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS,
+    initialize_register_recrop_register_atlas_em_from_descriptor,
+)
 from pymacruise.image_io import normalize_image_to_ras, save_nifti_ras
 
 
@@ -205,3 +216,82 @@ def save_atlas_em_native_nifti_products(
         key: save_nifti_ras(getattr(products, key), destination / filename)
         for key, filename in names.items()
     }
+
+
+@dataclass(frozen=True)
+class AtlasEMWorkflowResult:
+    """Restartable command result and the primary AtlasEM execution products."""
+
+    registration: AtlasEMTwoStageRegistrationResult
+    execution: AtlasEMRegisteredExecutionResult
+    products: AtlasEMNiftiProducts
+    output_paths: dict[str, Path]
+
+
+def run_atlas_em_descriptor_workflow(
+    t1_image: nib.spatialimages.SpatialImage,
+    descriptor_path: str | Path,
+    output_directory: str | Path,
+    *,
+    modality: str = "T1_MPRAGE",
+    background_ratio: float = 0.0,
+    crop_border: int = 10,
+    levels: int = ATLAS_EM_PLUGIN_DEFAULT_LEVELS,
+    initial_registration_iterations: int = ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS,
+    post_recrop_registration_iterations: int = ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS,
+    max_em_iterations: int = 99,
+    max_membership_change: float = 0.01,
+    smoothing: float = 10.0,
+) -> AtlasEMWorkflowResult:
+    """Run the currently supported one-channel descriptor AtlasEM workflow.
+
+    This composes source-profiled intensity normalization, crop and initial
+    memberships, both rigid-registration stages with recrop, fixed-prior EM,
+    native-grid RAS restoration, and compressed NIfTI persistence. It does not
+    run the subsequent Dura evolution or claim optimizer parity for the
+    selected MIPAV plugin.
+    """
+    t1 = normalize_image_to_ras(t1_image, source_name="AtlasEM T1")
+    if len(t1.shape) != 3:
+        raise ValueError("AtlasEM currently requires a three-dimensional T1 image")
+    descriptor = parse_atlas_em_descriptor(descriptor_path)
+    if modality not in descriptor.intensity_atlas:
+        raise ValueError(f"descriptor does not provide the requested modality {modality!r}")
+    native = np.asarray(t1.dataobj, dtype=np.float32)[..., None]
+    normalized = normalize_atlas_em_images(native)
+    lower, upper = find_atlas_em_crop_bounds(
+        normalized.images,
+        normalized.robust_minima,
+        normalized.robust_maxima,
+        background_ratio=background_ratio,
+        normalized=True,
+    )
+    spacing = tuple(float(value) for value in nib.affines.voxel_sizes(t1.affine))
+    crop = crop_atlas_em_images(
+        normalized.images,
+        lower,
+        upper,
+        border=crop_border,
+        signed_resolutions_mm=spacing,
+        transform=(0.0,) * 6,
+    )
+    registration = initialize_register_recrop_register_atlas_em_from_descriptor(
+        crop,
+        normalized,
+        str(descriptor_path),
+        (modality,),
+        background_ratio=background_ratio,
+        levels=levels,
+        initial_registration_iterations=initial_registration_iterations,
+        post_recrop_registration_iterations=post_recrop_registration_iterations,
+    )
+    execution = finish_atlas_em_registered_execution(
+        registration,
+        str(descriptor_path),
+        max_iterations=max_em_iterations,
+        max_membership_change=max_membership_change,
+        smoothing=smoothing,
+    )
+    products = restore_atlas_em_native_nifti_products(t1, registration, execution)
+    output_paths = save_atlas_em_native_nifti_products(products, output_directory)
+    return AtlasEMWorkflowResult(registration, execution, products, output_paths)
