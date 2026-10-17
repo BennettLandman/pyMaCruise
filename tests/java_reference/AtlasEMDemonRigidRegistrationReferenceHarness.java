@@ -30,12 +30,14 @@ public final class AtlasEMDemonRigidRegistrationReferenceHarness {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 5) throw new IllegalArgumentException("nx ny nz iterations arrays-directory");
+        if (args.length != 7) throw new IllegalArgumentException("nx ny nz iterations levels single|pyramid arrays-directory");
         int nx = Integer.parseInt(args[0]);
         int ny = Integer.parseInt(args[1]);
         int nz = Integer.parseInt(args[2]);
         int iterations = Integer.parseInt(args[3]);
-        Path directory = Path.of(args[4]);
+        int levels = Integer.parseInt(args[4]);
+        String mode = args[5];
+        Path directory = Path.of(args[6]);
         int voxels = nx * ny * nz;
         float[] shapeValues = readFloats(directory.resolve("shapes.f32le"), 2 * voxels);
         float[] membershipValues = readFloats(directory.resolve("memberships.f32le"), 2 * voxels);
@@ -66,8 +68,10 @@ public final class AtlasEMDemonRigidRegistrationReferenceHarness {
         registeredField.setAccessible(true);
         registeredField.set(atlas, new boolean[] {false, true});
 
-        atlas.initShapeRegistration(memberships, "rigid", iterations, 1);
-        atlas.registerShapes();
+        atlas.initShapeRegistration(memberships, "rigid", iterations, levels);
+        if (mode.equals("single")) atlas.registerShapes();
+        else if (mode.equals("pyramid")) atlas.registerShapesPyramid();
+        else throw new IllegalArgumentException("mode must be single or pyramid");
         float[] transform = atlas.getTransform();
         System.setOut(standardOutput);
         StringBuilder output = new StringBuilder();

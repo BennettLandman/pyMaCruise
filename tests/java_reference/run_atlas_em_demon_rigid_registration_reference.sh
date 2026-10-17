@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -ne 5 ]; then
-  echo "usage: $0 nx ny nz iterations arrays-directory" >&2
+if [ "$#" -ne 7 ]; then
+  echo "usage: $0 nx ny nz iterations levels single|pyramid arrays-directory" >&2
   exit 2
 fi
 
