@@ -913,6 +913,7 @@ Run the restartable raw-input plus path from T1, FLAIR, a user-provided T1-grid 
 pymacruise plus-full-run --t1 T1.nii.gz --flair FLAIR.nii.gz \
   --brain-mask brain-mask.nii.gz --maseg MaSeg.nii.gz \
   --atlas-descriptor atlas.txt \
+  [--atlasem-descriptor AtlasEM.txt] \
   --output-dir plus-output \
   --registration-iterations 1000 500 250 0 --registration-sampling-rate 0.25 \
   --shrink-factors 6 4 2 1 --smoothing-sigmas 3 2 1 0 \
@@ -940,7 +941,19 @@ recorded in run signatures and manifests.
 
 The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the brain mask must match the T1 grid after RAS orientation normalization; a mismatch is rejected before preprocessing. The FLAIR may have a different physical grid; rigid ANTsPy registration resamples it onto T1. The atlas descriptor resolves its own compressed topology and shape maps. The top-level `plus-full-workflow.json` records ordered child manifests, input/settings signatures, stage state, and hashes. `--resume` verifies completed outputs and delegates repair of invalid checkpoints to each stage. The defaults follow the selected wrapper route; the ANTsPy registration backend is a documented substitute for NiftyReg/Aladin, not source-equivalent registration.
 
-Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last T1/FLAIR modalities, atlas-aligned/recropped state, registered LesionTOADS products, Dura channels, and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, and JSON metrics. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness.
+`--atlasem-descriptor` is an optional, separate AtlasEM structure descriptor.
+When supplied, the runner executes the selected pre-LesionTOADS AtlasEM and
+Dura handoff after T1/FLAIR registration, N4 correction, and user-mask
+application. It passes Dura-stripped T1 and Dura-masked registered FLAIR into
+LesionTOADS cropping. Every referenced AtlasEM topology/shape image must be a
+compressed `.nii.gz` file beside the descriptor using its relative paths.
+Omitting this option retains the prior LesionTOADS-only chain and does not
+claim that the selected MATLAB PLUS source sequence is complete. The actual
+selected `ibsr8obj` descriptor and payload are not bundled yet; the generated
+AtlasEM descriptors in tests validate mechanics only and are not a substitute
+for those selected resources.
+
+Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last modalities; with `--atlasem-descriptor`, AtlasEM memberships, Dura products, and Dura-conditioned T1/FLAIR; atlas-aligned/recropped state; registered LesionTOADS products; Dura channels; and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, and JSON metrics. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness.
 
 Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance` (default `1e-4`), `--loop-convergence-threshold` (defaults to `--max-distance`), `--n-iter-max` (default `99`), `--loop-thinning-limit`, and `--max-passes` (default `99`). `plus-full-run` runs until terminal convergence or the configured iteration ceiling; use an explicit smaller `--max-passes` for a restartable bounded segment. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms. `--dura-transfer-mode` defaults to `physical-affine`; select `jist-unchanged` to preserve Dura source extents/values, assign the reference header, and crop by full-grid MaSeg bounds with padding.
 
