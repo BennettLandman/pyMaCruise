@@ -35,6 +35,14 @@ class AtlasEMDescriptor:
     orientations: tuple[int, int, int, int]
     shape_files: dict[str, Path]
     registered_shapes: tuple[bool, ...]
+    intensity_samples: int
+    intensity_atlas: dict[str, tuple[float, ...]]
+    intensity_variance: dict[str, tuple[float, ...]]
+    lesion_models: dict[str, float]
+    black_hole_models: dict[str, float]
+    modality_weights: dict[str, tuple[float, ...]]
+    optimized_factors: dict[str, tuple[float, ...]]
+    shape_slope: float
     referenced_files: tuple[Path, ...]
     missing_files: tuple[Path, ...]
 
@@ -78,6 +86,70 @@ def _asset_path(descriptor: Path, value: str, line_number: int) -> Path:
     if not resolved.is_relative_to(descriptor.parent):
         raise AtlasEMDescriptorError(f"Line {line_number}: atlas payload escapes descriptor directory")
     return resolved
+
+
+_MODALITY_ALIASES = {
+    "T1": "T1_SPGR", "T1_SPGR": "T1_SPGR", "T2": "T2", "FLAIR": "FLAIR",
+    "MPRAGE": "T1_MPRAGE", "T1_MPRAGE": "T1_MPRAGE",
+    "MPRAGE_RAW": "T1_RAW", "T1_RAW": "T1_RAW", "PD": "PD",
+    "PDFSE": "PDFSE", "DIR": "DIR",
+}
+_MODALITIES = tuple(dict.fromkeys(_MODALITY_ALIASES.values()))
+_SECTION_PREFIXES = (
+    "Structures:", "Topology Atlas", "Shape Atlas:", "Intensity Atlas:",
+    "Intensity Variance", "Lesions", "Black Holes", "Slope", "Modality weights",
+    "Registered Shapes", "Optimized factors",
+)
+
+
+def _profile_rows(lines: list[str], header_at: int, width: int) -> dict[str, tuple[float, ...]]:
+    """Read modality rows as the selected loader's float profiles."""
+    profiles = {}
+    for index in range(header_at + 1, len(lines)):
+        row = lines[index]
+        if any(row.startswith(prefix) for prefix in _SECTION_PREFIXES):
+            break
+        fields = row.split("\t")
+        if not fields or fields[0] not in _MODALITY_ALIASES:
+            continue
+        if len(fields) != width + 1:
+            raise AtlasEMDescriptorError(
+                f"Line {index + 1}: {fields[0]} profile must have {width} values"
+            )
+        try:
+            values = tuple(float(value) for value in fields[1:])
+        except ValueError as exc:
+            raise AtlasEMDescriptorError(f"Line {index + 1}: invalid modality profile value") from exc
+        import math
+
+        if not all(math.isfinite(value) for value in values):
+            raise AtlasEMDescriptorError(f"Line {index + 1}: modality profile values must be finite")
+        # Java assigns by modality ID, so a later alias row replaces the earlier one.
+        profiles[_MODALITY_ALIASES[fields[0]]] = values
+    return profiles
+
+
+def _scalar_models(lines: list[str], header_at: int) -> dict[str, float]:
+    models = {}
+    if header_at + 1 >= len(lines):
+        raise AtlasEMDescriptorError(f"Line {header_at + 1}: missing modality scalar row")
+    fields = lines[header_at + 1].split("\t")
+    if len(fields) % 2:
+        raise AtlasEMDescriptorError(f"Line {header_at + 2}: expected modality/value pairs")
+    for offset in range(0, len(fields), 2):
+        modality = _MODALITY_ALIASES.get(fields[offset])
+        if modality is None:
+            continue
+        try:
+            value = float(fields[offset + 1])
+        except ValueError as exc:
+            raise AtlasEMDescriptorError(f"Line {header_at + 2}: invalid modality scalar") from exc
+        import math
+
+        if not math.isfinite(value):
+            raise AtlasEMDescriptorError(f"Line {header_at + 2}: modality scalar must be finite")
+        models[modality] = value
+    return models
 
 
 def parse_atlas_em_descriptor(path: str | Path) -> AtlasEMDescriptor:
@@ -191,12 +263,61 @@ def parse_atlas_em_descriptor(path: str | Path) -> AtlasEMDescriptor:
         # Source uses MipavUtil.getInt(value) == 1; every other integer is false.
         registered = [value == 1 for value in bits]
 
+    intensity_at = next((i for i, row in enumerate(lines) if row.startswith("Intensity Atlas:")), None)
+    try:
+        intensity_samples = (
+            int(_fields(lines[intensity_at], "Intensity Atlas:", 1, intensity_at + 1)[0])
+            if intensity_at is not None else 0
+        )
+    except ValueError as exc:
+        raise AtlasEMDescriptorError("Invalid intensity sample count") from exc
+    if intensity_samples < 0:
+        raise AtlasEMDescriptorError("Intensity sample count must not be negative")
+
+    intensity_atlas = {name: (0.0,) * declared for name in _MODALITIES}
+    intensity_variance = {name: (1.0,) * declared for name in _MODALITIES}
+    modality_weights = {name: (1.0, 1.0) for name in _MODALITIES}
+    optimized_factors = {name: (1.0,) * 4 for name in _MODALITIES}
+    lesion_models = {name: 0.0 for name in _MODALITIES}
+    black_hole_models = {name: 0.0 for name in _MODALITIES}
+    for index, row in enumerate(lines):
+        if row.startswith("Intensity Atlas:"):
+            intensity_atlas.update(_profile_rows(lines, index, declared))
+        elif row.startswith("Intensity Variance"):
+            intensity_variance.update(_profile_rows(lines, index, declared))
+        elif row.startswith("Modality weights"):
+            modality_weights.update(_profile_rows(lines, index, 2))
+        elif row.startswith("Optimized factors"):
+            optimized_factors.update(_profile_rows(lines, index, 4))
+    lesions_at = next((i for i, row in enumerate(lines) if row.startswith("Lesions")), None)
+    if lesions_at is not None:
+        lesion_models.update(_scalar_models(lines, lesions_at))
+    black_holes_at = next((i for i, row in enumerate(lines) if row.startswith("Black Holes")), None)
+    if black_holes_at is not None:
+        black_hole_models.update(_scalar_models(lines, black_holes_at))
+    slope = 2.0
+    slope_at = next((i for i, row in enumerate(lines) if row.startswith("Slope")), None)
+    if slope_at is not None:
+        fields = lines[slope_at].split("\t")
+        if len(fields) != 2:
+            raise AtlasEMDescriptorError(f"Line {slope_at + 1}: Slope requires one value")
+        try:
+            slope = float(fields[1])
+        except ValueError as exc:
+            raise AtlasEMDescriptorError(f"Line {slope_at + 1}: invalid Slope value") from exc
+        import math
+
+        if not math.isfinite(slope):
+            raise AtlasEMDescriptorError(f"Line {slope_at + 1}: Slope must be finite")
+
     unique_files = tuple(dict.fromkeys(referenced))
     missing = tuple(item for item in unique_files if not item.is_file())
     return AtlasEMDescriptor(
         descriptor, tuple(structures), topology_file, topology_dims, topology_res,
         shape_samples, shape_dims, shape_res, orientations, shape_files,
-        tuple(registered), unique_files, missing,
+        tuple(registered), intensity_samples, intensity_atlas, intensity_variance,
+        lesion_models, black_hole_models, modality_weights, optimized_factors, slope,
+        unique_files, missing,
     )
 
 

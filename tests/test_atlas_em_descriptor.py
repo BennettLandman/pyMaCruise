@@ -43,6 +43,19 @@ def _descriptor_text(topology_file: str = "topology.img", shape_file: str = "sha
             "Registered Shapes (0/1: true/false)",
             "0\t1",
             "0\t1",
+            "Intensity Atlas:\t12",
+            "T1\t0.1\t0.9",
+            "Intensity Variance:",
+            "T1_MPRAGE\t1.5\t2.5",
+            "Lesions:",
+            "T1\t0.2\tFLAIR\t0.3",
+            "Black Holes:",
+            "MPRAGE\t0.05",
+            "Slope:\t3.5",
+            "Modality weights:",
+            "T1_SPGR\t0.4\t0.6",
+            "Optimized factors:",
+            "MPRAGE_RAW\t1.1\t1.2\t1.3\t1.4",
         )
     ) + "\n"
 
@@ -63,6 +76,19 @@ def test_descriptor_parser_matches_selected_class_order_metadata_and_asset_inven
     assert parsed.shape_dimensions_xyz == (5, 6, 7)
     assert parsed.orientations == (1, 1, 6, 3)
     assert parsed.registered_shapes == (False, True)
+    assert parsed.intensity_samples == 12
+    assert parsed.intensity_atlas["T1_SPGR"] == (0.1, 0.9)
+    assert parsed.intensity_variance["T1_MPRAGE"] == (1.5, 2.5)
+    assert parsed.lesion_models["T1_SPGR"] == 0.2
+    assert parsed.lesion_models["FLAIR"] == 0.3
+    assert parsed.black_hole_models["T1_MPRAGE"] == 0.05
+    assert parsed.modality_weights["T1_SPGR"] == (0.4, 0.6)
+    assert parsed.optimized_factors["T1_RAW"] == (1.1, 1.2, 1.3, 1.4)
+    assert parsed.shape_slope == 3.5
+    assert parsed.intensity_atlas["T2"] == (0.0, 0.0)
+    assert parsed.intensity_variance["T2"] == (1.0, 1.0)
+    assert parsed.modality_weights["T2"] == (1.0, 1.0)
+    assert parsed.optimized_factors["T2"] == (1.0, 1.0, 1.0, 1.0)
     assert [item.name for item in parsed.referenced_files] == [
         "topology.img", "shape.img", "cortex.img"
     ]
