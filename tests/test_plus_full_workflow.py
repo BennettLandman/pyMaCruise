@@ -133,6 +133,8 @@ def test_plus_full_workflow_regrid_cli_and_config_defaults() -> None:
     ]
     assert parser.parse_args(required).regrid_inputs is True
     assert parser.parse_args(required).dura_transfer_mode == "physical-affine"
+    assert parser.parse_args(required).atlasem_descriptor is None
+    assert parser.parse_args([*required, "--atlasem-descriptor", "atlasem.txt"]).atlasem_descriptor == Path("atlasem.txt")
     assert parser.parse_args([*required, "--no-regrid-inputs"]).regrid_inputs is False
     assert parser.parse_args([*required, "--dura-transfer-mode", "jist-unchanged"]).dura_transfer_mode == "jist-unchanged"
     assert workflow._validate_run_options(
@@ -256,6 +258,76 @@ def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
     assert captured["multi_atlas_mask_path"] != cortical_outputs["Atlas_Mask"]
     assert captured_transfer["transfer_mode"] == "jist-unchanged"
     assert captured["dura_transfer_mode"] == "jist-unchanged"
+
+
+def test_plus_full_workflow_inserts_atlasem_dura_before_lesion_crop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    atlasem_descriptor = tmp_path / "atlasem-descriptor.txt"
+    atlasem_descriptor.write_text("mocked synthetic descriptor\n", encoding="utf-8")
+
+    def artifact(name: str) -> Path:
+        path = tmp_path / "atlasem-stage-stubs" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(name, encoding="utf-8")
+        return path
+
+    preprocessing_manifest = artifact("preprocessing.json")
+    atlasem_manifest = artifact("atlasem-dura.json")
+    prepared_t1 = artifact("t1-brain.nii.gz")
+    prepared_flair = artifact("flair-brain.nii.gz")
+    atlasem_modalities = artifact("dura-conditioned-modalities.nii.gz")
+    captured: dict[str, Path] = {}
+    monkeypatch.setattr(plus_full_workflow_module, "_verify_stage", lambda *_args: {"outputs": {}})
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_lesion_preprocessing_checkpoint",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            manifest_path=preprocessing_manifest,
+            t1_brain_path=prepared_t1,
+            flair_brain_path=prepared_flair,
+            modalities_path=artifact("original-modalities.nii.gz"),
+            resumed=False,
+        ),
+    )
+
+    def atlasem_stage(t1_path, flair_path, mask_path, descriptor_path, output_dir, **kwargs):
+        assert t1_path == prepared_t1
+        assert flair_path == prepared_flair
+        assert mask_path == mask.resolve()
+        assert descriptor_path == atlasem_descriptor.resolve()
+        return SimpleNamespace(
+            manifest_path=atlasem_manifest,
+            modalities_path=atlasem_modalities,
+            resumed=False,
+        )
+
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_atlas_em_dura_handoff_checkpoint",
+        atlasem_stage,
+    )
+
+    def stop_at_crop(modalities_path, *_args, **_kwargs):
+        captured["modalities"] = Path(modalities_path)
+        raise RuntimeError("crop reached after AtlasEM/Dura")
+
+    monkeypatch.setattr(
+        plus_full_workflow_module, "run_plus_lesion_crop_checkpoint", stop_at_crop
+    )
+    output = tmp_path / "plus-with-atlasem"
+    with pytest.raises(RuntimeError, match="crop reached after AtlasEM/Dura"):
+        plus_full_workflow_module.run_plus_full_workflow(
+            t1, flair, mask, maseg, ATLAS, output,
+            atlasem_descriptor_path=atlasem_descriptor,
+            regrid_inputs=False,
+        )
+    assert captured["modalities"] == atlasem_modalities
+    manifest = json.loads((output / "plus-full-workflow.json").read_text())
+    assert manifest["stage_order"][:3] == ["preprocessing", "atlasem_dura", "crop"]
+    assert manifest["stages"]["preprocessing"]["status"] == "complete"
+    assert manifest["stages"]["atlasem_dura"]["status"] == "complete"
 
 
 def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_path: Path) -> None:

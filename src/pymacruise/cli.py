@@ -653,6 +653,15 @@ def build_parser() -> argparse.ArgumentParser:
     plus_full.add_argument("--brain-mask", required=True, type=Path)
     plus_full.add_argument("--maseg", required=True, type=Path)
     plus_full.add_argument("--atlas-descriptor", required=True, type=Path)
+    plus_full.add_argument(
+        "--atlasem-descriptor",
+        type=Path,
+        help=(
+            "optional selected 8-object AtlasEM descriptor for the source-order "
+            "pre-LesionTOADS AtlasEM/Dura handoff; when omitted, run the legacy "
+            "LesionTOADS-only chain"
+        ),
+    )
     plus_full.add_argument("--output-dir", required=True, type=Path)
     plus_full.add_argument(
         "--regrid-inputs",
@@ -1144,6 +1153,7 @@ def main(argv: list[str] | None = None) -> int:
         result = run_plus_full_workflow(
             args.t1, args.flair, args.brain_mask, args.maseg,
             args.atlas_descriptor, args.output_dir,
+            atlasem_descriptor_path=args.atlasem_descriptor,
             registration_config=registration_config,
             n4_config=n4_config,
             crop_padding=args.crop_padding,

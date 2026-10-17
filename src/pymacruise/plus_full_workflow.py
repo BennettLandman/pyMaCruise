@@ -31,6 +31,7 @@ from pymacruise.plus_lesion_preprocessing import run_plus_lesion_preprocessing_c
 from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_recrop_checkpoint
 from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
 from pymacruise.plus_lesion_native_dura_transfer import run_plus_lesion_native_dura_transfer
+from pymacruise.plus_atlas_em_dura_handoff import run_plus_atlas_em_dura_handoff_checkpoint
 from pymacruise.registration import RegistrationConfig
 
 
@@ -50,6 +51,7 @@ class PlusFullWorkflowResult:
     native_dura_output_paths: dict[str, Path]
     surface_output_paths: dict[str, Path]
     resumed: bool
+    atlasem_dura_manifest: Path | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -114,6 +116,7 @@ def run_plus_full_workflow(
     atlas_descriptor_path: str | Path,
     output_dir: str | Path,
     *,
+    atlasem_descriptor_path: str | Path | None = None,
     registration_config: RegistrationConfig = RegistrationConfig(),
     n4_config: N4Config = N4Config(),
     crop_padding: int = 10,
@@ -155,6 +158,10 @@ def run_plus_full_workflow(
     mask = Path(brain_mask_path).expanduser().resolve()
     maseg = Path(maseg_path).expanduser().resolve()
     descriptor = Path(atlas_descriptor_path).expanduser().resolve()
+    atlasem_descriptor = (
+        None if atlasem_descriptor_path is None
+        else Path(atlasem_descriptor_path).expanduser().resolve()
+    )
     root = Path(output_dir).expanduser().resolve()
     # Reject source-grid mismatches before costly work. Regridding changes only
     # an oblique T1 grid; its paired mask and MaSeg use nearest-neighbor sampling.
@@ -188,6 +195,8 @@ def run_plus_full_workflow(
         "maseg": _file_record(maseg),
         "atlas_descriptor": _file_record(descriptor),
     }
+    if atlasem_descriptor is not None:
+        inputs["atlasem_descriptor"] = _file_record(atlasem_descriptor)
     # Resolve and validate the descriptor-owned topology file before starting
     # child stages; it is required by the selected crop computation.
     topology = load_lesion_atlas_topology(descriptor)
@@ -213,12 +222,28 @@ def run_plus_full_workflow(
         "regrid_inputs": regrid_inputs,
         "no_regrid_behavior": "axis-permute-flip-and-discard-obliquity-without-interpolation",
         "dura_transfer_mode": dura_transfer_mode,
+        "atlasem_dura_enabled": atlasem_descriptor is not None,
+        "atlasem_profile": (
+            None if atlasem_descriptor is None else {
+                "descriptor": str(atlasem_descriptor),
+                "modality": "T1_MPRAGE",
+                "registration_levels": 4,
+                "initial_registration_iterations": 50,
+                "post_recrop_registration_iterations": 1,
+                "max_em_iterations": 99,
+                "max_membership_change": 0.01,
+                "smoothing": 10.0,
+                "max_dura_iterations": 5,
+            }
+        ),
     }
     signature_data = {
         "schema_version": 1,
         "stage": "plus-full-workflow",
         "stage_order": [
-            "preprocessing", "crop", "initial_alignment", "registered_recrop",
+            "preprocessing",
+            *( ["atlasem_dura"] if atlasem_descriptor is not None else [] ),
+            "crop", "initial_alignment", "registered_recrop",
             "lesion_workflow", "dura_outputs", "native_dura_transfer",
             "maseg_cortical_separation", "plus_surface_workflow",
         ],
@@ -375,8 +400,16 @@ def run_plus_full_workflow(
         "maseg_cortical_separation": stage_root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
         "plus_surface_workflow": stage_root / "plus-surface" / "run.json",
     }
-    definitions = (
+    if atlasem_descriptor is not None:
+        stage_paths["atlasem_dura"] = (
+            stage_root / "atlasem_dura" / "atlasem-dura-handoff.json"
+        )
+    definitions = [
         ("preprocessing", "plus-lesion-input-preparation"),
+    ]
+    if atlasem_descriptor is not None:
+        definitions.append(("atlasem_dura", "plus-prelesion-atlasem-dura-handoff"))
+    definitions.extend([
         ("crop", "plus-lesion-normalization-crop"),
         ("initial_alignment", "plus-lesion-initial-atlas-alignment"),
         ("registered_recrop", "plus-lesion-registered-recrops"),
@@ -385,7 +418,7 @@ def run_plus_full_workflow(
         ("native_dura_transfer", "plus-lesion-native-dura-transfer"),
         ("maseg_cortical_separation", "plus-maseg-cortical-separation"),
         ("plus_surface_workflow", None),
-    )
+    ])
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
         # Resume completed child manifests, but let a downstream stage that
@@ -403,10 +436,24 @@ def run_plus_full_workflow(
                     n4_config=n4_config,
                     resume=child_resume,
                 )
+            elif name == "atlasem_dura":
+                prior = results["preprocessing"]
+                result = run_plus_atlas_em_dura_handoff_checkpoint(
+                    prior.t1_brain_path,
+                    prior.flair_brain_path,
+                    mask,
+                    atlasem_descriptor,
+                    stage_root / name,
+                    resume=child_resume,
+                )
             elif name == "crop":
                 prior = results["preprocessing"]
+                modalities_path = (
+                    results["atlasem_dura"].modalities_path
+                    if atlasem_descriptor is not None else prior.modalities_path
+                )
                 result = run_plus_lesion_crop_checkpoint(
-                    prior.modalities_path, topology.path, stage_root / name,
+                    modalities_path, topology.path, stage_root / name,
                     padding=crop_padding, resume=child_resume,
                 )
             elif name == "initial_alignment":
@@ -539,4 +586,5 @@ def run_plus_full_workflow(
         native_dura_result.outputs,
         plus_surface_result.outputs,
         resume,
+        stage_paths.get("atlasem_dura"),
     )
