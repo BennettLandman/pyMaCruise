@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
+from collections.abc import Callable
 
 import nibabel as nib
 import numpy as np
@@ -226,11 +227,13 @@ def save_atlas_em_native_nifti_products(
 class AtlasEMWorkflowResult:
     """Command result for descriptor AtlasEM execution and its Dura handoff."""
 
-    registration: AtlasEMTwoStageRegistrationResult
-    execution: AtlasEMRegisteredExecutionResult
+    registration: AtlasEMTwoStageRegistrationResult | None
+    execution: AtlasEMRegisteredExecutionResult | None
     products: AtlasEMNiftiProducts
     prelesion_dura: AtlasEMPreLesionDuraResult
     output_paths: dict[str, Path]
+    em_iterations_completed: int | None
+    dura_outer_passes_completed: int
 
 
 def run_atlas_em_descriptor_workflow(
@@ -249,6 +252,8 @@ def run_atlas_em_descriptor_workflow(
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
     max_dura_iterations: int = 5,
+    precomputed_atlasem_products: AtlasEMNiftiProducts | None = None,
+    on_atlasem_complete: Callable[[AtlasEMNiftiProducts, AtlasEMRegisteredExecutionResult | None], None] | None = None,
 ) -> AtlasEMWorkflowResult:
     """Run the currently supported one-channel descriptor AtlasEM workflow.
 
@@ -264,48 +269,61 @@ def run_atlas_em_descriptor_workflow(
     descriptor = parse_atlas_em_descriptor(descriptor_path)
     if modality not in descriptor.intensity_atlas:
         raise ValueError(f"descriptor does not provide the requested modality {modality!r}")
-    native = np.asarray(t1.dataobj, dtype=np.float32)[..., None]
-    normalized = normalize_atlas_em_images(native)
-    lower, upper = find_atlas_em_crop_bounds(
-        normalized.images,
-        normalized.robust_minima,
-        normalized.robust_maxima,
-        background_ratio=background_ratio,
-        normalized=True,
-    )
-    spacing = tuple(float(value) for value in nib.affines.voxel_sizes(t1.affine))
-    crop = crop_atlas_em_images(
-        normalized.images,
-        lower,
-        upper,
-        border=crop_border,
-        signed_resolutions_mm=spacing,
-        transform=(0.0,) * 6,
-    )
-    registration = initialize_register_recrop_register_atlas_em_from_descriptor(
-        crop,
-        normalized,
-        str(descriptor_path),
-        (modality,),
-        background_ratio=background_ratio,
-        levels=levels,
-        initial_registration_iterations=initial_registration_iterations,
-        post_recrop_registration_iterations=post_recrop_registration_iterations,
-    )
-    execution = finish_atlas_em_registered_execution(
-        registration,
-        str(descriptor_path),
-        max_iterations=max_em_iterations,
-        max_membership_change=max_membership_change,
-        smoothing=smoothing,
-    )
-    products = restore_atlas_em_native_nifti_products(t1, registration, execution)
-    output_paths = save_atlas_em_native_nifti_products(products, output_directory)
+    registration = None
+    execution = None
+    if precomputed_atlasem_products is None:
+        native = np.asarray(t1.dataobj, dtype=np.float32)[..., None]
+        normalized = normalize_atlas_em_images(native)
+        lower, upper = find_atlas_em_crop_bounds(
+            normalized.images,
+            normalized.robust_minima,
+            normalized.robust_maxima,
+            background_ratio=background_ratio,
+            normalized=True,
+        )
+        spacing = tuple(float(value) for value in nib.affines.voxel_sizes(t1.affine))
+        crop = crop_atlas_em_images(
+            normalized.images,
+            lower,
+            upper,
+            border=crop_border,
+            signed_resolutions_mm=spacing,
+            transform=(0.0,) * 6,
+        )
+        registration = initialize_register_recrop_register_atlas_em_from_descriptor(
+            crop,
+            normalized,
+            str(descriptor_path),
+            (modality,),
+            background_ratio=background_ratio,
+            levels=levels,
+            initial_registration_iterations=initial_registration_iterations,
+            post_recrop_registration_iterations=post_recrop_registration_iterations,
+        )
+        execution = finish_atlas_em_registered_execution(
+            registration,
+            str(descriptor_path),
+            max_iterations=max_em_iterations,
+            max_membership_change=max_membership_change,
+            smoothing=smoothing,
+        )
+        products = restore_atlas_em_native_nifti_products(t1, registration, execution)
+        output_paths = save_atlas_em_native_nifti_products(products, output_directory)
+    else:
+        products = precomputed_atlasem_products
+        output_paths = {
+            "memberships": Path(output_directory) / "atlasem_memberships.nii.gz",
+            "segmentation": Path(output_directory) / "atlasem_segmentation.nii.gz",
+            "internal_mask": Path(output_directory) / "atlasem_internal_mask.nii.gz",
+            "dura_inputs": Path(output_directory) / "atlasem_dura_inputs.nii.gz",
+        }
+    if on_atlasem_complete is not None:
+        on_atlasem_complete(products, execution)
     prelesion_dura = run_atlas_em_prelesion_dura(
         t1,
         products.memberships,
         brain_mask_image,
-        execution.class_names,
+        tuple(item.name for item in descriptor.structures),
         max_iterations=max_dura_iterations,
     )
     destination = Path(output_directory)
@@ -327,5 +345,11 @@ def run_atlas_em_descriptor_workflow(
     for name, image in dura_products.items():
         output_paths[name] = save_nifti_ras(image, destination / f"{name}.nii.gz")
     return AtlasEMWorkflowResult(
-        registration, execution, products, prelesion_dura, output_paths
+        registration,
+        execution,
+        products,
+        prelesion_dura,
+        output_paths,
+        None if execution is None else execution.iterations.iterations,
+        prelesion_dura.dura.evolution.completed_outer_passes,
     )

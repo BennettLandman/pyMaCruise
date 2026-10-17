@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
+import hashlib
 from importlib.metadata import PackageNotFoundError, version
 import json
 from pathlib import Path
@@ -256,6 +257,8 @@ def build_parser() -> argparse.ArgumentParser:
     atlasem_run.add_argument("--max-membership-change", type=float, default=0.01)
     atlasem_run.add_argument("--smoothing", type=float, default=10.0)
     atlasem_run.add_argument("--max-dura-iterations", type=int, default=5)
+    atlasem_run.add_argument("--resume", action="store_true")
+    atlasem_run.add_argument("--overwrite", action="store_true")
     _add_provenance_option(atlasem_run)
 
     cerebellum = commands.add_parser(
@@ -797,6 +800,87 @@ def _write_provenance(
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     sidecar.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Wrote provenance: {sidecar}")
+
+
+def _atlasem_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _atlasem_source_signature() -> str:
+    source_root = Path(__file__).resolve().parent
+    files = sorted(source_root.rglob("*.py"))
+    content = [
+        {"path": path.relative_to(source_root).as_posix(), "sha256": _atlasem_hash(path)}
+        for path in files
+    ]
+    return hashlib.sha256(
+        json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _write_workflow_manifest(path: Path, manifest: dict[str, object]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n")
+    temporary.replace(path)
+
+
+def _workflow_stage_outputs(paths: dict[str, Path], reference: nib.spatialimages.SpatialImage) -> dict[str, dict[str, object]]:
+    records = {}
+    for name, path in paths.items():
+        if not path.is_file() or path.is_symlink():
+            raise RuntimeError(f"Workflow stage did not create a regular output file: {path}")
+        image = _load_nifti_gz(path)
+        if image.shape[:3] != reference.shape or not np.allclose(
+            image.affine, reference.affine, rtol=0, atol=1e-4
+        ):
+            raise RuntimeError(f"Workflow output is not on the native T1 grid: {path}")
+        if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
+            raise RuntimeError(f"Workflow output is not in RAS: {path}")
+        values = np.asanyarray(image.dataobj)
+        if not np.issubdtype(values.dtype, np.number) or not np.isfinite(values).all():
+            raise RuntimeError(f"Workflow output contains nonfinite or nonnumeric voxels: {path}")
+        records[name] = {
+            "path": str(path.resolve()),
+            "sha256": _atlasem_hash(path),
+            "bytes": path.stat().st_size,
+            "shape": list(image.shape),
+            "axis_codes": list(nib.aff2axcodes(image.affine)),
+        }
+    return records
+
+
+def _workflow_stage_valid(
+    stage: object,
+    expected_paths: dict[str, Path],
+    *,
+    run_signature: str,
+    dependency_signature: str | None = None,
+) -> bool:
+    if not isinstance(stage, dict) or stage.get("status") != "complete":
+        return False
+    if stage.get("run_signature") != run_signature:
+        return False
+    if dependency_signature is not None and stage.get("dependency_signature") != dependency_signature:
+        return False
+    outputs = stage.get("outputs")
+    if not isinstance(outputs, dict) or set(outputs) != set(expected_paths):
+        return False
+    for name, item in outputs.items():
+        if not isinstance(item, dict):
+            return False
+        path = Path(str(item.get("path", "")))
+        if (
+            path.resolve() != expected_paths[name].resolve()
+            or not path.is_file()
+            or path.is_symlink()
+            or _atlasem_hash(path) != item.get("sha256")
+        ):
+            return False
+    return True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1649,26 +1733,33 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(inventory, indent=2, sort_keys=True))
         return 0 if inventory["resources_present_as_nifti_gz"] else 1
     elif args.command == "atlasem-run":
-        from pymacruise.atlas_em_execution import run_atlas_em_descriptor_workflow
-
-        result = run_atlas_em_descriptor_workflow(
-            _load_nifti_gz(args.t1),
-            _load_nifti_gz(args.brain_mask),
-            args.descriptor,
-            args.output_dir,
-            modality=args.modality,
-            background_ratio=args.background_ratio,
-            crop_border=args.crop_border,
-            levels=args.levels,
-            initial_registration_iterations=args.initial_registration_iterations,
-            post_recrop_registration_iterations=args.post_recrop_registration_iterations,
-            max_em_iterations=args.max_em_iterations,
-            max_membership_change=args.max_membership_change,
-            smoothing=args.smoothing,
-            max_dura_iterations=args.max_dura_iterations,
+        from pymacruise.atlas_em_execution import (
+            AtlasEMNiftiProducts,
+            run_atlas_em_descriptor_workflow,
         )
-        for path in result.output_paths.values():
-            print(f"Wrote {path}")
+
+        if args.resume and args.overwrite:
+            raise ValueError("--resume and --overwrite cannot be used together")
+        descriptor = parse_atlas_em_descriptor(args.descriptor)
+        output_dir = args.output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        run_manifest = output_dir / "run.json"
+        if run_manifest.is_symlink():
+            raise ValueError(f"Refusing to use a symlinked run manifest: {run_manifest}")
+        input_paths = {
+            "t1": args.t1.resolve(),
+            "brain_mask": args.brain_mask.resolve(),
+            "descriptor": args.descriptor.resolve(),
+        }
+        for index, asset in enumerate(descriptor.referenced_files):
+            input_paths[f"atlas_payload_{index}"] = asset.resolve()
+        input_records = {}
+        for role, path in input_paths.items():
+            if not path.is_file() or path.is_symlink():
+                raise FileNotFoundError(f"{role} must be a regular file: {path}")
+            input_records[role] = {
+                "path": str(path), "sha256": _atlasem_hash(path), "bytes": path.stat().st_size,
+            }
         parameters = {
             "modality": args.modality,
             "background_ratio": args.background_ratio,
@@ -1680,17 +1771,181 @@ def main(argv: list[str] | None = None) -> int:
             "max_membership_change": args.max_membership_change,
             "smoothing": args.smoothing,
             "max_dura_iterations": args.max_dura_iterations,
-            "em_iterations_completed": result.execution.iterations.iterations,
-            "dura_outer_passes_completed": result.prelesion_dura.dura.evolution.completed_outer_passes,
         }
+        signature_payload = {
+            "schema_version": 1,
+            "spatial_convention": "RAS",
+            "workflow": "descriptor_atlasem_to_prelesion_dura",
+            "inputs": input_records,
+            "parameters": parameters,
+            "implementation_signature": _atlasem_source_signature(),
+        }
+        run_signature = hashlib.sha256(
+            json.dumps(signature_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if args.resume:
+            if not run_manifest.is_file():
+                raise FileNotFoundError(f"Cannot resume without a run manifest: {run_manifest}")
+            manifest = json.loads(run_manifest.read_text(encoding="utf-8"))
+            if manifest.get("run_signature") != run_signature:
+                raise ValueError("Cannot resume: inputs, settings, atlas assets, or implementation changed")
+        else:
+            if run_manifest.exists() and not args.overwrite:
+                raise FileExistsError(f"Run already exists: {run_manifest}; use --resume or --overwrite")
+            manifest = {
+                **signature_payload,
+                "run_signature": run_signature,
+                "status": "running",
+                "stages": {},
+                "history": [],
+            }
+            _write_workflow_manifest(run_manifest, manifest)
+
+        atlas_names = {
+            "memberships": "atlasem_memberships.nii.gz",
+            "segmentation": "atlasem_segmentation.nii.gz",
+            "internal_mask": "atlasem_internal_mask.nii.gz",
+            "dura_inputs": "atlasem_dura_inputs.nii.gz",
+        }
+        atlas_paths = {key: output_dir / name for key, name in atlas_names.items()}
+        atlas_stage_signature = hashlib.sha256(
+            json.dumps(
+                {key: record["sha256"] for key, record in sorted(
+                    manifest.get("stages", {}).get("atlasem", {}).get("outputs", {}).items()
+                )},
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+        expected_dura_names = {
+            "prelesion_dura_inputs": "prelesion_dura_inputs.nii.gz",
+            "prelesion_dura_segmentation": "prelesion_dura_segmentation.nii.gz",
+            "dura_stripped_t1": "dura_stripped_t1.nii.gz",
+            "dura_corrected_white_matter": "dura_corrected_white_matter.nii.gz",
+            "dura_corrected_gray_matter": "dura_corrected_gray_matter.nii.gz",
+            "dura_brain_mask_level_set": "dura_brain_mask_level_set.nii.gz",
+            "dura_brain_mask": "dura_brain_mask.nii.gz",
+            "dura_wm_topology": "dura_wm_topology.nii.gz",
+            "dura_gm_topology": "dura_gm_topology.nii.gz",
+        }
+        atlas_valid = args.resume and _workflow_stage_valid(
+            manifest.get("stages", {}).get("atlasem"),
+            atlas_paths,
+            run_signature=run_signature,
+        )
+        dura_valid = (
+            atlas_valid
+            and args.resume
+            and _workflow_stage_valid(
+                manifest.get("stages", {}).get("prelesion_dura"),
+                {key: output_dir / name for key, name in expected_dura_names.items()},
+                run_signature=run_signature,
+                dependency_signature=atlas_stage_signature,
+            )
+        )
+        output_paths = dict(atlas_paths)
+        output_paths.update({key: output_dir / name for key, name in expected_dura_names.items()})
+        reference_t1 = normalize_image_to_ras(
+            _load_nifti_gz(args.t1), source_name="AtlasEM workflow T1"
+        )
+        brain_mask_image = normalize_image_to_ras(
+            _load_nifti_gz(args.brain_mask), source_name="AtlasEM workflow brain mask"
+        )
+        mask_values = np.asanyarray(brain_mask_image.dataobj)
+        if (
+            len(brain_mask_image.shape) != 3
+            or brain_mask_image.shape != reference_t1.shape
+            or not np.allclose(brain_mask_image.affine, reference_t1.affine, rtol=0, atol=1e-4)
+        ):
+            raise ValueError("brain mask must match the T1 physical RAS grid")
+        if mask_values.dtype != np.bool_ and not np.isin(mask_values, (0, 1)).all():
+            raise ValueError("brain mask must be binary")
+        em_products = None
+        if atlas_valid:
+            em_products = AtlasEMNiftiProducts(
+                *(_load_nifti_gz(atlas_paths[key]) for key in ("memberships", "segmentation", "internal_mask", "dura_inputs"))
+            )
+            print("AtlasEM stage: outputs hash-verified; skipping registration and EM.")
+        if dura_valid:
+            print("Pre-LesionTOADS Dura stage: outputs hash-verified; skipping evolution.")
+            manifest["status"] = "complete"
+            _write_workflow_manifest(run_manifest, manifest)
+        else:
+            if not atlas_valid:
+                manifest.setdefault("stages", {})["atlasem"] = {"status": "running"}
+                _write_workflow_manifest(run_manifest, manifest)
+
+            def record_atlasem_stage(products: object, execution: object) -> None:
+                del products
+                records = _workflow_stage_outputs(atlas_paths, reference_t1)
+                stage = {
+                    "status": "complete",
+                    "run_signature": run_signature,
+                    "outputs": records,
+                    "em_iterations_completed": (
+                        None if execution is None else execution.iterations.iterations
+                    ),
+                }
+                manifest["stages"]["atlasem"] = stage
+                manifest["history"].append({"stage": "atlasem", "status": "complete"})
+                _write_workflow_manifest(run_manifest, manifest)
+
+            result = run_atlas_em_descriptor_workflow(
+                reference_t1,
+                brain_mask_image,
+                args.descriptor,
+                output_dir,
+                modality=args.modality,
+                background_ratio=args.background_ratio,
+                crop_border=args.crop_border,
+                levels=args.levels,
+                initial_registration_iterations=args.initial_registration_iterations,
+                post_recrop_registration_iterations=args.post_recrop_registration_iterations,
+                max_em_iterations=args.max_em_iterations,
+                max_membership_change=args.max_membership_change,
+                smoothing=args.smoothing,
+                max_dura_iterations=args.max_dura_iterations,
+                precomputed_atlasem_products=em_products,
+                on_atlasem_complete=None if atlas_valid else record_atlasem_stage,
+            )
+            dura_outputs = {key: result.output_paths[key] for key in expected_dura_names}
+            manifest["stages"]["prelesion_dura"] = {
+                "status": "complete",
+                "run_signature": run_signature,
+                "dependency_signature": hashlib.sha256(
+                    json.dumps(
+                        {key: record["sha256"] for key, record in sorted(
+                            manifest["stages"]["atlasem"]["outputs"].items()
+                        )},
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode()
+                ).hexdigest(),
+                "outputs": _workflow_stage_outputs(dura_outputs, reference_t1),
+                "completed_outer_passes": result.dura_outer_passes_completed,
+            }
+            manifest["history"].append({"stage": "prelesion_dura", "status": "complete"})
+            manifest["status"] = "complete"
+            _write_workflow_manifest(run_manifest, manifest)
+
+        for path in output_paths.values():
+            print(f"Verified/wrote {path}")
+        parameters.update({
+            "em_iterations_completed": manifest["stages"]["atlasem"].get("em_iterations_completed"),
+            "dura_outer_passes_completed": manifest["stages"]["prelesion_dura"].get("completed_outer_passes"),
+            "resumed_atlasem": bool(atlas_valid),
+            "resumed_prelesion_dura": bool(dura_valid),
+        })
+        provenance_outputs: dict[str, Path | list[Path]] = dict(output_paths)
+        provenance_outputs["run_manifest"] = run_manifest
         _write_provenance(
             args.provenance,
             command=args.command,
             inputs={"t1": args.t1, "brain_mask": args.brain_mask, "atlas_descriptor": args.descriptor},
             parameters=parameters,
-            outputs=result.output_paths,
+            outputs=provenance_outputs,
         )
-        print("AtlasEM and pre-LesionTOADS Dura workflow complete (single-channel support).")
+        print(f"AtlasEM and pre-LesionTOADS Dura workflow complete: {run_manifest}")
     elif args.command == "atlasem-prelesion-dura":
         try:
             class_names = json.loads(args.class_names)
