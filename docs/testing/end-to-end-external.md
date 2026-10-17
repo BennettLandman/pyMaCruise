@@ -2,7 +2,7 @@
 
 Revised October 16, 2026. This supersedes the Python-only readiness recommendation.
 
-For concrete commands, use the [full BASE walkthrough](full-base-walkthrough.md). It selects the documented public v3.1.0 container by immutable digest and includes venv setup and a portable final-output comparator. That comparator has synthetic verification; complete external execution remains unverified here. The broader acceptance limitations below still apply.
+For concrete commands, use the [full BASE walkthrough](full-base-walkthrough.md). It uses the owner-selected v3.2.0 container by immutable digest and includes venv setup and a portable final-output comparator. That comparator has synthetic verification; complete external execution remains unverified here. The broader acceptance limitations below still apply.
 
 ## Required outcome
 
@@ -16,14 +16,14 @@ The current package is **not yet a complete, validated external-comparison hando
 
 Read-only repository access is sufficient for obtaining and running published code locally. It does not supply an external container/runtime. The reference-run drivers and this protocol are included in the repository. There is no requirement for the tester to commit or push changes.
 
-## Resolve the external reference first
+## Selected external reference
 
-Record the exact external artifact, immutable digest or file SHA-256, entry point, and effective workflow options. Do not infer that different V3 releases or container wrappers have identical behavior.
+The owner selected the MaCRUISE v3.2.0 container. The walkthrough pins `masidocker/harmonizeapp:macruise` to `sha256:96c6c7a033edb86f2be7b3a60c3e8cc658691de3f670b35a4147feaf287a28a6`. Its launcher scripts were inspected to call the same complete embedded application directly, preserving its exit status; outer BIDS discovery/copy/cleanup is bypassed. Record the exact external artifact, digest, entry point, and effective workflow options. Do not infer that different V3 releases or container wrappers have identical behavior.
 
 Two public sources identify different external distributions:
 
 - [MASILab/MaCRUISE](https://github.com/MASILab/MaCRUISE) documents `masidocker/spiders:MaCRUISE_v3_1_0`, taking `T1.nii.gz` and `orig_target_seg.nii.gz` under `/INPUTS`, with products under `/OUTPUTS`. It documents a complete container entry point and states that source is included in the container.
-- [MASI harmonizeapp](https://hub.docker.com/r/masidocker/harmonizeapp) identifies `masidocker/harmonizeapp:macruise` as MaCRUISE v3.2.0 and documents a BIDS application interface. Its examples use another tag spelling, `MaCRUISEv3.2.0`; the intended tag/digest and actual input-discovery rules must be checked before publishing a launch command.
+- [MASI harmonizeapp](https://hub.docker.com/r/masidocker/harmonizeapp) identifies `masidocker/harmonizeapp:macruise` as MaCRUISE v3.2.0 and documents a BIDS application interface. Its examples use another tag spelling, `MaCRUISEv3.2.0`; the actual selected `macruise` tag/digest and launch scripts have now been inspected rather than inferred from those examples.
 
 The supplied local v3.2.0 log ends with missing `SEG_refine.nii.gz`; it is not a successful reference run and belongs to a different scan from the downloaded root outputs. Historical output trees are not substitutes for a newly successful run.
 
@@ -66,7 +66,7 @@ A report needs separate conclusions for external-run completion, Python-run comp
 
 ## Work required before dispatching the tester
 
-- Select and pin the exact external build; verify its complete launch command, input discovery, output tree and runtime requirements on a suitable machine.
+- Execute the pinned v3.2.0 reference using the inspected complete-application launch command on a suitable machine; verify its output tree and nested Docker/Singularity runtime requirements.
 - Record the full published Git commit used for testing. The selected-mask reference drivers, input packet, run-record template, output auditor, and these instructions are in the repository; a verified full-product launch/comparison interface remains to be completed.
 - Verify `scripts/compare_external_base_run.py` against the fresh pinned-container outputs. It follows active Python attempt paths, checks input identity/output hashes, and compares final labels, level sets, surfaces and thickness. Nine synthetic checks cover its mapping and rejection behavior. The native source voxel/frame contract, fresh full-runtime execution, detailed intermediate mapping and vertexwise thickness correspondence still need verification; the historical scripts alone do not supply those checks.
 - Complete one fresh external run and one independent Python run through the proposed instructions, then exercise the report generator. Record pass/fail honestly; the test can expose disagreement and still be a successful validation experiment.

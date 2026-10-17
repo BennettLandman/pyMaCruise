@@ -2,7 +2,7 @@
 
 Run this from a fresh clone using a normal account with read-only GitHub access. No fork, commit, or push is required. This runs the complete public BASE container and the complete Python BASE workflow, then produces numerical comparisons. The small synthetic case is not used as the primary test.
 
-**Reference selected for this recipe:** MASILab's documented `MaCRUISE_v3_1_0` container, pinned to the registry digest verified October 16, 2026. The [official project README](https://github.com/MASILab/MaCRUISE) documents the input names and executable used below. This recipe does not silently substitute the differently packaged v3.2.0 BIDS application.
+**Reference selected by the project owner:** MaCRUISE **v3.2.0**, provided by [`masidocker/harmonizeapp:macruise`](https://hub.docker.com/r/masidocker/harmonizeapp), pinned to the registry digest verified October 16, 2026. The actual launch scripts were read from the immutable image's small script layers to determine the command below. See the [inspection record](../reports/external-v320-reference-inspection-2026-10-16.md). This supersedes the initial v3.1.0 recipe.
 
 **Execution status:** the external tag/digest is available; the comparison tool has nine passing synthetic tests. Full external container execution and fresh Linux dependency installation have not been executed on the authoring host. Treat failures as test findings and retain logs. Python has full-human BASE execution evidence, but overall external-versus-Python equivalence is not established.
 
@@ -10,7 +10,7 @@ Run this from a fresh clone using a normal account with read-only GitHub access.
 
 Use an x86-64 Linux workstation or server; Ubuntu 24.04 with Python 3.12 is a concrete starting environment. Budget 32 GB RAM and approximately 60 GB free disk space for the image, both output trees, and the result archive. These are planning resources, not measured minimum requirements. Allow several hours for the external workflow. The T1 and initial MaSeg segmentation are already bundled, so do not rerun SLANT as part of this test.
 
-The Python package supports Python 3.10 through 3.13. Use 3.12 for these Ubuntu instructions. Do not use Python 3.14 or later. A GPU is not requested by this BASE container command. Do not use Apple Silicon emulation for the initial reference test.
+The Python package supports Python 3.10 through 3.13. Use 3.12 for these Ubuntu instructions. Do not use Python 3.14 or later. The invocation retains the upstream Singularity `--nv` flag; record any NVIDIA library/driver setup warnings. This recipe does not run SLANT. GPU-runtime behavior on a CPU-only host has not been verified here. Do not use Apple Silicon emulation for the initial reference test.
 
 On Ubuntu, install the basic tools:
 
@@ -100,12 +100,16 @@ cp source-reference-run/inputs/base-root/MaSeg.nii.gz build/e2e/external-input/o
 
 Both workflows start from those same T1 and MaSeg arrays. The external application performs its normal skull stripping. Python additionally receives the bundled brain mask, as required by its supported interface. Preserve this difference in the report: final disagreement can include preprocessing differences. Do not feed external N4, Dura, segmentation, or surface intermediates into Python for this primary run.
 
-## 4. Download and run the complete external application
+## 4. Download and run the complete external v3.2.0 application
 
-Download the immutable image, retain its metadata, and record the launch script:
+The image contains a BIDS convenience wrapper around a complete embedded Singularity application. Its wrapper stages `T1.nii.gz` and `orig_target_seg.nii.gz`, executes the application, copies outputs, and deletes its temporary input/output folders. It does not propagate the scientific application's failure status reliably.
+
+For this single-scan comparison, call the same complete embedded application directly, with the same scientific invocation. This bypasses BIDS discovery/copy/cleanup only; it does not replace N4, skull stripping, TOADS, Dura, surfaces, refinement, or any other scientific stage. Both images start from raw T1/MaSeg. The application exit status is preserved and outputs remain on the host. This is not an unchanged invocation of the outer BIDS wrapper; its complete scientific application remains unchanged.
+
+The nested Singularity runtime uses privileged Docker, as in the published BIDS-container usage. Use a host on which your administrator permits that runtime setup. Download the immutable image, retain its metadata, and record the launch script:
 
 ```bash
-export REFERENCE_IMAGE='masidocker/spiders@sha256:9f04f42ea7b2756ec2e38da8ab04992053079393f46a34cc739b596e70097d9f'
+export REFERENCE_IMAGE='masidocker/harmonizeapp@sha256:96c6c7a033edb86f2be7b3a60c3e8cc658691de3f670b35a4147feaf287a28a6'
 sudo docker pull --platform linux/amd64 "$REFERENCE_IMAGE" \
   2>&1 | tee build/e2e/logs/external-pull.log
 sudo docker image inspect "$REFERENCE_IMAGE" > build/e2e/logs/reference-image.json
@@ -114,12 +118,15 @@ sudo docker version > build/e2e/logs/docker-version.txt
 cat > build/e2e/run-external.sh <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-sudo docker run --rm --platform linux/amd64 \
+sudo docker run --rm --privileged --platform linux/amd64 \
+  --entrypoint singularity \
   -v "$PWD/build/e2e/external-input:/INPUTS/" \
   -v "$PWD/build/e2e/external-output:/OUTPUTS/" \
   "$REFERENCE_IMAGE" \
-  xvfb-run -a --server-args="-screen 0 1920x1200x24 -ac +extension GLX" \
-  /extra/MaCRUISE_v3_1_0
+  exec --nv -B /INPUTS/:/INPUTS -B /OUTPUTS/:/OUTPUTS \
+  /singularity/macruise_classern_v3.2.0.simg \
+  xvfb-run -a --server-args="-screen 3 1920x1200x24 -ac +extension GLX" \
+  /extra/MaCRUISE_v3_2_0_classern /extra/MaCRUISE_v3_2_0_classern
 SH
 
 set +e
@@ -135,7 +142,9 @@ Path('build/e2e/logs/reference-run.json').write_text(json.dumps({
     'workflow': 'BASE',
     'image': sys.argv[2],
     'exit_code': int(sys.argv[1]),
-    'entrypoint': '/extra/MaCRUISE_v3_1_0',
+    'entrypoint': '/extra/MaCRUISE_v3_2_0_classern',
+    'embedded_image': '/singularity/macruise_classern_v3.2.0.simg',
+    'launch_mode': 'direct complete scientific application; outer BIDS discovery/copy/cleanup bypassed',
     'preprocessing': 'unchanged external application; internally generated skull stripping',
     'launch_script': 'build/e2e/run-external.sh',
     'console_log': 'build/e2e/logs/external.log'
@@ -151,7 +160,9 @@ fi
 find build/e2e/external-output -name SEG_refine.nii.gz -print
 ```
 
-Do not rely on the wrapper's completion message alone. The final native output tree must include `SegRefine/SEG_refine.nii.gz`, `Raw/T1.nii.gz`, `Raw/Seg.nii.gz`, all three native `Surfaces/target_image_GMimg_*Vol.nii.gz` level sets and `*Surf.vtk` meshes, and the scientific thickness NIfTI/MAT products. The comparison command checks their presence. Preserve the original full output tree, including failed-stage logs. Rendering/PDF failures must be reported even if scientific products exist; a nonzero exit is not silently treated as success.
+The repeated application path at the end of the command is intentional: it matches the inspected v3.2.0 launcher. Do not replace it with the v3.1.0 executable.
+
+Do not rely on a completion message alone. The final native output tree must include `SegRefine/SEG_refine.nii.gz`, `Raw/T1.nii.gz`, `Raw/Seg.nii.gz`, all three native `Surfaces/target_image_GMimg_*Vol.nii.gz` level sets and `*Surf.vtk` meshes, and the scientific thickness NIfTI/MAT products. The comparison command checks their presence. Preserve the original full output tree, including failed-stage logs. Rendering/PDF failures must be reported even if scientific products exist; a nonzero exit is not silently treated as success.
 
 ## 5. Run the complete Python BASE workflow
 

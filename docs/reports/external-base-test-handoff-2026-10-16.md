@@ -1,4 +1,8 @@
-# Complete external BASE test handoff — 2026-10-16
+# Initial external BASE test handoff — 2026-10-16
+
+Historical record: the initial v3.1.0 reference below was superseded by the
+owner-selected v3.2.0 container. See the [v3.2.0 inspection record](external-v320-reference-inspection-2026-10-16.md)
+and current walkthrough for the revised reference and command.
 
 The [walkthrough](../testing/full-base-walkthrough.md) includes Linux/Docker
 prerequisites, venv creation, package installation, input hashes, both full

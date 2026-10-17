@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Compare independent external BASE products with a restartable Python run.
 
-The external layout is the native Output tree documented by MASILab's v3.1
-container. Coordinate contracts are explicit rather than inferred from mesh
+The external layout is the native MaCRUISE Output tree; the selected v3.2
+container's fresh export layout remains to be confirmed. Coordinate contracts are explicit rather than inferred from mesh
 bounds. This computes product agreement, not a whole-port acceptance claim.
 """
 from __future__ import annotations
