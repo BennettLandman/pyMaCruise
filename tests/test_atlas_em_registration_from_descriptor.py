@@ -19,7 +19,11 @@ from pymacruise.atlas_em_registration import (
     register_atlas_em_rigid_single_scale,
     register_atlas_em_descriptor_pyramid,
 )
-from pymacruise.atlas_em_execution import finish_atlas_em_registered_execution
+from pymacruise.atlas_em_execution import (
+    finish_atlas_em_registered_execution,
+    restore_atlas_em_native_nifti_products,
+    save_atlas_em_native_nifti_products,
+)
 
 
 def test_atlas_em_selected_plugin_registration_defaults_are_recorded() -> None:
@@ -159,6 +163,22 @@ def test_descriptor_registration_completes_native_grid_recrop_handoff(tmp_path: 
     assert finished.segmentation.shape == result.recropped.images.shape[:3]
     assert finished.dura_inputs.shape == (*result.recropped.images.shape[:3], 3)
     assert np.isfinite(finished.dura_inputs).all()
+    reference_t1 = nib.Nifti1Image(image[..., 0], affine)
+    native_products = restore_atlas_em_native_nifti_products(
+        reference_t1, result, finished
+    )
+    for product in (
+        native_products.memberships,
+        native_products.segmentation,
+        native_products.internal_mask,
+        native_products.dura_inputs,
+    ):
+        assert product.shape[:3] == shape
+        assert nib.aff2axcodes(product.affine) == ("R", "A", "S")
+        np.testing.assert_array_equal(product.affine, reference_t1.affine)
+    paths = save_atlas_em_native_nifti_products(native_products, tmp_path / "outputs")
+    assert set(paths) == {"memberships", "segmentation", "internal_mask", "dura_inputs"}
+    assert all(path.name.endswith(".nii.gz") and path.is_file() for path in paths.values())
     assert result.recropped.original_dimensions_xyz == shape
     assert result.recropped.images.shape[3] == 1
     assert np.isfinite(result.recropped.images).all()
