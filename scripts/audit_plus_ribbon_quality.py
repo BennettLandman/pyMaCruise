@@ -42,6 +42,14 @@ def main() -> None:
         action="store_true",
         help="audit a complete nonterminal checkpoint and mark it as nonterminal evidence",
     )
+    parser.add_argument(
+        "--require-quality",
+        action="store_true",
+        help=(
+            "exit with status 2 if any ribbon-quality diagnostic fails; "
+            "the JSON report is still written"
+        ),
+    )
     args = parser.parse_args()
     manifest_path = args.manifest.resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -299,6 +307,12 @@ def main() -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
+    if args.require_quality and not report["passed"]:
+        print(
+            "ribbon-quality requirements failed; see the JSON report for individual checks",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

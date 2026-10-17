@@ -10,3 +10,10 @@ records image hashes, datatypes, geometry, and the assumptions.
 
 Regenerate the four committed NIfTIs with
 `./.venv/bin/python tests/data/synthetic/plus_labeled_folded_cortex/generate_fixture.py`.
+
+After running the complete PLUS workflow on this case, audit the labeled
+ribbon and surfaces with `scripts/audit_plus_ribbon_quality.py`. Add
+`--require-quality` when the calling workflow should fail if any explicit
+label-support, nesting, mesh-topology, or thickness diagnostic fails. The
+JSON report is written either way. These checks measure synthetic ribbon
+quality; they do not establish Java/MATLAB source equivalence.
