@@ -19,7 +19,7 @@ Result: **22 passed in 5.76 s**. This covers synthetic selected-source method ex
 
 ## Follow-up after two-stage registration composition
 
-Code under test: commit `db1a68c9` (`Compose both AtlasEM rigid registration stages`).
+Code under test: commit `61d884c7` (`Check selected AtlasEM demons defaults`), including the composed two-stage registration and selected plugin defaults.
 
 Command:
 
@@ -37,7 +37,7 @@ PYTHONPATH=.:src PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL
   tests/test_plus_atlas_em_dura_integration.py
 ```
 
-Result: **39 passed, 3 expected RAS orientation warnings in 7.05 s**. This
+Result: **40 passed, 3 expected RAS orientation warnings in 6.11 s**. This
 includes the descriptor-driven two-stage rigid-registration/recrop composition
 and the shared source-faithful rigid-update Java fixture. This remains
 synthetic and selected-slice evidence; it does not supply the missing
