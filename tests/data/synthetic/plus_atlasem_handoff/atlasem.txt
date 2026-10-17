@@ -1,0 +1,42 @@
+Structure Atlas File (edit at your own risks)
+
+Structures:	2
+Background	1	mask
+Cortex	2	closed
+
+Topology Atlas:
+File:	topology.nii.gz
+Dimensions:	24	24	24
+Resolutions:	1	1	1
+
+Shape Atlas:	4
+Dimensions:	24	24	24
+Resolutions:	1	1	1
+Orientations:	1	1	6	3
+Structure:	Background
+File:	background.nii.gz
+Dimensions:	24	24	24
+Resolutions:	1	1	1
+Center:	0	0	0
+Structure:	Cortex
+File:	cortex.nii.gz
+Dimensions:	24	24	24
+Resolutions:	1	1	1
+Center:	0	0	0
+
+Registered Shapes (0/1: true/false)
+0	1
+0	1
+Intensity Atlas:	12
+T1_MPRAGE	0.2	0.8
+Intensity Variance:
+T1_MPRAGE	1	1
+Lesions:
+T1_MPRAGE	0.2	FLAIR	0.2
+Black Holes:
+T1_MPRAGE	0.05
+Slope:	3.5
+Modality weights:
+T1_MPRAGE	0.4	0.6
+Optimized factors:
+T1_MPRAGE	1	1	1	1

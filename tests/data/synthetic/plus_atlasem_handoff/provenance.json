@@ -1,0 +1,21 @@
+{
+  "synthetic_only": true,
+  "purpose": "end-to-end AtlasEM/Dura-enabled PLUS integration and restart test",
+  "spatial_convention": "RAS",
+  "shape_xyz": [
+    24,
+    24,
+    24
+  ],
+  "spacing_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "classes": [
+    "Background",
+    "Cortex"
+  ],
+  "registration_levels_supported": 4,
+  "selected_atlas_equivalence": false
+}

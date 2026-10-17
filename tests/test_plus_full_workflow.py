@@ -22,6 +22,7 @@ SYNTHETIC = ROOT / "data/synthetic/plus_lesion_atlas_init"
 FOLDED = ROOT / "data/synthetic/plus_pre_tgdm_composition"
 ATLAS = SYNTHETIC / "mini-lesion-toads-atlas.txt"
 LARGER_GRID = ROOT / "data/synthetic/plus_larger_grid"
+ATLAS_EM_HANDOFF = ROOT / "data/synthetic/plus_atlasem_handoff/atlasem.txt"
 
 
 def _sha256(path: Path) -> str:
@@ -428,6 +429,8 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     repaired_subtype = Path(repaired_loop["outputs"]["lesion_subtype"]["path"])
     assert repaired_subtype.stat().st_size > 100
     assert nib.load(str(repaired_subtype)).shape == reference.shape[:3]
+
+
     assert _sha256(repaired_subtype) == repaired_loop["outputs"]["lesion_subtype"]["sha256"]
     assert all(
         repaired_top["stages"][name]["manifest"]["sha256"] == digest
@@ -549,6 +552,67 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     with pytest.raises(ValueError, match="brain mask must match the T1 reference grid"):
         main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))
 
+
+def test_plus_full_run_with_atlasem_handoff_completes_and_resumes_all_ten_stages(
+    tmp_path: Path,
+) -> None:
+    t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
+    output = tmp_path / "plus-full-atlasem"
+    command = [
+        *_command(t1, flair, mask, maseg, output),
+        "--atlasem-descriptor", str(ATLAS_EM_HANDOFF),
+    ]
+    assert main(command) == 0
+
+    manifest_path = output / "plus-full-workflow.json"
+    manifest = json.loads(manifest_path.read_text())
+    expected_order = [
+        "preprocessing", "atlasem_dura", "crop", "initial_alignment",
+        "registered_recrop", "lesion_workflow", "dura_outputs",
+        "native_dura_transfer", "maseg_cortical_separation",
+        "plus_surface_workflow",
+    ]
+    assert manifest["status"] == "complete"
+    assert manifest["terminal"] is True
+    assert manifest["stage_order"] == expected_order
+    assert manifest["stages"]["atlasem_dura"]["status"] == "complete"
+    assert manifest["stages"]["atlasem_dura"]["manifest"]["sha256"]
+    for stage in expected_order:
+        child_path = Path(manifest["stages"][stage]["manifest"]["path"])
+        assert child_path.is_file()
+        child = json.loads(child_path.read_text())
+        assert child["status"] == "complete"
+
+    def output_nifti_paths(value: object) -> set[Path]:
+        found: set[Path] = set()
+        if isinstance(value, dict):
+            path = value.get("path")
+            if isinstance(path, str) and path.lower().endswith(".nii.gz"):
+                found.add(Path(path))
+            for nested in value.values():
+                found.update(output_nifti_paths(nested))
+        elif isinstance(value, list):
+            for nested in value:
+                found.update(output_nifti_paths(nested))
+        return found
+
+    products: set[Path] = set()
+    for stage in expected_order:
+        child = json.loads(
+            Path(manifest["stages"][stage]["manifest"]["path"]).read_text()
+        )
+        products.update(output_nifti_paths(child.get("outputs", {})))
+    assert products
+    for path in products:
+        assert path.is_file()
+        image = nib.load(str(path))
+        assert nib.aff2axcodes(image.affine) == ("R", "A", "S"), path
+        assert np.isfinite(np.asarray(image.dataobj)).all(), path
+
+    assert main([*command, "--resume"]) == 0
+    resumed = json.loads(manifest_path.read_text())
+    assert resumed["status"] == "complete" and resumed["terminal"] is True
+    assert all(stage["resumed"] for stage in resumed["stages"].values())
 
 def test_plus_full_run_completes_with_jist_unchanged_dura_transfer(tmp_path: Path) -> None:
     t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
