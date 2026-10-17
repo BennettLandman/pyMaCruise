@@ -19,6 +19,7 @@ from pymacruise.atlas_em_registration import (
     register_atlas_em_rigid_single_scale,
     register_atlas_em_descriptor_pyramid,
 )
+from pymacruise.atlas_em_execution import finish_atlas_em_registered_execution
 
 
 def test_atlas_em_selected_plugin_registration_defaults_are_recorded() -> None:
@@ -149,6 +150,15 @@ def test_descriptor_registration_completes_native_grid_recrop_handoff(tmp_path: 
     assert result.post_recrop_initialization.memberships.shape == (*result.recropped.images.shape[:3], 2)
     assert len(result.post_recrop_registration.iterations) == 1
     assert np.isfinite(result.post_recrop_registration.transform).all()
+    finished = finish_atlas_em_registered_execution(
+        result, str(descriptor), max_iterations=1
+    )
+    assert finished.mask.shape == result.recropped.images.shape[:3]
+    assert finished.priors.shape == result.post_recrop_initialization.memberships.shape
+    assert finished.iterations.iterations == 1
+    assert finished.segmentation.shape == result.recropped.images.shape[:3]
+    assert finished.dura_inputs.shape == (*result.recropped.images.shape[:3], 3)
+    assert np.isfinite(finished.dura_inputs).all()
     assert result.recropped.original_dimensions_xyz == shape
     assert result.recropped.images.shape[3] == 1
     assert np.isfinite(result.recropped.images).all()
