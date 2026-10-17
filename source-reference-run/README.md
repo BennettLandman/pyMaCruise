@@ -66,6 +66,15 @@ all referenced payload files in `RUN_INFO.md`; the installed plugin's files
 must be the same files used by the run. PyMaCRUISE's own runtime atlas assets
 are separately bundled in `data/atlases/`.
 
+For PLUS, `cruise-atlas-8obj-noBG-EM.txt` is specifically the selected AtlasEM
+input. Do not replace it with the 10-object BASE atlas or another available
+descriptor. If it or any referenced payload is missing, stop before the PLUS
+run and report the missing paths; do not silently substitute another atlas.
+Retain and hash the AtlasEM GM, WM-fill, and WM-mask products, the initial
+Dura mask, and the Dura-stripped T1/FLAIR that feed LesionTOADS. The PLUS
+driver records the AtlasEM handoff paths in `driver_outputs.mat` so they can
+be identified in the returned run tree.
+
 ## BASE run driver
 
 The packet includes run-only MATLAB drivers for BASE and PLUS and a NiBabel
@@ -164,13 +173,24 @@ outputs and logs even if a stage fails so any driver mismatch can be corrected.
 ### PLUS
 
 - Inputs: `inputs/100260/{T1.nii.gz,FLAIR.nii.gz,brain_mask.nii.gz,MaSeg.nii.gz}`.
-- Atlas descriptor and topology: `../data/atlases/lesionToads-atlas-2012/`
+- AtlasEM descriptor: the selected `ibsr8obj` descriptor
+  `cruise-atlas-8obj-noBG-EM.txt` plus every referenced payload installed under
+  `MIPAV-install/plugins/Atlas/`; these are source-run dependencies and are not
+  the PyMaCRUISE-bundled runtime atlas. Return SHA-256 hashes and the effective
+  AtlasEM transform/grid and output mode.
+- LesionTOADS descriptor and topology: `../data/atlases/lesionToads-atlas-2012/`
   (the 12-object LesionTOADS descriptor and its matching topology NIfTI); hashes
   are in `SHA256SUMS`.
-- Selected source entry: `FlairRegistration` → `maCRUISEpluspipeline.m` →
-  `run_SegmentationRefine.m`. Retain all nine workflow stages and their
-  intermediates, especially the FLAIR-to-T1 transform, N4 products, TOADS/Dura
-  handoffs, ACE/GVF/TGDM fields, refined segmentation, and surfaces/thickness.
+- Selected source entry: `FlairRegistration` → AtlasEM → initial Dura removal →
+  LesionTOADS → `maCRUISEpluspipeline.m` → `run_SegmentationRefine.m`. Retain
+  every workflow stage and its intermediates, especially the FLAIR-to-T1
+  transform, N4 products, all three AtlasEM output channels, initial Dura mask,
+  Dura-stripped T1/FLAIR, LesionTOADS handoffs, ACE/GVF/TGDM fields, refined
+  segmentation, and surfaces/thickness. Record separate results for AtlasEM,
+  initial Dura removal, and LesionTOADS; do not combine AtlasEM and Dura into
+  one initialization result. Record the Dura-related channels returned by
+  LesionTOADS as its handoff products, not as a second invocation of
+  `run_RemoveDura`.
 - Use the axis-only `--no-regrid-inputs` geometry profile to match the current
   historical-environment comparison. Record the rigid FLAIR-to-T1 transform,
   interpolation, N4 options, lesion convergence settings, and Dura transfer

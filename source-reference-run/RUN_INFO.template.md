@@ -49,6 +49,9 @@ atlas payload used by the plugin.
 - Selected wrapper profile/version (MaCRUISE v3+):
 - BASE TOADS atlas, parameters, connectivity and output mode (BASE):
 - BASE Dura parameters (BASE):
+- PLUS AtlasEM descriptor (must be the selected `ibsr8obj` descriptor), referenced payloads, parameters, transform/grid, and output mode (PLUS):
+- PLUS AtlasEM GM, WM-fill, and WM-mask output filenames and hashes (PLUS):
+- PLUS initial Dura-removal inputs, parameters, and output mask hash (PLUS):
 - PLUS LesionTOADS atlas, parameters, connectivity and output mode (PLUS):
 - N4 inputs, options, and whether mask was supplied to N4:
 - Surface/TGDM options:
@@ -65,9 +68,9 @@ archive.
 |---|---|---:|---|
 | Raw input preparation | | | |
 | N4 correction and supplied-mask application | | | |
-| First TOADS or AtlasEM/Dura initialization | | | |
-| Dura removal | | | |
-| Second TOADS or LesionTOADS | | | |
+| BASE TOADS pass 1 / PLUS AtlasEM initialization | | | |
+| PLUS initial Dura removal and T1/FLAIR masking (PLUS) | | | |
+| BASE TOADS pass 2 / PLUS LesionTOADS | | | |
 | Transfer, crop, boundary and tissue fusion | | | |
 | ACE, GVF and TGDM | | | |
 | Segmentation refinement | | | |
