@@ -8,6 +8,7 @@ import numpy as np
 
 from pymacruise.atlas_em_descriptor import (
     AtlasEMDescriptorError,
+    load_atlas_em_registration_inputs,
     load_atlas_em_nifti_payloads,
     parse_atlas_em_descriptor,
     require_atlas_em_payloads,
@@ -157,6 +158,13 @@ def test_nifti_payloads_reorient_to_ras_and_keep_descriptor_geometry(tmp_path: P
     np.testing.assert_array_equal(loaded.shapes["Cortex"], np.flip(second_shape, axis=0))
     assert loaded.shapes["Background"].dtype == np.float32
     assert loaded.topology.shape == (5, 6, 7)
+    with pytest.warns(UserWarning):
+        registration_inputs = load_atlas_em_registration_inputs(descriptor)
+    assert registration_inputs.class_names == ("Background", "Cortex")
+    assert registration_inputs.class_labels == (1, 2)
+    np.testing.assert_array_equal(registration_inputs.registered_classes, [False, True])
+    np.testing.assert_array_equal(registration_inputs.shape_priors[..., 0], loaded.shapes["Background"])
+    np.testing.assert_array_equal(registration_inputs.shape_priors[..., 1], loaded.shapes["Cortex"])
 
 
 def test_nifti_payload_loader_rejects_shape_prior_on_another_grid(tmp_path: Path) -> None:

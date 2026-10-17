@@ -62,6 +62,17 @@ class AtlasEMNiftiPayloads:
     source_axis_codes: dict[str, tuple[str, str, str]]
 
 
+@dataclass(frozen=True)
+class AtlasEMRegistrationAtlasInputs:
+    """Class-ordered atlas arrays ready for the rigid-registration adapter."""
+
+    topology: np.ndarray
+    shape_priors: np.ndarray
+    class_names: tuple[str, ...]
+    class_labels: tuple[int, ...]
+    registered_classes: np.ndarray
+
+
 def _fields(line: str, tag: str, count: int, line_number: int) -> list[str]:
     parts = line.split("\t")
     if len(parts) != count + 1 or parts[0].strip() != tag:
@@ -404,3 +415,31 @@ def load_atlas_em_nifti_payloads(descriptor: AtlasEMDescriptor) -> AtlasEMNiftiP
         shapes[name] = np.asarray(values, dtype=np.float32)
         axis_codes[f"shape:{name}"] = codes
     return AtlasEMNiftiPayloads(topology, shapes, axis_codes)
+
+
+def load_atlas_em_registration_inputs(
+    descriptor: AtlasEMDescriptor,
+) -> AtlasEMRegistrationAtlasInputs:
+    """Load source-ordered RAS atlas arrays for the rigid optimizer interface.
+
+    The shared-transform `registerShapesPyramid` source indexes every shape
+    array by descriptor class ID. Require exactly one payload for each class
+    rather than silently shifting or fabricating missing maps.
+    """
+    payloads = load_atlas_em_nifti_payloads(descriptor)
+    names = tuple(item.name for item in descriptor.structures)
+    missing = tuple(name for name in names if name not in payloads.shapes)
+    unexpected = tuple(name for name in payloads.shapes if name not in names)
+    if missing or unexpected:
+        raise AtlasEMDescriptorError(
+            f"registration requires one shape prior per descriptor class; missing={missing}, "
+            f"unexpected={unexpected}"
+        )
+    ordered = np.stack([payloads.shapes[name] for name in names], axis=-1)
+    return AtlasEMRegistrationAtlasInputs(
+        payloads.topology,
+        ordered,
+        names,
+        tuple(item.label for item in descriptor.structures),
+        np.asarray(descriptor.registered_shapes, dtype=bool),
+    )
