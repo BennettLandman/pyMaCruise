@@ -1,0 +1,56 @@
+# AtlasEM post-recrop single-scale registration
+
+## Scope
+
+This slice implements the second rigid-registration call in the selected
+`AlgorithmAtlasEMSegmentation` flow. After AtlasEM initializes priors and
+recomputes subject memberships on the recropped grid, the Java wrapper calls
+`updateShapeRegistration(..., mainRegIter, 1, ...)` followed by
+`atlas.registerShapes()`.
+
+## Source evidence
+
+The selected VandyCRUISE source is
+`toads-cruise/src/edu/jhmi/rad/medic/algorithms/AlgorithmAtlasEMSegmentation.java`
+(the `initialize()` call sequence near lines 397–405) and
+`toads-cruise/src/edu/jhmi/rad/medic/methods/DemonToadDeformableAtlas.java`.
+The latter sets voxel stride to 2 in `updateShapeRegistration`, loops up to
+`itMax` in `registerAllShapes`, and performs one exact coefficient calculation
+per gradient-descent iteration. In the exact single-scale coefficient method,
+the source first normalizes `hessian[i]`, then passes that same array element
+as the gradient argument to `registrationMeasureGradient`. This historical
+call order is preserved with `source_faithful=True`; the pyramid call has a
+different source formula and remains a separate adapter.
+
+The MATLAB wrapper supplies the maximum EM iteration count and registration
+mode, but does not provide `mainRegIter` or the Java plugin's AtlasEM defaults.
+Accordingly, `registration_iterations`, the cropped memberships, class bounds,
+geometry and current transform remain explicit arguments.
+
+## Implementation and validation
+
+`register_atlas_em_rigid_single_scale` in
+`src/pymacruise/atlas_em_registration.py` connects the already source-shaped
+rigid-registration kernel to the selected one-level AtlasEM stage. A synthetic
+7×7×7 case exercised one optimizer iteration, source-selected stride two,
+class registration filtering, finite energy and transform output. The source
+coefficient-call-order behavior is implemented and independently covered by
+the existing selected Java rigid-update fixture. This report does not claim a
+direct Java comparison of the `DemonToadDeformableAtlas` optimizer output.
+
+Focused command:
+
+```sh
+PYTHONPATH=.:src PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/pytest -q tests/test_atlas_em_registration_from_descriptor.py tests/test_toads_rigid_registration_update.py
+```
+
+Result: **5 passed in 0.67 s**, implementation commit
+`5a632d12fdf2e1791d34b477adbcbf930c63b05f`.
+
+The synthetic case rejects its trial steps under the source-faithful
+coefficient behavior and returns the unchanged finite transform. This is
+recorded as an observed source-faithful synthetic outcome, not as evidence
+that the selected atlas optimizer has converged. A direct Java harness for the
+`DemonToadDeformableAtlas` post-recrop call and plugin-default settings remain
+open, as do the missing `ibsr8obj` files and full AtlasEM/Dura workflow
+integration.
