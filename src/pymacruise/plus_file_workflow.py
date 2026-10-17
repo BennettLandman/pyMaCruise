@@ -388,7 +388,7 @@ def run_plus_file_workflow(
         manifest["history"].append({"stage": "topology_ace_gvf_tgdm", "status": "running", "attempt": root_attempt.name})
         _write_json(manifest_path, manifest)
         cropped = {name: _load(Path(crop_record["outputs"][name]["path"]), name) for name in (
-            "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm", "multi_atlas_mask", "toads_gm", "toads_wm_mask"
+            "segmentation", "toads_wm_fill", "multi_atlas_gm", "multi_atlas_wm", "multi_atlas_mask", "toads_gm", "toads_wm_mask", "brain_mask"
         )}
         composed = run_plus_topology_and_tgdm(
             cropped["segmentation"],
@@ -400,6 +400,7 @@ def run_plus_file_workflow(
             cropped["toads_wm_fill"],
             cropped["toads_wm_mask"],
             options=options,
+            brain_mask=cropped["brain_mask"],
         )
         result = composed.tgdm
         tgdm_images = {name: getattr(result, name) for name in (

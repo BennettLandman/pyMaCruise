@@ -58,7 +58,10 @@ def main() -> None:
     manifest_path = root / "run.json"
     manifest = json.loads(manifest_path.read_text())
     crop_outputs = manifest["stages"]["transfer_crop"]["outputs"]
-    inputs = {name: nib.load(crop_outputs[name]["path"]) for name in set(INPUT_ORDER)}
+    inputs = {
+        name: nib.load(crop_outputs[name]["path"])
+        for name in set(INPUT_ORDER) | {"brain_mask"}
+    }
     settings = dict(manifest["settings"]["plus_pipeline"])
     settings["boundary_overlook_labels"] = tuple(settings["boundary_overlook_labels"])
     options = PlusPipelineOptions(**settings)
@@ -86,7 +89,11 @@ def main() -> None:
         ace_full_skeleton = ace.skeleton
         java_input_mode = "precomputed_initial_level_set"
     else:
-        result = run_plus_topology_and_tgdm(*(inputs[name] for name in INPUT_ORDER), options=options)
+        result = run_plus_topology_and_tgdm(
+            *(inputs[name] for name in INPUT_ORDER),
+            options=options,
+            brain_mask=inputs["brain_mask"],
+        )
         for name in OUTPUT_NAMES:
             actual = np.asarray(getattr(result.tgdm, name).dataobj)
             saved = np.asarray(nib.load(saved_stage / f"{name}.nii.gz").dataobj)
@@ -139,6 +146,17 @@ def main() -> None:
         stream.write(struct.pack(">III", *shape))
         for array in held:
             stream.write(np.asarray(array, dtype=">f4").tobytes(order="C"))
+    np.save(args.output_dir / "python-held-initial-level-set.npy", held[0])
+    binary_brain_mask = np.asarray(inputs["brain_mask"].dataobj, dtype=np.float32)
+    if binary_brain_mask.shape != shape or not np.isfinite(binary_brain_mask).all():
+        raise SystemExit("cropped brain mask must be finite and match the TGDM input grid")
+    brain_mask = np.where(binary_brain_mask > 0, -1.0, 1.0).astype(np.float32)
+    np.save(args.output_dir / "python-brain-mask-binary.npy", binary_brain_mask)
+    brain_mask_path = args.output_dir / "brain-mask.bin"
+    with brain_mask_path.open("wb") as stream:
+        stream.write(struct.pack(">III", *shape))
+        stream.write(brain_mask.astype(">f4", copy=False).tobytes(order="C"))
+    np.save(args.output_dir / "python-brain-mask-bound.npy", brain_mask)
     ace_inputs=(np.asarray(tissue_gm.dataobj,dtype=np.float32),np.asarray(tissue_wm.dataobj,dtype=np.float32),np.asarray(boundary.cleaned_boundary.dataobj,dtype=np.float32))
     ace_input_path=args.output_dir/"ace-input.bin"
     with ace_input_path.open("wb") as stream:
@@ -177,6 +195,8 @@ def main() -> None:
         stream.write(np.asarray(ace_gm.dataobj,dtype=">f4").tobytes(order="C"))
     for name,array in (("ace-enhanced",ace_gm),("ace-skeleton",ace_full_skeleton),("ace-thinned-skeleton",ace_skeleton)):
         np.save(args.output_dir/f"python-{name}.npy",np.asarray(array.dataobj))
+    for name,array in (("tgdm-wm",tissue_wm),("tgdm-gm",tissue_gm)):
+        np.save(args.output_dir/f"python-{name}.npy",np.asarray(array.dataobj,dtype=np.float32))
     np.save(args.output_dir/"python-gvf-vector.npy",np.asarray(gvf_field.dataobj,dtype=np.float32))
     for name in OUTPUT_NAMES:
         np.save(args.output_dir / f"python-{name}.npy", python_outputs[name])
@@ -205,6 +225,10 @@ def main() -> None:
         name: {"path": crop_outputs[name]["path"], "sha256": sha256(Path(crop_outputs[name]["path"]))}
         for name in sorted(set(INPUT_ORDER))
     }
+    input_records["brain_mask"] = {
+        "path": crop_outputs["brain_mask"]["path"],
+        "sha256": sha256(Path(crop_outputs["brain_mask"]["path"])),
+    }
     report = {
         "synthetic_only": synthetic_only,
         "evidence_category": evidence_category,
@@ -229,6 +253,8 @@ def main() -> None:
         "saved_stage_difference_voxels": saved_stage_differences,
         "ace_gvf_parameters": {"csf_merge_mode":3,"gvf_lambda":0.2,"gvf_iterations":200,"gvf_normalize":False},
         "held_fixed_input_binary_sha256": sha256(input_path),
+        "brain_mask_bound_binary_sha256": sha256(brain_mask_path),
+        "brain_mask_semantics": "Python adapter's signed containment bound: inside=-1, outside=+1; source JIST plugin input is explicitly named Brain Mask Level Set",
         "ace_input_binary_sha256": sha256(ace_input_path),
         "boundary_input_binary_sha256": sha256(boundary_input_path),
         "raw_boundary_sha256": hashlib.sha256(raw_boundary.astype(">i4", copy=False).tobytes(order="C")).hexdigest(),

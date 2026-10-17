@@ -40,7 +40,7 @@ def _inputs() -> tuple[nib.Nifti1Image, ...]:
 
 def test_topology_refinement_precedes_ace_gvf_and_tgdm(monkeypatch) -> None:
     events: list[str] = []
-    tgdm_inputs: list[tuple[object, ...]] = []
+    tgdm_inputs: list[tuple[tuple[object, ...], dict[str, object]]] = []
     traced_names = (
         "run_plus_boundary_stage",
         "run_plus_tissue_update_stage",
@@ -55,7 +55,7 @@ def test_topology_refinement_precedes_ace_gvf_and_tgdm(monkeypatch) -> None:
         def traced(*args, _name=name, _original=original, **kwargs):
             events.append(_name)
             if _name == "run_plus_tgdm_stage":
-                tgdm_inputs.append(args)
+                tgdm_inputs.append((args, kwargs))
             return _original(*args, **kwargs)
 
         monkeypatch.setattr(composition, name, traced)
@@ -65,6 +65,7 @@ def test_topology_refinement_precedes_ace_gvf_and_tgdm(monkeypatch) -> None:
     result = composition.run_plus_topology_and_tgdm(
         *inputs,
         options=PlusPipelineOptions(),
+        brain_mask=inputs[4],
     )
 
     assert events == list(traced_names)
@@ -85,13 +86,14 @@ def test_topology_refinement_precedes_ace_gvf_and_tgdm(monkeypatch) -> None:
     )
 
     assert len(tgdm_inputs) == 1
-    routed = tgdm_inputs[0]
+    routed, routed_kwargs = tgdm_inputs[0]
     assert routed[0] is result.tgdm_initial_membership
     assert routed[1] is result.tissue.wm
     assert routed[2] is result.tissue.gm
     assert routed[3] is result.ace.enhanced_gray_matter
     assert routed[4] is result.ace.thinned_skeleton
     assert routed[5] is result.gvf.vector_field
+    assert routed_kwargs["brain_mask"] is inputs[4]
 
     for image in (
         result.boundary.raw_boundary,

@@ -22,6 +22,7 @@ javac -d "$reference_dir/classes" \
   --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
   /usr/bin/java -Xms256m -Xmx6g -cp "$reference_dir/classes" \
   PlusTGDMReferenceHarness "$reference_dir/arrays.bin" "$reference_dir/java" \
+  precomputed_initial_level_set "$reference_dir/brain-mask.bin" \
   > "$reference_dir/java-watchdog.log" 2>&1
 cat "$reference_dir/java-watchdog.log"
 PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/compare_plus_tgdm_java.py" \

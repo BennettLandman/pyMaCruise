@@ -329,12 +329,14 @@ def run_plus_tgdm_stage(
     ace_thin_skeleton: nib.spatialimages.SpatialImage,
     gvf: nib.spatialimages.SpatialImage,
     options: PlusPipelineOptions = PlusPipelineOptions(),
+    *,
+    brain_mask: nib.spatialimages.SpatialImage | None = None,
 ) -> TGDMMaCRUISEImageResult:
     """Run the plus nested-surface stage on its selected cropped RAS products.
 
     The MaCRUISEplus wrapper supplies corrected level-set, updated tissue,
-    MaACE-enhanced GM and thin skeleton, and the plus GVF field to its TGDM
-    wrapper. This adapter routes those existing inputs and selected
+    MaACE-enhanced GM and thin skeleton, the plus GVF field, and an optional
+    brain-mask level set to its TGDM wrapper. This adapter routes those inputs and selected
     `WMIsoLevel` settings; output inverse-cropping belongs to the runner.
 
     Paper context: Han et al. (2004), ``docs/papers/cruise.md``, describes the
@@ -351,6 +353,7 @@ def run_plus_tgdm_stage(
         ace_gray_matter,
         ace_skeleton=ace_thin_skeleton,
         gvf=gvf,
+        brain_mask=brain_mask,
         parameters=plus_tgdm_parameters(options),
     )
 

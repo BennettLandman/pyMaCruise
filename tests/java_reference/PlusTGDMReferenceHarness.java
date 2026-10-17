@@ -70,9 +70,10 @@ public final class PlusTGDMReferenceHarness {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 2 || args.length > 3) throw new IllegalArgumentException("usage: INPUT_BIN OUTPUT_DIR [precomputed_initial_level_set]");
-        boolean precomputedInitial = args.length == 3 && args[2].equals("precomputed_initial_level_set");
-        if (args.length == 3 && !precomputedInitial) throw new IllegalArgumentException("unknown input mode: " + args[2]);
+        if (args.length < 2 || args.length > 4) throw new IllegalArgumentException("usage: INPUT_BIN OUTPUT_DIR [precomputed_initial_level_set] [BRAIN_MASK_BIN]");
+        boolean precomputedInitial = args.length >= 3 && args[2].equals("precomputed_initial_level_set");
+        if (args.length >= 3 && !args[2].equals("precomputed_initial_level_set")) throw new IllegalArgumentException("unknown input mode: " + args[2]);
+        Path brainMaskPath = args.length == 4 ? Path.of(args[3]) : null;
         Path output = Path.of(args[1]); Files.createDirectories(output);
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(
                 new FileInputStream(args[0]), 1 << 20))) {
@@ -86,6 +87,17 @@ public final class PlusTGDMReferenceHarness {
             for (int x=0;x<nx;x++) for (int y=0;y<ny;y++) for (int z=0;z<nz;z++)
                 for (int c=0;c<3;c++) gvf[x][y][z][c]=in.readFloat();
             if (in.read() != -1) throw new IllegalArgumentException("unexpected trailing bytes");
+
+            ImageDataFloat brainMask = null;
+            if (brainMaskPath != null) {
+                try (DataInputStream maskIn = new DataInputStream(new BufferedInputStream(
+                        new FileInputStream(brainMaskPath.toFile()), 1 << 20))) {
+                    int mx=maskIn.readInt(), my=maskIn.readInt(), mz=maskIn.readInt();
+                    if (mx!=nx || my!=ny || mz!=nz) throw new IllegalArgumentException("brain mask grid does not match TGDM arrays");
+                    brainMask = new ImageDataFloat(readVolume(maskIn,mx,my,mz));
+                    if (maskIn.read() != -1) throw new IllegalArgumentException("unexpected trailing brain-mask bytes");
+                }
+            }
 
             ImageDataFloat initialLevel;
             if (precomputedInitial) {
@@ -109,7 +121,7 @@ public final class PlusTGDMReferenceHarness {
 
             tgdm.setCheckpointStage("initial_inner");
             ImageDataFloat firstInner=tgdm.solveInnerSurfaceFromOuter(
-                    smoothed,null,white,null,0.2f,0.0f,1.0f,126.9f,0.5f,4);
+                    smoothed,brainMask,white,null,0.2f,0.0f,1.0f,126.9f,0.5f,4);
             float[][][] sign=new float[nx][ny][nz];
             for (int x=0;x<nx;x++) for (int y=0;y<ny;y++) for (int z=0;z<nz;z++) {
                 float wmP=wm[x][y][z]/255.0f, gmP=aceGm[x][y][z]/255.0f;
@@ -120,7 +132,7 @@ public final class PlusTGDMReferenceHarness {
             }
             tgdm.setCheckpointStage("central");
             ImageDataFloat central=tgdm.solveCentralSurface(
-                    firstInner,null,new ImageDataFloat(sign),vector,0.15f,1.0f,1.5f,7);
+                    firstInner,brainMask,new ImageDataFloat(sign),vector,0.15f,1.0f,1.5f,7);
             tgdm.setCheckpointStage("central_shrink");
             ImageDataFloat centralShrink=tgdm.solveInnerSurfaceFromCentral(
                     central,null,null,null,0.15f,0.0f,-1.0f,126.9f,0.5f,1);
@@ -129,7 +141,7 @@ public final class PlusTGDMReferenceHarness {
                     centralShrink,null,white,null,0.2f,0.0f,-1.0f,126.9f,0.5f,4);
             tgdm.setCheckpointStage("outer");
             ImageDataFloat outer=tgdm.solveOuterSurface(
-                    central,null,gray,null,thin,1.0f,0.0f,1.0f,0.4f,7);
+                    central,brainMask,gray,null,thin,1.0f,0.0f,1.0f,0.4f,7);
             writeVolume(output.resolve("initial_level_set.raw.gz"),initialLevel.toArray3d());
             writeVolume(output.resolve("smoothed_initial.raw.gz"),smoothed.toArray3d());
             writeVolume(output.resolve("initial_inner.raw.gz"),firstInner.toArray3d());

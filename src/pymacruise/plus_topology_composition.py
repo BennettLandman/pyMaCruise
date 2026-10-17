@@ -54,10 +54,14 @@ def run_plus_topology_and_tgdm(
     toads_wm: nib.spatialimages.SpatialImage,
     toads_mask: nib.spatialimages.SpatialImage,
     options: PlusPipelineOptions = PlusPipelineOptions(),
+    *,
+    brain_mask: nib.spatialimages.SpatialImage | None = None,
 ) -> PlusTopologyTGDMResult:
     """Run the selected crop-ready MaCRUISEplus stages through nested TGDM.
 
-    The eight inputs are already cropped and registered onto one grid.
+    The eight core inputs are already cropped and registered onto one grid;
+    the optional user brain mask must also be on that grid and is routed to
+    TGDM after RAS normalization.
     ``multi_atlas_wm`` is the raw cropped MaSeg-derived WM map: it supplies
     both atlas tissue fusion and the separate topology-refinement argument.
     Stage order follows ``maCRUISEpluspipeline.m`` and
@@ -107,6 +111,16 @@ def run_plus_topology_and_tgdm(
         ):
             raise ValueError(f"{name} must match the crop-ready RAS grid")
 
+    ras_brain_mask = None
+    if brain_mask is not None:
+        if not isinstance(brain_mask, (nib.Nifti1Image, nib.Nifti2Image)) or len(brain_mask.shape) != 3:
+            raise ValueError("brain mask must be a 3D NIfTI image")
+        ras_brain_mask = normalize_image_to_ras(brain_mask, source_name="brain mask")
+        if ras_brain_mask.shape != reference.shape or not np.allclose(
+            ras_brain_mask.affine, reference.affine, rtol=0.0, atol=1e-4
+        ):
+            raise ValueError("brain mask must match the crop-ready RAS grid")
+
     boundary = run_plus_boundary_stage(ras_inputs[0], ras_inputs[1], options)
     tissue = run_plus_tissue_update_stage(*ras_inputs[2:])
     topology = run_plus_topology_stage(
@@ -133,6 +147,7 @@ def run_plus_topology_and_tgdm(
         ace.thinned_skeleton,
         gvf.vector_field,
         options,
+        brain_mask=ras_brain_mask,
     )
     return PlusTopologyTGDMResult(
         boundary=boundary,
