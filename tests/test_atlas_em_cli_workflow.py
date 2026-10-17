@@ -40,6 +40,44 @@ def _write_synthetic_descriptor(directory: Path) -> Path:
     return descriptor
 
 
+def _write_eight_object_descriptor(directory: Path) -> Path:
+    """Build an 8-class atlas-shaped case without relying on external assets."""
+    shape = (12, 12, 12)
+    x, y, z = np.indices(shape, dtype=np.float32)
+    centers = ((5.5, 5.5, 5.5), (3.5, 5.5, 5.5), (7.5, 5.5, 5.5),
+               (5.5, 3.5, 5.5), (5.5, 7.5, 5.5), (5.5, 5.5, 3.5),
+               (5.5, 5.5, 7.5))
+    names = (
+        "Background", "SulcalCSF", "CorticalGM", "Cerebrum-WM",
+        "Cerebellum-GM", "Cerebellum-WM", "Brainstem", "Ventricle",
+    )
+    topology = np.ones(shape, dtype=np.uint8)
+    paths = []
+    background = np.ones(shape, dtype=np.float32)
+    nib.save(nib.Nifti1Image(background, np.eye(4)), directory / "obj0.nii.gz")
+    paths.append("obj0.nii.gz")
+    for class_index, (cx, cy, cz) in enumerate(centers, start=1):
+        prior = np.exp(-((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2) / 20.0)
+        nib.save(nib.Nifti1Image(prior.astype(np.float32), np.eye(4)), directory / f"obj{class_index}.nii.gz")
+        paths.append(f"obj{class_index}.nii.gz")
+        topology[prior > 0.55] = class_index + 1
+    nib.save(nib.Nifti1Image(topology, np.eye(4)), directory / "topology8.nii.gz")
+    descriptor = directory / "atlas8.txt"
+    rows = [
+        "Structure Atlas File (edit at your own risks)", "", "Structures:\t8",
+        *[f"{name}\t{index + 1}\t{'mask' if index == 0 else 'closed'}" for index, name in enumerate(names)],
+        "", "Topology Atlas:", "File:\ttopology8.nii.gz", "Dimensions:\t12\t12\t12",
+        "Resolutions:\t1\t1\t1", "", "Shape Atlas:\t4", "Dimensions:\t12\t12\t12",
+        "Resolutions:\t1\t1\t1", "Orientations:\t1\t1\t6\t3",
+    ]
+    for name, payload in zip(names, paths, strict=True):
+        rows.extend((f"Structure:\t{name}", f"File:\t{payload}"))
+    rows.extend(("Registered Shapes:", "0\t1\t1\t1\t1\t1\t1\t1", "0\t1\t1\t1\t1\t1\t1\t1",
+                 "", "Intensity Atlas:\t10", "T1_MPRAGE\t0.1\t0.2\t0.3\t0.4\t0.5\t0.6\t0.7\t0.8"))
+    descriptor.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return descriptor
+
+
 def test_atlasem_run_cli_executes_synthetic_descriptor_workflow(tmp_path: Path) -> None:
     shape = (12, 12, 12)
     x, y, z = np.indices(shape, dtype=np.float32)
@@ -101,3 +139,41 @@ def test_atlasem_run_cli_executes_synthetic_descriptor_workflow(tmp_path: Path) 
     nib.save(nib.Nifti1Image(mask_data, np.eye(4)), mask_path)
     with np.testing.assert_raises_regex(ValueError, "inputs, settings, atlas assets, or implementation"):
         main([*command, "--resume"])
+
+
+def test_atlasem_run_cli_accepts_eight_object_synthetic_atlas(tmp_path: Path) -> None:
+    shape = (12, 12, 12)
+    x, y, z = np.indices(shape, dtype=np.float32)
+    radius = np.sqrt((x - 5.5) ** 2 + (y - 5.5) ** 2 + (z - 5.5) ** 2)
+    affine = np.eye(4)
+    t1 = np.where(radius < 5.0, 0.25 + 0.01 * x + 0.005 * y, 0.0).astype(np.float32)
+    nib.save(nib.Nifti1Image(t1, affine), tmp_path / "t1.nii.gz")
+    nib.save(nib.Nifti1Image((radius < 5.0).astype(np.uint8), affine), tmp_path / "mask.nii.gz")
+    descriptor = _write_eight_object_descriptor(tmp_path)
+    output = tmp_path / "out8"
+    status = main([
+        "atlasem-run", "--t1", str(tmp_path / "t1.nii.gz"),
+        "--brain-mask", str(tmp_path / "mask.nii.gz"),
+        "--descriptor", str(descriptor), "--output-dir", str(output),
+        "--crop-border", "2", "--levels", "2",
+        "--initial-registration-iterations", "1", "--post-recrop-registration-iterations", "1",
+        "--max-em-iterations", "2", "--max-dura-iterations", "1",
+    ])
+
+    assert status == 0
+    manifest = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "complete"
+    assert manifest["stages"]["atlasem"]["em_iterations_completed"] == 2
+    memberships = nib.load(str(output / "atlasem_memberships.nii.gz"))
+    assert memberships.shape == (*shape, 8)
+    values = np.asarray(memberships.dataobj)
+    assert np.isfinite(values).all()
+    assert nib.aff2axcodes(memberships.affine) == ("R", "A", "S")
+    assert {path.name for path in output.glob("*.nii.gz")} == {
+        "atlasem_memberships.nii.gz", "atlasem_segmentation.nii.gz",
+        "atlasem_internal_mask.nii.gz", "atlasem_dura_inputs.nii.gz",
+        "prelesion_dura_inputs.nii.gz", "prelesion_dura_segmentation.nii.gz",
+        "dura_stripped_t1.nii.gz", "dura_corrected_white_matter.nii.gz",
+        "dura_corrected_gray_matter.nii.gz", "dura_brain_mask_level_set.nii.gz",
+        "dura_brain_mask.nii.gz", "dura_wm_topology.nii.gz", "dura_gm_topology.nii.gz",
+    }
