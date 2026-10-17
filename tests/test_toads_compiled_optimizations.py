@@ -89,3 +89,16 @@ def test_compiled_growing_matches_full_event_reference_and_progress(tied):
     assert messages[-1] == f"growing queue complete after {len(expected.events)} events"
     for before, after in zip(original, (labels, skeleton, mem, ordering, volumes, available), strict=True):
         _exact(before, after)
+
+
+def test_growing_preserves_zero_threshold_nan_priority_behavior():
+    from test_toads_growing_pass import _inputs
+    labels, skeleton, mem, ordering, volumes = _inputs()
+    mem[:] = 0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        expected = toads_propagate_growing(labels, skeleton, mem, ordering, volumes,
+                                          zero_threshold=0, record_events=False, backend="python")
+        actual = toads_propagate_growing(labels, skeleton, mem, ordering, volumes,
+                                        zero_threshold=0, record_events=False)
+    for name in ("segmentation", "skeleton", "available", "ordering", "class_volumes"):
+        _exact(getattr(actual, name), getattr(expected, name))

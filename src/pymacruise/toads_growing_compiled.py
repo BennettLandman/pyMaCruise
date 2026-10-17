@@ -67,7 +67,7 @@ def _min_pop(values, payloads, size):
 
 
 
-@njit(cache=True, fastmath=False)
+@njit(cache=True, fastmath=False, error_model="numpy")
 def _ratio(mems, x, y, z, label, zero):
     best = 0
     maximum = np.float32(0.0)
