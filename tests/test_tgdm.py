@@ -532,6 +532,47 @@ def test_tgdm_nested_array_uses_binary_brain_mask_as_signed_outer_bound() -> Non
     assert np.all(nested[2][radius > 7] == 0)
 
 
+def test_tgdm_nested_array_preserves_source_brain_mask_level_set_magnitude(monkeypatch) -> None:
+    import pymacruise.tgdm as tgdm_module
+
+    original_evolve = tgdm_module.tgdm_evolve
+    observed_bounds: list[np.ndarray | None] = []
+
+    def record_bound(*args, **kwargs):
+        observed_bounds.append(kwargs.get("outer_bound"))
+        return original_evolve(*args, **kwargs)
+
+    monkeypatch.setattr(tgdm_module, "tgdm_evolve", record_bound)
+    x, y, z = np.indices((9, 9, 9), dtype=np.float32)
+    radius = np.sqrt((x - 4) ** 2 + (y - 4) ** 2 + (z - 4) ** 2)
+    membership = np.where(radius < 3, 255.0, 0.0).astype(np.float32)
+    wm = membership.copy()
+    gm = np.where((radius >= 3) & (radius < 4), 255.0, 0.0).astype(np.float32)
+    mask_level_set = np.where(radius < 3.5, -5.0, 5.0).astype(np.float32)
+    params = TGDMBaselineParameters(
+        initial_iterations=0, inner_iterations=0, central_shrink_iterations=0,
+        central_iterations=0, outer_iterations=0,
+    )
+
+    tgdm_nested_arrays(
+        membership, wm, gm, gm,
+        brain_mask_level_set=mask_level_set,
+        parameters=params,
+    )
+
+    assert len(observed_bounds) == 6
+    assert observed_bounds[0] is None
+    for index in (1, 2, 5):
+        np.testing.assert_array_equal(observed_bounds[index], mask_level_set)
+    with pytest.raises(ValueError, match="provide brain_mask or brain_mask_level_set"):
+        tgdm_nested_arrays(
+            membership, wm, gm, gm,
+            brain_mask=np.ones_like(mask_level_set),
+            brain_mask_level_set=mask_level_set,
+            parameters=params,
+        )
+
+
 def test_tgdm_default_nested_stages_match_java_synthetic_reference() -> None:
     data_root = Path(__file__).parent / "data" / "synthetic" / "tgdm"
     reference_root = data_root / "java_reference"

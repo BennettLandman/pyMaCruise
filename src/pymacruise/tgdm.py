@@ -551,6 +551,7 @@ def tgdm_nested_arrays(
     ace_gray_matter: np.ndarray,
     *,
     brain_mask: np.ndarray | None = None,
+    brain_mask_level_set: np.ndarray | None = None,
     ace_skeleton: np.ndarray | None = None,
     gvf: np.ndarray | None = None,
     parameters: TGDMBaselineParameters = TGDMBaselineParameters(),
@@ -584,14 +585,27 @@ def tgdm_nested_arrays(
             raise ValueError(f"{name} must be finite and match the initial grid")
     if not np.isfinite(membership).all():
         raise ValueError("initial membership must be finite")
+    if brain_mask is not None and brain_mask_level_set is not None:
+        raise ValueError("provide brain_mask or brain_mask_level_set, not both")
     mask_values = _optional_field(brain_mask, shape, "brain_mask")
+    mask_level_values = _optional_field(
+        brain_mask_level_set, shape, "brain_mask_level_set"
+    )
     # The public workflow contract supplies a binary brain mask, while
     # GenericTGDM's outer-bound argument is a signed field (inside < 0,
     # outside >= 0). Passing a 0/255 mask directly made every voxel satisfy
     # the positive-bound test and blocked legitimate surface evolution.
     # Only the sign is needed for this containment gate; use unit magnitude
     # to avoid inventing physical-distance units in the array-only adapter.
-    mask = None if mask_values is None else _binary_brain_mask_bound(mask_values)
+    # Public workflows normally supply a binary mask; in that case make the
+    # inside-negative unit bound used by the adapter. Source wrappers can
+    # instead supply their actual signed Brain Mask Level Set. Its magnitude
+    # matters because GenericTGDM clamps to the bound value, not just its sign.
+    mask = (
+        mask_level_values
+        if mask_level_values is not None
+        else None if mask_values is None else _binary_brain_mask_bound(mask_values)
+    )
     skeleton = _optional_field(ace_skeleton, shape, "ace_skeleton")
     velocity = _optional_vector(gvf, shape)
 
@@ -708,6 +722,7 @@ def tgdm_nested_images(
     ace_gray_matter: nib.spatialimages.SpatialImage,
     *,
     brain_mask: nib.spatialimages.SpatialImage | None = None,
+    brain_mask_level_set: nib.spatialimages.SpatialImage | None = None,
     ace_skeleton: nib.spatialimages.SpatialImage | None = None,
     gvf: nib.spatialimages.SpatialImage | None = None,
     parameters: TGDMBaselineParameters = TGDMBaselineParameters(),
@@ -729,6 +744,7 @@ def tgdm_nested_images(
         ("gray matter", gray_matter),
         ("ACE gray matter", ace_gray_matter),
         ("brain mask", brain_mask),
+        ("brain mask level set", brain_mask_level_set),
         ("ACE skeleton", ace_skeleton),
     ):
         if image is None:
@@ -757,6 +773,7 @@ def tgdm_nested_images(
         aligned["gray matter"],
         aligned["ACE gray matter"],
         brain_mask=aligned.get("brain mask"),
+        brain_mask_level_set=aligned.get("brain mask level set"),
         ace_skeleton=aligned.get("ACE skeleton"),
         gvf=vector,
         parameters=parameters,

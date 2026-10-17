@@ -805,8 +805,12 @@ def run_base_workflow(
     preparation_provenance = active_output(
         "base-tissue-preparation", "provenance.json", prep_dependencies
     )
+    dura_brain_mask_level_set = active_output(
+        "dura", "brain_mask_level_set.nii.gz", dura_dependencies
+    )
     core_dependencies = [
-        prepared_gm, prepared_wm, prepared_mask, prepared_boundary, preparation_provenance
+        prepared_gm, prepared_wm, prepared_mask, prepared_boundary,
+        preparation_provenance, dura_brain_mask_level_set,
     ]
     core_outputs = [active_output("cruise-core", f"{name}.nii.gz", core_dependencies) for name in (
         "gm_cropped", "wmfill_cropped", "wmmask_cropped", "wmfill_topology_corrected",
@@ -816,6 +820,7 @@ def run_base_workflow(
     run_stage("cruise-core", core_outputs, [
         "toads-cruise-core", "--gm", str(prepared_gm), "--wm-fill", str(prepared_wm),
         "--boundary-csf", str(prepared_boundary),
+        "--brain-mask-level-set", str(dura_brain_mask_level_set),
         "--wm-mask", str(prepared_mask), "--base-preparation-provenance",
         str(preparation_provenance), "--edge-width", str(options.crop_edge_width),
         "--ace-diffusion-iterations", str(options.ace_diffusion_iterations),

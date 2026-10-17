@@ -8,7 +8,9 @@ import numpy as np
 import pytest
 
 from pymacruise.cli import main
+from pymacruise.cropping import crop_image
 from pymacruise.tgdm import TGDMBaselineParameters
+import pymacruise.toads_cruise_core as core_module
 from pymacruise.toads_cruise_core import run_toads_cruise_core
 
 
@@ -57,6 +59,36 @@ def test_cruise_core_runs_ace_gvf_tgdm_and_restores_native_ras_grid() -> None:
     assert np.all(np.asarray(result.inner_native.dataobj)[0] == 20.0)
 
 
+def test_cruise_core_crops_and_preserves_brain_mask_level_set_for_tgdm(monkeypatch) -> None:
+    original_tgdm = core_module.tgdm_nested_images
+    observed: dict[str, nib.spatialimages.SpatialImage | None] = {}
+
+    def capture_tgdm(*args, **kwargs):
+        observed["brain_mask_level_set"] = kwargs.get("brain_mask_level_set")
+        return original_tgdm(*args, **kwargs)
+
+    monkeypatch.setattr(core_module, "tgdm_nested_images", capture_tgdm)
+    gm, wm, mask = _inputs()
+    x, y, z = np.indices(gm.shape, dtype=np.float32)
+    level_set = ((x - 6.0) + 0.25 * (y - 5.0) - 0.1 * z).astype(np.float32)
+    source_level_set = nib.Nifti1Image(level_set, gm.affine)
+    result = run_toads_cruise_core(
+        gm, wm, mask, brain_mask_level_set=source_level_set,
+        crop_edge_width=2, ace_diffusion_iterations=1, gvf_iterations=200,
+        tgdm_parameters=TGDMBaselineParameters(
+            initial_iterations=0, inner_iterations=0, central_shrink_iterations=0,
+            central_iterations=0, outer_iterations=0,
+        ),
+    )
+
+    observed_level_set = observed["brain_mask_level_set"]
+    assert observed_level_set is not None
+    expected = crop_image(source_level_set, result.preparation.crop_parameters)
+    np.testing.assert_array_equal(observed_level_set.dataobj, expected.dataobj)
+    np.testing.assert_allclose(observed_level_set.affine, result.preparation.gray_matter.affine)
+    assert float(np.max(np.abs(np.asarray(observed_level_set.dataobj)))) > 1.0
+
+
 def test_cruise_core_cli_writes_typed_native_grid_products_and_provenance(tmp_path) -> None:
     output_dir = tmp_path / "core"
     provenance = tmp_path / "core.json"
@@ -65,6 +97,7 @@ def test_cruise_core_cli_writes_typed_native_grid_products_and_provenance(tmp_pa
         "--gm", str(FIXTURE / "gm.nii.gz"),
         "--wm-fill", str(FIXTURE / "wmfill.nii.gz"),
         "--wm-mask", str(FIXTURE / "wmmask.nii.gz"),
+        "--brain-mask-level-set", str(FIXTURE / "gm.nii.gz"),
         "--edge-width", "2",
         "--ace-diffusion-iterations", "1",
         "--gvf-iterations", "200",
@@ -80,6 +113,7 @@ def test_cruise_core_cli_writes_typed_native_grid_products_and_provenance(tmp_pa
     parameters = json.loads(provenance.read_text())["parameters"]
     assert parameters["tgdm"]["white_matter_iso"] == 0.43
     assert parameters["ace"]["updated_multi_atlas_csf_mode"] == 0
+    assert parameters["brain_mask_level_set"] == str((FIXTURE / "gm.nii.gz").resolve())
     reference = nib.load(str(FIXTURE / "gm.nii.gz"))
     expected = (
         "inner.nii.gz", "central.nii.gz", "outer.nii.gz",

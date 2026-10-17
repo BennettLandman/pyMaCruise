@@ -629,6 +629,7 @@ brain mask used to skull-strip TOADS.
 ```text
 pymacruise toads-cruise-core --gm Toads2_gm.nii.gz \
   --wm-fill Toads2_wmfill.nii.gz --wm-mask Toads2_wmmask.nii.gz \
+  [--brain-mask BrainMask.nii.gz | --brain-mask-level-set BrainMaskLevelSet.nii.gz] \
   [--segmentation MaSeg.nii.gz --remove-cerebellum] \
   --output-dir cruise_core [--edge-width 5] \
   [--ace-diffusion-iterations 25] [--gvf-lambda 1] \
@@ -650,7 +651,9 @@ WM-fill, ACE outputs, the component-last GVF, and native-RAS
 inner/central/outer level sets. Base ACE does not merge updated multi-atlas
 CSF. The selected MATLAB wrapper passes the central-surface iteration option
 to the outer TGDM stage as well, so the CLI preserves that mapping. Surfaces
-and thickness outputs are not generated.
+and thickness outputs are not generated. A binary brain mask is converted to
+the adapter's unit inside-negative bound; a signed `--brain-mask-level-set` is
+passed with its values preserved. Supply at most one of these inputs.
 
 
 ## `pymacruise plus-run`

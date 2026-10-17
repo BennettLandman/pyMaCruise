@@ -50,6 +50,8 @@ def run_toads_cruise_core(
     *,
     segmentation: nib.spatialimages.SpatialImage | None = None,
     boundary_csf: nib.spatialimages.SpatialImage | None = None,
+    brain_mask: nib.spatialimages.SpatialImage | None = None,
+    brain_mask_level_set: nib.spatialimages.SpatialImage | None = None,
     remove_cerebellum: bool = False,
     crop_edge_width: int = 5,
     ace_diffusion_iterations: int = 25,
@@ -72,6 +74,8 @@ def run_toads_cruise_core(
     """
     if ace_use_updated_csf_in_ace == 2 and boundary_csf is None:
         raise ValueError("ACE mode 2 requires the cleaned MaSeg boundary_csf image")
+    if brain_mask is not None and brain_mask_level_set is not None:
+        raise ValueError("provide brain_mask or brain_mask_level_set, not both")
     if prepared_crop_parameters is None:
         prepared = prepare_toads_cruise_inputs(
             gray_matter,
@@ -172,11 +176,44 @@ def run_toads_cruise_core(
         if tgdm_parameters is None
         else tgdm_parameters
     )
+    tgdm_brain_mask = None
+    tgdm_brain_mask_level_set = None
+    mask_input = brain_mask_level_set if brain_mask_level_set is not None else brain_mask
+    if mask_input is not None:
+        mask_name = (
+            "base brain mask level set"
+            if brain_mask_level_set is not None
+            else "base brain mask"
+        )
+        mask_ras = normalize_image_to_ras(mask_input, source_name=mask_name)
+        crop = prepared.crop_parameters
+        crop_affine = crop.original_affine.copy()
+        crop_affine[:3, 3] += crop.original_affine[:3, :3] @ np.asarray(crop.offset)
+        same_full_grid = (
+            mask_ras.shape == crop.original_shape
+            and np.allclose(mask_ras.affine, crop.original_affine, rtol=0, atol=1e-5)
+        )
+        same_cropped_grid = (
+            mask_ras.shape == crop.cropped_shape
+            and np.allclose(mask_ras.affine, crop_affine, rtol=0, atol=1e-5)
+        )
+        if same_full_grid:
+            mask_ras = crop_image(mask_ras, crop)
+        elif not same_cropped_grid:
+            raise ValueError(
+                f"{mask_name} must match the source T1 grid or the prepared TGDM crop"
+            )
+        if brain_mask_level_set is not None:
+            tgdm_brain_mask_level_set = mask_ras
+        else:
+            tgdm_brain_mask = mask_ras
     tgdm_crop = tgdm_nested_images(
         prepared.topology_corrected_white_matter_fill,
         prepared.white_matter_fill,
         prepared.gray_matter,
         ace.enhanced_gray_matter,
+        brain_mask=tgdm_brain_mask,
+        brain_mask_level_set=tgdm_brain_mask_level_set,
         ace_skeleton=ace.thinned_skeleton,
         gvf=gvf.vector_field,
         parameters=baseline,

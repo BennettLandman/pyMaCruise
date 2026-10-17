@@ -183,6 +183,10 @@ def build_parser() -> argparse.ArgumentParser:
     tgdm.add_argument("--gray", required=True, type=Path)
     tgdm.add_argument("--ace-gray", required=True, type=Path)
     tgdm.add_argument("--brain-mask", type=Path)
+    tgdm.add_argument(
+        "--brain-mask-level-set", type=Path,
+        help="pass an existing signed Brain Mask Level Set with its numeric magnitudes preserved",
+    )
     tgdm.add_argument("--ace-skeleton", type=Path)
     tgdm.add_argument("--gvf", type=Path)
     tgdm.add_argument("--output-dir", required=True, type=Path)
@@ -317,6 +321,14 @@ def build_parser() -> argparse.ArgumentParser:
     cruise_core.add_argument("--gm", required=True, type=Path)
     cruise_core.add_argument("--wm-fill", required=True, type=Path)
     cruise_core.add_argument("--wm-mask", required=True, type=Path)
+    cruise_core.add_argument(
+        "--brain-mask", type=Path,
+        help="user-provided binary brain mask on the T1 or prepared crop grid",
+    )
+    cruise_core.add_argument(
+        "--brain-mask-level-set", type=Path,
+        help="signed Dura Brain Mask Level Set; preserves values on the T1 or crop grid",
+    )
     cruise_core.add_argument(
         "--boundary-csf", type=Path,
         help="V3 MaSeg CSF boundary cleaned by TOADS and updated WM for ACE mode 2",
@@ -1642,6 +1654,10 @@ def main(argv: list[str] | None = None) -> int:
             _load_nifti_gz(args.gray),
             _load_nifti_gz(args.ace_gray),
             brain_mask=None if args.brain_mask is None else _load_nifti_gz(args.brain_mask),
+            brain_mask_level_set=(
+                None if args.brain_mask_level_set is None
+                else _load_nifti_gz(args.brain_mask_level_set)
+            ),
             ace_skeleton=None if args.ace_skeleton is None else _load_nifti_gz(args.ace_skeleton),
             gvf=None if args.gvf is None else _load_nifti_gz(args.gvf),
             parameters=tgdm_parameters,
@@ -2180,6 +2196,13 @@ def main(argv: list[str] | None = None) -> int:
             _load_nifti_gz(args.gm),
             _load_nifti_gz(args.wm_fill),
             _load_nifti_gz(args.wm_mask),
+            brain_mask=(
+                None if args.brain_mask is None else _load_nifti_gz(args.brain_mask)
+            ),
+            brain_mask_level_set=(
+                None if args.brain_mask_level_set is None
+                else _load_nifti_gz(args.brain_mask_level_set)
+            ),
             segmentation=(
                 None if args.segmentation is None else _load_nifti_gz(args.segmentation)
             ),
@@ -2222,6 +2245,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Wrote {output_paths[name]} (RAS)")
         core_options = {
             "remove_cerebellum": args.remove_cerebellum,
+            "brain_mask": (
+                None if args.brain_mask is None else str(args.brain_mask.resolve())
+            ),
+            "brain_mask_level_set": (
+                None if args.brain_mask_level_set is None
+                else str(args.brain_mask_level_set.resolve())
+            ),
             "base_preparation_provenance": (
                 None if args.base_preparation_provenance is None
                 else str(args.base_preparation_provenance.resolve())

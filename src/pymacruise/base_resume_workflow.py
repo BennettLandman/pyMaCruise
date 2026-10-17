@@ -595,6 +595,7 @@ def run_base_resume_from_toads(
     if not maseg_path.is_file() or maseg_path.is_symlink() or not maseg_path.name.lower().endswith(".nii.gz"):
         raise ValueError("MaSeg input must be a regular .nii.gz file")
     source_t1 = Path(source_manifest["inputs"]["t1"]["path"])
+    source_brain_mask = Path(source_manifest["inputs"]["brain_mask"]["path"])
     reference = normalize_image_to_ras(nib.load(str(source_t1)), source_name="TOADS source T1")
     maseg = normalize_image_to_ras(nib.load(str(maseg_path)), source_name="base tail MaSeg")
     maseg_values = np.asanyarray(maseg.dataobj)
@@ -762,10 +763,11 @@ def run_base_resume_from_toads(
         "inner.nii.gz", "central.nii.gz", "outer.nii.gz", "provenance.json",
     )
     prep_prov = prep["provenance.json"]
-    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "boundary_csf.nii.gz")] + [prep_prov]
+    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "boundary_csf.nii.gz")] + [prep_prov, source_brain_mask]
     core = execute_stage("cruise-core", core_names, [
         "toads-cruise-core", "--gm", str(core_deps[0]), "--wm-fill", str(core_deps[1]), "--wm-mask", str(core_deps[2]),
         "--boundary-csf", str(core_deps[3]),
+        "--brain-mask", str(source_brain_mask),
         "--base-preparation-provenance", str(prep_prov), "--edge-width", str(_V3_CROP_EDGE_WIDTH),
         "--ace-diffusion-iterations", "25", "--use-updated-csf-in-ace", str(settings["ace_use_updated_csf_in_ace"]),
         "--gvf-iterations", "200", "--wm-iso-level", str(settings["wm_iso_level"]),
