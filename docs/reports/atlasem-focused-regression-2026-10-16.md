@@ -43,3 +43,28 @@ and the shared source-faithful rigid-update Java fixture. This remains
 synthetic and selected-slice evidence; it does not supply the missing
 `ibsr8obj` assets or establish direct `DemonToadDeformableAtlas` optimizer
 parity or complete PLUS source equivalence.
+
+## Follow-up after AtlasEM internal-mask construction
+
+Code under test: commit `0ca74cd6` (`Build AtlasEM internal mask from image channels`).
+
+Command:
+
+```sh
+PYTHONPATH=.:src PYTHONNOUSERSITE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  .venv/bin/pytest -q tests/test_atlas_em_descriptor.py \
+  tests/test_atlas_em_descriptor_initialization.py \
+  tests/test_atlas_em_registration_from_descriptor.py \
+  tests/test_atlas_em_inventory_cli.py tests/test_atlas_em_iteration.py \
+  tests/test_atlas_em_gaussian_memberships.py tests/test_atlas_em_cli.py \
+  tests/test_atlas_em_prior_normalization.py tests/test_atlas_em_cropping.py \
+  tests/test_atlas_em_classification.py tests/test_atlas_em_preprocessing.py \
+  tests/test_atlas_em_outputs.py tests/test_atlas_em_rigid_priors.py \
+  tests/test_atlas_em_statistics.py tests/test_atlas_em_registration_pyramid.py \
+  tests/test_plus_atlas_em_dura_integration.py tests/test_mipav_morphology.py
+```
+
+Result: **43 passed, 3 expected RAS orientation warnings in 6.50 s**. This adds
+the AtlasEM positive-channel internal mask constructor to the two-stage
+registration, EM, output, and Dura synthetic coverage. It remains source-slice
+evidence, not selected-atlas or full-workflow parity.
