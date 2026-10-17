@@ -11,6 +11,8 @@ from pymacruise.atlas_em_preprocessing import (
 )
 from pymacruise.atlas_em_registration import (
     ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS,
+    ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SCALE,
+    ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SMOOTHING,
     ATLAS_EM_PLUGIN_DEFAULT_LEVELS,
     ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS,
     initialize_register_recrop_register_atlas_em_from_descriptor,
@@ -23,6 +25,8 @@ def test_atlas_em_selected_plugin_registration_defaults_are_recorded() -> None:
     assert ATLAS_EM_PLUGIN_DEFAULT_LEVELS == 4
     assert ATLAS_EM_PLUGIN_DEFAULT_INITIAL_REGISTRATION_ITERATIONS == 50
     assert ATLAS_EM_PLUGIN_DEFAULT_POST_RECROP_REGISTRATION_ITERATIONS == 1
+    assert ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SMOOTHING == 1.0
+    assert ATLAS_EM_PLUGIN_DEFAULT_DEMONS_SCALE == 2.0
 
 
 def test_descriptor_loaded_atlas_reaches_a_scheduled_registration_update(tmp_path: Path) -> None:
