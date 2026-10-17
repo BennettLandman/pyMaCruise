@@ -23,9 +23,11 @@ call order is preserved with `source_faithful=True`; the pyramid call has a
 different source formula and remains a separate adapter.
 
 The MATLAB wrapper supplies the maximum EM iteration count and registration
-mode, but does not provide `mainRegIter` or the Java plugin's AtlasEM defaults.
-Accordingly, `registration_iterations`, the cropped memberships, class bounds,
-geometry and current transform remain explicit arguments.
+mode but does not override the Java plugin's registration settings. The
+selected plugin defaults are 4 pyramid levels, 50 initial-registration
+iterations, and 1 post-recrop iteration; see the [selected-defaults report](atlasem-selected-registration-defaults-2026-10-16.md).
+The lower-level adapter still accepts iteration count, cropped memberships,
+class bounds, geometry and current transform explicitly.
 
 ## Implementation and validation
 
@@ -57,6 +59,5 @@ The synthetic case rejects its trial steps under the source-faithful
 coefficient behavior and returns the unchanged finite transform. This is
 recorded as an observed source-faithful synthetic outcome, not as evidence
 that the selected atlas optimizer has converged. A direct Java harness for the
-`DemonToadDeformableAtlas` post-recrop call and plugin-default settings remain
-open, as do the missing `ibsr8obj` files and full AtlasEM/Dura workflow
-integration.
+`DemonToadDeformableAtlas` post-recrop output comparison remains open, as do
+the missing `ibsr8obj` files and full AtlasEM/Dura workflow integration.
