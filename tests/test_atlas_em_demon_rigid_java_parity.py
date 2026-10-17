@@ -125,27 +125,32 @@ def test_atlas_em_pyramid_matches_selected_demon_class(
     assert len(result.levels) == 2
 
 
+@pytest.mark.parametrize(
+    "registered_flags",
+    ((False, True, False), (False, True, True)),
+)
 def test_atlas_em_pyramid_matches_selected_demon_for_selected_classes(
     tmp_path: Path,
+    registered_flags: tuple[bool, bool, bool],
 ) -> None:
     if shutil.which("javac") is None or shutil.which("java") is None:
         pytest.skip("JDK is needed to execute the selected AtlasEM Java class")
 
-    dimensions = (16, 16, 16)
+    dimensions = (24, 24, 24)
     x, y, z = np.indices(dimensions, dtype=np.float32)
     shapes = np.zeros((*dimensions, 3), dtype=np.float32)
     shapes[..., 0] = np.float32(0.25)
-    shapes[..., 1] = np.exp(-(((x - 5.0) / 3.2) ** 2 + ((y - 8.0) / 3.1) ** 2 + ((z - 7.0) / 3.4) ** 2))
-    shapes[..., 2] = np.exp(-(((x - 10.0) / 3.1) ** 2 + ((y - 6.0) / 3.6) ** 2 + ((z - 9.0) / 2.9) ** 2))
+    shapes[..., 1] = np.exp(-(((x - 8.0) / 3.2) ** 2 + ((y - 12.0) / 3.1) ** 2 + ((z - 11.0) / 3.4) ** 2))
+    shapes[..., 2] = np.exp(-(((x - 15.0) / 3.1) ** 2 + ((y - 10.0) / 3.6) ** 2 + ((z - 14.0) / 2.9) ** 2))
     shapes = shapes.astype(np.float32)
     memberships = np.empty_like(shapes)
     memberships[..., 0] = np.float32(0.3)
     memberships[..., 1] = np.float32(0.4)
     memberships[..., 2] = np.float32(0.3)
-    memberships[..., 1] += np.float32(0.1) * np.exp(-(((x - 6.0) / 4.0) ** 2 + ((y - 7.0) / 4.0) ** 2 + ((z - 8.0) / 4.0) ** 2))
+    memberships[..., 1] += np.float32(0.1) * np.exp(-(((x - 9.0) / 5.0) ** 2 + ((y - 11.0) / 5.0) ** 2 + ((z - 12.0) / 5.0) ** 2))
     memberships[..., 2] -= memberships[..., 1] - np.float32(0.4)
     memberships = memberships.astype(np.float32)
-    registered = np.array([False, True, False], dtype=np.uint8)
+    registered = np.asarray(registered_flags, dtype=np.uint8)
 
     np.moveaxis(shapes, -1, 0).astype("<f4").tofile(tmp_path / "shapes.f32le")
     memberships.astype("<f4").tofile(tmp_path / "memberships.f32le")
