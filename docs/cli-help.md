@@ -43,16 +43,20 @@ this schema for the base profile:
 }
 ```
 
-The plus profile additionally requires `flair_path` and may provide a
-`plus_options` object using the field names in `PlusPipelineOptions`. Either
-profile may provide `run_options`: base fields are names in `BaseRunOptions`;
+The plus profile additionally requires `flair_path` and may provide an
+`atlasem_descriptor_path` and a `plus_options` object using the field names in
+`PlusPipelineOptions`. The optional AtlasEM descriptor enables the selected
+AtlasEM/Dura stage before LesionTOADS cropping; every referenced payload must
+exist as a same-grid, 3D RAS `.nii.gz` image. Preflight checks descriptor and
+payload hashes and NIfTI headers without loading voxel arrays. The bundled
+LesionTOADS descriptor and the base TOADS descriptor remain profile-selected.
+Either profile may provide `run_options`: base fields are names in `BaseRunOptions`;
 plus fields are nested `registration`, `n4`, and `plus` objects matching the
 corresponding runner configuration fields. Unknown fields are rejected. These
 let synthetic runs lower iteration counts without changing algorithm defaults
-in the implementation. The plus profile uses
-the bundled LesionTOADS atlas descriptor. The base profile uses the bundled
-default TOADS descriptor. Custom atlas paths are not accepted by this
-preflight interface.
+in the implementation. The plus profile uses the bundled LesionTOADS atlas
+descriptor. The base profile uses the bundled default TOADS descriptor. Only
+the separate PLUS AtlasEM/Dura handoff descriptor is selectable in the config.
 
 ## `pymacruise workflow-run`
 
@@ -62,8 +66,9 @@ pymacruise workflow-run --config workflow.json [--resume]
 
 Executes the restartable workflow selected by the same version-1 JSON
 configuration. Base runs use the bundled TOADS descriptor; plus runs use the
-bundled LesionTOADS descriptor and pass `plus_options` through to the existing
-MaCRUISEplus stages. The output directory must be new or contain a compatible
+bundled LesionTOADS descriptor, optionally run the configured AtlasEM/Dura
+handoff, and pass `plus_options` through to the existing MaCRUISEplus stages.
+The output directory must be new or contain a compatible
 restartable run. If it contains the `run.json` produced by
 `workflow-preflight`, that dry-run manifest is preserved as `preflight.json`
 before execution begins. `--resume` verifies existing checkpoints and resumes
