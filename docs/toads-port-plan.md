@@ -1,27 +1,22 @@
 # TOADS, SPECTRE, and BET implementation plan
 
-**Status as of 2026-10-08:** P34's restartable seven-stage brain-resolution
-synthetic base workflow completes; both TOADS passes converge, and same-settings
-resume verifies every stage output. The current run's selected-Java TGDM
-comparison passes all three agreed surface gates. The actual VandyCRUISE
-coarse-to-fine registration method also matches on both an asymmetric fixture
-and a larger 48³ folded-cortex fixture. The bundled 11-class atlas on the
-synthetic brain-resolution T1/mask also converges naturally at registration
-scales 8/4/2 within the 50-iteration limit; Python/Java iteration counts,
-line-search traces, and final transform match. The full startup through template refresh, post-refresh registration, constructor, statistics, and relation initialization peaks at 2.388 GB RSS. The full
-suite on tested tree `5a0adcf` passes **1,502 tests**, with 12.442 GB peak RSS
-under the 16 GB watchdog; see the [suite report](reports/full-pytest-2026-10-08-bundled-atlas-startup.md). The source-faithful
-refinement replay localizes seven
-label differences to upstream outer-field threshold crossings, but this is not
-an independent MATLAB refinement comparison. P34 is complete for synthetic
-orchestration/output/restart; P37 whole-workflow source parity remains open.
-P18 remains in progress: broad selected-source coverage is incomplete, physical
-atlas-to-input alignment and the historical SPECTRE transform are not in the
-chosen native-RAS contract, and recorded Dura intermediate deviations remain
-unresolved. See the [current base workflow report](reports/base-workflow-seven-stage-brain-resolution-2026-10-08.md),
-[current-run TGDM report](reports/base-workflow-current-run-java-tgdm-2026-10-08.md),
-[folded registration comparison](reports/toads-registration-pyramid-folded-2026-10-08.md),
-and the [main plan](../plan.md).
+**Current status (2026-10-16):** The restartable BASE workflow now runs eight
+stages. The supplied case 100260 completes and resumes all stages, with natural
+TOADS stops at iterations 20/18, 68 verified output hashes, and 51 finite RAS
+NIfTIs. Selected Java handoff comparisons pass exactly; complete historical
+workflow equivalence remains unverified. The current full suite on code commit
+`53d8915b` passed **1,646 tests, 4 skipped, 0 failed**, with 21 expected
+orientation warnings in 728.57 seconds and peak sampled RSS **14.788 GB** under
+a 16 GB watchdog; see the [suite and AtlasEM report](reports/atlasem-eight-object-synthetic-2026-10-16.md).
+
+The selected TOADS source-method estimate is **3,511–4,911 of 13,651 lines
+(26–36%)**. This is a coarse method-mapping estimate, not line coverage,
+runtime coverage, or workflow completion. P18 remains open because required
+source behavior and full-workflow comparisons are incomplete. The selected
+Python contract uses the supplied T1-grid brain mask and native RAS working
+space; historical BET/SPECTRE registration and its resampling are deliberate
+omissions. See the [main plan](../plan.md) for the current blockers and
+evidence categories.
 
 The user-supplied brain-mask decision removes BET/SPECTRE skull stripping from
 the runtime contract; it does not establish algorithmic equivalence to either
