@@ -125,6 +125,8 @@ def fit_toads_exact_chebyshev_field(
     source's attached-array update. Image, memberships, segmentation, and
     centroids are read-only inputs. A singular or nonfinite system raises
     ``ValueError`` instead of returning a nonfinite correction.
+    ``backend="python"`` retains the scalar implementation for exact
+    diagnostic comparisons; the default compiles only the ordered voxel loops.
     """
     if backend not in ("numba", "python"):
         raise ValueError("backend must be 'numba' or 'python'")

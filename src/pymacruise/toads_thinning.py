@@ -451,7 +451,9 @@ def toads_propagate_growing(
     event trace for deterministic source comparison unless ``record_events``
     is false; the production loop disables this full-volume trace to bound
     memory. It is not full TOADS
-    segmentation or atlas registration.
+    segmentation or atlas registration. With ``record_events=False``, the
+    default Numba backend compiles initialization and the complete ordered
+    growing loop. ``backend="python"`` retains the reference execution.
     """
     if backend not in ("numba", "python"):
         raise ValueError("backend must be 'numba' or 'python'")

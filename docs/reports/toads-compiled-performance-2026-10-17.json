@@ -1,0 +1,339 @@
+{
+  "synthetic": {
+    "reference_seconds": 36.46421058400301,
+    "optimized_seconds": 8.287027666985523,
+    "speedup": 4.4001555261208845,
+    "identical_classification_file": true,
+    "reference_labels_differing_voxels": 0,
+    "optimized_labels_differing_voxels": 0,
+    "components": {
+      "toads_compute_relations": {
+        "reference_seconds": 2.311346081958618,
+        "optimized_seconds": 0.11233054008334875,
+        "speedup": 20.57629278950862
+      },
+      "toads_update_boundary_distances": {
+        "reference_seconds": 0.23005691188154742,
+        "optimized_seconds": 0.011966460035182536,
+        "speedup": 19.225143543300035
+      },
+      "toads_closest_labels": {
+        "reference_seconds": 2.0324083751183935,
+        "optimized_seconds": 0.0787261258228682,
+        "speedup": 25.816186861414483
+      },
+      "toads_propagate_growing": {
+        "reference_seconds": 13.376609875180293,
+        "optimized_seconds": 0.20548062614398077,
+        "speedup": 65.0991294225825
+      },
+      "fit_toads_exact_chebyshev_field.degree1": {
+        "reference_seconds": 0.535605750977993,
+        "optimized_seconds": 0.03547995799453929,
+        "speedup": 15.096008599007584
+      },
+      "fit_toads_exact_chebyshev_field.degree2": {
+        "reference_seconds": 0.9953459170064889,
+        "optimized_seconds": 0.002881249994970858,
+        "speedup": 345.4562841627202
+      },
+      "fit_toads_exact_chebyshev_field.degree3": {
+        "reference_seconds": 9.30977895896649,
+        "optimized_seconds": 0.02200616814661771,
+        "speedup": 423.05315932057795
+      }
+    }
+  },
+  "implementation_sha256": {
+    "src/pymacruise/toads_field_compiled.py": "20305dba8e28b8e26d174012393cd1da8d2f78f9e05f0f6eefb53d4593dc8ce0",
+    "src/pymacruise/toads_growing_compiled.py": "a2dbfc37d98b75d5e170ddd1bb23d42ab3e05ef3f0fd0494dedbcf8e44132786",
+    "src/pymacruise/toads_relations_compiled.py": "4fcc8c4ff274614265e458543f3e21c37869e5e660c46f0616da5ecad3232b64",
+    "src/pymacruise/toads_thinning_compiled.py": "a2f354548b1218f3b9f1cb1bb288212c867f14f7c42f2b54801c8c5d91a790f8"
+  },
+  "evidence_scope": "Controlled synthetic Python reference versus compiled execution, fresh human first-TOADS replay versus same-settings saved baseline, and selected source regressions; not complete external workflow equivalence.",
+  "human": {
+    "elapsed_seconds": 810.449480875046,
+    "peak_process_rss_gb": 7.2073216,
+    "differing_reference_label_voxels": 0,
+    "iteration_comparison": {
+      "baseline_count": 20,
+      "optimized_count": 20,
+      "identical_printed_energy_sequence": true,
+      "baseline_energies": [
+        "0.42217952",
+        "0.144149229",
+        "0.0443440117",
+        "0.0196768865",
+        "0.0114275664",
+        "0.00668226602",
+        "0.0228974",
+        "0.000166491489",
+        "0.0208866354",
+        "0.0129366554",
+        "0.00759608299",
+        "0.0134240184",
+        "0.00387874898",
+        "0.0016169555",
+        "0.000567980227",
+        "0.000491626037",
+        "0.000387901993",
+        "0.000291253324",
+        "0.000190667881",
+        "4.29838547e-05"
+      ],
+      "optimized_energies": [
+        "0.42217952",
+        "0.144149229",
+        "0.0443440117",
+        "0.0196768865",
+        "0.0114275664",
+        "0.00668226602",
+        "0.0228974",
+        "0.000166491489",
+        "0.0208866354",
+        "0.0129366554",
+        "0.00759608299",
+        "0.0134240184",
+        "0.00387874898",
+        "0.0016169555",
+        "0.000567980227",
+        "0.000491626037",
+        "0.000387901993",
+        "0.000291253324",
+        "0.000190667881",
+        "4.29838547e-05"
+      ]
+    },
+    "timing_comparison": {
+      "baseline_load_to_loop_complete_seconds": 3012.1,
+      "optimized_load_to_loop_complete_seconds": 809.9,
+      "baseline_loop_seconds": 2675.7999999999997,
+      "optimized_loop_seconds": 497.5,
+      "baseline_is_historical": true
+    },
+    "tissue_output_comparisons": {
+      "t1-n4_Toads_seg.nii.gz": {
+        "same_shape": true,
+        "same_dtype": true,
+        "identical_grid": true,
+        "differing_values": 0,
+        "identical_value_bytes": true,
+        "identical_file": true
+      },
+      "t1-n4_csf.nii.gz": {
+        "same_shape": true,
+        "same_dtype": true,
+        "identical_grid": true,
+        "differing_values": 0,
+        "identical_value_bytes": true,
+        "identical_file": true
+      },
+      "t1-n4_gm.nii.gz": {
+        "same_shape": true,
+        "same_dtype": true,
+        "identical_grid": true,
+        "differing_values": 0,
+        "identical_value_bytes": true,
+        "identical_file": true
+      },
+      "t1-n4_wmfill.nii.gz": {
+        "same_shape": true,
+        "same_dtype": true,
+        "identical_grid": true,
+        "differing_values": 0,
+        "identical_value_bytes": true,
+        "identical_file": true
+      },
+      "t1-n4_wmmask.nii.gz": {
+        "same_shape": true,
+        "same_dtype": true,
+        "identical_grid": true,
+        "differing_values": 0,
+        "identical_value_bytes": true,
+        "identical_file": true
+      }
+    },
+    "components": {
+      "toads_compute_relations": {
+        "calls": 20,
+        "seconds": 12.329881832760293,
+        "individual_seconds": [
+          0.6184429170098156,
+          0.6059056249796413,
+          0.613264125015121,
+          0.6155386669561267,
+          0.586094000027515,
+          0.6140606249682605,
+          0.5730034169973806,
+          0.6164696249761619,
+          0.5889487080276012,
+          0.5948567079612985,
+          0.61889208300272,
+          0.6288284999900497,
+          0.6578485000063665,
+          0.6047316250042059,
+          0.668793624965474,
+          0.6071792909642681,
+          0.6163997499970719,
+          0.5681631669867784,
+          0.6587024579639547,
+          0.6737584169604816
+        ]
+      },
+      "toads_update_boundary_distances": {
+        "calls": 20,
+        "seconds": 0.3541795829660259,
+        "individual_seconds": [
+          0.015632790978997946,
+          0.02158266701735556,
+          0.014176374999806285,
+          0.017928000015672296,
+          0.019893999968189746,
+          0.015291084011550993,
+          0.01387395802885294,
+          0.013811165990773588,
+          0.016622374998405576,
+          0.014595958986319602,
+          0.015417125017847866,
+          0.014813249988947064,
+          0.027796332957223058,
+          0.01444308302598074,
+          0.027473292022477835,
+          0.027814416971523315,
+          0.01629570801742375,
+          0.014500208024401218,
+          0.016109166957903653,
+          0.016108624986372888
+        ]
+      },
+      "toads_closest_labels": {
+        "calls": 20,
+        "seconds": 7.454585999133997,
+        "individual_seconds": [
+          0.39317295799264684,
+          0.38395054097054526,
+          0.37120037502609193,
+          0.3768405419541523,
+          0.36490824999054894,
+          0.368198583018966,
+          0.3677934579900466,
+          0.3908111249911599,
+          0.36925083404639736,
+          0.3703052500495687,
+          0.3771772920154035,
+          0.38309512502746657,
+          0.3735881249886006,
+          0.3693588750320487,
+          0.3664731250028126,
+          0.3665812080143951,
+          0.3635539169772528,
+          0.36297720804577693,
+          0.3682085410109721,
+          0.36714066698914394
+        ]
+      },
+      "toads_propagate_growing": {
+        "calls": 20,
+        "seconds": 13.090374584135134,
+        "individual_seconds": [
+          0.9573046250152402,
+          0.7018265000078827,
+          0.6608970839879476,
+          0.6212302500498481,
+          0.6155536249862053,
+          0.5952615000423975,
+          0.6468535420135595,
+          0.6096846670261584,
+          0.6585067499545403,
+          0.6211090830038302,
+          0.6572065000073053,
+          0.6666274580056779,
+          0.6268628329853527,
+          0.6283928750199266,
+          0.6239112089970149,
+          0.6274513340322301,
+          0.6219904170138761,
+          0.6448509999900125,
+          0.6520439159939997,
+          0.6528094160021283
+        ]
+      },
+      "fit_toads_exact_chebyshev_field.degree1": {
+        "calls": 2,
+        "seconds": 0.22744149999925867,
+        "individual_seconds": [
+          0.13779087498551235,
+          0.08965062501374632
+        ]
+      },
+      "fit_toads_exact_chebyshev_field.degree2": {
+        "calls": 3,
+        "seconds": 0.2908041659393348,
+        "individual_seconds": [
+          0.09690162498736754,
+          0.09999441599939018,
+          0.09390812495257705
+        ]
+      },
+      "fit_toads_exact_chebyshev_field.degree3": {
+        "calls": 9,
+        "seconds": 1.4461264599813148,
+        "individual_seconds": [
+          0.15004475001478568,
+          0.1806134590297006,
+          0.16392358398297802,
+          0.1767709159757942,
+          0.16139512503286824,
+          0.15784883400192484,
+          0.15683204197557643,
+          0.14957845798926428,
+          0.14911929197842255
+        ]
+      }
+    },
+    "watchdog": {
+      "limit_gb": 12,
+      "peak_sampled_rss_gb": 6.702,
+      "terminated_for_rss_limit": false
+    },
+    "input_sha256": {
+      "t1_n4": "c5f56de03e8bbeae23fa1b860abb3772949d44387426d05670202f5041ed160c",
+      "brain_mask": "f45b1d4759098401eaddf65ffbd16f5a4dca051546ac1467af6c3608a3527672",
+      "atlas_descriptor": "cfe3e2556cca554122f5f16427878b6924cb1de6947e9392b2918bed24a4a939"
+    },
+    "output_sha256": {
+      "t1-n4_Toads_seg.nii.gz": "e6e24450197f3637a5a0cc10cca2f325b152cef2a82b22f425a847e0dc438c82",
+      "t1-n4_csf.nii.gz": "ea4ff75a64322875b243816bfd24d8ef0d77b52c80a61eb1c700fe1ec7c3541e",
+      "t1-n4_gm.nii.gz": "c9eded75cb92631aac25e6ae3993e4f693aaa4baef91cbb7054fd70e469df0f9",
+      "t1-n4_wmfill.nii.gz": "4d971c796c508da01e95777506608b84d2ba5ab219c2ca75df62a76e763f0382",
+      "t1-n4_wmmask.nii.gz": "1b427a66800a9d88892e11b3261e12f2d19f4f8b95c232dbe680ffa9fed4ab33"
+    },
+    "classification_sha256": "e6e24450197f3637a5a0cc10cca2f325b152cef2a82b22f425a847e0dc438c82"
+  },
+  "environment": {
+    "python": "3.13.2",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "thread_settings": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMBA_NUM_THREADS": null
+    }
+  },
+  "validation": {
+    "full_suite_passed": 1670,
+    "full_suite_skipped": 4,
+    "full_suite_failed": 0,
+    "full_suite_seconds": 721.4,
+    "full_suite_peak_sampled_rss_gb": 8.475,
+    "extra_focused_tests_passed": 18,
+    "extra_focused_seconds": 4.38,
+    "full_suite_collected_new_tests": 17,
+    "zero_threshold_nan_test_passed_separately": true
+  },
+  "implementation_commits": [
+    "f2158a796f387615590d1927430156aef89579fc",
+    "6c419308",
+    "6c3ad57a"
+  ]
+}
