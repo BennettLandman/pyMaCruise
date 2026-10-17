@@ -3,7 +3,10 @@ from __future__ import annotations
 import nibabel as nib
 import numpy as np
 
-from pymacruise.plus_atlas_em_dura import run_atlas_em_prelesion_dura
+from pymacruise.plus_atlas_em_dura import (
+    run_atlas_em_prelesion_dura,
+    run_dura_from_atlas_em_products,
+)
 
 
 def test_synthetic_atlasem_products_feed_selected_prelesion_dura_stage() -> None:
@@ -40,3 +43,12 @@ def test_synthetic_atlasem_products_feed_selected_prelesion_dura_stage() -> None
     assert nib.aff2axcodes(result.dura.stripped_t1.affine) == ("R", "A", "S")
     assert nib.aff2axcodes(result.dura.brain_mask.affine) == ("R", "A", "S")
     assert np.isfinite(np.asarray(result.dura.stripped_t1.dataobj)).all()
+    file_handoff = run_dura_from_atlas_em_products(
+        t1, result.products, max_iterations=1
+    )
+    assert file_handoff.products.shape == result.products.shape
+    assert file_handoff.dura.evolution.completed_outer_passes == 1
+    np.testing.assert_array_equal(
+        file_handoff.dura.brain_mask.dataobj,
+        result.dura.brain_mask.dataobj,
+    )

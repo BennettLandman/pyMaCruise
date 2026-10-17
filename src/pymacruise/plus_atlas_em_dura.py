@@ -23,6 +23,67 @@ class AtlasEMPreLesionDuraResult:
     dura: DuraRemovalResult
 
 
+@dataclass(frozen=True)
+class AtlasEMDuraProductResult:
+    """Selected Dura evolution from an already generated three-channel product."""
+
+    products: nib.spatialimages.SpatialImage
+    dura: DuraRemovalResult
+
+
+def run_dura_from_atlas_em_products(
+    original_t1: nib.spatialimages.SpatialImage,
+    products: nib.spatialimages.SpatialImage,
+    *,
+    max_iterations: int = 5,
+    record_passes: bool = False,
+) -> AtlasEMDuraProductResult:
+    """Run the selected pre-LesionTOADS Dura stage from AtlasEM product maps.
+
+    Product channels follow ``generateDuraRemovalOutputs`` order: GM
+    membership, WM membership, filled WM mask. This accepts the compressed
+    product produced by the AtlasEM execution adapter so the file-level
+    handoff can be validated separately from membership-map construction.
+    """
+    for name, image in (("original T1", original_t1), ("AtlasEM Dura inputs", products)):
+        if not isinstance(image, (nib.Nifti1Image, nib.Nifti2Image)):
+            raise ValueError(f"{name} must be a NIfTI image")
+    t1 = normalize_image_to_ras(original_t1, source_name="pre-LesionTOADS original T1")
+    product_image = normalize_image_to_ras(products, source_name="AtlasEM Dura inputs")
+    t1_values = np.asanyarray(t1.dataobj)
+    product_values = np.asanyarray(product_image.dataobj)
+    if t1_values.ndim != 3 or product_values.ndim != 4 or product_values.shape[-1] != 3:
+        raise ValueError("T1 must be 3D and AtlasEM Dura inputs must have three class-last channels")
+    if product_values.shape[:3] != t1.shape or not np.allclose(
+        product_image.affine, t1.affine, rtol=0, atol=1e-4
+    ):
+        raise ValueError("AtlasEM Dura inputs must match the original T1 physical RAS grid")
+    if not np.isfinite(t1_values).all() or not np.isfinite(product_values).all():
+        raise ValueError("T1 and AtlasEM Dura inputs must be finite")
+    if isinstance(max_iterations, bool) or not isinstance(max_iterations, int) or max_iterations < 0:
+        raise ValueError("max_iterations must be a nonnegative integer")
+    header = t1.header.copy()
+    header.set_data_dtype(np.float32)
+    dura = run_dura_removal(
+        t1,
+        nib.Nifti1Image(product_values[..., 1], t1.affine, header=header),
+        nib.Nifti1Image(product_values[..., 0], t1.affine, header=header),
+        nib.Nifti1Image(product_values[..., 2], t1.affine, header=header),
+        membership_level=0.3,
+        wm_topology_regularization=0.05,
+        gm_topology_regularization=0.02,
+        curvature_force=0.5,
+        alignment_force=1.0,
+        pressure_force=0.5,
+        alignment_alpha=0.5,
+        max_iterations=max_iterations,
+        mask_translation=2.0,
+        level_set_translation=0.0,
+        record_passes=record_passes,
+    )
+    return AtlasEMDuraProductResult(product_image, dura)
+
+
 def run_atlas_em_prelesion_dura(
     original_t1: nib.spatialimages.SpatialImage,
     memberships: nib.spatialimages.SpatialImage,
@@ -82,21 +143,7 @@ def run_atlas_em_prelesion_dura(
     product_image.set_sform(t1.affine if scode else None, code=int(scode))
     product_image.set_filename("atlasem_dura_inputs.nii.gz")
 
-    dura = run_dura_removal(
-        t1,
-        nib.Nifti1Image(products[..., 1], t1.affine, header=header),
-        nib.Nifti1Image(products[..., 0], t1.affine, header=header),
-        nib.Nifti1Image(products[..., 2], t1.affine, header=header),
-        membership_level=0.3,
-        wm_topology_regularization=0.05,
-        gm_topology_regularization=0.02,
-        curvature_force=0.5,
-        alignment_force=1.0,
-        pressure_force=0.5,
-        alignment_alpha=0.5,
-        max_iterations=max_iterations,
-        mask_translation=2.0,
-        level_set_translation=0.0,
-        record_passes=record_passes,
+    dura_result = run_dura_from_atlas_em_products(
+        t1, product_image, max_iterations=max_iterations, record_passes=record_passes
     )
-    return AtlasEMPreLesionDuraResult(product_image, segmentation, dura)
+    return AtlasEMPreLesionDuraResult(product_image, segmentation, dura_result.dura)
