@@ -105,3 +105,16 @@ descriptor integration now also restores membership, tissue-index, internal
 mask and Dura-input NIfTIs to the native T1 grid and verifies RAS geometry,
 compressed filenames, and output files. No selected-atlas or Dura-evolution
 claim is made.
+
+## Follow-up after full synthetic AtlasEM-to-Dura chain
+
+Code under test: commit `c5abb414` (`Validate synthetic AtlasEM to Dura handoff`).
+
+The broader command above was rerun with
+`tests/test_atlas_em_synthetic_full_handoff.py` added. Result: **44 passed, 3
+expected RAS orientation warnings in 6.35 s**. The new synthetic descriptor
+case composes both registration stages, fixed-prior EM, native RAS NIfTI
+restoration, and one selected Dura pass. Iteration limits are intentionally
+one for this small phantom; this does not test selected-atlas parity or natural
+convergence. The exact end-to-end command and evidence limits are in
+[`atlasem-to-dura-full-synthetic-2026-10-16.md`](atlasem-to-dura-full-synthetic-2026-10-16.md).
