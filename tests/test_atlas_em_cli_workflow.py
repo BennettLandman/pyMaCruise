@@ -46,17 +46,21 @@ def test_atlasem_run_cli_executes_synthetic_descriptor_workflow(tmp_path: Path) 
     radius = np.sqrt((x - 5.5) ** 2 + (y - 5.5) ** 2 + (z - 5.5) ** 2)
     t1_data = np.where(radius < 4.6, 0.35 + 0.025 * x + 0.015 * y, 0.0).astype(np.float32)
     t1_path = tmp_path / "t1.nii.gz"
+    mask_path = tmp_path / "brain_mask.nii.gz"
     nib.save(nib.Nifti1Image(t1_data, np.eye(4)), t1_path)
+    nib.save(nib.Nifti1Image((radius < 4.6).astype(np.uint8), np.eye(4)), mask_path)
     descriptor = _write_synthetic_descriptor(tmp_path)
     output = tmp_path / "out"
     provenance = tmp_path / "run.json"
 
     status = main(
         [
-            "atlasem-run", "--t1", str(t1_path), "--descriptor", str(descriptor),
+            "atlasem-run", "--t1", str(t1_path), "--brain-mask", str(mask_path),
+            "--descriptor", str(descriptor),
             "--output-dir", str(output), "--crop-border", "2", "--levels", "2",
             "--initial-registration-iterations", "1", "--post-recrop-registration-iterations", "1",
-            "--max-em-iterations", "1", "--provenance", str(provenance),
+            "--max-em-iterations", "1", "--max-dura-iterations", "1",
+            "--provenance", str(provenance),
         ]
     )
 
@@ -64,6 +68,10 @@ def test_atlasem_run_cli_executes_synthetic_descriptor_workflow(tmp_path: Path) 
     expected = {
         "atlasem_memberships.nii.gz", "atlasem_segmentation.nii.gz",
         "atlasem_internal_mask.nii.gz", "atlasem_dura_inputs.nii.gz",
+        "prelesion_dura_inputs.nii.gz", "prelesion_dura_segmentation.nii.gz",
+        "dura_stripped_t1.nii.gz", "dura_corrected_white_matter.nii.gz",
+        "dura_corrected_gray_matter.nii.gz", "dura_brain_mask_level_set.nii.gz",
+        "dura_brain_mask.nii.gz", "dura_wm_topology.nii.gz", "dura_gm_topology.nii.gz",
     }
     assert {path.name for path in output.iterdir()} == expected
     assert all(nib.aff2axcodes(nib.load(str(output / name)).affine) == ("R", "A", "S") for name in expected)
@@ -71,3 +79,4 @@ def test_atlasem_run_cli_executes_synthetic_descriptor_workflow(tmp_path: Path) 
     manifest = json.loads(provenance.read_text(encoding="utf-8"))
     assert manifest["command"] == "atlasem-run"
     assert manifest["parameters"]["em_iterations_completed"] == 1
+    assert manifest["parameters"]["dura_outer_passes_completed"] == 1

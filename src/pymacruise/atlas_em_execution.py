@@ -39,6 +39,10 @@ from pymacruise.atlas_em_registration import (
     initialize_register_recrop_register_atlas_em_from_descriptor,
 )
 from pymacruise.image_io import normalize_image_to_ras, save_nifti_ras
+from pymacruise.plus_atlas_em_dura import (
+    AtlasEMPreLesionDuraResult,
+    run_atlas_em_prelesion_dura,
+)
 
 
 @dataclass(frozen=True)
@@ -220,16 +224,18 @@ def save_atlas_em_native_nifti_products(
 
 @dataclass(frozen=True)
 class AtlasEMWorkflowResult:
-    """Restartable command result and the primary AtlasEM execution products."""
+    """Command result for descriptor AtlasEM execution and its Dura handoff."""
 
     registration: AtlasEMTwoStageRegistrationResult
     execution: AtlasEMRegisteredExecutionResult
     products: AtlasEMNiftiProducts
+    prelesion_dura: AtlasEMPreLesionDuraResult
     output_paths: dict[str, Path]
 
 
 def run_atlas_em_descriptor_workflow(
     t1_image: nib.spatialimages.SpatialImage,
+    brain_mask_image: nib.spatialimages.SpatialImage,
     descriptor_path: str | Path,
     output_directory: str | Path,
     *,
@@ -242,14 +248,15 @@ def run_atlas_em_descriptor_workflow(
     max_em_iterations: int = 99,
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
+    max_dura_iterations: int = 5,
 ) -> AtlasEMWorkflowResult:
     """Run the currently supported one-channel descriptor AtlasEM workflow.
 
     This composes source-profiled intensity normalization, crop and initial
     memberships, both rigid-registration stages with recrop, fixed-prior EM,
-    native-grid RAS restoration, and compressed NIfTI persistence. It does not
-    run the subsequent Dura evolution or claim optimizer parity for the
-    selected MIPAV plugin.
+    native-grid RAS restoration, and the selected pre-LesionTOADS Dura stage
+    using the required T1-grid brain mask. It does not claim direct optimizer
+    parity for the selected MIPAV plugin.
     """
     t1 = normalize_image_to_ras(t1_image, source_name="AtlasEM T1")
     if len(t1.shape) != 3:
@@ -294,4 +301,31 @@ def run_atlas_em_descriptor_workflow(
     )
     products = restore_atlas_em_native_nifti_products(t1, registration, execution)
     output_paths = save_atlas_em_native_nifti_products(products, output_directory)
-    return AtlasEMWorkflowResult(registration, execution, products, output_paths)
+    prelesion_dura = run_atlas_em_prelesion_dura(
+        t1,
+        products.memberships,
+        brain_mask_image,
+        execution.class_names,
+        max_iterations=max_dura_iterations,
+    )
+    destination = Path(output_directory)
+    dura_products = {
+        "prelesion_dura_inputs": prelesion_dura.products,
+        "prelesion_dura_segmentation": nib.Nifti1Image(
+            np.asarray(prelesion_dura.segmentation, dtype=np.int8),
+            t1.affine,
+            header=t1.header.copy(),
+        ),
+        "dura_stripped_t1": prelesion_dura.dura.stripped_t1,
+        "dura_corrected_white_matter": prelesion_dura.dura.corrected_white_matter,
+        "dura_corrected_gray_matter": prelesion_dura.dura.corrected_gray_matter,
+        "dura_brain_mask_level_set": prelesion_dura.dura.brain_mask_level_set,
+        "dura_brain_mask": prelesion_dura.dura.brain_mask,
+        "dura_wm_topology": prelesion_dura.dura.wm_topology,
+        "dura_gm_topology": prelesion_dura.dura.gm_topology,
+    }
+    for name, image in dura_products.items():
+        output_paths[name] = save_nifti_ras(image, destination / f"{name}.nii.gz")
+    return AtlasEMWorkflowResult(
+        registration, execution, products, prelesion_dura, output_paths
+    )

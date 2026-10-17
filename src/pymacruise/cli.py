@@ -236,12 +236,14 @@ def build_parser() -> argparse.ArgumentParser:
         "atlasem-run",
         help="run descriptor-driven AtlasEM registration, EM and RAS product export",
         description=(
-            "Run the supported single-channel AtlasEM workflow from a T1 .nii.gz and a descriptor "
-            "whose referenced atlas payloads are compressed NIfTI files. This produces native-grid "
-            "RAS AtlasEM products; it does not run Dura evolution or establish optimizer parity."
+            "Run the supported single-channel AtlasEM workflow from a T1 .nii.gz, matching brain "
+            "mask, and descriptor whose referenced atlas payloads are compressed NIfTI files. "
+            "This produces native-grid RAS AtlasEM and pre-LesionTOADS Dura products; direct "
+            "optimizer parity is not established."
         ),
     )
     atlasem_run.add_argument("--t1", required=True, type=Path)
+    atlasem_run.add_argument("--brain-mask", required=True, type=Path)
     atlasem_run.add_argument("--descriptor", required=True, type=Path)
     atlasem_run.add_argument("--output-dir", required=True, type=Path)
     atlasem_run.add_argument("--modality", default="T1_MPRAGE")
@@ -253,6 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
     atlasem_run.add_argument("--max-em-iterations", type=int, default=99)
     atlasem_run.add_argument("--max-membership-change", type=float, default=0.01)
     atlasem_run.add_argument("--smoothing", type=float, default=10.0)
+    atlasem_run.add_argument("--max-dura-iterations", type=int, default=5)
     _add_provenance_option(atlasem_run)
 
     cerebellum = commands.add_parser(
@@ -1650,6 +1653,7 @@ def main(argv: list[str] | None = None) -> int:
 
         result = run_atlas_em_descriptor_workflow(
             _load_nifti_gz(args.t1),
+            _load_nifti_gz(args.brain_mask),
             args.descriptor,
             args.output_dir,
             modality=args.modality,
@@ -1661,6 +1665,7 @@ def main(argv: list[str] | None = None) -> int:
             max_em_iterations=args.max_em_iterations,
             max_membership_change=args.max_membership_change,
             smoothing=args.smoothing,
+            max_dura_iterations=args.max_dura_iterations,
         )
         for path in result.output_paths.values():
             print(f"Wrote {path}")
@@ -1674,16 +1679,18 @@ def main(argv: list[str] | None = None) -> int:
             "max_em_iterations": args.max_em_iterations,
             "max_membership_change": args.max_membership_change,
             "smoothing": args.smoothing,
+            "max_dura_iterations": args.max_dura_iterations,
             "em_iterations_completed": result.execution.iterations.iterations,
+            "dura_outer_passes_completed": result.prelesion_dura.dura.evolution.completed_outer_passes,
         }
         _write_provenance(
             args.provenance,
             command=args.command,
-            inputs={"t1": args.t1, "atlas_descriptor": args.descriptor},
+            inputs={"t1": args.t1, "brain_mask": args.brain_mask, "atlas_descriptor": args.descriptor},
             parameters=parameters,
             outputs=result.output_paths,
         )
-        print("AtlasEM descriptor workflow complete (single-channel support).")
+        print("AtlasEM and pre-LesionTOADS Dura workflow complete (single-channel support).")
     elif args.command == "atlasem-prelesion-dura":
         try:
             class_names = json.loads(args.class_names)
