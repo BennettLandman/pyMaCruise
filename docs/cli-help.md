@@ -212,6 +212,103 @@ The Python API returns source orientation codes for the three inputs. The full
 workflow manifest will also record source orientations and conversions when
 P34/P42a workflow orchestration is implemented.
 
+## `pymacruise atlasem-atlas-inventory`
+
+```text
+pymacruise atlasem-atlas-inventory --descriptor atlas.txt
+```
+
+This reads descriptor metadata without loading image voxels. The report lists
+the structure order, referenced topology/shape/intensity files, and whether
+each referenced image is present as `.nii.gz`. It is useful for checking an
+atlas bundle before a run; it does not establish that the selected AtlasEM
+atlas is available or validate payload image contents.
+
+## `pymacruise atlasem-prelesion-dura`
+
+```text
+pymacruise atlasem-prelesion-dura --t1 T1.nii.gz \
+  --memberships MEMBERSHIPS.nii.gz --brain-mask BrainMask.nii.gz \
+  --class-names '["BG","CSF","GM","WM"]' --output-dir OUTPUT_DIR \
+  [--max-iterations 5] [--provenance run.json]
+```
+
+### Inputs
+
+| Option | Required | Description and assumptions |
+|---|---:|---|
+| `--t1 PATH` | Yes | 3D scalar T1 NIfTI; this is the source of the output grid and voxel values. |
+| `--memberships PATH` | Yes | 4D float membership NIfTI with classes on the final axis. Its spatial grid must match the T1 physical grid after RAS orientation normalization. |
+| `--brain-mask PATH` | Yes | 3D binary mask matching the T1 physical grid. The mask is required and is not resampled. |
+| `--class-names JSON` | Yes | JSON string array in membership-channel order. Names control selected GM/WM/Dura output mapping. |
+| `--output-dir PATH` | Yes | Destination for compressed RAS NIfTI products and the restart manifest. |
+| `--max-iterations COUNT` | No | Maximum selected Dura outer passes; default is 5. |
+| `--provenance PATH` | No | Optional JSON sidecar recording inputs, effective parameters, and outputs. |
+
+The command consumes existing AtlasEM memberships. It does not load an atlas,
+estimate registration, or run the AtlasEM EM loop. Non-RAS images are
+reoriented with a warning. The output grid matches the input T1 in RAS.
+
+### Outputs
+
+The command writes `prelesion_dura_inputs.nii.gz`,
+`prelesion_dura_segmentation.nii.gz`, `dura_stripped_t1.nii.gz`,
+`dura_corrected_white_matter.nii.gz`, `dura_corrected_gray_matter.nii.gz`,
+`dura_brain_mask_level_set.nii.gz`, `dura_brain_mask.nii.gz`,
+`dura_wm_topology.nii.gz`, and `dura_gm_topology.nii.gz`. All are compressed
+NIfTI on the native T1 grid in RAS. `run.json` records hash-verified AtlasEM
+output and Dura stages for resume.
+
+## `pymacruise atlasem-run`
+
+```text
+pymacruise atlasem-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
+  --descriptor atlas.txt --output-dir OUTPUT_DIR [--modality T1_MPRAGE] \
+  [--background-ratio 0.0] [--crop-border 10] [--levels 4] \
+  [--initial-registration-iterations 50] \
+  [--post-recrop-registration-iterations 1] [--max-em-iterations 99] \
+  [--max-membership-change 0.01] [--smoothing 10.0] \
+  [--max-dura-iterations 5] [--resume | --overwrite] [--provenance run.json]
+```
+
+### Inputs and assumptions
+
+| Option | Required | Description and assumptions |
+|---|---:|---|
+| `--t1 PATH` | Yes | 3D scalar T1 NIfTI. AtlasEM currently supports one T1 channel. |
+| `--brain-mask PATH` | Yes | Binary brain mask on the T1 physical grid; required in place of BET/SPECTRE and never resampled. |
+| `--descriptor PATH` | Yes | AtlasEM structure descriptor. Every referenced topology and shape payload must be available as compressed NIfTI; descriptor class order determines membership order. |
+| `--output-dir PATH` | Yes | Destination for AtlasEM and pre-LesionTOADS Dura products and the stage manifest. |
+| `--modality NAME` | No | Intensity-atlas modality key; default is `T1_MPRAGE`. |
+| `--background-ratio VALUE` | No | Source preprocessing background ratio; default is `0.0`. |
+| `--crop-border VOXELS` | No | Padding added to the selected AtlasEM crop; default is 10 voxels. |
+| `--levels COUNT` | No | Number of registration pyramid levels; default is 4. |
+| `--initial-registration-iterations COUNT` | No | Iteration cap per initial pyramid level; default is 50. |
+| `--post-recrop-registration-iterations COUNT` | No | Iteration cap for the full-resolution recropped rigid stage; default is 1. |
+| `--max-em-iterations COUNT` | No | Fixed-prior EM iteration cap; default is 99. |
+| `--max-membership-change VALUE` | No | EM stop threshold for maximum membership change; default is 0.01. |
+| `--smoothing VALUE` | No | Selected membership smoothing parameter; default is 10.0. |
+| `--max-dura-iterations COUNT` | No | Maximum pre-LesionTOADS Dura outer passes; default is 5. |
+| `--resume` | No | Reuse hash-verified stages when inputs, settings, assets, and implementation match. |
+| `--overwrite` | No | Start a new run by replacing the run manifest and expected product files in the output directory. |
+| `--provenance PATH` | No | Optional JSON sidecar recording input hashes, settings, stage counts, and outputs. |
+
+All spatial outputs are written as native-grid RAS `.nii.gz`. Non-RAS input
+orientations produce visible warnings and are normalized to RAS. The command
+executes the supported single-channel descriptor-driven AtlasEM registration,
+fixed-prior EM, output generation, and pre-LesionTOADS Dura handoff. Current
+execution uses synthetic descriptor cases; the selected `ibsr8obj` descriptor
+and payload are unavailable, and direct Java optimizer parity remains open.
+
+### Outputs
+
+AtlasEM products are `atlasem_memberships.nii.gz`,
+`atlasem_segmentation.nii.gz`, `atlasem_internal_mask.nii.gz`, and
+`atlasem_dura_inputs.nii.gz`. The Dura stage writes the nine products listed
+under `atlasem-prelesion-dura`. The command also writes a hash-checked
+`run.json` stage manifest; `--resume` verifies and skips valid AtlasEM/Dura
+stages independently.
+
 ## Other currently exposed commands
 
 - `pymacruise --help` lists the current command groups and their required
