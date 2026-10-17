@@ -1,9 +1,12 @@
-"""AtlasEM rigid-registration preparation backed by shared TOADS kernels.
+"""AtlasEM rigid registration backed by shared numerical kernels.
 
 AtlasEM's ``DemonToadDeformableAtlas.registerShapesPyramid`` builds its
 membership and per-class shape pyramids with ``ImageFunctions.subsample``.
-The array operation is shared with the already source-checked TOADS pyramid
-builder; the optimizer and transform update remain separate AtlasEM work.
+The array operation and optimizer kernels are shared with the TOADS
+registration package where behavior matches. The selected AtlasEM
+``DemonToadDeformableAtlas`` class is independently executed by a direct Java
+harness for synthetic single-scale and pyramid cases; selected atlas assets
+and whole-stage integration remain separate validation gaps.
 """
 
 from __future__ import annotations
@@ -196,10 +199,12 @@ def register_atlas_em_rigid_pyramid(
     source class's formula (the adjacent MultipleToad source has a distinct
     historical Hessian/gradient mix-up).
 
-    The wrapper-level settings and reused numerical kernels are source-backed;
-    this API is not yet validated end-to-end against a Java execution of
-    ``DemonToadDeformableAtlas``. In particular, atlas descriptor loading and
-    registration output parity still require that direct class comparison.
+    The selected Java ``DemonToadDeformableAtlas`` class has been executed
+    directly on synthetic arrays, and its six final float32 transform
+    parameters match this pyramid adapter bit for bit at tested iteration
+    caps. This is optimizer parity only: it does not validate descriptor
+    payload loading, selected ``ibsr8obj`` resources, or the complete
+    AtlasEM initialization/registration/recrop stage on human data.
     """
     if not isinstance(registration_iterations, int) or registration_iterations < 0:
         raise ValueError("registration_iterations must be a non-negative integer")

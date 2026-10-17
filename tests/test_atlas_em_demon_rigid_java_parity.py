@@ -67,10 +67,11 @@ def test_atlas_em_rigid_update_matches_selected_demon_class(
     )
     assert result.transform.dtype == np.float32
     np.testing.assert_array_equal(result.transform, java_transform)
+    assert np.any(result.transform != np.zeros(6, dtype=np.float32))
     assert 1 <= len(result.iterations) <= iterations
 
 
-@pytest.mark.parametrize("iterations", (1, 2))
+@pytest.mark.parametrize("iterations", (1, 2, 5))
 def test_atlas_em_pyramid_matches_selected_demon_class(
     tmp_path: Path, iterations: int
 ) -> None:
@@ -119,4 +120,5 @@ def test_atlas_em_pyramid_matches_selected_demon_class(
         registered_classes=np.array([False, True]),
     )
     np.testing.assert_array_equal(result.transform, java_transform)
+    assert np.any(result.transform != np.zeros(6, dtype=np.float32))
     assert len(result.levels) == 2
