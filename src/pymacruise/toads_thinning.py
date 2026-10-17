@@ -184,24 +184,7 @@ class ToadsGrowingQueueInitialization:
     queue: ToadsPriorityHeap4D
 
 
-def toads_initialize_growing_queue(
-    skeleton: ArrayLike,
-    memberships: ArrayLike,
-    ordering: ArrayLike,
-    *,
-    initial_available: ArrayLike | None = None,
-    empty_label: int = -1,
-    zero_threshold: float = 1e-10,
-) -> ToadsGrowingQueueInitialization:
-    """Initialize the selected VandyCRUISE initGrowingLabels queue.
-
-    Interior empty-skeleton voxels begin available for every class; nonempty
-    skeleton voxels begin unavailable. A candidate is then inserted for each
-    available class touching that class on a six-face, using source priority
-    ordering + maxMembershipRatio in a min-heap. Existing border availability
-    is preserved, but it must be false so the source neighbor reads remain
-    in bounds.
-    """
+def _prepare_growing_initialization(skeleton, memberships, ordering, initial_available, empty_label, zero_threshold):
     skel = np.asarray(skeleton)
     mems = np.asarray(memberships, dtype=np.float32)
     orderings = np.asarray(ordering, dtype=np.float32)
@@ -239,6 +222,31 @@ def toads_initialize_growing_queue(
     if np.any(available[border]):
         raise ValueError("initial border availability must be false for source-safe six-face reads")
 
+    return skel, mems, orderings, available, zero
+
+
+def toads_initialize_growing_queue(
+    skeleton: ArrayLike,
+    memberships: ArrayLike,
+    ordering: ArrayLike,
+    *,
+    initial_available: ArrayLike | None = None,
+    empty_label: int = -1,
+    zero_threshold: float = 1e-10,
+) -> ToadsGrowingQueueInitialization:
+    """Initialize the selected VandyCRUISE initGrowingLabels queue.
+
+    Interior empty-skeleton voxels begin available for every class; nonempty
+    skeleton voxels begin unavailable. A candidate is then inserted for each
+    available class touching that class on a six-face, using source priority
+    ordering + maxMembershipRatio in a min-heap. Existing border availability
+    is preserved, but it must be false so the source neighbor reads remain
+    in bounds.
+    """
+    skel, mems, orderings, available, zero = _prepare_growing_initialization(
+        skeleton, memberships, ordering, initial_available, empty_label, zero_threshold
+    )
+    classes = mems.shape[-1]
     nx, ny, nz = skel.shape
     updated_skeleton = skel.astype(np.int16, copy=True)
     queue = ToadsPriorityHeap4D(nx * ny + ny * nz + nz * nx, "min")
@@ -434,6 +442,7 @@ def toads_propagate_growing(
     record_events: bool = True,
     progress_callback: Callable[[str], None] | None = None,
     progress_interval: int = 100_000,
+    backend: str = "numba",
 ) -> ToadsGrowingPass:
     """Initialize and exhaust the selected ``propagateGrowing`` min-heap.
 
@@ -444,6 +453,8 @@ def toads_propagate_growing(
     memory. It is not full TOADS
     segmentation or atlas registration.
     """
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
     labels = np.asarray(segmentation)
     source_skeleton = np.asarray(skeleton)
     mems = np.asarray(memberships, dtype=np.float32)
@@ -461,6 +472,41 @@ def toads_propagate_growing(
         raise ValueError("class_volumes must be finite and match membership classes")
     if isinstance(progress_interval, bool) or not isinstance(progress_interval, int) or progress_interval < 1:
         raise ValueError("progress_interval must be a positive integer")
+    if backend == "numba" and not record_events:
+        from .toads_growing_compiled import initialize_growing, grow_queue
+        from .toads_critical_lut import load_critical186_lut
+
+        skel, mems, orderings, avail, zero = _prepare_growing_initialization(
+            skeleton, memberships, ordering, initial_available, empty_label, zero_threshold
+        )
+        # Keep the Python heap's signed-short coordinate contract. Unusually
+        # large diagnostic grids retain the reference path.
+        if all(size <= 32768 for size in labels.shape) and mems.shape[-1] <= 32768:
+            current_labels = labels.astype(np.int16, copy=True)
+            current_skel = skel.astype(np.int16, copy=True)
+            current_order = orderings.copy()
+            current_volumes = volumes.copy()
+            values, payloads, size = initialize_growing(
+                current_skel, mems, current_order, avail, empty_label, zero
+            )
+            if progress_callback is not None:
+                progress_callback(f"growing queue started with {size} events")
+            processed = 0
+            lut = load_critical186_lut()
+            while size:
+                values, payloads, size, count = grow_queue(
+                    current_labels, current_skel, mems, avail, current_order,
+                    current_volumes, values, payloads, size, empty_label, zero,
+                    lut, progress_interval if progress_callback is not None else np.iinfo(np.int64).max,
+                )
+                processed += count
+                if progress_callback is not None and processed % progress_interval == 0:
+                    progress_callback(f"growing queue processed {processed} events; {size} remain")
+            if progress_callback is not None:
+                progress_callback(f"growing queue complete after {processed} events")
+            return ToadsGrowingPass(
+                current_labels, current_skel, avail, current_order, current_volumes, (), ()
+            )
     initialized = toads_initialize_growing_queue(
         source_skeleton,
         memberships,

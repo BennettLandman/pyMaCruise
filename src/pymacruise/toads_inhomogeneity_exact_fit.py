@@ -105,6 +105,7 @@ def fit_toads_exact_chebyshev_field(
     background_class_index: int = 0,
     degree: int = 1,
     class_types: Sequence[str] | None = None,
+    backend: str = "numba",
 ) -> ToadsExactChebyshevFieldFit:
     """Refit an attached global field from the complete class-membership map.
 
@@ -125,6 +126,8 @@ def fit_toads_exact_chebyshev_field(
     centroids are read-only inputs. A singular or nonfinite system raises
     ``ValueError`` instead of returning a nonfinite correction.
     """
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
     image = np.asarray(image_values, dtype=np.float32)
     mem = np.asarray(memberships, dtype=np.float32)
     seg = np.asarray(segmentation)
@@ -183,42 +186,50 @@ def fit_toads_exact_chebyshev_field(
         raise ValueError("background class type must be 'mask'")
 
     nx, ny, nz = dimensions
-    for x in range(0, nx, 3):
-        for y in range(0, ny, 3):
-            for z in range(0, nz, 3):
-                if not mask[x, y, z]:
-                    continue
-                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
-                for klass in range(mem.shape[-1]):
-                    if klass == background:
+    if backend == "numba":
+        from .toads_field_compiled import accumulate_field
+        optimized_classes = np.asarray([group in power_table for group in groups], dtype=np.bool_)
+        normal, rhs = accumulate_field(
+            image, mem, mask, centers, field_values, degree, background, optimized_classes
+        )
+    else:
+        nx, ny, nz = dimensions
+        for x in range(0, nx, 3):
+            for y in range(0, ny, 3):
+                for z in range(0, nz, 3):
+                    if not mask[x, y, z]:
                         continue
-                    corrected = np.float32(field_values[x, y, z] * image[x, y, z])
-                    residual = np.float32(corrected - centers[klass])
-                    distance = np.float32(residual * residual)
-                    optimized_weight = np.float32(1.0)
-                    if distance > np.float32(1e-30) and groups[klass] in power_table:
-                        low, high, exponent = power_table[groups[klass]]
-                        powered = toads_powertable_lookup(
-                            np.asarray(distance, dtype=np.float32),
-                            exponent,
-                            cached_exponent=exponent,
-                            minimum=low,
-                            maximum=high,
-                        )
-                        optimized_weight = np.float32(float(powered) / float(distance))
+                    basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
+                    for klass in range(mem.shape[-1]):
+                        if klass == background:
+                            continue
+                        corrected = np.float32(field_values[x, y, z] * image[x, y, z])
+                        residual = np.float32(corrected - centers[klass])
+                        distance = np.float32(residual * residual)
+                        optimized_weight = np.float32(1.0)
+                        if distance > np.float32(1e-30) and groups[klass] in power_table:
+                            low, high, exponent = power_table[groups[klass]]
+                            powered = toads_powertable_lookup(
+                                np.asarray(distance, dtype=np.float32),
+                                exponent,
+                                cached_exponent=exponent,
+                                minimum=low,
+                                maximum=high,
+                            )
+                            optimized_weight = np.float32(float(powered) / float(distance))
 
-                    membership_squared = np.float32(mem[x, y, z, klass] * mem[x, y, z, klass])
-                    vector_term = np.float32(membership_squared * optimized_weight)
-                    vector_term = np.float32(vector_term * image[x, y, z])
-                    vector_term = np.float32(vector_term * centers[klass])
-                    matrix_term = np.float32(membership_squared * optimized_weight)
-                    matrix_term = np.float32(matrix_term * image[x, y, z])
-                    matrix_term = np.float32(matrix_term * image[x, y, z])
-                    for row in range(n_parameters):
-                        rhs[row] += float(np.float32(vector_term * basis[row]))
-                        row_term = np.float32(matrix_term * basis[row])
-                        for column in range(n_parameters):
-                            normal[row, column] += float(np.float32(row_term * basis[column]))
+                        membership_squared = np.float32(mem[x, y, z, klass] * mem[x, y, z, klass])
+                        vector_term = np.float32(membership_squared * optimized_weight)
+                        vector_term = np.float32(vector_term * image[x, y, z])
+                        vector_term = np.float32(vector_term * centers[klass])
+                        matrix_term = np.float32(membership_squared * optimized_weight)
+                        matrix_term = np.float32(matrix_term * image[x, y, z])
+                        matrix_term = np.float32(matrix_term * image[x, y, z])
+                        for row in range(n_parameters):
+                            rhs[row] += float(np.float32(vector_term * basis[row]))
+                            row_term = np.float32(matrix_term * basis[row])
+                            for column in range(n_parameters):
+                                normal[row, column] += float(np.float32(row_term * basis[column]))
 
     full_volume = np.float32(nx * ny * nz)
     rhs /= float(full_volume)
@@ -232,27 +243,31 @@ def fit_toads_exact_chebyshev_field(
     if not np.isfinite(coefficients).all():
         raise ValueError("source normal system produced nonfinite coefficients")
 
-    mean = np.float32(0.0)
-    count = np.float32(0.0)
-    for x in range(nx):
-        for y in range(ny):
-            for z in range(nz):
-                if not mask[x, y, z]:
-                    continue
-                basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
-                value = np.float32(0.0)
-                for index in range(n_parameters):
-                    value = np.float32(float(coefficients[index]) * float(basis[index]) + float(value))
-                field_values[x, y, z] = value
-                mean = np.float32(mean + value)
-                count = np.float32(count + np.float32(1.0))
-    mean = np.float32(mean / count)
-    offset = np.float32(np.float32(1.0) - mean)
-    for x in range(nx):
-        for y in range(ny):
-            for z in range(nz):
-                if mask[x, y, z]:
-                    field_values[x, y, z] = np.float32(field_values[x, y, z] + offset)
+    if backend == "numba":
+        from .toads_field_compiled import evaluate_field
+        evaluate_field(field_values, mask, coefficients, degree)
+    else:
+        mean = np.float32(0.0)
+        count = np.float32(0.0)
+        for x in range(nx):
+            for y in range(ny):
+                for z in range(nz):
+                    if not mask[x, y, z]:
+                        continue
+                    basis = toads_chebyshev_basis((x, y, z), dimensions, degree=degree)
+                    value = np.float32(0.0)
+                    for index in range(n_parameters):
+                        value = np.float32(float(coefficients[index]) * float(basis[index]) + float(value))
+                    field_values[x, y, z] = value
+                    mean = np.float32(mean + value)
+                    count = np.float32(count + np.float32(1.0))
+        mean = np.float32(mean / count)
+        offset = np.float32(np.float32(1.0) - mean)
+        for x in range(nx):
+            for y in range(ny):
+                for z in range(nz):
+                    if mask[x, y, z]:
+                        field_values[x, y, z] = np.float32(field_values[x, y, z] + offset)
 
     return ToadsExactChebyshevFieldFit(field_values, coefficients, normal, rhs, mask.copy())
 

@@ -91,7 +91,7 @@ def toads_refresh_relation_state(
     )
 
 
-def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8]:
+def toads_closest_labels(segmentation: ArrayLike, limit: int, *, backend: str = "numba") -> NDArray[np.int8]:
     """Build the selected source's four-slot closest-label map.
 
     This implements ``MultipleToadSegmentation.computeClosestLabels``. Slot
@@ -113,6 +113,12 @@ def toads_closest_labels(segmentation: ArrayLike, limit: int) -> NDArray[np.int8
         raise ValueError("segmentation labels must fit the nonnegative Java byte class range")
     if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit < 0:
         raise ValueError("limit must be a nonnegative integer")
+
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
+    if backend == "numba":
+        from .toads_relations_compiled import closest_labels
+        return closest_labels(labels.astype(np.int8, copy=False), int(limit))
 
     class_labels = labels.astype(np.int8, copy=False)
     closest = np.full((*labels.shape, 4), _EMPTY, dtype=np.int8)
@@ -293,6 +299,7 @@ def toads_compute_relations(
     segmentation: ArrayLike,
     memberships: ArrayLike,
     limit: int,
+    *, backend: str = "numba",
 ) -> ToadsRelationList:
     """Build and diffuse the selected exact-membership TOADS relation map.
 
@@ -315,6 +322,15 @@ def toads_compute_relations(
         raise ValueError("limit must be a nonnegative integer")
 
     relation = toads_build_relation_list(labels, classes)
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
+    if backend == "numba":
+        from .toads_relations_compiled import diffuse_relations
+        relation_map, iterations = diffuse_relations(
+            relation.relation_map, relation.relation_membership, membership_values, int(limit)
+        )
+        return ToadsRelationList(relation_map, relation.relation_membership, iterations)
+
     relation_map = relation.relation_map.copy()
     table = relation.relation_membership
     nx, ny, nz = labels.shape
@@ -367,6 +383,7 @@ def toads_update_boundary_distances(
     segmentation: ArrayLike,
     boundary_distances: ArrayLike,
     limit: int,
+    *, backend: str = "numba",
 ) -> NDArray[np.int8]:
     """Apply the selected source's class-wise TOADS boundary-distance update.
 
@@ -397,6 +414,12 @@ def toads_update_boundary_distances(
         raise ValueError("boundary_distances must fit Java signed-byte range")
     if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit < 0:
         raise ValueError("limit must be a nonnegative integer")
+
+    if backend not in ("numba", "python"):
+        raise ValueError("backend must be 'numba' or 'python'")
+    if backend == "numba":
+        from .toads_relations_compiled import boundary_distances
+        return boundary_distances(labels, distances.astype(np.int8, copy=False))
 
     class_labels = labels.astype(np.int64, copy=False)
     output = distances.astype(np.int8, copy=True)
