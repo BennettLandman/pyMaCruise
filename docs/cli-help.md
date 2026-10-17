@@ -86,7 +86,16 @@ closest-point and level-set thickness operations are described in
 ```text
 pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
   --maseg MaSeg.nii.gz --atlas-descriptor ATLAS.txt --output-dir RUN_DIR \
-  [--regrid-inputs | --no-regrid-inputs] [--resume]
+  [--regrid-inputs | --no-regrid-inputs] [--resume] \
+  [--registration-levels N] [--registration-iterations N] \
+  [--post-refresh-registration-iterations N] [--registration-max-iterations N] \
+  [--toads-iterations N] [--dura-iterations N] \
+  [--dura-membership-level VALUE] [--crop-edge-width N] \
+  [--ace-diffusion-iterations N] [--ace-use-updated-csf-in-ace {0,1,2,3}] \
+  [--gvf-iterations N] [--tgdm-iterations N] \
+  [--tgdm-initial-iterations N] [--tgdm-inner-iterations N] \
+  [--tgdm-central-iterations N] [--wm-iso-level VALUE] \
+  [--source-faithful-refinement | --no-source-faithful-refinement]
 ```
 
 Regridding is recommended and enabled by default. It resamples an oblique RAS
@@ -99,25 +108,6 @@ input is reoriented to the closest RAS axis order using only axis permutations
 and flips, while oblique direction cosines are ignored. No interpolation is
 performed; the manifest records this geometry mode. The run uses the required
 user-provided T1-grid mask and does not invoke BET or SPECTRE.
-
-## `pymacruise plus-full-run`
-
-The full plus workflow accepts the same `[--regrid-inputs | --no-regrid-inputs]`
-option, recommended and enabled by default. When T1 is oblique, it creates a
-shared orthogonal RAS grid for T1, brain mask, and MaSeg under
-`resources/regridded-inputs`; T1 uses linear interpolation and the discrete
-inputs use nearest neighbor. FLAIR stays on its input grid and is registered
-by the plus preprocessing stage. With `--no-regrid-inputs`, T1, mask, MaSeg,
-and FLAIR are each reoriented by axis permutations/flips to closest RAS;
-oblique direction cosines are ignored and no regridding interpolation is done.
-
-Native Dura transfer defaults to `--dura-transfer-mode physical-affine`,
-which maps source values to the full T1 grid using physical RAS coordinates.
-Use `--dura-transfer-mode jist-unchanged` only to reproduce selected JIST
-behavior: preserve source extents and values, assign the reference header, and
-apply full-grid crop bounds with zero padding. The selected synthetic case
-shows substantial downstream map and surface changes under this mode; it is
-recorded in run signatures and manifests.
 
 ## `pymacruise base-surface-thickness`
 
@@ -166,7 +156,8 @@ pymacruise segmentation-refine --segmentation MaSeg.nii.gz \
   [--inner-coefficient-mm VALUE] [--outer-coefficient-mm VALUE] \
   [--inner-central-coefficient-mm VALUE] \
   [--outer-central-coefficient-mm VALUE] [--neighborhood-radius VOXELS] \
-  [--max-sweeps COUNT] [--no-deal-with-central] [--no-source-faithful] \
+  [--max-sweeps COUNT] [--deal-with-central | --no-deal-with-central] \
+  [--source-faithful | --no-source-faithful] \
   [--provenance run.json]
 ```
 
@@ -309,21 +300,52 @@ under `atlasem-prelesion-dura`. The command also writes a hash-checked
 `run.json` stage manifest; `--resume` verifies and skips valid AtlasEM/Dura
 stages independently.
 
+## `pymacruise calculate`
+
+```text
+pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz \
+  --operation OP --output RESULT.nii.gz [--provenance run.json]
+```
+
+Applies a voxel-wise N-dimensional array operation after RAS axis orientation.
+Inputs must have identical shapes and physical affines; this command does not
+register or resample. Supported operations are `ADD`, `SUBTRACT`, `MULTIPLY`,
+`DIVIDE`, `MIN`, and `MAX`. Arithmetic is not clamped or intensity-scaled.
+The result is compressed RAS NIfTI, preserving image A's header and promoting
+integer inputs to a floating type to avoid overflow. Division follows NumPy
+IEEE behavior for zero denominators.
+
+## `pymacruise cortical-separation`
+
+```text
+pymacruise cortical-separation --maseg MaSeg.nii.gz --output-dir OUTPUT_DIR
+```
+
+Reads an integer-valued 3D MaSeg label image, reorients non-RAS inputs with a
+warning, and writes the four selected masks `Atlas_GM.nii.gz`,
+`Atlas_WM.nii.gz`, `Atlas_Mask.nii.gz`, and `Atlas_BrainTissueMask.nii.gz` as
+uint8 0/255 RAS images. The selected source intentionally defines
+`Atlas_Mask` from the WM label set.
+
+## `pymacruise base-resume-from-toads`
+
+```text
+pymacruise base-resume-from-toads --source-run SOURCE/run.json \
+  --maseg MaSeg.nii.gz --output-dir DISTINCT_TAIL_DIR [--resume]
+```
+
+Imports a completed, hash-verified source run through its second TOADS stage,
+then resumes the selected BASE tail using the supplied same-grid MaSeg. The
+source run is read-only; tail outputs and their manifest go to the distinct
+output directory. `--resume` reuses compatible verified tail checkpoints.
+Images written by downstream stages use compressed RAS NIfTI. This command
+does not establish a new source TOADS run.
+
 ## Other currently exposed commands
 
 - `pymacruise --help` lists the current command groups and their required
   options.
 - `pymacruise --version` reports the installed package version.
-- `pymacruise cortical-separation --maseg MaSeg.nii.gz --output-dir DIR`
-  writes four RAS-oriented binary `.nii.gz` masks derived from MaSeg labels.
-- `pymacruise calculate --input-a A.nii.gz --input-b B.nii.gz --operation OP
-  --output RESULT.nii.gz` performs the selected generic voxelwise operator;
-  both images must share one physical grid. Supported operations are `ADD`,
-  `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `MIN`, and `MAX` (case-insensitive).
-  Inputs are axis-reoriented to RAS with a warning when needed, and output is
-  `.nii.gz`. Optional `--provenance RUN.json` records the effective operation,
-  paths, software version, and RAS convention.
-
 The base profile's restart behavior and final-output manifest are exercised by
 the synthetic workflow tests; plus-profile source equivalence remains open.
 See
@@ -368,7 +390,8 @@ to run this command. The N4 estimation itself is provided by ANTsPy/ANTs.
 ```text
 pymacruise ace --gray GM.nii.gz --white WM.nii.gz \
   --enhanced GM-enhanced.nii.gz --skeleton ACE-skeleton.nii.gz \
-  --thinned-skeleton ACE-skeleton-thinned.nii.gz [--atlas-csf CSF.nii.gz]
+  --thinned-skeleton ACE-skeleton-thinned.nii.gz [--atlas-csf CSF.nii.gz] \
+  [--diffusion-iterations 25] [--provenance RUN.json]
 ```
 
 Inputs are aligned 3D gray/white matter membership or intensity images; the
@@ -381,7 +404,8 @@ the complete MaCRUISE workflow.
 
 ```text
 pymacruise gvf --input IMAGE.nii.gz --output GVF.nii.gz \
-  [--lambda VALUE] [--max-iterations N] [--solver-tolerance VALUE]
+  [--lambda VALUE] [--max-iterations N] [--solver-tolerance VALUE] \
+  [--provenance RUN.json]
 ```
 
 Reads a finite 3D scalar image and writes a RAS-oriented, component-last
@@ -393,7 +417,8 @@ V-cycles, and absolute maximum-residual threshold 1e-6.
 ```text
 pymacruise tgdm --initial INITIAL.nii.gz --white WM.nii.gz \
   --gray GM.nii.gz --ace-gray GM-ACE.nii.gz --output-dir DIR \
-  [--brain-mask MASK.nii.gz] [--ace-skeleton SKELETON.nii.gz] [--gvf GVF.nii.gz]
+  [--brain-mask MASK.nii.gz] [--ace-skeleton SKELETON.nii.gz] \
+  [--gvf GVF.nii.gz] [--provenance RUN.json]
 ```
 
 The four required finite 3D scalar images and each supplied optional image
@@ -406,7 +431,9 @@ all on the RAS grid. This is the nested TGDM stage, not full TOADS or MaCRUISE.
 
 ```text
 pymacruise dura --t1 T1.nii.gz --white WM.nii.gz --gray GM.nii.gz \
-  --white-mask WM-mask.nii.gz --output-dir DIR [--max-iterations N]
+  --white-mask WM-mask.nii.gz --output-dir DIR [--max-iterations N] \
+  [--membership-level 0.3] [--wm-topology-regularization 0.05] \
+  [--gm-topology-regularization 0.02] [--provenance RUN.json]
 ```
 
 The T1, white/gray membership, and original white-matter mask must be finite
@@ -418,7 +445,8 @@ RAS-oriented `stripped_t1.nii.gz`, `corrected_white_matter.nii.gz`,
 ### `pymacruise surface-extract`
 
 ```text
-pymacruise surface-extract --level-set LEVELSET.nii.gz --output SURFACE.vtk [--level VALUE]
+pymacruise surface-extract --level-set LEVELSET.nii.gz --output SURFACE.vtk \
+  [--level VALUE] [--provenance RUN.json]
 ```
 
 Reads a finite 3D scalar level set and writes a triangular RAS+ millimetre
@@ -429,7 +457,7 @@ frame and units.
 
 ```text
 pymacruise thickness-levelset --inner INNER.nii.gz --outer OUTER.nii.gz \
-  --output THICKNESS.nii.gz [--iso-level VALUE]
+  --output THICKNESS.nii.gz [--iso-level VALUE] [--provenance RUN.json]
 ```
 
 Inputs must share one physical RAS grid. Writes the voxelwise absolute
@@ -441,7 +469,7 @@ deviation, and crossing-voxel count for the selected iso-level (default 0).
 ```text
 pymacruise thickness-surface --inner INNER.vtk --outer OUTER.vtk \
   --inner-output INNER-MEASURED.vtk [--central CENTRAL.vtk \
-  --central-output CENTRAL-MEASURED.vtk]
+  --central-output CENTRAL-MEASURED.vtk] [--provenance RUN.json]
 ```
 
 Inputs must be triangular ASCII legacy VTK with a declared RAS/LPS frame.
@@ -468,6 +496,8 @@ pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
   [--padding 10] [--maximum-iterations 50] \
   [--convergence-threshold 1e-4] [--relation-limit 3] \
   [--maximum-distance 1e-4] [--category-exponents CSF GM WM] \
+  [--source-faithful-nonfinite-registration-trials] \
+  [--preserve-input-axis-order] \
   [--dura-output-dir DURA_INPUTS_DIR] [--provenance run.json]
 ```
 
@@ -481,6 +511,8 @@ pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
 | `--output PATH` | Yes | Native-grid terminal classification, compressed `.nii.gz`; existing output is not overwritten. |
 | `--dura-output-dir PATH` | No | Optional directory for the classification and four source-scaled float32 Dura-removal inputs (CSF, GM, WM fill, WM mask), all restored to native RAS. Existing output collisions are rejected. |
 | Registration and loop options | No | Selected source controls with defaults shown above. Post-refresh alignment defaults to the Java `alignIter=1`; it is separate from startup-pyramid registration iterations and per-loop registration iterations. CSF, GM, and WM exponents default to the atlas `Optimized factors` row (or Java's all-ones defaults when omitted); `--category-exponents` overrides those three values for the single T1 channel. |
+| `--source-faithful-nonfinite-registration-trials` | No | Enable Java-style edge interpolation for NaN registration trials; degenerate inputs can propagate a nonfinite transform. |
+| `--preserve-input-axis-order` | No | Reconstruct axial RAS/LPS voxel order internally for source-compatibility while writing images in RAS. |
 
 ### Output
 
@@ -500,9 +532,9 @@ the current Dura CLI input contract and retain the original T1 as its reference:
 pymacruise toads-loop --t1-n4 T1_N4.nii.gz --brain-mask BrainMask.nii.gz \
   --output Classification.nii.gz --dura-output-dir toads_dura_inputs
 pymacruise dura --t1 T1.nii.gz \
-  --wm-fill toads_dura_inputs/T1_N4_wmfill.nii.gz \
-  --gm toads_dura_inputs/T1_N4_gm.nii.gz \
-  --wm-mask toads_dura_inputs/T1_N4_wmmask.nii.gz \
+  --white toads_dura_inputs/T1_N4_wmfill.nii.gz \
+  --gray toads_dura_inputs/T1_N4_gm.nii.gz \
+  --white-mask toads_dura_inputs/T1_N4_wmmask.nii.gz \
   --output-dir dura_outputs --max-iterations 1
 ```
 
@@ -595,7 +627,9 @@ pymacruise toads-cruise-core --gm Toads2_gm.nii.gz \
   [--segmentation MaSeg.nii.gz --remove-cerebellum] \
   --output-dir cruise_core [--edge-width 5] \
   [--ace-diffusion-iterations 25] [--gvf-lambda 1] \
-  [--gvf-iterations 200] [--tgdm-initial-iterations 6] \
+  [--gvf-iterations 200] [--gvf-solver-tolerance 1e-6] \
+  [--boundary-csf CSF.nii.gz] [--use-updated-csf-in-ace {0,1,2,3}] \
+  [--tgdm-initial-iterations 6] \
   [--tgdm-inner-iterations 4] [--tgdm-central-iterations 7] \
   [--base-preparation-provenance run.json] \
   [--provenance run.json]
@@ -772,54 +806,6 @@ and lesion relation), first-thinning segmentation/skeleton/availability/
 ordering images, a diagnostic summary, and a hash-checked manifest. The
 source-faithful default preserves zero-variance IEEE NaNs; if these make the
 initial objective nonfinite, the manifest records a failed checkpoint and the
-run stops, including counts of nonfinite energy values and memberships plus
-zero-standard-deviation channels. `--finite-zero-variance` enables an explicit stabilization: matching
-centroids with zero deviation have distance zero and nonmatching ones infinite
-distance. The summary records zero-deviation channels and nonfinite membership
-count so this numerical difference remains visible. All outputs use the
-registered RAS grid. This step does not execute later LesionTOADS updates.
-
-## `pymacruise plus-lesion-first-iteration`
-
-```text
-pymacruise plus-lesion-first-iteration \
-  --registered-recrop-manifest registered-recrops.json \
-  --atlas-descriptor LesionTOADS-atlas.txt --output-dir first-iteration \
-  [--iterations 99] [--first-thinning-limit 3] \
-  [--first-thinning-volume-ratio 0.5] [--finite-zero-variance] [--resume]
-```
-
-Consumes the registered-recrop outputs and computes the selected standard-13
-initial membership pass followed by loop-entry setup and first thinning. It
-writes 17-channel memberships (13 classes plus lesion, black hole, outlier,
-and lesion relation), first-thinning segmentation/skeleton/availability/
-ordering images, a diagnostic summary, and a hash-checked manifest. The
-source-faithful default preserves zero-variance IEEE NaNs; if these make the
-initial objective nonfinite, the manifest records a failed checkpoint and the
-run stops, including counts of nonfinite energy values and memberships plus
-zero-standard-deviation channels. `--finite-zero-variance` enables an explicit stabilization: matching
-centroids with zero deviation have distance zero and nonmatching ones infinite
-distance. The summary records zero-deviation channels and nonfinite membership
-count so this numerical difference remains visible. All outputs use the
-registered RAS grid. This step does not execute later LesionTOADS updates.
-
-## `pymacruise plus-lesion-first-iteration`
-
-```text
-pymacruise plus-lesion-first-iteration \
-  --registered-recrop-manifest registered-recrops.json \
-  --atlas-descriptor LesionTOADS-atlas.txt --output-dir first-iteration \
-  [--iterations 99] [--first-thinning-limit 3] \
-  [--first-thinning-volume-ratio 0.5] [--finite-zero-variance] [--resume]
-```
-
-Consumes the registered-recrop outputs and computes the selected standard-13
-initial membership pass followed by loop-entry setup and first thinning. It
-writes 17-channel memberships (13 classes plus lesion, black hole, outlier,
-and lesion relation), first-thinning segmentation/skeleton/availability/
-ordering images, a diagnostic summary, and a hash-checked manifest. The
-source-faithful default preserves zero-variance IEEE NaNs; if these make the
-initial objective nonfinite, the manifest records a failed checkpoint and the
 run stops. `--finite-zero-variance` enables an explicit stabilization: matching
 centroids with zero deviation have distance zero and nonmatching ones infinite
 distance. The summary records zero-deviation channels and nonfinite membership
@@ -928,10 +914,29 @@ pymacruise plus-full-run --t1 T1.nii.gz --flair FLAIR.nii.gz \
   --brain-mask brain-mask.nii.gz --maseg MaSeg.nii.gz \
   --atlas-descriptor atlas.txt \
   --output-dir plus-output \
-  --registration-iterations 1000 500 250 0 \
+  --registration-iterations 1000 500 250 0 --registration-sampling-rate 0.25 \
   --shrink-factors 6 4 2 1 --smoothing-sigmas 3 2 1 0 \
-  --n4-iterations 50 50 50 50 --resume
+  --n4-iterations 50 50 50 50 \
+  [--regrid-inputs | --no-regrid-inputs] \
+  [--dura-transfer-mode {physical-affine,jist-unchanged}] [--resume]
 ```
+
+The full plus workflow accepts the same `[--regrid-inputs | --no-regrid-inputs]`
+option, recommended and enabled by default. When T1 is oblique, it creates a
+shared orthogonal RAS grid for T1, brain mask, and MaSeg under
+`resources/regridded-inputs`; T1 uses linear interpolation and the discrete
+inputs use nearest neighbor. FLAIR stays on its input grid and is registered
+by the plus preprocessing stage. With `--no-regrid-inputs`, T1, mask, MaSeg,
+and FLAIR are each reoriented by axis permutations/flips to closest RAS;
+oblique direction cosines are ignored and no regridding interpolation is done.
+
+Native Dura transfer defaults to `--dura-transfer-mode physical-affine`,
+which maps source values to the full T1 grid using physical RAS coordinates.
+Use `--dura-transfer-mode jist-unchanged` only to reproduce selected JIST
+behavior: preserve source extents and values, assign the reference header, and
+apply full-grid crop bounds with zero padding. The selected synthetic case
+shows substantial downstream map and surface changes under this mode; it is
+recorded in run signatures and manifests.
 
 The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the brain mask must match the T1 grid after RAS orientation normalization; a mismatch is rejected before preprocessing. The FLAIR may have a different physical grid; rigid ANTsPy registration resamples it onto T1. The atlas descriptor resolves its own compressed topology and shape maps. The top-level `plus-full-workflow.json` records ordered child manifests, input/settings signatures, stage state, and hashes. `--resume` verifies completed outputs and delegates repair of invalid checkpoints to each stage. The defaults follow the selected wrapper route; the ANTsPy registration backend is a documented substitute for NiftyReg/Aladin, not source-equivalent registration.
 
