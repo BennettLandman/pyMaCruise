@@ -422,7 +422,8 @@ V-cycles, and absolute maximum-residual threshold 1e-6.
 ```text
 pymacruise tgdm --initial INITIAL.nii.gz --white WM.nii.gz \
   --gray GM.nii.gz --ace-gray GM-ACE.nii.gz --output-dir DIR \
-  [--brain-mask MASK.nii.gz] [--ace-skeleton SKELETON.nii.gz] \
+  [--brain-mask MASK.nii.gz | --brain-mask-level-set MASK_LEVEL_SET.nii.gz] \
+  [--ace-skeleton SKELETON.nii.gz] \
   [--gvf GVF.nii.gz] [--provenance RUN.json]
 ```
 
@@ -431,6 +432,9 @@ must share one physical grid. Optional GVF is a component-last vector image.
 Writes `initial_level_set.nii.gz`, `tissue_sign.nii.gz`,
 `initial_inner.nii.gz`, `inner.nii.gz`, `central.nii.gz`, and `outer.nii.gz`,
 all on the RAS grid. This is the nested TGDM stage, not full TOADS or MaCRUISE.
+The binary mask is converted to the adapter's unit inside-negative bound;
+the explicit signed level-set option preserves its numeric values. Pass at
+most one of these two mask options.
 
 ### `pymacruise dura`
 

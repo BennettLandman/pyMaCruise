@@ -1,0 +1,127 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "case": "human BASE case 100260 regenerated attempt-02",
+  "coordinate_system": "RAS",
+  "evidence_category": "real-data held-fixed selected Java TGDM stage comparison using the identical cropped Python Dura Brain Mask Level Set",
+  "implementation_commit": "8438185d49fcb8ebd49626dc249d763b89a02ffc",
+  "input_hashes": {
+    "arrays_bin": "bbfff1a34629f652c6677ab47439de59f7b4c2221ce78659fc2d13610e6c8391",
+    "dura_brain_mask_level_set": "45310da1db036508091d9010debcda89d292e4a9690a03695af49477b23a5885"
+  },
+  "java_peak_sampled_rss_gb": 1.687,
+  "mask_input_mode": "raw signed level-set values preserved; no binary/sign-only conversion",
+  "mask_range": [
+    -5.0,
+    5.0
+  ],
+  "mask_source": "build/sample-singularity-base-source-profile-2026-10-15/stages/dura/attempt-02/brain_mask_level_set.nii.gz",
+  "mask_source_sha256": "45310da1db036508091d9010debcda89d292e4a9690a03695af49477b23a5885",
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 2.1859588330855087e-07,
+      "changed_voxels": 385713,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.0025062445229315014,
+      "max_absolute_voxel_error": 0.028212666511535645,
+      "mean_absolute_distance_mm": 2.0955837475845353e-07,
+      "mean_absolute_voxel_error": 7.166503169092848e-07,
+      "n_candidate_vertices": 240074,
+      "n_reference_vertices": 240074,
+      "reference_to_candidate_mean_mm": 2.005208662083562e-07,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3170440
+    },
+    "initial_inner": {
+      "candidate_to_reference_mean_mm": 4.6975347041245765e-06,
+      "changed_voxels": 773924,
+      "dice_at_zero": 0.9999987117270202,
+      "exact": false,
+      "hausdorff_mm": 0.15671532126251408,
+      "max_absolute_voxel_error": 0.2189677357673645,
+      "mean_absolute_distance_mm": 4.63293241096121e-06,
+      "mean_absolute_voxel_error": 1.7898672719399497e-06,
+      "n_candidate_vertices": 233102,
+      "n_reference_vertices": 233102,
+      "reference_to_candidate_mean_mm": 4.568330117797844e-06,
+      "sign_changed_voxels": 1,
+      "thresholds_pass": true,
+      "voxel_count": 3170440
+    },
+    "initial_level_set": {
+      "changed_voxels": 0,
+      "exact": true,
+      "max_absolute_voxel_error": 0.0,
+      "mean_absolute_voxel_error": 0.0,
+      "sign_changed_voxels": 0,
+      "voxel_count": 3170440
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 2.549742447064458e-06,
+      "changed_voxels": 117622,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.03927574719415965,
+      "max_absolute_voxel_error": 0.04136404022574425,
+      "mean_absolute_distance_mm": 2.4046300604922003e-06,
+      "mean_absolute_voxel_error": 7.670887684597673e-07,
+      "n_candidate_vertices": 240936,
+      "n_reference_vertices": 240936,
+      "reference_to_candidate_mean_mm": 2.2595176739199423e-06,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3170440
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.00014144011918294043,
+      "changed_voxels": 1870232,
+      "dice_at_zero": 0.9999948880848414,
+      "exact": false,
+      "hausdorff_mm": 0.4257640462472598,
+      "max_absolute_voxel_error": 0.455020435154438,
+      "mean_absolute_distance_mm": 0.00014050782412043872,
+      "mean_absolute_voxel_error": 0.00016429170227975388,
+      "n_candidate_vertices": 306340,
+      "n_reference_vertices": 306338,
+      "reference_to_candidate_mean_mm": 0.00013957552905793704,
+      "sign_changed_voxels": 10,
+      "thresholds_pass": true,
+      "voxel_count": 3170440
+    },
+    "smoothed_initial": {
+      "candidate_to_reference_mean_mm": 5.049063013581221e-08,
+      "changed_voxels": 353459,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.00010373520913991534,
+      "max_absolute_voxel_error": 0.00012606382369995117,
+      "mean_absolute_distance_mm": 4.994526307559632e-08,
+      "mean_absolute_voxel_error": 4.98528917075626e-08,
+      "n_candidate_vertices": 157128,
+      "n_reference_vertices": 157128,
+      "reference_to_candidate_mean_mm": 4.939989601538043e-08,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3170440
+    }
+  },
+  "python_peak_sampled_rss_gb": 2.532,
+  "scope": "TGDM only, with held-fixed Python-generated initial membership, tissue, ACE, GVF, and Dura brain-mask level set. This does not validate the upstream mask-level-set generator or full BASE workflow.",
+  "shape_xyz": [
+    140,
+    169,
+    134
+  ],
+  "source_hashes": {
+    "distance_field": "a0df8859367a52a6273c488fed74d3fbdf0bbf5776b6e6cfea15261a5b290811",
+    "java_harness": "758b51c5de170b86379bb8e69484d9dfebb96ddb3f41e4e8df25d640b8fc491f",
+    "ma_generic_tgdm": "66124d4180864edc77f6fff280ab817eb0fffc061fdf427c9d8d725f850b211d"
+  },
+  "surface_thresholds_pass": true,
+  "synthetic_only": false
+}
