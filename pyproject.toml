@@ -27,4 +27,4 @@ pymacruise-lesion-output = "pymacruise.lesion_output_cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-pymacruise = ["data/*.raw.gz", "data/*.json"]
+pymacruise = ["data/*.raw.gz", "data/*.json", "data/SHA256SUMS"]

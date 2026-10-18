@@ -16,9 +16,17 @@
 
 ## Algorithm and data assets
 
+**Installation audit, 2026-10-18:** The supplied `ibsr11objV3` source package
+is now included in Git and package distributions, alongside the existing
+atlases and both runtime lookup tables. Installed-file verification and access
+examples are in [the installed-assets guide](testing/installed-assets.md).
+Native source availability is distinct from checked RAS conversion and PLUS
+workflow validation.
+
 | Item | Required for | Local status and provenance | Action |
 |---|---|---|---|
 | Base TOADS/CRUISE 10-object atlas | V3 TOADS passes and CRUISE setup. | Present in both source trees, with `cruise-atlas-10obj-toads2008.txt`; list describes 11 structures plus an 8-shape atlas on a 172×216×164 grid at 0.9375 mm. The canonical copy is under `data/atlases/cruise-atlas-10obj/`. | Stored images are `.nii.gz` in RAS voxel orientation; descriptors and hashes are updated. Physical source-metadata checks are tracked in P05c. |
+| IBSR11objV3 source package | Owner-selected PLUS atlas target, superseding the prior `ibsr8obj` requirement. | All 29 supplied descriptor, raw, and XML files are losslessly gzip-compressed under `data/atlases/ibsr11objV3/native/`. The manifest records original/stored hashes and per-file CVS revisions. Every one of the 13 descriptor payloads is included. | Accessible after installation through `read_bundled_atlas_source`; original voxel indexing and metadata are preserved. AtlasEM descriptor adaptation and checked RAS conversion remain open. |
 | Lesion TOADS 2012 12-object atlas | Selected MaCRUISEplus T1+MaSeg+FLAIR workflow. | The two source lists requested by `run_LesionToads_jist.m` and associated data are copied under `data/atlases/lesionToads-atlas-2012/`. | Stored images are `.nii.gz` in RAS voxel orientation; descriptors and hashes are updated. Physical source-metadata checks are tracked in P05c. |
 | SPECTRE atlas and OASIS-derived examples | Historical SPECTRE branches; excluded from the selected runtime because users supply the brain mask. | The supplied SPECTRE atlas, including OAS1-named images/masks, is retained under `data/atlases/spectre/` as source evidence. | It is not an install/runtime dependency. Stored images are `.nii.gz` in RAS voxel orientation; source physical origins for Analyze examples remain unverified as recorded in `data/atlases/CONVERSION_AUDIT.json`. |
 | MNI 305 reference and mask | Top-level MNI segmentation/surface products for V3 and plus. | `average305_t1_tal_lin.nii.gz` and `average305_t1_tal_lin_mask.nii.gz` were not found in the supplied `/Users/landmaba/dev` tree. MATLAB expects them under `multiatlas_code_dir/MNI`. | Required for full legacy MNI output equivalence. Obtain these exact reference/mask files or keep MNI output explicitly unavailable until they are provided; do not synthesize a replacement. |

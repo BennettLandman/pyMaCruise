@@ -224,6 +224,11 @@ for descriptor in (root / "cruise-atlas-10obj-toads2008.txt",
             assert relative.endswith(".nii.gz"), (descriptor, relative)
             assert (descriptor.parent / relative).is_file(), (descriptor, relative)
 assert root.resolve() == (Path(__import__("pymacruise").__file__).resolve().parent / "data" / "atlases").resolve()
+from pymacruise.asset_inventory import verify_bundled_assets
+receipt = verify_bundled_assets()
+assert receipt["runtime_tables_checked"] == 2
+assert receipt["ibsr11objV3_referenced_payloads_checked"] == 13
+print(json.dumps({"installed_asset_verification": receipt}))
 print(json.dumps({"atlas_root": str(root), "default_classes": len(default.structures), "toads2012_classes": len(toads2012_types), "lesion_classes": len(priors.structures), "topology_shape": topology.image.shape, "ras_nifti_count": len(all_nifti)}))
 '''
     probe_env = env.copy()
@@ -244,6 +249,7 @@ print(json.dumps({"atlas_root": str(root), "default_classes": len(default.struct
         "wheel_sha256": sha256(wheel),
         "sdist_sha256": sha256(sdist),
     }
+    (temp_root / "verification.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 

@@ -184,6 +184,10 @@ assert nib.aff2axcodes(lesion_topology.image.affine) == ("R", "A", "S")
 expected_hashes = json.loads(os.environ["PYMACRUISE_ATLAS_HASHES"])
 for relative, expected in expected_hashes.items():
     assert hashlib.sha256((root / relative).read_bytes()).hexdigest() == expected, relative
+from pymacruise.asset_inventory import verify_bundled_assets
+receipt = verify_bundled_assets()
+assert receipt["runtime_tables_checked"] == 2
+assert receipt["ibsr11objV3_referenced_payloads_checked"] == 13
 """
     env = os.environ.copy()
     env["PYTHONPATH"] = os.fspath(target)
