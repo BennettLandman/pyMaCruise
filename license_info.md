@@ -1,11 +1,13 @@
 # License and Attribution Working Notes
 
-**Last reviewed:** 2026-09-30
-**Status:** Inventory for later review with the tech transfer office; no final PyMaCRUISE license has been selected.
+PyMaCRUISE project code is licensed under the [Apache License 2.0](LICENSE).
+Third-party source, dependencies, and datasets remain subject to their applicable
+terms. The project license does not grant rights to bundled atlas data. The
+inventory below records outstanding provenance and redistribution questions.
 
-## Project-owner direction
-
-The project owner states that they are an author on all existing source code supplied for the MaCRUISE/PyMaCRUISE work. Preserve existing license files and meaningful author, revision, and attribution details as the Python port is written, including concise source-reference comments in corresponding Python modules. The tech transfer office will help place an appropriate license over the completed work. No compliance determination or final license choice is needed during implementation.
+Preserve existing license files and relevant author, revision, and attribution
+details, including source references in Python port modules. The project owner
+has stated that they are an author on the supplied MaCRUISE/PyMaCRUISE source code.
 
 ## Source and notice inventory
 
@@ -51,12 +53,12 @@ Keep comments that explain numerical choices, label definitions, coordinate tran
 
 ## Tech transfer handoff checklist
 
-- Select the overall PyMaCRUISE license and any separate licensing for bundled source-derived components.
+- Confirm the applicable terms for bundled source-derived components.
 - Review the preserved MIPAV, JIST, and third-party notices against the code actually used in the final Python package.
 - Review atlas/data provenance and package notices for all files that remain bundled.
 - For each retained atlas family, obtain and review the originating dataset/source terms and any citation or data-use requirements; in particular, determine the applicable rights for the OAS1/OASIS-named SPECTRE files. Confirm whether redistribution in regular Git, Python wheels, and source distributions is permitted for both original-format metadata/descriptors and the converted `.nii.gz` derivatives. Do not treat the project owner's source-code authorship statement, `CONVERSION_AUDIT.json`, or `SHA256SUMS` as a data license. Decide with tech transfer whether the SPECTRE/OASIS assets, which the current brain-mask input contract excludes from runtime, should remain in a distributable bundle.
 - Inventory final pinned Python dependencies and their notices.
-- Add the tech-transfer-approved project license and any required acknowledgments before the chosen release.
+- Add any required acknowledgments before release.
 
 This file is a factual working inventory and handoff aid, not a legal analysis or a license grant.
 | VandyCRUISE `MASImorph` morphology reference | The test-only source copy preserves Yuankai Huo author/version comments from `toads-cruise`; no standalone license notice appears in the source header. | Used only by the Java reference harness for selected 3D center-plus-six-neighbor minimum-filter comparison; not packaged in the Python runtime. Review the source copy and notices with tech transfer. |

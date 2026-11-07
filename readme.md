@@ -1,5 +1,7 @@
 # PyMaCRUISE
 
+PyMaCRUISE project code is licensed under the [Apache License 2.0](LICENSE). Third-party materials retain their applicable terms. See the [license and attribution inventory](license_info.md) for upstream notices and the status of bundled atlas data.
+
 **PLUS atlas correction — 2026-10-18:** The owner selects `ibsr11objV3` to replace the earlier `ibsr8obj` AtlasEM requirement. All referenced native assets are present. Python NIfTI conversion, descriptor/loader compatibility, and matched validation remain open; historical `ibsr8obj` requirements below are superseded. See [atlas selection and compatibility findings](docs/reports/plus-atlas-selection-2026-10-18.md).
 
 Python-native implementation of the MaCRUISE cortical segmentation workflow. The project reuses established imaging libraries and ports the source-specific algorithms and orchestration that are not available as suitable Python components.
