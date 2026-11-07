@@ -116,6 +116,35 @@ def test_oblique_axis_only_mapping_compares_in_original_physical_frame(tmp_path)
     assert result['comparisons']['inner_surface']['hausdorff_mm'] < 1e-6
 
 
+def test_native_export_is_compared_instead_of_working_grid_products(tmp_path):
+    args = case(tmp_path, oblique=True)
+    path = args.python_run / 'run.json'
+    manifest = json.loads(path.read_text())
+    original_affine = nib.load(args.t1).affine
+    records = []
+    for stage in ('cruise-core', 'maseg-refinement', 'surface-thickness'):
+        for record in manifest['stages'][stage]['outputs']:
+            old_path = Path(record['path'])
+            native_path = args.python_run / 'stages/native-export/attempt-01' / old_path.name
+            native_path.parent.mkdir(parents=True, exist_ok=True)
+            if old_path.name.endswith('.nii.gz'):
+                image = nib.load(old_path)
+                nib.save(nib.Nifti1Image(np.asanyarray(image.dataobj), original_affine), native_path)
+            elif old_path.suffix == '.vtk':
+                mesh = module.read_legacy_vtk(old_path)
+                working = nib.load(args.python_run / 'resources/t1.nii.gz').affine
+                vertices = nib.affines.apply_affine(original_affine @ np.linalg.inv(working), mesh.vertices)
+                write_legacy_vtk(SurfaceMesh(vertices, mesh.faces, point_data=mesh.point_data), native_path)
+            records.append({'path': str(native_path), 'sha256': module.sha256(native_path)})
+    manifest['stages']['native-export'] = {'status': 'complete', 'outputs': records}
+    manifest['options']['regrid_inputs'] = True
+    path.write_text(json.dumps(manifest))
+    result = module.compare(args)
+    assert result['segmentation_and_surface_gates_passed']
+    assert result['python_product_stage'] == 'native-export'
+    assert 'native-export' in result['comparisons']['segmentation']['python_file']
+
+
 def test_physical_mode_rejects_oblique_grid_mismatch(tmp_path):
     args = case(tmp_path, oblique=True)
     args.source_volume_grid = 'physical'

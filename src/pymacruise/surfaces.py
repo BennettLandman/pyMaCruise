@@ -17,7 +17,7 @@ source hashes and validation scope.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from importlib.resources import files
 import json
@@ -32,21 +32,31 @@ from pymacruise.image_io import normalize_image_to_ras
 
 @dataclass(frozen=True)
 class SurfaceMesh:
-    """A triangular mesh whose coordinates are RAS+ millimetres."""
+    """A triangular RAS-mm mesh, vertex fields, and optional GIFTI information.
+
+    GIFTI metadata/intents and label tables accompany vertex fields through
+    geometry and thickness operations. ``gifti_dataspace=0`` means the
+    anatomical reference space is unspecified, independent of RAS orientation.
+    """
 
     vertices: np.ndarray
     faces: np.ndarray
     coordinate_frame: str = "RAS"
     units: str = "mm"
     point_data: Mapping[str, np.ndarray] = field(default_factory=dict)
+    metadata: Mapping[str, str] = field(default_factory=dict)
+    point_data_metadata: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+    point_data_intents: Mapping[str, int] = field(default_factory=dict)
+    label_table: nib.gifti.GiftiLabelTable | None = None
+    gifti_dataspace: int = 0
 
     def __post_init__(self) -> None:
         vertices = np.asarray(self.vertices, dtype=np.float64)
         faces = np.asarray(self.faces, dtype=np.int64)
-        if vertices.ndim != 2 or vertices.shape[1] != 3 or vertices.shape[0] < 4:
-            raise ValueError("Surface vertices must have shape (N, 3), N >= 4")
-        if faces.ndim != 2 or faces.shape[1] != 3 or faces.shape[0] < 4:
-            raise ValueError("Surface faces must have shape (M, 3), M >= 4")
+        if vertices.ndim != 2 or vertices.shape[1] != 3 or vertices.shape[0] < 3:
+            raise ValueError("Surface vertices must have shape (N, 3), N >= 3")
+        if faces.ndim != 2 or faces.shape[1] != 3 or faces.shape[0] < 1:
+            raise ValueError("Surface faces must have shape (M, 3), M >= 1")
         if not np.isfinite(vertices).all():
             raise ValueError("Surface vertices contain NaN or infinite coordinates")
         if np.any(faces < 0) or np.any(faces >= len(vertices)):
@@ -227,7 +237,7 @@ def convert_surface_to_ras(
     """Convert an explicitly identified RAS+ or LPS surface to RAS+ mm."""
     frame = input_frame.upper().replace("+", "")
     if frame in {"RAS", "RASMM"}:
-        return SurfaceMesh(mesh.vertices.copy(), mesh.faces.copy(), point_data=mesh.point_data)
+        return replace(mesh, vertices=mesh.vertices.copy(), faces=mesh.faces.copy())
     if frame not in {"LPS", "LPSMM"}:
         raise ValueError("Surface coordinate frame must be RAS or LPS")
     warnings.warn(
@@ -237,11 +247,7 @@ def convert_surface_to_ras(
     )
     vertices = mesh.vertices.copy()
     vertices[:, :2] *= -1
-    return SurfaceMesh(
-        vertices,
-        mesh.faces[:, ::-1].copy(),
-        point_data=mesh.point_data,
-    )
+    return replace(mesh, vertices=vertices, faces=mesh.faces[:, ::-1].copy())
 
 
 def surface_vertex_normals(mesh: SurfaceMesh) -> np.ndarray:
@@ -275,7 +281,10 @@ def transform_surface_ras(mesh: SurfaceMesh, transform: np.ndarray) -> SurfaceMe
         raise ValueError("Surface transform has a singular spatial component")
     vertices = mesh.vertices @ matrix[:3, :3].T + matrix[:3, 3]
     faces = mesh.faces[:, ::-1] if np.linalg.det(matrix[:3, :3]) < 0 else mesh.faces
-    return SurfaceMesh(vertices, faces.copy(), point_data=mesh.point_data)
+    return replace(
+        mesh, vertices=vertices, faces=faces.copy(),
+        gifti_dataspace=mesh.gifti_dataspace if np.array_equal(matrix, np.eye(4)) else 0,
+    )
 
 
 def write_legacy_vtk(mesh: SurfaceMesh, path: str | Path) -> Path:
@@ -402,3 +411,27 @@ def read_legacy_vtk(
     except (ValueError, IndexError) as exc:
         raise ValueError(f"Malformed triangular legacy VTK surface: {source}") from exc
     return convert_surface_to_ras(mesh, input_frame=frame)
+
+
+def read_surface(path: str | Path, *, input_frame: str | None = None) -> SurfaceMesh:
+    """Read .vtk or .gii geometry and embedded per-vertex information."""
+    suffix = Path(path).suffix.lower()
+    if suffix == ".vtk":
+        return read_legacy_vtk(path, input_frame=input_frame)
+    if suffix == ".gii":
+        if input_frame is not None and input_frame.upper().replace("+", "") != "RAS":
+            raise ValueError("GIFTI uses RAS+ millimetres; input_frame must be RAS")
+        from pymacruise.gifti_io import read_gifti
+        return read_gifti(path)
+    raise ValueError("Surface files must use .vtk or .gii")
+
+
+def write_surface(mesh: SurfaceMesh, path: str | Path) -> Path:
+    """Write .vtk or .gii geometry and embedded per-vertex information."""
+    suffix = Path(path).suffix.lower()
+    if suffix == ".vtk":
+        return write_legacy_vtk(mesh, path)
+    if suffix == ".gii":
+        from pymacruise.gifti_io import write_gifti
+        return write_gifti(mesh, path)
+    raise ValueError("Surface files must use .vtk or .gii")

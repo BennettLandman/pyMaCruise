@@ -1,5 +1,7 @@
 # PyMaCRUISE command-line input/output reference
 
+For exact current usage/defaults of every command, see [the generated tool reference](tools-reference.md). For independent original/Python PLUS runs and documented assumptions, use [the PLUS walkthrough](testing/full-plus-walkthrough.md) and [individual tools](testing/individual-tools.md).
+
 This page is the expanded `--help` contract for the supported inputs and
 outputs. The command line exposes preparation, individual scientific stages,
 restartable base and plus workflows, workflow configuration/preflight, and
@@ -75,9 +77,10 @@ before execution begins. `--resume` verifies existing checkpoints and resumes
 the configured workflow. Non-RAS inputs are normalized by the runners with
 visible warnings; persisted image outputs are RAS `.nii.gz`.
 
-The base profile executes eight checked stages: N4, first TOADS, Dura removal,
+The base profile executes ten checked stages: N4, masked axial windowed-sinc preprocessing, first TOADS, Dura removal,
 second TOADS, MaSeg/TOADS tissue preparation, CRUISE/ACE/GVF/TGDM core, MaSeg
-refinement, and scientific surface/thickness products. The last stage writes
+refinement, scientific surface/thickness products, and original-grid native export.
+The surface/thickness stage writes
 inner, central, and outer RAS-mm VTK meshes, a measured inner VTK mesh, a
 level-set-subtraction thickness NIfTI, a thickness summary JSON, and
 provenance. Surface extraction now uses the source-derived connectivity-18
@@ -88,6 +91,8 @@ closest-point and level-set thickness operations are described in
 
 ## `pymacruise base-run`
 
+For wheel installations, resolve the bundled descriptor with `get_bundled_atlas_descriptor("cruise-atlas-10obj-toads2008.txt")`; atlas NIfTIs are in the installed package rather than the extracted bundle's root data folder. See [the copy-and-paste BASE atlas lookup](testing/installed-assets.md#locate-the-bundled-atlas-for-base).
+
 ```text
 pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
   --maseg MaSeg.nii.gz --atlas-descriptor ATLAS.txt --output-dir RUN_DIR \
@@ -95,6 +100,7 @@ pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
   [--registration-levels N] [--registration-iterations N] \
   [--post-refresh-registration-iterations N] [--registration-max-iterations N] \
   [--toads-iterations N] [--dura-iterations N] \
+  [--toads-axis-order {LPS,RAS}] \
   [--dura-membership-level VALUE] [--crop-edge-width N] \
   [--ace-diffusion-iterations N] [--ace-use-updated-csf-in-ace {0,1,2,3}] \
   [--gvf-iterations N] [--tgdm-iterations N] \
@@ -103,7 +109,8 @@ pymacruise base-run --t1 T1.nii.gz --brain-mask BrainMask.nii.gz \
   [--source-faithful-refinement | --no-source-faithful-refinement]
 ```
 
-Regridding is recommended and enabled by default. It resamples an oblique RAS
+Source-compatible no-regrid processing is the BASE default from version 0.1.1.
+Explicit `--regrid-inputs` resamples an oblique RAS
 grid to an orthogonal RAS grid at the T1 voxel spacing. T1 uses linear
 interpolation; the binary mask and MaSeg labels use nearest-neighbor
 interpolation. The shared regridded inputs and hashes are recorded under the
@@ -114,20 +121,60 @@ and flips, while oblique direction cosines are ignored. No interpolation is
 performed; the manifest records this geometry mode. The run uses the required
 user-provided T1-grid mask and does not invoke BET or SPECTRE.
 
+BASE defaults use the full selected-source numerical profile: registration
+levels/iterations 4/50, post-refresh/max registration 5/5, TOADS 50, Dura 5,
+ACE diffusion 25, GVF 200, TGDM initial/inner/central 6/4/7, WM iso-level 0.5,
+and updated-CSF mode 2. Explicit smaller counts are available for synthetic
+tests. `--tgdm-iterations N` overrides all three phases unless an individual
+phase is explicitly supplied. Full workflow equivalence still requires
+independent validation.
+
+N4 estimation runs on the original acquisition before working-grid conversion.
+Its ANTs image retains the NIfTI's stored voxel spacing, matching a native
+file-reader invocation of the installed backend. Optional `n4 --working-reference`
+maps the corrected image afterward; `--orientation-only-working-grid` selects
+the source-compatible axis-only mapping. A different original ANTs version
+may still produce different corrected intensities.
+
+BASE processes both TOADS passes internally in axial LPS voxel order, matching
+the selected source wrapper's reorientation boundary. `--toads-axis-order RAS`
+is an explicit alternative for reproducing earlier canonical-RAS runs. The
+standalone `toads-loop --source-axis-order LPS` uses the same internal mapping;
+its saved image products still use RAS axes. This axis-only mapping does not
+reproduce the source's separate windowed-sinc interpolation or its N4 backend.
+
+After the eight working stages, `native-export` writes the final volumes on
+the original T1's exact dimensions, affine, qform/sform and storage axes.
+SEG_refine uses nearest-neighbor sampling and integer storage; level sets
+and thickness use linear sampling. The orientation-only path reverses its
+axis permutations/flips without interpolation and restores oblique directions.
+Final VTK meshes use the original physical RAS+ millimetre frame. Their
+topology and scalar measurements are retained. Use the paths in `final_outputs`
+for overlays on the original T1; working intermediates remain in their stage
+directories. `final_output_grid` records the restored grid.
+
+`pymacruise base-native-export` also exports products from an existing BASE
+run without rerunning reconstruction. Supply the original T1 as `--reference`,
+the actual working T1 as `--working-reference`, the refined segmentation and
+three level sets, `--surface-dir`, and a fresh `--output-dir`. Use
+`--orientation-only` only for a recorded no-regrid run. This changes output
+coordinates/sampling, not the reconstruction's anatomical quality.
+
 ## `pymacruise base-surface-thickness`
 
 ```text
 pymacruise base-surface-thickness --inner-levelset INNER.nii.gz \
   --central-levelset CENTRAL.nii.gz --outer-levelset OUTER.nii.gz \
-  --output-dir OUTPUT_DIR [--provenance RUN.json]
+  --output-dir OUTPUT_DIR [--surface-format vtk|gii] [--provenance RUN.json]
 ```
 
 This stage adapter accepts finite 3D `.nii.gz` level sets, reorients non-RAS
 inputs to RAS with visible warnings, and requires all three images to share
 one physical grid. It extracts all three scientific meshes, computes the
 selected absolute level-set subtraction thickness volume, and writes the
-selected closest-point thickness values on the inner surface. VTK point
+selected closest-point thickness values on the inner surface. Mesh point
 coordinates are RAS+ millimetres; the thickness volume is RAS `.nii.gz`.
+Surface outputs default to VTK; `--surface-format gii` selects GIFTI.
 `thickness_summary.json` records means, sample standard deviations,
 crossing/nonzero counts, and the source-derived JIST connectivity-18 surface
 method. Undefined summary values are represented as JSON `null`. This
@@ -293,8 +340,7 @@ All spatial outputs are written as native-grid RAS `.nii.gz`. Non-RAS input
 orientations produce visible warnings and are normalized to RAS. The command
 executes the supported single-channel descriptor-driven AtlasEM registration,
 fixed-prior EM, output generation, and pre-LesionTOADS Dura handoff. Current
-execution uses synthetic descriptor cases; the selected `ibsr8obj` descriptor
-and payload are unavailable, and direct Java optimizer parity remains open.
+execution includes synthetic cases and an adapted `ibsr11objV3` human run. The selected native assets and converter are bundled; direct Java optimizer and complete AtlasEM parity remain open.
 
 ### Outputs
 
@@ -459,8 +505,9 @@ pymacruise surface-extract --level-set LEVELSET.nii.gz --output SURFACE.vtk \
 ```
 
 Reads a finite 3D scalar level set and writes a triangular RAS+ millimetre
-surface. The isovalue defaults to zero. The VTK header declares coordinate
-frame and units.
+surface as `.vtk` or `.surf.gii`. The isovalue defaults to zero. The VTK
+header declares coordinate frame and units. See [GIFTI support](gifti.md) for
+`surface-convert`, `surface-info`, separate vertex measurements, and metadata.
 
 ### `pymacruise thickness-levelset`
 
@@ -481,15 +528,15 @@ pymacruise thickness-surface --inner INNER.vtk --outer OUTER.vtk \
   --central-output CENTRAL-MEASURED.vtk] [--provenance RUN.json]
 ```
 
-Inputs must be triangular ASCII legacy VTK with a declared RAS/LPS frame.
+Inputs may be GIFTI `.surf.gii` or triangular ASCII legacy VTK with a declared RAS/LPS frame.
+Outputs accept `.vtk` or `.gii`.
 Writes closest-surface point measurements into output meshes and prints
 summary statistics. Supply `--central` and `--central-output` together.
 
 ## Not currently exposed as complete tools
 
 The `toads-loop` command below runs the selected registered TOADS loop, but it
-does not complete the two-pass MaCRUISE TOADS/dura workflow. There is no full
-LesionTOADS command. The user-supplied mask and native-T1 RAS working space are
+does not complete the two-pass MaCRUISE TOADS/dura workflow. The selected LesionTOADS route is available through `plus-lesion-loop-run` and its preparation/checkpoint commands; there is no single command implementing every historical plugin mode. The user-supplied mask and native-T1 RAS working space are
 selected; historical SPECTRE preprocessing remains an explicit working-space
 deviation documented in the port plan.
 
@@ -919,7 +966,7 @@ the original input field path if it was supplied.
 
 ## `pymacruise plus-full-run`
 
-Run the restartable raw-input plus path from T1, FLAIR, a user-provided T1-grid brain mask, MaSeg labels, and a descriptor-owned atlas through preprocessing, registered LesionTOADS, Dura-channel transfer, and terminal CRUISE surfaces and thickness.
+Run the restartable raw-input plus path from T1, FLAIR, a user-provided T1-grid brain mask, MaSeg labels, and a descriptor-owned atlas through preprocessing, registered LesionTOADS, Dura-channel transfer, terminal CRUISE surfaces/thickness, and final MaSeg refinement. It has ten baseline stages; `--atlasem-descriptor` adds the source-ordered AtlasEM/Dura handoff for eleven stages.
 
 ```bash
 pymacruise plus-full-run --t1 T1.nii.gz --flair FLAIR.nii.gz \
@@ -951,7 +998,7 @@ apply full-grid crop bounds with zero padding. The selected synthetic case
 shows substantial downstream map and surface changes under this mode; it is
 recorded in run signatures and manifests.
 
-The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the brain mask must match the T1 grid after RAS orientation normalization; a mismatch is rejected before preprocessing. The FLAIR may have a different physical grid; rigid ANTsPy registration resamples it onto T1. The atlas descriptor resolves its own compressed topology and shape maps. The top-level `plus-full-workflow.json` records ordered child manifests, input/settings signatures, stage state, and hashes. `--resume` verifies completed outputs and delegates repair of invalid checkpoints to each stage. The defaults follow the selected wrapper route; the ANTsPy registration backend is a documented substitute for NiftyReg/Aladin, not source-equivalent registration.
+The required T1-grid mask replaces BET/SPECTRE skull stripping. MaSeg and the brain mask must match the T1 grid after RAS orientation normalization; a mismatch is rejected before preprocessing. The FLAIR may have a different physical grid; rigid ANTsPy registration resamples it onto T1. The atlas descriptor resolves its own compressed topology and shape maps. The top-level `plus-full-workflow.json` records ordered child manifests, input/settings signatures, stage state, and hashes. `--resume` verifies completed outputs and delegates repair of invalid checkpoints to each stage. The defaults follow the selected wrapper route; the ANTsPy registration backend is a documented substitute for NiftyReg/Aladin, not source-equivalent registration. The selected Aladin executable was unavailable on the authoring host, so optimizer agreement is unverified.
 
 `--atlasem-descriptor` is an optional, separate AtlasEM structure descriptor.
 When supplied, the runner executes the selected pre-LesionTOADS AtlasEM and
@@ -960,13 +1007,14 @@ application. It passes Dura-stripped T1 and Dura-masked registered FLAIR into
 LesionTOADS cropping. Every referenced AtlasEM topology/shape image must be a
 compressed `.nii.gz` file beside the descriptor using its relative paths.
 Omitting this option retains the prior LesionTOADS-only chain and does not
-claim that the selected MATLAB PLUS source sequence is complete. The actual
-selected `ibsr8obj` descriptor and payload are not bundled yet; the generated
-AtlasEM descriptors in tests validate mechanics only and are not a substitute
-for those selected resources.
+claim that the selected MATLAB PLUS source sequence is complete. The selected target is now `ibsr11objV3`. Native source assets are bundled and `scripts/prepare_plus_testing.py` creates the compatible Python descriptor and its RAS NIfTIs. This data conversion is implemented; full original-versus-Python AtlasEM agreement remains unverified.
 
-Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last modalities; with `--atlasem-descriptor`, AtlasEM memberships, Dura products, and Dura-conditioned T1/FLAIR; atlas-aligned/recropped state; registered LesionTOADS products; Dura channels; and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, and JSON metrics. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness.
+Images are compressed NIfTI in RAS. Outputs include preprocessed T1/FLAIR and channel-last modalities; with `--atlasem-descriptor`, AtlasEM memberships, Dura products, and Dura-conditioned T1/FLAIR; atlas-aligned/recropped state; registered LesionTOADS products; Dura channels; and native-T1 transfer products. The auxiliary native CSF channel is retained for the plus-file API; selected GM, WM-fill, and WM-mask inputs use nearest-neighbor physical-affine transfer. This is a geometry-aware Python substitute for the selected JIST orientation-transfer boundary; arbitrary-grid numerical equivalence has not been established. MaSeg creates the selected cortical masks, then the plus continuation writes inner/central/outer level sets, RAS-mm VTK surfaces, volume thickness, JSON metrics, and the selected V3 `SEG_refine.nii.gz` final MaSeg refinement. The selected `MaTGDMcrop` call does not receive its optional brain-mask level set; the required user brain mask remains used for preprocessing/cropping. If a synthetic case has no valid volume-thickness crossings, unavailable summary statistics are JSON `null` with `available: false`; this is distinct from a measured zero thickness. A PLUS-specific external comparison protocol and synthetic-tested product comparator are in [the PLUS comparison handoff](testing/full-plus-walkthrough.md); fresh selected-atlas end-to-end execution and its external output layout remain unverified.
 
 Options include `--crop-padding`, `--init-align-iterations`, `--pyramid-levels`, `--lesion-iterations`, `--first-thinning-limit`, `--first-thinning-volume-ratio`, `--max-distance` (default `1e-4`), `--loop-convergence-threshold` (defaults to `--max-distance`), `--n-iter-max` (default `99`), `--loop-thinning-limit`, and `--max-passes` (default `99`). `plus-full-run` runs until terminal convergence or the configured iteration ceiling; use an explicit smaller `--max-passes` for a restartable bounded segment. `--finite-zero-variance` opts out of the source-faithful NaN behavior for zero-variance terms. `--dura-transfer-mode` defaults to `physical-affine`; select `jist-unchanged` to preserve Dura source extents/values, assign the reference header, and crop by full-grid MaSeg bounds with padding.
 
 For a compact committed synthetic case, use `tests/data/synthetic/plus_lesion_atlas_init/mini-lesion-toads-atlas.txt` and the matching NIfTI topology/shape maps. `tests/test_plus_full_workflow.py` runs a 25³ folded-cortex synthetic T1/FLAIR/MaSeg/mask through the complete CLI composition with low-cost settings, including resume and corruption repair. This validates synthetic workflow composition, not composite Java equivalence or real-MRI behavior.
+
+## PLUS stage checkpoints (2026-10-27)
+
+`plus-full-run --stop-after-stage STAGE` stops after a verified stage boundary and writes `status: checkpointed`, `terminal: false`. Repeat the same scientific command with `--resume` and a later boundary, or omit the boundary to finish. The final `maseg_refinement` boundary completes the workflow. Earlier cached outputs are verified normally; stop control does not change the scientific run signature. Stage names and exact flags appear in [the generated reference](tools-reference.md#plus-full-run). The testing kit sets initial LesionTOADS alignment to 50 iterations/four levels; ordinary CLI defaults remain 10/two.

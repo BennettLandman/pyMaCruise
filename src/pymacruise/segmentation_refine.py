@@ -18,6 +18,15 @@ In particular, the V3 wrapper's 0.2 mm thresholds, label groups, bounded
 5×5×5 propagation, and historical ``maxind`` behavior follow source code.
 The paper's reported 0.5 mm coefficients are evaluation settings, not defaults
 for this source-selected wrapper.
+
+Two execution details intentionally differ from the MATLAB helper. Python clips
+the 5×5×5 neighborhood at image edges, while the MATLAB indexing expression
+can throw for a pending edge voxel; and Python exits once a full sweep changes
+no labels, while MATLAB can repeat an unchanged sweep to its 50-sweep cap. The
+second difference preserves the same output at a fixed point. The first avoids
+the MATLAB boundary exception and can therefore produce an output where that
+source execution would fail. ``source_faithful`` describes the selected label
+rules and ordering, not identical failure behavior at image boundaries.
 """
 
 from __future__ import annotations

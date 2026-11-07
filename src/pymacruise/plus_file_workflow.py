@@ -227,6 +227,7 @@ def run_plus_file_workflow(
         "crop_edge_width": crop_edge_width,
         "dura_transfer_mode": dura_transfer_mode,
         "plus_pipeline": options.as_dict(),
+        "tgdm_optional_brain_mask_level_set": "omitted_per_selected_MaTGDMcrop_wrapper",
     }
     input_records = {
         name: {"path": str(path), "sha256": _sha256(path)}
@@ -400,7 +401,6 @@ def run_plus_file_workflow(
             cropped["toads_wm_fill"],
             cropped["toads_wm_mask"],
             options=options,
-            brain_mask=cropped["brain_mask"],
         )
         result = composed.tgdm
         tgdm_images = {name: getattr(result, name) for name in (

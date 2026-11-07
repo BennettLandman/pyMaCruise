@@ -70,8 +70,12 @@ def compare(args) -> dict:
     required_stages = {'n4', 'toads-first', 'dura', 'toads-second',
                        'base-tissue-preparation', 'cruise-core',
                        'maseg-refinement', 'surface-thickness'}
-    if manifest.get('status') != 'complete' or set(manifest['stages']) != required_stages:
-        raise ValueError('Python manifest must contain all eight completed BASE stages')
+    native_export = 'native-export' in manifest.get('stages', {})
+    expected_stages = required_stages | ({'native-export'} if native_export else set())
+    if 'base-preprocessing' in manifest.get('stages', {}):
+        expected_stages.add('base-preprocessing')
+    if manifest.get('status') != 'complete' or set(manifest['stages']) != expected_stages:
+        raise ValueError('Python manifest must contain the completed BASE stages and any native export')
     verified = 0
     for name, stage in manifest['stages'].items():
         if stage.get('status') != 'complete':
@@ -83,6 +87,8 @@ def compare(args) -> dict:
             verified += 1
 
     def active(stage: str, filename: str) -> Path:
+        if native_export and stage in ('cruise-core', 'maseg-refinement', 'surface-thickness'):
+            stage = 'native-export'
         paths = [Path(r['path']) for r in manifest['stages'][stage]['outputs']
                  if Path(r['path']).name == filename]
         if len(paths) != 1:
@@ -99,11 +105,17 @@ def compare(args) -> dict:
     raw_seg, raw_labels = image(source / 'Raw/Seg.nii.gz')
     t1, t1_values = image(args.t1)
     maseg, maseg_values = image(args.maseg)
+    input_conversions = {}
     for name, a, b, av, bv in (
         ('T1', raw_t1, t1, raw_values, t1_values),
         ('MaSeg', raw_seg, maseg, raw_labels, maseg_values),
     ):
-        if a.shape != b.shape or not np.array_equal(av, bv) or not np.allclose(a.affine, b.affine, atol=1e-4, rtol=0):
+        values_equal = np.array_equal(av, bv)
+        if name == 'T1' and av.dtype == np.float32 and not values_equal:
+            values_equal = np.array_equal(av, bv.astype(np.float32))
+            if values_equal:
+                input_conversions[name] = 'original Raw/T1 is the supplied scaled intensities cast to float32'
+        if a.shape != b.shape or not values_equal or not np.allclose(a.affine, b.affine, atol=1e-4, rtol=0):
             raise ValueError(f'External Raw/{name} does not preserve the declared input grid and values')
     if raw_t1.shape != raw_seg.shape or not np.allclose(raw_t1.affine, raw_seg.affine, atol=1e-4, rtol=0):
         raise ValueError('External raw T1 and MaSeg grids differ')
@@ -129,8 +141,8 @@ def compare(args) -> dict:
         _, candidate_values = image(candidate_path)
         if not np.array_equal(supplied, candidate_values):
             raise ValueError(f'Python {name} values differ from the supplied input')
-    if manifest.get('options', {}).get('regrid_inputs', False):
-        raise ValueError('Use the documented no-regrid Python recipe for this adapter')
+    if manifest.get('options', {}).get('regrid_inputs', False) and not native_export:
+        raise ValueError('Regridded Python runs require a verified native-export stage for this adapter')
 
     report = {
         'scope': 'independent BASE product comparison; preprocessing contracts may differ',
@@ -145,6 +157,8 @@ def compare(args) -> dict:
         'source_volume_grid': args.source_volume_grid,
         'raw_t1_affine_ras_mm': raw_t1.affine.tolist(),
         'input_identity': {'T1': sha256(args.t1), 'MaSeg': sha256(args.maseg)},
+        'input_conversions': input_conversions,
+        'python_product_stage': 'native-export' if native_export else 'legacy working stages',
         'comparisons': {}, 'limitations': [
             'External skull stripping and Python supplied-mask preprocessing differ unless independently shown equivalent.',
             'Scalar and thickness acceptance limits have not been established; metrics do not imply an overall pass.',

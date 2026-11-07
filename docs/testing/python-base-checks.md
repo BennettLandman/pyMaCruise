@@ -2,13 +2,13 @@
 
 > Superseded as the primary tester handoff: the requested test is a complete external-versus-Python end-to-end comparison. See [end-to-end protocol](end-to-end-external.md). This document provides supplemental Python installation, execution, and integrity checks; it does not satisfy the external comparison requirement.
 
-Prepared October 16, 2026. Read-only access to https://github.com/BennettLandman/pymacruise is sufficient. You need permission to create files on your own computer, but no GitHub write access, fork, commit, or push is needed.
+Prepared October 16, 2026. Read-only access to https://github.com/BennettLandman/pyMaCruise is sufficient. You need permission to create files on your own computer, but no GitHub write access, fork, commit, or push is needed.
 
 ## What is ready
 
 The BASE workflow is ready for an initial technical-user evaluation: installation, execution, restart, and visual review of scientific outputs. Whole-workflow equivalence to original MaCRUISE remains unverified. Completing this protocol does not establish scientific or clinical validation.
 
-Defer PLUS acceptance testing. A current source audit found missing AtlasEM initialization and pre-LesionTOADS Dura stages, with the selected AtlasEM assets also unavailable. The source-stage audit and selected-mask reference drivers are included in the current repository; full PLUS source equivalence remains unverified.
+PLUS is now available for exploratory evaluation through [the full PLUS walkthrough](full-plus-walkthrough.md). AtlasEM, pre-LesionTOADS Dura, selected native/Python atlas preparation and final refinement are implemented. Full original-versus-Python PLUS agreement remains unverified.
 
 Clone the published revision containing this guide and record its full Git commit. Keep the checkout unchanged during testing and resume. The earlier synthetic check described below used commit `16993385fde1ef0ed9a7b8e09d667ace740ac18d`; it is historical execution evidence, not a claim that every later revision has been tested.
 
@@ -23,7 +23,7 @@ Use a fresh folder. The commands below use Bash; start `bash` first if your term
 ```bash
 bash
 set -o pipefail
-git clone https://github.com/BennettLandman/pymacruise.git
+git clone https://github.com/BennettLandman/pyMaCruise.git pymacruise
 cd pymacruise
 git checkout --detach HEAD
 
@@ -71,7 +71,7 @@ smoke_base 2>&1 | tee build/tester-feedback/smoke.log
 smoke_base --resume 2>&1 | tee build/tester-feedback/smoke-resume.log
 ```
 
-Expected: eight `Stage check passed` messages on the first run; eight `Resume: verified ...; skipping` messages on the second. `build/tester-smoke/run.json` should say `status: complete`. Both TOADS passes intentionally stop at two iterations; `converged: false` is expected for this small example. Do not judge anatomy from this fixture.
+Expected: ten `Stage check passed` messages on the first run; ten `Resume: verified ...; skipping` messages on the second, including native export. `build/tester-smoke/run.json` should say `status: complete`. Both TOADS passes intentionally stop at two iterations; `converged: false` is expected for this small example. Do not judge anatomy from this fixture.
 
 Do not reuse the same output folder for a new non-resume run. An existing-run error is intentional; use `--resume` with the same options, or choose a fresh output directory.
 
@@ -93,7 +93,7 @@ print('All packet input and atlas hashes match')
 PY
 ```
 
-The following explicit settings reproduce the selected source-profile BASE recipe. Do not omit them: the command's defaults are short synthetic-test settings. Allow a long-running session; timing depends on hardware and first-run compilation.
+The following explicit settings record the selected source-profile BASE recipe. From version 0.1.1 these are the default numerical settings; short synthetic runs require explicit overrides. Allow a long-running session; timing depends on hardware and first-run compilation.
 
 ```bash
 mri_base() {
@@ -118,7 +118,7 @@ mri_base 2>&1 | tee build/tester-feedback/human-base.log
 mri_base --resume 2>&1 | tee build/tester-feedback/human-base-resume.log
 ```
 
-Expected: all eight stages complete, with verified skipping on resume. Previous recorded executions of this example naturally converged at TOADS iterations 20 and 18. Record the actual stop reason and iteration on your machine; completion and convergence are distinct checks. Differences should be reported rather than concealed by lowering thresholds or changing options.
+Expected: all ten stages complete, including native export, with verified skipping on resume. Previous recorded executions of this example naturally converged at TOADS iterations 20 and 18. Record the actual stop reason and iteration on your machine; completion and convergence are distinct checks. Differences should be reported rather than concealed by lowering thresholds or changing options.
 
 `--no-regrid-inputs` is intentional for this reference-comparison profile. It uses axis permutations/flips and discards oblique directions without interpolation. Orientation/obliquity warnings are expected and should be retained. This recipe is specific to the bundled comparison case. For later testing on other inputs, choose and record the geometry profile deliberately.
 
@@ -139,7 +139,8 @@ import numpy as np
 run_dir = Path('build/tester-human-base')
 m = json.loads((run_dir / 'run.json').read_text())
 assert m['status'] == 'complete'
-assert len(m['stages']) == 8
+assert len(m['stages']) == 9
+original = nib.load(m['inputs']['t1']['path'])
 images = 0
 records = 0
 for name, stage in m['stages'].items():
@@ -154,12 +155,16 @@ for name, stage in m['stages'].items():
         records += 1
         if p.name.endswith('.nii.gz'):
             image = nib.load(p)
-            assert nib.aff2axcodes(image.affine) == ('R', 'A', 'S'), p
+            if name == 'native-export':
+                assert image.shape == original.shape, p
+                assert np.array_equal(image.affine, original.affine), p
+            else:
+                assert nib.aff2axcodes(image.affine) == ('R', 'A', 'S'), p
             assert np.isfinite(np.asanyarray(image.dataobj)).all(), p
             images += 1
     if 'toads_stop' in stage:
         print(name, stage['toads_stop'])
-print('Verified stage records:', records, 'finite RAS images:', images)
+print('Verified stage records:', records, 'finite images:', images)
 print('Converged:', m['converged'])
 print('Interpretation:', m['result_interpretation'])
 print('Final outputs:')
@@ -168,15 +173,15 @@ for item in m['final_outputs']:
 PY
 ```
 
-For this BASE recipe, expect 68 stage-output records and 51 finite RAS images. The synthetic run has the same 68 stage records, but different intermediate dimensions. The 24 `final_outputs` records are a subset of stage records and include logs/provenance.
+For version 0.1.1, expect 80 stage-output records and 56 finite images. The 12 `final_outputs` records come from the native-export stage and include five NIfTIs on the original T1 grid, four RAS-mm meshes, summaries/provenance and the stage log. The historical eight-stage counts above describe the earlier revision only.
 
 Use the final paths printed above to locate `SEG_refine.nii.gz`, `inner.nii.gz`, `central.nii.gz`, `outer.nii.gz`, the three `*_surface.vtk` meshes, `inner_surface_thickness.vtk`, `thickness_levelset.nii.gz`, and `thickness_summary.json`. Inspect the active attempts listed in `run.json`; do not assume `attempt-01` after a repair.
 
-Use an existing NIfTI/VTK-capable viewer for manual review. If the no-regrid run creates `build/tester-human-base/resources/orientation-only-inputs/T1.nii.gz`, use that working T1 for overlays; otherwise use the bundled T1. Mixing the original oblique affine with the axis-only working outputs can create a misleading apparent alignment error. Meshes use RAS coordinates in millimetres; account for the viewer's coordinate convention.
+Use the original input T1 for overlays of the native exports listed in `final_outputs`. Working intermediates still use their recorded working T1. Final meshes use physical RAS coordinates in millimetres; account for the viewer's coordinate convention.
 
 Record:
 
-- Whether the refined labels and level-set zero contours align with the working T1 in axial, coronal, and sagittal views.
+- Whether the final refined labels and level-set zero contours align with the original T1 in axial, coronal, and sagittal views.
 - Regions with missing cortex, misplaced tissue boundaries, clipping, or unusual disconnected surface pieces; include screenshots and voxel/world coordinates.
 - Whether surface and thickness files open and contain usable values.
 - Any confusing instruction, unexplained warning, silent pause, or recovery problem.
@@ -194,10 +199,50 @@ tar -czf build/pymacruise-tester-results.tgz \
 
 If MRI testing was not attempted, omit `build/tester-human-base` from the archive command. Return the archive through the project owner's agreed transfer channel. A GitHub Issue can carry the summary if your account has permission to create one; do not depend on that permission or on uploading a large output archive to an Issue. No commit or push is needed.
 
+## Troubleshoot a silent stop at N4
+
+`base-run` executes N4 before TOADS and the remaining BASE stages. Input
+regridding is preparation, not a completed segmentation workflow. In older
+packages, a missing or unimportable ANTsPy dependency can leave an empty
+`stages/n4/attempt-01/stage.log`: the nested CLI exits with status 2 while its
+error text remains in an unwritten buffer. This symptom alone does not prove
+that ANTsPy is the cause on a tester's machine.
+
+From the same activated environment and working directory, expose the error:
+
+```bash
+python -c 'import sys, ants; print(sys.executable); print(ants.__version__)'
+python -m pip check
+python -m pymacruise.cli n4 \
+  --input test/outputs/resources/regridded-inputs/T1.nii.gz \
+  --output test/n4-diagnostic.nii.gz
+```
+
+Use the actual working T1 path if the run did not regrid. The diagnostic
+output sits outside the stage checkpoint; do not copy it into an attempt
+directory or edit `run.json`. If ANTsPy is missing, install the existing
+local wheel with its `[ants]` extra, or, from a source checkout, run
+`python -m pip install '.[ants]'`. When repairing an existing installation
+without either artifact available, the matching dependency constraints are:
+
+```bash
+python -m pip install 'antspyx>=0.6,<0.7' 'numpy>=1.23,<2.3' 'scipy>=1.10,<1.15'
+python -m pip check
+```
+
+This may download Python dependencies; no separate ANTs executable, original
+MaCRUISE installation, or additional atlas is needed. After fixing the
+reported problem, repeat the original `base-run` command with `--resume`.
+Keep the existing output directory so partial attempts remain available.
+If it still fails, return the direct N4 output, dependency checks, and
+`run.json`. The source correction prepared October 28, 2026 surfaces nested
+CLI exit errors and records both the N4 attempt and run as failed; updating
+the code is not required to run these diagnostic commands.
+
 ## Earlier execution evidence
 
-- [CLI contract](https://github.com/BennettLandman/pymacruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/cli-help.md)
-- [Synthetic run evidence](https://github.com/BennettLandman/pymacruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/synthetic-base-cli-run-2026-10-15.md)
-- [Dependency-install evidence](https://github.com/BennettLandman/pymacruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/clean-dependency-install-attempt-2026-10-15.md)
-- [Prior full-MRI BASE recipe and limitations](https://github.com/BennettLandman/pymacruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/in-vivo-base-v3-no-mask-n4-source-profile-2026-10-14.md)
-- [Source-equivalence acceptance policy](https://github.com/BennettLandman/pymacruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/validation-tolerances.md)
+- [CLI contract](https://github.com/BennettLandman/pyMaCruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/cli-help.md)
+- [Synthetic run evidence](https://github.com/BennettLandman/pyMaCruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/synthetic-base-cli-run-2026-10-15.md)
+- [Dependency-install evidence](https://github.com/BennettLandman/pyMaCruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/clean-dependency-install-attempt-2026-10-15.md)
+- [Prior full-MRI BASE recipe and limitations](https://github.com/BennettLandman/pyMaCruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/reports/in-vivo-base-v3-no-mask-n4-source-profile-2026-10-14.md)
+- [Source-equivalence acceptance policy](https://github.com/BennettLandman/pyMaCruise/blob/16993385fde1ef0ed9a7b8e09d667ace740ac18d/docs/validation-tolerances.md)

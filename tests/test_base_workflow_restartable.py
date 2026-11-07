@@ -27,14 +27,15 @@ MASEG = ROOT / "data" / "synthetic" / "base_workflow" / "maseg.nii.gz"
 VANDY_ATLAS = ROOT / "data" / "synthetic" / "toads_downsampled_vandy_atlas" / "atlas.txt"
 
 
-def test_base_cli_regridding_defaults_on_and_can_be_disabled() -> None:
+def test_base_cli_defaults_to_source_geometry_and_regridding_is_explicit() -> None:
     parser = build_parser()
     required = [
         "base-run", "--t1", "T1.nii.gz", "--brain-mask", "mask.nii.gz",
         "--maseg", "MaSeg.nii.gz", "--atlas-descriptor", "atlas.txt",
         "--output-dir", "run",
     ]
-    assert parser.parse_args(required).regrid_inputs is True
+    assert parser.parse_args(required).regrid_inputs is False
+    assert parser.parse_args([*required, "--regrid-inputs"]).regrid_inputs is True
     assert parser.parse_args([*required, "--no-regrid-inputs"]).regrid_inputs is False
 
 
@@ -101,8 +102,10 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
                 "brain_mask_path": str(mask_for_run),
                 "output_dir": str(output),
                 "run_options": {
+                    "regrid_inputs": True,
                     "registration_levels": 1,
                     "registration_iterations": 1,
+                    "post_refresh_registration_iterations": 1,
                     "registration_max_iterations": 1,
                     "toads_iterations": 2,
                     "dura_iterations": 1,
@@ -147,6 +150,10 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert manifest["converged"] is False
     assert manifest["result_interpretation"] == "stage-run-complete-but-toads-did-not-meet-energy-threshold"
     assert manifest["source_equivalence_claim"] is False
+    n4_command = manifest['stages']['n4']['command']
+    assert n4_command[n4_command.index('--input')+1] == str(t1_for_run)
+    assert '--working-reference' in n4_command
+    assert n4_command[n4_command.index('--estimation-mask')+1] == 'all'
     regridded = [
         nib.load(item["path"])
         for item in manifest["derived_resources"]
@@ -161,11 +168,22 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         "--gm-topology-regularization", "0.02",
     ]
     assert set(manifest["stages"]) == {
-        "n4", "toads-first", "dura", "toads-second", "base-tissue-preparation", "cruise-core",
-        "maseg-refinement", "surface-thickness",
+        "n4", "base-preprocessing", "toads-first", "dura", "toads-second", "base-tissue-preparation", "cruise-core",
+        "maseg-refinement", "surface-thickness", "native-export",
     }
     assert all(stage["status"] == "complete" for stage in manifest["stages"].values())
+    for name in ('toads-first', 'toads-second'):
+        command = manifest['stages'][name]['command']
+        assert command[command.index('--source-axis-order')+1] == 'LPS'
+    assert manifest['stages']['dura']['command'][manifest['stages']['dura']['command'].index('--source-axis-order')+1] == 'LPS'
+    first_input = manifest['stages']['toads-first']['command']
+    assert '/base-preprocessing/' in first_input[first_input.index('--t1-n4')+1]
+    assert first_input[first_input.index('--brain-mask')+1].endswith('toads-mask.nii.gz')
     core_command = manifest["stages"]["cruise-core"]["command"]
+    assert '--brain-mask' not in core_command
+    assert '--brain-mask-level-set' not in core_command
+    assert core_command[core_command.index("--topology-propagation") + 1] == "background->object"
+    assert core_command[core_command.index("--topology-source-axis-order") + 1] == "RAS"
     for option, expected in (
         ("--tgdm-initial-iterations", "1"),
         ("--tgdm-inner-iterations", "2"),
@@ -180,6 +198,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     preparation_stage = manifest["stages"]["base-tissue-preparation"]
     assert len(preparation_stage["outputs"]) == 22  # 20 RAS maps, provenance, stage log
     assert "--remove-cerebellum" not in preparation_stage["command"]
+    assert "--separate-hemispheres" in preparation_stage["command"]
     preparation_provenance_path = Path(next(
         item["path"] for item in preparation_stage["outputs"]
         if Path(item["path"]).name == "provenance.json"
@@ -220,10 +239,13 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
 
     reference = regridded[0]
     final_dir = Path(manifest["final_outputs"][0]["path"]).parent
+    original_reference = nib.load(t1_for_run)
+    assert manifest["final_output_grid"]["shape"] == list(original_reference.shape)
     for filename in ("inner.nii.gz", "central.nii.gz", "outer.nii.gz"):
         image = nib.load(str(final_dir / filename))
         values = np.asanyarray(image.dataobj)
-        assert image.shape == reference.shape
+        assert image.shape == original_reference.shape
+        np.testing.assert_allclose(image.affine, original_reference.affine, rtol=0, atol=1e-6)
         assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
         assert values.dtype == np.float32
         assert np.isfinite(values).all()
@@ -270,7 +292,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     }
     assert main([*arguments, "--resume"]) == 0
     resumed_summary = capsys.readouterr().out
-    assert resumed_summary.count("Resume: verified") == 8
+    assert resumed_summary.count("Resume: verified") == 10
     updated = json.loads(manifest_path.read_text())
     assert {
         Path(record["path"]).name: record["sha256"]
@@ -284,7 +306,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     assert main([*arguments, "--resume"]) == 0
     code_change_summary = capsys.readouterr().out
     assert "Resume: verified" not in code_change_summary
-    assert code_change_summary.count("Stage check passed:") == 8
+    assert code_change_summary.count("Stage check passed:") == 10
     code_changed = json.loads(manifest_path.read_text())
     assert code_changed["implementation_signature"] == "f" * 64
     assert code_changed["previous_implementation_signature"] == manifest["implementation_signature"]
@@ -297,7 +319,7 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
 
     assert main([*arguments, "--resume"]) == 0
     code_resume_summary = capsys.readouterr().out
-    assert code_resume_summary.count("Resume: verified") == 8
+    assert code_resume_summary.count("Resume: verified") == 10
     updated = json.loads(manifest_path.read_text())
 
     # Simulate interruption/corruption at a checkpoint: a damaged CRUISE output
@@ -310,10 +332,11 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
     damaged_inner.write_bytes(damaged_inner.read_bytes() + b"interrupted-output")
     assert main([*arguments, "--resume"]) == 0
     restart_summary = capsys.readouterr().out
-    assert restart_summary.count("Resume: verified") == 5
+    assert restart_summary.count("Resume: verified") == 6
     assert "Stage check passed: cruise-core" in restart_summary
     assert "Stage check passed: maseg-refinement" in restart_summary
     assert "Stage check passed: surface-thickness" in restart_summary
+    assert "Stage check passed: native-export" in restart_summary
     restarted = json.loads(manifest_path.read_text())
     assert restarted["stages"]["cruise-core"]["attempt"] == 3
     assert restarted["stages"]["maseg-refinement"]["attempt"] == 3
@@ -323,6 +346,18 @@ def test_base_config_run_is_end_to_end_restartable_and_stage_checked(
         for record in restarted["final_outputs"]
         if Path(record["path"]).name.endswith(".nii.gz")
     } == hashes_before
+
+    # Damaged final exports must be recovered without rerunning reconstruction.
+    damaged_native = Path(next(r['path'] for r in restarted['final_outputs']
+                              if Path(r['path']).name == 'SEG_refine.nii.gz'))
+    damaged_native.write_bytes(b'damaged native export')
+    assert main([*arguments, '--resume']) == 0
+    export_recovery = capsys.readouterr().out
+    assert export_recovery.count('Resume: verified') == 9
+    assert export_recovery.count('Stage check passed:') == 1
+    assert 'Stage check passed: native-export' in export_recovery
+    assert np.issubdtype(nib.load(next(r['path'] for r in json.loads(manifest_path.read_text())['final_outputs']
+                                      if Path(r['path']).name == 'SEG_refine.nii.gz')).get_data_dtype(), np.integer)
 
 
 def test_base_run_uses_orientation_only_ras_grid_when_regridding_is_disabled(tmp_path, monkeypatch) -> None:

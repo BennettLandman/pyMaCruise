@@ -73,12 +73,29 @@ def main() -> None:
             )
             all_pass &= bool(item["thresholds_pass"])
         outputs[name] = item
+    replay = provenance.get("python_tgdm_replay")
+    input_mode = provenance.get("tgdm_input_mode", "initial_membership")
+    if replay:
+        comparison = "selected MaGenericTGDM Java null-bound wrapper sequence vs current Python null-bound TGDM replay on exact held-fixed inputs"
+        scope = "TGDM only; saved upstream membership, tissue, ACE, skeleton, and GVF arrays are held fixed; no optional brain-mask level set is passed to either implementation"
+    elif input_mode == "initial_membership":
+        comparison = "selected MaGenericTGDM Java null-bound wrapper sequence vs Python null-bound replay from the same held-fixed initial membership"
+        scope = "TGDM only; the same initial membership, tissue, ACE, skeleton, and GVF arrays are supplied to both implementations; each computes its selected initial signed-distance field; no optional brain-mask level set is passed"
+    else:
+        comparison = "selected MaGenericTGDM Java null-bound wrapper sequence vs saved Python TGDM outputs from a held-fixed signed initial level set"
+        scope = "TGDM evolution only; the saved signed initial level set, tissue, ACE, skeleton, and GVF arrays are held fixed; no optional brain-mask level set is passed"
     report = {
         "synthetic_only": provenance["synthetic_only"],
         "evidence_category": provenance["evidence_category"],
-        "comparison": "selected MaGenericTGDM Java plus-wrapper sequence vs saved Python plus workflow on exact held-fixed inputs",
-        "scope": "TGDM only; the source signed-distance seed is reused from the hash-checked Python stage, tissue/ACE/GVF inputs are reconstructed on the same crop grid, and TOADS/LesionTOADS remain held fixed",
-        "tgdm_input_mode": provenance.get("tgdm_input_mode", "initial_membership"),
+        "comparison": comparison,
+        "scope": scope,
+        "tgdm_input_mode": input_mode,
+        "python_tgdm_replay": replay,
+        "tgdm_optional_brain_mask_level_set": provenance.get("tgdm_optional_brain_mask_level_set"),
+        "brain_mask_role": provenance.get("brain_mask_role"),
+        "replayed_saved_outputs_exactly": provenance.get("replayed_saved_outputs_exactly"),
+        "saved_stage_difference_voxels": provenance.get("saved_stage_difference_voxels"),
+        "held_fixed_input_binary_sha256": provenance.get("held_fixed_input_binary_sha256"),
         "workflow_run_signature": provenance["workflow_run_signature"],
         "full_workflow_run_signature": provenance["full_workflow_run_signature"],
         "implementation_signature": provenance["implementation_signature"],

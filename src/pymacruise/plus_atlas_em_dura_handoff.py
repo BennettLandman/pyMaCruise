@@ -119,6 +119,7 @@ def run_plus_atlas_em_dura_handoff_checkpoint(
     max_em_iterations: int = 99,
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
+    covariance_floor: float = 1.0e-6,
     max_dura_iterations: int = 5,
     resume: bool = False,
 ) -> PlusAtlasEMDuraHandoffResult:
@@ -181,6 +182,7 @@ def run_plus_atlas_em_dura_handoff_checkpoint(
         "max_em_iterations": int(max_em_iterations),
         "max_membership_change": float(max_membership_change),
         "smoothing": float(smoothing),
+        "covariance_floor": float(covariance_floor),
         "max_dura_iterations": int(max_dura_iterations),
         "dura_flair_policy": "Dura brain mask, clamp negative values to zero",
     }
@@ -228,6 +230,7 @@ def run_plus_atlas_em_dura_handoff_checkpoint(
         max_em_iterations=max_em_iterations,
         max_membership_change=max_membership_change,
         smoothing=smoothing,
+        covariance_floor=covariance_floor,
         max_dura_iterations=max_dura_iterations,
     )
     dura_t1_path = atlasem.output_paths["dura_stripped_t1"]

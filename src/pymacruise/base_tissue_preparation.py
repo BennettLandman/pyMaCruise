@@ -66,6 +66,7 @@ def prepare_base_tissue_maps(
     crop_edge_width: int = 5,
     gm_confident_level: float = 0.001,
     remove_cerebellum: bool = False,
+    separate_hemispheres: bool = False,
 ) -> BaseTissuePreparationResult:
     """Prepare source-selected MaSeg/TOADS maps for base CRUISE.
 
@@ -90,10 +91,12 @@ def prepare_base_tissue_maps(
         raise TypeError("remove_cerebellum must be boolean")
 
     maseg_ras = normalize_image_to_ras(maseg, source_name="base preparation MaSeg")
-    atlas = cortical_separation(maseg_ras)
+    atlas = cortical_separation(maseg_ras, separate_hemispheres=separate_hemispheres)
     toads_inputs = (toads_gray_matter, toads_white_matter_fill, toads_mask)
     removed_voxel_counts: tuple[int, int, int] | None = None
     stages = ["corticalSeparationFromMaSeg"]
+    if separate_hemispheres:
+        stages.append("v3.2LeftRightCorticalBoundaryExclusion")
     if remove_cerebellum:
         label_values = np.asarray(maseg_ras.dataobj)
         if not np.isfinite(label_values).all() or not np.equal(
@@ -165,6 +168,7 @@ def prepare_base_tissue_maps(
         "stage_order": list(order),
         "reference_grid": "MaSeg (prepared Seg.nii.gz)",
         "remove_cerebellum": bool(remove_cerebellum),
+        "separate_hemispheres": bool(separate_hemispheres),
         "removed_voxel_counts": (
             None if removed_voxel_counts is None else list(removed_voxel_counts)
         ),

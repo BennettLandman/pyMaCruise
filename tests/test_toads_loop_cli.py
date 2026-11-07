@@ -128,6 +128,27 @@ def test_toads_loop_source_axis_compatibility_writes_all_products_in_ras(tmp_pat
         assert image.shape == t1.shape
         assert nib.aff2axcodes(image.affine) == ("R", "A", "S")
 
+    # BASE supplies a RAS working T1. Explicit LPS processing must reproduce
+    # the established path that receives an already-LPS source image.
+    forced_output = tmp_path / 'forced-classification.nii.gz'
+    forced_dura = tmp_path / 'forced-dura'
+    with pytest.warns(UserWarning, match='reorienting the image to RAS'):
+        assert main([
+            'toads-loop', '--t1-n4', str(FIXTURE / 't1.nii.gz'),
+            '--brain-mask', str(FIXTURE / 'brain-mask.nii.gz'),
+            '--atlas-descriptor', str(ATLAS), '--output', str(forced_output),
+            '--dura-output-dir', str(forced_dura), '--registration-levels', '1',
+            '--registration-iterations', '1', '--post-refresh-registration-iterations', '1',
+            '--registration-max-iterations', '1', '--padding', '2',
+            '--maximum-iterations', '2', '--relation-limit', '1', '--source-axis-order', 'LPS',
+        ]) == 0
+    np.testing.assert_array_equal(nib.load(output).dataobj, nib.load(forced_output).dataobj)
+    for suffix in ('_Toads_seg.nii.gz', '_csf.nii.gz', '_gm.nii.gz', '_wmfill.nii.gz', '_wmmask.nii.gz'):
+        before = next(p for p in dura_output_dir.glob('*.nii.gz') if p.name.endswith(suffix))
+        after = next(p for p in forced_dura.glob('*.nii.gz') if p.name.endswith(suffix))
+        np.testing.assert_array_equal(nib.load(before).dataobj, nib.load(after).dataobj)
+        np.testing.assert_allclose(nib.load(after).affine, t1.affine, atol=1e-6)
+
 
 def test_toads_loop_cli_runs_supported_multilevel_pyramid_after_nan_trial(tmp_path, capsys) -> None:
     output = tmp_path / "classification.nii.gz"

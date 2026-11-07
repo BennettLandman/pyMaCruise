@@ -218,8 +218,13 @@ def test_tail_imports_hashed_upstream_and_resumes_verified_stages(tmp_path, monk
     assert all(item["status"] == "complete" and item["dependency_signature"]
                for item in manifest["stages"].values())
     prep_command = manifest["stages"]["base-tissue-preparation"]["command"]
+    assert '--separate-hemispheres' in prep_command
     assert prep_command[prep_command.index("--edge-width") + 1] == "5"
     core_command = manifest["stages"]["cruise-core"]["command"]
+    assert '--brain-mask' not in core_command
+    assert '--brain-mask-level-set' not in core_command
+    assert core_command[core_command.index("--topology-propagation") + 1] == "background->object"
+    assert core_command[core_command.index("--topology-source-axis-order") + 1] == "RAS"
     assert core_command[core_command.index("--ace-diffusion-iterations") + 1] == "25"
     assert core_command[core_command.index("--use-updated-csf-in-ace") + 1] == "2"
     assert core_command[core_command.index("--boundary-csf") + 1].endswith("boundary_csf.nii.gz")

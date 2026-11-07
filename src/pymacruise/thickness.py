@@ -21,7 +21,7 @@ The thickness operator itself remains a separate adapter. See
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import nibabel as nib
 import numpy as np
@@ -204,7 +204,7 @@ def closest_point_thickness(
             "mean_thickness_mm": mean_thickness,
         }
     )
-    inner_with_data = SurfaceMesh(inner.vertices, inner.faces, point_data=inner_data)
+    inner_with_data = replace(inner, point_data=inner_data)
 
     central_with_data: SurfaceMesh | None = None
     if central is not None:
@@ -230,9 +230,7 @@ def closest_point_thickness(
                 "nearest_inner_vertex_index": nearest_inner_vertex.astype(np.float64),
             }
         )
-        central_with_data = SurfaceMesh(
-            central.vertices, central.faces, point_data=central_data
-        )
+        central_with_data = replace(central, point_data=central_data)
 
     nonzero = mean_thickness[mean_thickness != 0]
     count = int(nonzero.size)

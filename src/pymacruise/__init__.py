@@ -73,6 +73,14 @@ from pymacruise.surfaces import (
     surface_vertex_normals,
     transform_surface_ras,
     write_legacy_vtk,
+    read_surface,
+    write_surface,
+)
+from pymacruise.gifti_io import (
+    read_gifti,
+    write_gifti,
+    load_gifti_point_data,
+    write_gifti_point_data,
 )
 from pymacruise.thickness import (
     SurfaceThicknessResult,
@@ -231,6 +239,12 @@ __all__ = [
     "convert_surface_to_ras",
     "read_legacy_vtk",
     "write_legacy_vtk",
+    "read_surface",
+    "write_surface",
+    "read_gifti",
+    "write_gifti",
+    "load_gifti_point_data",
+    "write_gifti_point_data",
     "surface_vertex_normals",
     "transform_surface_ras",
     "closest_point_thickness",

@@ -1,0 +1,35 @@
+{
+  "algorithm_source": "../toads-cruise-scm-2026-09-26/toads-cruise/src/edu/jhmi/rad/medic/algorithms/AlgorithmTopologyCorrection.java",
+  "algorithm_sha256": "40d1cad15e0983765139290e95411244465cf2641341184d0e96c1248eb67175",
+  "initialization": "intensity",
+  "propagation": "background->object",
+  "threshold_stop": false,
+  "regularize": 0.0001,
+  "connectivity": [
+    6,
+    18
+  ],
+  "array_axis_order": "index lattice",
+  "synthetic_comparisons": {
+    "spatial_hash": {
+      "different": 0,
+      "max_error": 0.0
+    },
+    "plateau": {
+      "different": 0,
+      "max_error": 0.0
+    },
+    "boundary": {
+      "different": 0,
+      "max_error": 0.0
+    },
+    "narrow_branch": {
+      "different": 0,
+      "max_error": 0.0
+    },
+    "disconnected_seeds": {
+      "different": 0,
+      "max_error": 0.0
+    }
+  }
+}

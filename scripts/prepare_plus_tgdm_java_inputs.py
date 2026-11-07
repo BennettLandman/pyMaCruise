@@ -92,7 +92,6 @@ def main() -> None:
         result = run_plus_topology_and_tgdm(
             *(inputs[name] for name in INPUT_ORDER),
             options=options,
-            brain_mask=inputs["brain_mask"],
         )
         for name in OUTPUT_NAMES:
             actual = np.asarray(getattr(result.tgdm, name).dataobj)
@@ -147,16 +146,6 @@ def main() -> None:
         for array in held:
             stream.write(np.asarray(array, dtype=">f4").tobytes(order="C"))
     np.save(args.output_dir / "python-held-initial-level-set.npy", held[0])
-    binary_brain_mask = np.asarray(inputs["brain_mask"].dataobj, dtype=np.float32)
-    if binary_brain_mask.shape != shape or not np.isfinite(binary_brain_mask).all():
-        raise SystemExit("cropped brain mask must be finite and match the TGDM input grid")
-    brain_mask = np.where(binary_brain_mask > 0, -1.0, 1.0).astype(np.float32)
-    np.save(args.output_dir / "python-brain-mask-binary.npy", binary_brain_mask)
-    brain_mask_path = args.output_dir / "brain-mask.bin"
-    with brain_mask_path.open("wb") as stream:
-        stream.write(struct.pack(">III", *shape))
-        stream.write(brain_mask.astype(">f4", copy=False).tobytes(order="C"))
-    np.save(args.output_dir / "python-brain-mask-bound.npy", brain_mask)
     ace_inputs=(np.asarray(tissue_gm.dataobj,dtype=np.float32),np.asarray(tissue_wm.dataobj,dtype=np.float32),np.asarray(boundary.cleaned_boundary.dataobj,dtype=np.float32))
     ace_input_path=args.output_dir/"ace-input.bin"
     with ace_input_path.open("wb") as stream:
@@ -253,8 +242,8 @@ def main() -> None:
         "saved_stage_difference_voxels": saved_stage_differences,
         "ace_gvf_parameters": {"csf_merge_mode":3,"gvf_lambda":0.2,"gvf_iterations":200,"gvf_normalize":False},
         "held_fixed_input_binary_sha256": sha256(input_path),
-        "brain_mask_bound_binary_sha256": sha256(brain_mask_path),
-        "brain_mask_semantics": "Python adapter's signed containment bound: inside=-1, outside=+1; source JIST plugin input is explicitly named Brain Mask Level Set",
+        "tgdm_optional_brain_mask_level_set": "omitted_per_selected_MaTGDMcrop_wrapper",
+        "brain_mask_role": "retained for input/crop provenance; not passed to selected MaTGDMcrop TGDM calls",
         "ace_input_binary_sha256": sha256(ace_input_path),
         "boundary_input_binary_sha256": sha256(boundary_input_path),
         "raw_boundary_sha256": hashlib.sha256(raw_boundary.astype(">i4", copy=False).tobytes(order="C")).hexdigest(),

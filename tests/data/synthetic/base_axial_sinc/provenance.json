@@ -1,0 +1,12 @@
+{
+  "operation": "Orientation.AXIAL, Resolution.UNCHANGED, Interpolation.WINDOWED_SINC",
+  "source": "ReorientVolume revision 1.6, Blake Lucas",
+  "source_sha256": "67fbf8b3f29e844cbec5e5994fecddf542da1e32d48222ee47312acb6886da24",
+  "upstream_algorithm": "MIPAV AlgorithmTransform + AlgorithmWSinc, clip=false",
+  "output_storage": "raw Java axial buffer reoriented from source SPECTRE LPS to RAS; no interpolation in export",
+  "fixtures": {
+    "brain_mask.nii.gz": "b2ef375014b0cb089fda5c530b646950a0f13a022ebebf243c0cc0ff78611082",
+    "masked_t1.nii.gz": "9a4e341a68ed4c9e32af3c83431f1260fa8b5f97793a8da6fe4bfa235ea9b8cb",
+    "java_expected_ras.npz": "fca9ef358b1883779ee9d79755a76945c1b34fc752f07dc17530ae9dc4a83722"
+  }
+}

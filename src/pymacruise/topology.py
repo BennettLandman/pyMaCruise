@@ -174,6 +174,8 @@ def topology_correct(
     highest_level: float = 1.0,
     regularize: float = 1e-4,
     multi_atlas_wm: nib.spatialimages.SpatialImage | None = None,
+    propagation_direction: str = "object->background",
+    source_axis_order: str = "RAS",
 ) -> TopologyCorrectionResult:
     """Apply the current Python (6,18) scalar correction implementation.
 
@@ -199,6 +201,12 @@ def topology_correct(
     `Refine_Topo_by_MA` operation: first apply the source's one-pass 3D
     six-neighbor integer minimum filter (with zero-valued image borders), then
     set corrected values below 200 to 255 wherever that eroded WM is positive.
+
+    ``background->object`` selects the v3.2 intensity-initialized upward
+    branch. Like the JIST wrapper, it ignores the paint values and seeds the
+    expanded bounding box. ``source_axis_order=LPS`` preserves source queue
+    tie order internally while returning the original public RAS grid. The
+    existing paint-mask branch remains the default for Dura/shared callers.
     """
     source = _as_ras_3d(volume, "topology volume")
     paint = _as_ras_3d(paint_mask, "topology paint mask")
@@ -219,11 +227,15 @@ def topology_correct(
     if not np.isfinite(regularize) or regularize < 0:
         raise ValueError("regularize must be finite and non-negative")
 
+    if propagation_direction not in ("object->background", "background->object"):
+        raise ValueError("unsupported topology propagation direction")
+    if source_axis_order not in ("RAS", "LPS"):
+        raise ValueError("topology source_axis_order must be RAS or LPS")
     image = np.asarray(source.dataobj, dtype=np.float32)
     mask = np.asarray(paint.dataobj) > paint_threshold
     if not np.isfinite(image).all():
         raise ValueError("Topology volume contains NaN or infinite voxel values")
-    if not mask.any():
+    if not mask.any() and propagation_direction == "object->background":
         raise ValueError("Topology paint mask contains no voxels above threshold")
 
     # AlgorithmTopologyCorrection adds a one-voxel zero frame before
@@ -247,14 +259,29 @@ def topology_correct(
             - (np.float32(1.0) - source_high_level) * source_range
         )
         image = image.copy()
-        image[mask] = scaled_high
+        if propagation_direction == "object->background":
+            image[mask] = scaled_high
         image[(image > scaled_high) | (image < scaled_low)] = scaled_low
-        corrected_data = _downward_topology_propagation(
-            image,
-            mask,
-            min_distance=float(np.float32(np.float32(regularize) * source_range)),
-            lowest_level=float(scaled_low),
-        )
+        if propagation_direction == "background->object":
+            from .topology_upward import upward_exact_smoothing
+
+            if any(size >= 32766 for size in image.shape):
+                raise ValueError("topology indexing dimensions must be below 32766")
+            values = image[::-1, ::-1, :] if source_axis_order == "LPS" else image
+            corrected_data = upward_exact_smoothing(
+                np.ascontiguousarray(values), scaled_low, scaled_high,
+                np.float32(np.float32(regularize) * source_range),
+            )
+            if source_axis_order == "LPS":
+                corrected_data = corrected_data[::-1, ::-1, :].copy()
+        else:
+            if source_axis_order != "RAS":
+                raise ValueError("LPS topology order requires background->object propagation")
+            corrected_data = _downward_topology_propagation(
+                image, mask,
+                min_distance=float(np.float32(np.float32(regularize) * source_range)),
+                lowest_level=float(scaled_low),
+            )
 
     corrected = _make_output(corrected_data, source)
     atlas_refined = None

@@ -70,6 +70,7 @@ def test_n4_cli_matches_api_and_writes_ras_provenance(tmp_path: Path) -> None:
         "convergence_tolerance": 0.0,
         "spline_mesh": [1, 1, 1],
         "rescale_intensities": False,
+        "estimation_mask": "all",
     }
     assert provenance["outputs"] == {"corrected_image": str(output_path.resolve())}
 
@@ -111,3 +112,62 @@ def test_n4_cli_help_and_missing_ants_guidance_without_eager_import(tmp_path: Pa
     )
     assert missing.returncode == 2
     assert "install PyMaCRUISE with its 'ants' extra" in missing.stderr
+
+
+def test_base_run_reports_and_records_missing_n4_dependency(tmp_path: Path) -> None:
+    fixture = REPO / "tests/data/synthetic/toads_registered_first_iteration_cycle"
+    output = tmp_path / "base-run"
+    arguments = [
+        "base-run", "--t1", str(fixture / "t1.nii.gz"),
+        "--brain-mask", str(fixture / "brain-mask.nii.gz"),
+        "--maseg", str(REPO / "tests/data/synthetic/base_workflow/maseg.nii.gz"),
+        "--atlas-descriptor", str(REPO / "tests/data/synthetic/toads_registered_field_refit/atlas-11.txt"),
+        "--output-dir", str(output),
+    ]
+    unavailable_ants = (
+        "import sys; sys.modules['ants'] = None; "
+        "from pymacruise.cli import main; sys.exit(main(sys.argv[1:]))"
+    )
+    for attempt, extra in ((1, []), (2, ["--resume"])):
+        result = subprocess.run(
+            [sys.executable, "-c", unavailable_ants, *arguments, *extra],
+            cwd=REPO, capture_output=True, text=True, check=False,
+        )
+        assert result.returncode != 0
+        assert "ANTsPy is required for N4 correction" in result.stderr
+        manifest = json.loads((output / "run.json").read_text())
+        assert manifest["status"] == "failed"
+        assert manifest["stages"]["n4"]["status"] == "failed"
+        assert manifest["stages"]["n4"]["attempt"] == attempt
+        assert set(manifest["stages"]) == {"n4"}
+        log = output / "stages/n4" / f"attempt-{attempt:02d}/stage.log"
+        assert "ANTsPy is required for N4 correction" in log.read_text()
+        assert not (log.parent / "t1-n4.nii.gz").exists()
+
+def test_n4_native_estimation_precedes_orientation_only_working_export(tmp_path, monkeypatch):
+    from pymacruise import cli
+    from pymacruise.image_io import orient_to_ras_without_obliquity
+    shape = (6, 7, 8)
+    values = np.arange(np.prod(shape), dtype=np.float32).reshape(shape)
+    angle = np.deg2rad(9)
+    affine = np.eye(4)
+    affine[:2, :2] = [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+    original = nib.Nifti1Image(values, affine)
+    native_path = tmp_path / 'native.nii.gz'
+    nib.save(original, native_path)
+    with pytest.warns(UserWarning):
+        working = orient_to_ras_without_obliquity(original)
+    working_path = tmp_path / 'working.nii.gz'
+    nib.save(working, working_path)
+    seen = {}
+    def estimate(image, *, config):
+        seen['affine'] = image.affine.copy()
+        return nib.Nifti1Image(np.asarray(image.dataobj)+10, image.affine)
+    monkeypatch.setattr(cli, 'n4_bias_correct', estimate)
+    output = tmp_path / 'corrected-working.nii.gz'
+    assert cli.main(['n4', '--input', str(native_path), '--output', str(output),
+                     '--working-reference', str(working_path), '--orientation-only-working-grid']) == 0
+    np.testing.assert_array_equal(seen['affine'], nib.load(native_path).affine)
+    saved = nib.load(output)
+    np.testing.assert_array_equal(saved.affine, nib.load(working_path).affine)
+    np.testing.assert_array_equal(np.asarray(saved.dataobj), values+10)

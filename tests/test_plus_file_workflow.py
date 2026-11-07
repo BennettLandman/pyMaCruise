@@ -32,7 +32,19 @@ def _save_channel(tmp_path: Path, name: str, values: np.ndarray, reference: nib.
     return save_nifti_ras(image, tmp_path / f"{name}.nii.gz")
 
 
-def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path, capsys) -> None:
+def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pymacruise.plus_file_workflow as workflow
+
+    original_topology_tgdm = workflow.run_plus_topology_and_tgdm
+    tgdm_kwargs: list[dict[str, object]] = []
+
+    def capture_tgdm(*args: object, **kwargs: object):
+        tgdm_kwargs.append(dict(kwargs))
+        return original_topology_tgdm(*args, **kwargs)
+
+    monkeypatch.setattr(workflow, "run_plus_topology_and_tgdm", capture_tgdm)
     segmentation = _load("segmentation.nii.gz")
     atlas_gm = _load("multi_atlas_gm.nii.gz")
     atlas_wm = _load("multi_atlas_wm.nii.gz")
@@ -74,9 +86,22 @@ def test_plus_file_workflow_runs_resumes_and_repairs_invalid_tail(tmp_path: Path
         )
 
     first = run_plus_file_workflow(**inputs, crop_edge_width=5)
+    assert tgdm_kwargs and "brain_mask" not in tgdm_kwargs[0]
     assert first.resumed_stages == ()
     manifest = json.loads(first.manifest_path.read_text())
     assert manifest["status"] == "complete"
+    assert manifest["settings"]["tgdm_optional_brain_mask_level_set"] == (
+        "omitted_per_selected_MaTGDMcrop_wrapper"
+    )
+    expected_crop_dependency = workflow._json_hash({
+        "inputs": manifest["inputs"], "settings": manifest["settings"],
+    })
+    assert manifest["stages"]["transfer_crop"]["dependency_signature"] == expected_crop_dependency
+    expected_tgdm_dependency = workflow._json_hash({
+        "crop": workflow._json_hash(manifest["stages"]["transfer_crop"]["outputs"]),
+        "settings": manifest["settings"],
+    })
+    assert manifest["stages"]["topology_ace_gvf_tgdm"]["dependency_signature"] == expected_tgdm_dependency
     assert set(manifest["stages"]) == {"transfer_crop", "topology_ace_gvf_tgdm", "surfaces_thickness"}
     assert set(first.outputs) == {
         "inner_level_set", "central_level_set", "outer_level_set", "thickness_volume",

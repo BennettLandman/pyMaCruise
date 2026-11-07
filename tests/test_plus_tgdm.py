@@ -12,6 +12,7 @@ from pymacruise.plus_pipeline import (
     run_plus_tgdm_stage,
 )
 from pymacruise.tgdm import tgdm_nested_images
+from pymacruise.tgdm import TGDMBaselineParameters, tgdm_initial_membership_level_set
 
 
 FIXTURE = Path(__file__).parent / "data/synthetic/tgdm"
@@ -73,3 +74,23 @@ def test_plus_tgdm_stage_rejects_a_gvf_on_another_physical_grid() -> None:
     inputs[-1] = nib.Nifti1Image(np.asarray(inputs[-1].dataobj), shifted)
     with pytest.raises(ValueError, match="GVF must match the initial-membership RAS grid"):
         run_plus_tgdm_stage(*inputs)
+
+
+def test_plus_tgdm_stage_accepts_hash_replayed_precomputed_initial_level_set() -> None:
+    inputs = _inputs()
+    seed = tgdm_initial_membership_level_set(
+        np.asarray(inputs[0].dataobj), iso_level=0.5, max_distance=8.0
+    )
+    seed_image = nib.Nifti1Image(seed, inputs[0].affine)
+    zero_steps = TGDMBaselineParameters(
+        initial_iterations=0, inner_iterations=0, central_shrink_iterations=0,
+        central_iterations=0, outer_iterations=0,
+    )
+
+    actual = run_plus_tgdm_stage(
+        *inputs,
+        options=PlusPipelineOptions(),
+        precomputed_initial_level_set=seed_image,
+    )
+
+    np.testing.assert_array_equal(actual.initial_level_set.dataobj, seed)

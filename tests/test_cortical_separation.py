@@ -51,3 +51,31 @@ def test_cortical_separation_warns_and_reorients_lps_input() -> None:
     assert nib.aff2axcodes(outputs["Atlas_GM"].affine) == ("R", "A", "S")
     assert np.argwhere(np.asanyarray(outputs["Atlas_GM"].dataobj) == 255).tolist() == [[1, 2, 3]]
     assert not np.any(np.asanyarray(outputs["Atlas_WM"].dataobj))
+
+
+def test_v32_hemisphere_boundary_removes_contacting_cortex_and_preserves_wm():
+    labels = np.zeros((7, 7, 7), dtype=np.int16)
+    labels[1:3, 1:6, 1:6] = 101
+    labels[3:6, 1:6, 1:6] = 102
+    labels[3, 0, 3] = 44
+    image = nib.Nifti1Image(labels, np.eye(4))
+    original = labels.copy()
+    plain = cortical_separation(image)
+    separated = cortical_separation(image, separate_hemispheres=True)
+    expected = np.asarray(plain['Atlas_GM'].dataobj).copy()
+    expected[2:4, 1:6, 1:6] = 0
+    np.testing.assert_array_equal(separated['Atlas_GM'].dataobj, expected)
+    np.testing.assert_array_equal(separated['Atlas_WM'].dataobj, plain['Atlas_WM'].dataobj)
+    np.testing.assert_array_equal(separated['Atlas_Mask'].dataobj, plain['Atlas_Mask'].dataobj)
+    assert np.asarray(separated['Atlas_BrainTissueMask'].dataobj)[3, 0, 3] == 255
+    np.testing.assert_array_equal(image.dataobj, original)
+
+
+def test_v32_single_hemisphere_and_non_cortical_labels_do_not_create_a_cut():
+    labels = np.zeros((7, 7, 7), dtype=np.int16)
+    labels[1:6, 1:6, 1:6] = 101
+    labels[4, 3, 3] = 44
+    image = nib.Nifti1Image(labels, np.eye(4))
+    old, new = cortical_separation(image), cortical_separation(image, separate_hemispheres=True)
+    for name in old:
+        np.testing.assert_array_equal(old[name].dataobj, new[name].dataobj)

@@ -1,8 +1,8 @@
 # LesionTOADS and MaCRUISEplus port plan
 
-**Status as of 2026-10-08: P39 implementation scope is complete; composite source parity remains open.** The port includes selected 13-class LesionTOADS initialization, statistics, membership, thinning, registration, loop control, output routing, and restartable checkpoint adapters, with bounded selected-Java comparisons at method and fixed-state volume level. The corrected zero-shape objective behavior is source-matched against a pinned Java excerpt, and a folded 13-class volume case matches float32 outputs exactly. These component and fixed-state results do not establish a composite Java LesionTOADS segmentation match.
+**Current status, 2026-10-27: P39 selected implementation scope is complete; composite source parity remains open.** Exploratory full PLUS testing and individual-tool instructions are in [the walkthrough](testing/full-plus-walkthrough.md) and [tools guide](testing/individual-tools.md). Current test receipts are in [the readiness report](reports/plus-testing-readiness-2026-10-27.md). The port includes selected 13-class LesionTOADS initialization, statistics, membership, thinning, registration, loop control, output routing, and restartable checkpoint adapters, with bounded selected-Java comparisons at method and fixed-state volume level. The corrected zero-shape objective behavior is source-matched against a pinned Java excerpt, and a folded 13-class volume case matches float32 outputs exactly. These component and fixed-state results do not establish a composite Java LesionTOADS segmentation match.
 
-**Integrated synthetic status:** `plus-full-run` completes and resumes all nine stages from T1, FLAIR, user brain mask, MaSeg, and bundled atlas inputs. On the 64×80×64 folded RAS fixture, LesionTOADS converges naturally at iteration 6; surface/thickness products and hash-checked restart are produced. This is Python integration evidence, not whole-source equivalence, brain-resolution plus robustness, or real-MRI validation. Selected Aladin registration is implemented with ANTsPy; optimizer equivalence remains open. BET, SPECTRE, and FreeSurfer are intentionally excluded under the owner-selected brain-mask/native-T1-RAS contract. Whole-workflow source comparison and approved real-data validation remain open.
+**Integrated synthetic status:** `plus-full-run` now completes and resumes ten stages from T1, FLAIR, user brain mask, MaSeg, and bundled atlas inputs, including selected V3 final MaSeg refinement after surfaces and thickness. Enabling the optional synthetic AtlasEM→Dura handoff adds an eleventh stage. On the 64×80×64 folded RAS fixture, LesionTOADS converges naturally at iteration 6. This is Python integration evidence, not whole-source equivalence, brain-resolution plus robustness, or real-MRI validation. The selected PLUS `MaTGDMcrop` wrapper does not supply its optional brain-mask level set, so full-workflow Python no longer injects one into TGDM; see [the 2026-10-17 source audit](reports/plus-final-refinement-and-tgdm-mask-routing-2026-10-17.md). Selected Aladin registration is implemented with ANTsPy; optimizer equivalence remains open. BET, SPECTRE, and FreeSurfer are intentionally excluded under the owner-selected brain-mask/native-T1-RAS contract. The Python PLUS human case has executed; whole-workflow source agreement remains open.
 
 ## Selected workflow and source
 
@@ -86,7 +86,7 @@ the Python helper preserves this behavior. This validates only a support
 primitive, not lesion membership or segmentation. See
 `tests/data/synthetic/lesion_toads_distance/README.md`.
 
-## Next source-faithful increments
+## Historical early source-faithful increments (implemented in later substeps below)
 
 1. Port transformed LesionTOADS prior sampling from the loaded `.nii.gz` shape
    maps. Match the selected class-specific bounds, rigid coordinate mapping,

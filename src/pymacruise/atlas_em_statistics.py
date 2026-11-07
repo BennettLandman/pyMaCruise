@@ -9,6 +9,135 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from numba import njit
+
+
+@njit(cache=True, fastmath=False)
+def _centroids_kernel(values, mem, active, field, use_field, means):
+    for c in range(values.shape[3]):
+        for k in range(mem.shape[3]):
+            numerator = np.float32(0.0)
+            denominator = np.float32(0.0)
+            for x in range(values.shape[0]):
+                for y in range(values.shape[1]):
+                    for z in range(values.shape[2]):
+                        if active[x, y, z]:
+                            membership = mem[x, y, z, k]
+                            sample = values[x, y, z, c]
+                            if use_field:
+                                weighted = np.float32(membership * field[x, y, z, c])
+                                weighted = np.float32(weighted * sample)
+                            else:
+                                weighted = np.float32(membership * sample)
+                            numerator = np.float32(numerator + weighted)
+                            denominator = np.float32(denominator + membership)
+            if denominator != np.float32(0.0):
+                means[c, k] = np.float32(numerator / denominator)
+    return means
+
+
+@njit(cache=True, fastmath=False)
+def _covariances_kernel(values, mem, active, means, field, use_field):
+    channels, classes = values.shape[3], mem.shape[3]
+    covariance = np.zeros((classes, channels, channels), dtype=np.float32)
+    for k in range(classes):
+        denominator = np.float32(0.0)
+        for x in range(values.shape[0]):
+            for y in range(values.shape[1]):
+                for z in range(values.shape[2]):
+                    if active[x, y, z]:
+                        membership = mem[x, y, z, k]
+                        for c1 in range(channels):
+                            sample1 = values[x, y, z, c1]
+                            if use_field:
+                                sample1 = np.float32(field[x, y, z, c1] * sample1)
+                            d1 = np.float32(sample1 - means[c1, k])
+                            for c2 in range(channels):
+                                sample2 = values[x, y, z, c2]
+                                if use_field:
+                                    sample2 = np.float32(field[x, y, z, c2] * sample2)
+                                d2 = np.float32(sample2 - means[c2, k])
+                                product = np.float32(np.float32(d1 * d2) * membership)
+                                covariance[k, c1, c2] = np.float32(covariance[k, c1, c2] + product)
+                                denominator = np.float32(denominator + membership)
+        if denominator != np.float32(0.0):
+            for c1 in range(channels):
+                for c2 in range(channels):
+                    covariance[k, c1, c2] = np.float32(covariance[k, c1, c2] / denominator)
+    return covariance
+
+
+@njit(cache=True, fastmath=False)
+def _gaussian_memberships_kernel(values, mem, active, means, cov, priors, smooth):
+    classes = mem.shape[3]
+    determinants = np.abs(cov[:, 0, 0]).astype(np.float32)
+    inverse = np.asarray(1.0 / cov[:, 0, 0], dtype=np.float32)
+    distance = np.float32(0.0)
+    total_energy = np.float32(0.0)
+    pi_source = np.float32(3.14159265358979)
+    log2pi = np.float32(np.log(np.float64(pi_source)))
+    old = np.empty(classes, dtype=np.float32)
+    for x in range(values.shape[0]):
+        for y in range(values.shape[1]):
+            for z in range(values.shape[2]):
+                if active[x, y, z]:
+                    for k in range(classes):
+                        old[k] = mem[x, y, z, k]
+                    denominator = np.float32(1e-30)
+                    energy_terms = np.zeros(classes, dtype=np.float32)
+                    for k in range(classes):
+                        prior = priors[x, y, z, k]
+                        if prior != 0.0:
+                            normalizer = np.float32(-np.float32(0.5) * log2pi)
+                            likelihood = (float(normalizer) - 0.5 * np.log(float(determinants[k])) + np.log(float(prior)))
+                            energy_terms[k] = np.float32(likelihood)
+                        if prior > 0.0:
+                            delta = np.float32(values[x, y, z, 0] - means[0, k])
+                            exponent = np.float32(np.float32(inverse[k] * delta) * delta)
+                            exponent = np.float32(exponent / np.float32(2.0))
+                            if smooth > 0.0:
+                                neighbor_sum = np.float32(0.0)
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x+1, y, z, m])
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x-1, y, z, m])
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x, y+1, z, m])
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x, y-1, z, m])
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x, y, z+1, m])
+                                for m in range(classes):
+                                    if m != k:
+                                        neighbor_sum = np.float32(neighbor_sum + mem[x, y, z-1, m])
+                                exponent = np.float32(exponent + np.float32(smooth * neighbor_sum))
+                            energy_terms[k] = np.float32(energy_terms[k] - exponent)
+                            raw = (np.exp(np.float64(-exponent)) * np.float64(prior) / np.sqrt(np.float64(determinants[k])))
+                            mem[x, y, z, k] = np.float32(raw)
+                            denominator = np.float32(denominator + mem[x, y, z, k])
+                        else:
+                            mem[x, y, z, k] = np.float32(0.0)
+                    if denominator > 0.0:
+                        for k in range(classes):
+                            mem[x, y, z, k] = np.float32(mem[x, y, z, k] / denominator)
+                    else:
+                        for k in range(classes):
+                            mem[x, y, z, k] = np.float32(0.0)
+                    for k in range(classes):
+                        change = np.float32(abs(np.float32(mem[x, y, z, k] - old[k])))
+                        if change > distance:
+                            distance = change
+                        contribution = float(energy_terms[k]) + np.log(float(mem[x, y, z, k])) * float(old[k])
+                        total_energy = np.float32(float(total_energy) + contribution)
+                else:
+                    for k in range(classes):
+                        mem[x, y, z, k] = np.float32(0.0)
+    return mem, np.asarray([total_energy, distance], dtype=np.float32)
 
 
 def compute_atlas_em_mixing_coefficients(
@@ -93,26 +222,8 @@ def compute_atlas_em_centroids(
     means = np.zeros((values.shape[3], mem.shape[3]), dtype=np.float32) if initial is None else np.array(initial, dtype=np.float32, copy=True)
     if means.shape != (values.shape[3], mem.shape[3]):
         raise ValueError("initial centroids must have shape (channels, classes)")
-    for c in range(values.shape[3]):
-        for k in range(mem.shape[3]):
-            numerator = np.float32(0.0)
-            denominator = np.float32(0.0)
-            for x in range(values.shape[0]):
-                for y in range(values.shape[1]):
-                    for z in range(values.shape[2]):
-                        if active[x, y, z]:
-                            membership = mem[x, y, z, k]
-                            sample = values[x, y, z, c]
-                            if field is not None:
-                                weighted = np.float32(membership * field[x, y, z, c])
-                                weighted = np.float32(weighted * sample)
-                            else:
-                                weighted = np.float32(membership * sample)
-                            numerator = np.float32(numerator + weighted)
-                            denominator = np.float32(denominator + mem[x, y, z, k])
-            if denominator != np.float32(0.0):
-                means[c, k] = np.float32(numerator / denominator)
-    return means
+    field_values = np.empty((0, 0, 0, 0), dtype=np.float32) if field is None else field
+    return _centroids_kernel(values, mem, active, field_values, field is not None, means)
 
 
 def compute_atlas_em_covariances(
@@ -145,30 +256,8 @@ def compute_atlas_em_covariances(
         raise ValueError("fields must match image shape")
     if not np.isfinite(values).all() or not np.isfinite(mem).all() or not np.isfinite(means).all() or (field is not None and not np.isfinite(field).all()):
         raise ValueError("images, memberships, centroids, and fields must be finite")
-    covariance = np.zeros((classes, channels, channels), dtype=np.float32)
-    for k in range(classes):
-        denominator = np.float32(0.0)
-        for x in range(values.shape[0]):
-            for y in range(values.shape[1]):
-                for z in range(values.shape[2]):
-                    if not active[x, y, z]:
-                        continue
-                    membership = mem[x, y, z, k]
-                    samples = values[x, y, z]
-                    if field is not None:
-                        samples = np.asarray(field[x, y, z] * samples, dtype=np.float32)
-                    difference = np.asarray(samples - means[:, k], dtype=np.float32)
-                    for c1 in range(channels):
-                        for c2 in range(channels):
-                            product = np.float32(difference[c1] * difference[c2])
-                            product = np.float32(product * membership)
-                            covariance[k, c1, c2] = np.float32(covariance[k, c1, c2] + product)
-                            denominator = np.float32(denominator + membership)
-        if denominator != np.float32(0.0):
-            for c1 in range(channels):
-                for c2 in range(channels):
-                    covariance[k, c1, c2] = np.float32(covariance[k, c1, c2] / denominator)
-    return covariance
+    field_values = np.empty((0, 0, 0, 0), dtype=np.float32) if field is None else field
+    return _covariances_kernel(values, mem, active, means, field_values, field is not None)
 
 
 def compute_atlas_em_atlas_prior_memberships(
@@ -358,71 +447,17 @@ def update_atlas_em_gaussian_memberships(
     if not all(np.isfinite(a).all() for a in (values, mem, means, cov, priors)):
         raise ValueError("images, memberships, centroids, covariance, and priors must be finite")
     if np.any(priors < 0) or np.any(cov <= 0) or not np.isfinite(smoothing) or smoothing < 0:
-        raise ValueError("Atlas priors and smoothing must be nonnegative; covariance must be positive")
+        bad_covariances = np.flatnonzero(cov[:, 0, 0] <= 0).tolist()
+        negative_prior_count = int(np.count_nonzero(priors < 0))
+        raise ValueError(
+            "Atlas priors and smoothing must be nonnegative; covariance must be positive "
+            f"(nonpositive covariance classes={bad_covariances}, "
+            f"negative prior voxels={negative_prior_count}, "
+            f"covariance diagonal={cov[:, 0, 0].tolist()})"
+        )
     if (active[0].any() or active[-1].any() or active[:, 0].any() or active[:, -1].any()
             or active[:, :, 0].any() or active[:, :, -1].any()):
         raise ValueError("mask must be false on all boundary faces to provide the source padding")
 
-    old = np.empty(classes, dtype=np.float32)
-    determinants = np.abs(cov[:, 0, 0]).astype(np.float32)
-    inverse = np.asarray(1.0 / cov[:, 0, 0], dtype=np.float32)
-    distance = np.float32(0.0)
-    total_energy = np.float32(0.0)
     smooth = np.float32(smoothing)
-    pi_source = np.float32(3.14159265358979)
-    log2pi = np.float32(np.log(np.float64(pi_source)))
-    for x in range(shape[0]):
-        for y in range(shape[1]):
-            for z in range(shape[2]):
-                if active[x, y, z]:
-                    old[:] = mem[x, y, z, :]
-                    denominator = np.float32(1e-30)
-                    energy_terms = np.zeros(classes, dtype=np.float32)
-                    for k in range(classes):
-                        prior = priors[x, y, z, k]
-                        if prior != 0.0:
-                            normalizer = np.float32(-np.float32(0.5) * log2pi)
-                            likelihood = (float(normalizer)
-                                          - 0.5 * np.log(float(determinants[k]))
-                                          + np.log(float(prior)))
-                            energy_terms[k] = np.float32(likelihood)
-                        else:
-                            energy_terms[k] = np.float32(0.0)
-                        if prior > 0.0:
-                            delta = np.float32(values[x, y, z, 0] - means[0, k])
-                            exponent = np.float32(np.float32(inverse[k] * delta) * delta)
-                            exponent = np.float32(exponent / np.float32(2.0))
-                            if smooth > 0.0:
-                                neighbor_sum = np.float32(0.0)
-                                for nx, ny, nz in ((x + 1, y, z), (x - 1, y, z),
-                                                   (x, y + 1, z), (x, y - 1, z),
-                                                   (x, y, z + 1), (x, y, z - 1)):
-                                    for m in range(classes):
-                                        if m != k:
-                                            neighbor_sum = np.float32(neighbor_sum + mem[nx, ny, nz, m])
-                                exponent = np.float32(exponent + np.float32(smooth * neighbor_sum))
-                            energy_terms[k] = np.float32(energy_terms[k] - exponent)
-                            raw = (np.exp(np.float64(-exponent)) * np.float64(prior)
-                                   / np.sqrt(np.float64(determinants[k])))
-                            mem[x, y, z, k] = np.float32(raw)
-                            denominator = np.float32(denominator + mem[x, y, z, k])
-                        else:
-                            mem[x, y, z, k] = 0.0
-                    if denominator > 0.0:
-                        for k in range(classes):
-                            mem[x, y, z, k] = np.float32(mem[x, y, z, k] / denominator)
-                    else:
-                        mem[x, y, z, :] = 0.0
-                    for k in range(classes):
-                        change = np.float32(abs(np.float32(mem[x, y, z, k] - old[k])))
-                        if change > distance:
-                            distance = change
-                        # Java evaluates the log/product in double, then rounds
-                        # the compound float addition back to float.
-                        with np.errstate(divide="ignore", invalid="ignore"):
-                            contribution = (float(energy_terms[k])
-                                           + np.log(float(mem[x, y, z, k])) * float(old[k]))
-                        total_energy = np.float32(float(total_energy) + contribution)
-                else:
-                    mem[x, y, z, :] = 0.0
-    return mem, np.asarray([total_energy, distance], dtype=np.float32)
+    return _gaussian_memberships_kernel(values, mem, active, means, cov, priors, smooth)

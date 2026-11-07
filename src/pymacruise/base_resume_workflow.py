@@ -424,7 +424,7 @@ def _validate_source_run(source_manifest_path: Path) -> tuple[dict[str, Any], di
     required_settings = (
         "registration_levels", "registration_iterations", "post_refresh_registration_iterations",
         "registration_max_iterations", "toads_iterations", "dura_iterations",
-        "crop_edge_width", "ace_diffusion_iterations", "gvf_iterations", "tgdm_iterations",
+        "crop_edge_width", "ace_diffusion_iterations", "gvf_iterations",
     )
     if any(name not in source_options for name in required_settings):
         raise ValueError("Source base-run settings are incomplete for the selected V3 workflow")
@@ -432,6 +432,15 @@ def _validate_source_run(source_manifest_path: Path) -> tuple[dict[str, Any], di
         value = source_options[name]
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
             raise ValueError(f"Source base-run setting {name} must be a positive integer")
+    common_tgdm = source_options.get("tgdm_iterations")
+    if common_tgdm is not None:
+        if isinstance(common_tgdm, bool) or not isinstance(common_tgdm, int) or common_tgdm < 1:
+            raise ValueError("Source base-run setting tgdm_iterations must be a positive integer")
+    else:
+        for name in ("tgdm_initial_iterations", "tgdm_inner_iterations", "tgdm_central_iterations"):
+            value = source_options.get(name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"Source base-run setting {name} must be a positive integer")
     dura_command = stages["dura"].get("command")
     if not isinstance(dura_command, list) or not dura_command or dura_command[0] != "dura":
         raise ValueError("Source Dura stage does not record the selected Dura command")
@@ -754,6 +763,7 @@ def run_base_resume_from_toads(
     prep = execute_stage("base-tissue-preparation", prep_names, [
         "base-tissue-preparation", "--maseg", str(maseg_path), "--gm", str(toads_maps["toads_gm"]),
         "--wm-fill", str(toads_maps["toads_wmfill"]), "--wm-mask", str(toads_maps["toads_wmmask"]),
+        "--separate-hemispheres",
         "--edge-width", str(_V3_CROP_EDGE_WIDTH), "--gm-confident-level", "0.001",
         "--output-dir", "{STAGE}", "--provenance", "{STAGE}/provenance.json",
     ], prep_deps)
@@ -763,12 +773,12 @@ def run_base_resume_from_toads(
         "inner.nii.gz", "central.nii.gz", "outer.nii.gz", "provenance.json",
     )
     prep_prov = prep["provenance.json"]
-    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "boundary_csf.nii.gz")] + [prep_prov, source_brain_mask]
+    core_deps = [prep[n] for n in ("fused_gm.nii.gz", "fused_wmfill.nii.gz", "fused_mask.nii.gz", "boundary_csf.nii.gz")] + [prep_prov]
     core = execute_stage("cruise-core", core_names, [
         "toads-cruise-core", "--gm", str(core_deps[0]), "--wm-fill", str(core_deps[1]), "--wm-mask", str(core_deps[2]),
         "--boundary-csf", str(core_deps[3]),
-        "--brain-mask", str(source_brain_mask),
         "--base-preparation-provenance", str(prep_prov), "--edge-width", str(_V3_CROP_EDGE_WIDTH),
+        "--topology-propagation", "background->object", "--topology-source-axis-order", "RAS",
         "--ace-diffusion-iterations", "25", "--use-updated-csf-in-ace", str(settings["ace_use_updated_csf_in_ace"]),
         "--gvf-iterations", "200", "--wm-iso-level", str(settings["wm_iso_level"]),
         "--tgdm-initial-iterations", "6", "--tgdm-inner-iterations", "4",

@@ -10,7 +10,7 @@ Python run. Keep the raw logs, including failures.
 - Workflow: `BASE` or `PLUS`
 - Run timestamp and time zone:
 - Operator / institution:
-- Driver file and SHA-256:
+- Driver file and SHA-256 (PLUS: include AtlasEM/thickness helper hashes too):
 - Exact MATLAB invocation:
 - Exit status and final stage reached:
 - Output directory / archive name:
@@ -49,12 +49,14 @@ atlas payload used by the plugin.
 - Selected wrapper profile/version (MaCRUISE v3+):
 - BASE TOADS atlas, parameters, connectivity and output mode (BASE):
 - BASE Dura parameters (BASE):
-- PLUS AtlasEM descriptor (must be the selected `ibsr8obj` descriptor), referenced payloads, parameters, transform/grid, and output mode (PLUS):
+- PLUS AtlasEM descriptor (owner-selected `ibsr11objV3`, including original/native-Java/Python conversion provenance), referenced payloads, parameters, transform/grid, and output mode (PLUS):
 - PLUS AtlasEM GM, WM-fill, and WM-mask output filenames and hashes (PLUS):
 - PLUS initial Dura-removal inputs, parameters, and output mask hash (PLUS):
 - PLUS LesionTOADS atlas, parameters, connectivity and output mode (PLUS):
 - N4 inputs, options, and whether mask was supplied to N4:
-- Surface/TGDM options:
+- Source mesh coordinate frame (`T1 voxel indices` or `RAS+ mm`), evidence and any explicit conversion:
+- AtlasEM covariance floor / singular-matrix behavior and other backend differences:
+- Surface/TGDM options (selected PLUS optional mask bound is absent):
 - Segmentation refinement options and source-faithful mode:
 - Deviations from the checked-in driver or packet instructions:
 
@@ -67,6 +69,7 @@ archive.
 | Stage | Status | Elapsed | Main outputs / failure details |
 |---|---|---:|---|
 | Raw input preparation | | | |
+| Rigid FLAIR-to-T1 registration (PLUS) | | | |
 | N4 correction and supplied-mask application | | | |
 | BASE TOADS pass 1 / PLUS AtlasEM initialization | | | |
 | PLUS initial Dura removal and T1/FLAIR masking (PLUS) | | | |
@@ -74,6 +77,7 @@ archive.
 | Transfer, crop, boundary and tissue fusion | | | |
 | ACE, GVF and TGDM | | | |
 | Segmentation refinement | | | |
+| Volume and closest-point surface thickness | | | |
 
 Record each TOADS/LesionTOADS loop separately:
 

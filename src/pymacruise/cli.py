@@ -22,6 +22,7 @@ from pymacruise.gvf import generalized_gvf_image
 from pymacruise.image_io import (
     nifti_ras_on_reference,
     normalize_image_to_ras,
+    regrid_to_orthogonal_ras,
     reorient_array_to_ras,
     save_nifti_ras,
 )
@@ -30,9 +31,10 @@ from pymacruise.raw_preparation import prepare_raw
 from pymacruise.segmentation_refine import refine_segmentation_by_surfaces
 from pymacruise.surfaces import (
     extract_levelset_surface,
-    read_legacy_vtk,
-    write_legacy_vtk,
+    read_surface,
+    write_surface,
 )
+from pymacruise.gifti_io import load_gifti_point_data, write_gifti_point_data
 from pymacruise.tgdm import TGDMBaselineParameters, tgdm_nested_images
 from pymacruise.thickness import closest_point_thickness, levelset_subtraction_thickness
 from pymacruise.topology import topology_correct
@@ -165,10 +167,14 @@ def build_parser() -> argparse.ArgumentParser:
     n4 = commands.add_parser("n4", help="correct smooth intensity bias with optional ANTsPy")
     n4.add_argument("--input", required=True, type=Path)
     n4.add_argument("--output", required=True, type=Path, help="corrected image .nii.gz")
+    n4.add_argument("--working-reference", type=Path, help="map corrected native-grid data to this working grid after N4")
+    n4.add_argument("--orientation-only-working-grid", action="store_true", help="map to the working grid by axis order only, without interpolation")
     n4.add_argument("--shrink-factor", type=int, default=4)
     n4.add_argument("--iterations", type=int, nargs="+", default=[50, 50, 50, 50])
     n4.add_argument("--convergence-tolerance", type=float, default=0.0)
     n4.add_argument("--spline-mesh", type=int, nargs=3, default=[1, 1, 1])
+    n4.add_argument("--estimation-mask", choices=("all", "legacy-otsu"), default="all",
+                    help="N4 fit region; BASE selects historical ANTs 200-bin automatic Otsu")
     n4.add_argument(
         "--rescale-intensities",
         action=argparse.BooleanOptionalAction,
@@ -176,6 +182,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="rescale corrected values to the input range (default: disabled without an explicit mask)",
     )
     _add_provenance_option(n4)
+
+    base_preprocessing = commands.add_parser(
+        "base-preprocessing", help="mask corrected T1 before the selected axial windowed-sinc handoff",
+    )
+    base_preprocessing.add_argument("--t1-n4", required=True, type=Path)
+    base_preprocessing.add_argument("--brain-mask", required=True, type=Path)
+    base_preprocessing.add_argument("--output-dir", required=True, type=Path)
+    _add_provenance_option(base_preprocessing)
 
     tgdm = commands.add_parser("tgdm", help="run supported nested CRUISE/TGDM stages")
     tgdm.add_argument("--initial", required=True, type=Path)
@@ -199,6 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     dura.add_argument("--white-mask", required=True, type=Path)
     dura.add_argument("--output-dir", required=True, type=Path)
     dura.add_argument("--max-iterations", type=int, default=5)
+    dura.add_argument("--source-axis-order", choices=("RAS", "LPS"), default="RAS",
+                      help="internal Dura voxel order; BASE selects the source LPS order")
     dura.add_argument(
         "--membership-level", type=float, default=0.3,
         help="target membership (MaCRUISE run_RemoveDura_jist.m selects 0.3)",
@@ -309,6 +325,8 @@ def build_parser() -> argparse.ArgumentParser:
     base_tissue.add_argument("--wm-fill", required=True, type=Path, help="second-pass TOADS WM-fill .nii.gz")
     base_tissue.add_argument("--wm-mask", required=True, type=Path, help="second-pass TOADS WM-mask .nii.gz")
     base_tissue.add_argument("--remove-cerebellum", action="store_true")
+    base_tissue.add_argument("--separate-hemispheres", action="store_true",
+                            help="apply the v3.2 left/right cortical boundary exclusion (selected by base-run)")
     base_tissue.add_argument("--edge-width", type=int, default=5)
     base_tissue.add_argument("--gm-confident-level", type=float, default=0.001)
     base_tissue.add_argument("--output-dir", required=True, type=Path)
@@ -341,6 +359,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="reuse the recorded MaSeg-derived crop for already-fused base maps",
     )
     cruise_core.add_argument("--edge-width", type=int, default=5)
+    cruise_core.add_argument("--topology-propagation", choices=("object->background", "background->object"), default="object->background")
+    cruise_core.add_argument("--topology-source-axis-order", choices=("RAS", "LPS"), default="RAS")
     cruise_core.add_argument("--ace-diffusion-iterations", type=int, default=25)
     cruise_core.add_argument(
         "--use-updated-csf-in-ace", type=int, choices=(0, 1, 2, 3), default=0,
@@ -386,13 +406,18 @@ def build_parser() -> argparse.ArgumentParser:
     toads.add_argument("--convergence-threshold", type=float, default=1e-4)
     toads.add_argument("--relation-limit", type=int, default=3)
     toads.add_argument("--maximum-distance", type=float, default=1e-4)
-    toads.add_argument(
+    toads_axis_order = toads.add_mutually_exclusive_group()
+    toads_axis_order.add_argument(
         "--preserve-input-axis-order",
         action="store_true",
         help=(
             "source-compatibility mode: validate/warn and normalize the input to RAS, "
             "reconstruct its axial RAS/LPS voxel order internally, then write every image in RAS"
         ),
+    )
+    toads_axis_order.add_argument(
+        "--source-axis-order", choices=("RAS", "LPS"),
+        help="process in an explicit source voxel order internally and export RAS images",
     )
     toads.add_argument(
         "--category-exponents",
@@ -403,11 +428,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_provenance_option(toads)
 
-    surface = commands.add_parser("surface-extract", help="extract a RAS-mm level-set surface as VTK")
+    surface = commands.add_parser("surface-extract", help="extract a RAS-mm level-set surface as VTK or GIFTI")
     surface.add_argument("--level-set", required=True, type=Path)
-    surface.add_argument("--output", required=True, type=Path, help="legacy VTK .vtk output")
+    surface.add_argument("--output", required=True, type=Path, help="legacy VTK .vtk or GIFTI .surf.gii output")
     surface.add_argument("--level", type=float, default=0.0)
     _add_provenance_option(surface)
+
+    convert = commands.add_parser("surface-convert", help="convert VTK/GIFTI surfaces and vertex measurements")
+    convert.add_argument("--input", required=True, type=Path)
+    convert.add_argument("--output", required=True, type=Path, help=".vtk or .surf.gii")
+    convert.add_argument("--input-frame", choices=("RAS", "LPS"), help="required for untagged VTK inputs")
+    convert.add_argument("--point-data", action="append", default=[], type=Path,
+                         help="attach dense GIFTI data with matching vertex order (repeatable)")
+    convert.add_argument("--data-output", type=Path, help="also export vertex data without geometry as .shape.gii")
+    _add_provenance_option(convert)
+
+    info = commands.add_parser("surface-info", help="inspect VTK/GIFTI geometry, metadata, and vertex fields as JSON")
+    info.add_argument("--input", required=True, type=Path)
+    info.add_argument("--input-frame", choices=("RAS", "LPS"))
+    info.add_argument("--output", type=Path, help="optional JSON file (also printed to stdout)")
 
     level_thickness = commands.add_parser(
         "thickness-levelset", help="compute voxelwise level-set subtraction thickness"
@@ -419,7 +458,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_provenance_option(level_thickness)
 
     surface_thickness = commands.add_parser(
-        "thickness-surface", help="compute closest-point thickness on RAS-mm VTK meshes"
+        "thickness-surface", help="compute closest-point thickness on RAS-mm VTK/GIFTI meshes"
     )
     surface_thickness.add_argument("--inner", required=True, type=Path)
     surface_thickness.add_argument("--outer", required=True, type=Path)
@@ -436,6 +475,7 @@ def build_parser() -> argparse.ArgumentParser:
     base_surface_thickness.add_argument("--central-levelset", required=True, type=Path)
     base_surface_thickness.add_argument("--outer-levelset", required=True, type=Path)
     base_surface_thickness.add_argument("--output-dir", required=True, type=Path)
+    base_surface_thickness.add_argument("--surface-format", choices=("vtk", "gii"), default="vtk")
     _add_provenance_option(base_surface_thickness)
 
     workflow_preflight = commands.add_parser(
@@ -468,36 +508,58 @@ def build_parser() -> argparse.ArgumentParser:
     base_run.add_argument("--output-dir", required=True, type=Path)
     base_run.add_argument("--resume", action="store_true", help="resume from verified stage outputs in run.json")
     base_run.add_argument(
+        "--n4-estimation-mask", choices=("all", "legacy-otsu"), default="all",
+        help="N4 backend policy: all follows the current unmasked ANTs command; legacy-otsu reproduces historical automatic Otsu estimation",
+    )
+    base_run.add_argument(
         "--regrid-inputs",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help=(
-            "recommended: resample oblique RAS inputs to an orthogonal grid "
-            "(default: enabled; --no-regrid-inputs only permutes/flips axes to closest RAS, "
-            "discards oblique directions, and does not interpolate)"
+            "resample oblique inputs to an orthogonal working grid (default: disabled); "
+            "source-compatible no-regrid processing permutes/flips axes without interpolation; "
+            "final outputs restore the original grid and oblique affine in both modes"
         ),
     )
-    base_run.add_argument("--registration-levels", type=int, default=1)
-    base_run.add_argument("--registration-iterations", type=int, default=1)
-    base_run.add_argument("--post-refresh-registration-iterations", type=int, default=1)
-    base_run.add_argument("--registration-max-iterations", type=int, default=1)
-    base_run.add_argument("--toads-iterations", type=int, default=2)
-    base_run.add_argument("--dura-iterations", type=int, default=1)
+    base_run.add_argument("--registration-levels", type=int, default=4)
+    base_run.add_argument("--registration-iterations", type=int, default=50)
+    base_run.add_argument("--post-refresh-registration-iterations", type=int, default=5)
+    base_run.add_argument("--registration-max-iterations", type=int, default=5)
+    base_run.add_argument("--toads-iterations", type=int, default=50)
+    base_run.add_argument(
+        "--toads-axis-order", choices=("RAS", "LPS"), default="LPS",
+        help="internal TOADS voxel order (default: LPS, selected source wrapper)",
+    )
+    base_run.add_argument("--dura-iterations", type=int, default=5)
     base_run.add_argument("--dura-membership-level", type=float, default=0.3)
     base_run.add_argument("--crop-edge-width", type=int, default=5)
-    base_run.add_argument("--ace-diffusion-iterations", type=int, default=1)
+    base_run.add_argument("--ace-diffusion-iterations", type=int, default=25)
     base_run.add_argument("--gvf-iterations", type=int, default=200)
-    base_run.add_argument("--tgdm-iterations", type=int, default=1)
-    base_run.add_argument("--tgdm-initial-iterations", type=int)
-    base_run.add_argument("--tgdm-inner-iterations", type=int)
-    base_run.add_argument("--tgdm-central-iterations", type=int)
-    base_run.add_argument("--wm-iso-level", type=float, default=0.6)
     base_run.add_argument(
-        "--ace-use-updated-csf-in-ace", type=int, choices=(0, 1, 2, 3), default=0,
+        "--tgdm-iterations", type=int,
+        help="override all TGDM phase counts; individual phase options take precedence",
+    )
+    base_run.add_argument("--tgdm-initial-iterations", type=int, help="initial smoothing iterations (default: 6)")
+    base_run.add_argument("--tgdm-inner-iterations", type=int, help="inner surface iterations (default: 4)")
+    base_run.add_argument("--tgdm-central-iterations", type=int, help="central/outer surface iterations (default: 7)")
+    base_run.add_argument("--wm-iso-level", type=float, default=0.5)
+    base_run.add_argument(
+        "--ace-use-updated-csf-in-ace", type=int, choices=(0, 1, 2, 3), default=2,
     )
     base_run.add_argument(
         "--source-faithful-refinement", action=argparse.BooleanOptionalAction, default=True,
         help="use historical MaSeg refinement behavior (default: enabled)",
+    )
+
+    native_export = commands.add_parser(
+        "base-native-export", help="restore BASE final volumes to the original input grid and surfaces to its physical frame",
+    )
+    for flag in ("reference", "working-reference", "segmentation", "inner-levelset",
+                 "central-levelset", "outer-levelset", "surface-dir", "output-dir"):
+        native_export.add_argument("--" + flag, required=True, type=Path)
+    native_export.add_argument(
+        "--orientation-only", action="store_true",
+        help="invert a recorded no-regrid axis-only working geometry instead of physical resampling",
     )
 
     base_resume = commands.add_parser(
@@ -669,7 +731,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--atlasem-descriptor",
         type=Path,
         help=(
-            "optional selected 8-object AtlasEM descriptor for the source-order "
+            "optional AtlasEM descriptor (testing target: adapted ibsr11objV3) for the source-order "
             "pre-LesionTOADS AtlasEM/Dura handoff; when omitted, run the legacy "
             "LesionTOADS-only chain"
         ),
@@ -715,6 +777,11 @@ def build_parser() -> argparse.ArgumentParser:
     plus_full.add_argument("--max-passes", type=int, default=99)
     plus_full.add_argument("--finite-zero-variance", action="store_true")
     plus_full.add_argument("--resume", action="store_true")
+    from pymacruise.plus_full_workflow import PLUS_STAGES
+    plus_full.add_argument(
+        "--stop-after-stage", choices=PLUS_STAGES,
+        help="checkpoint after this stage; repeat with --resume to continue",
+    )
 
     plus_run = commands.add_parser(
         "plus-run",
@@ -936,11 +1003,13 @@ def main(argv: list[str] | None = None) -> int:
             resume=args.resume,
             options=BaseRunOptions(
                 regrid_inputs=args.regrid_inputs,
+                n4_estimation_mask=args.n4_estimation_mask,
                 registration_levels=args.registration_levels,
                 registration_iterations=args.registration_iterations,
                 post_refresh_registration_iterations=args.post_refresh_registration_iterations,
                 registration_max_iterations=args.registration_max_iterations,
                 toads_iterations=args.toads_iterations,
+                toads_axis_order=args.toads_axis_order,
                 dura_iterations=args.dura_iterations,
                 dura_membership_level=args.dura_membership_level,
                 crop_edge_width=args.crop_edge_width,
@@ -956,6 +1025,18 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         print(f"Base run complete: {manifest_path} (inspect stage checks and TOADS stop metadata)")
+    elif args.command == "base-native-export":
+        from pymacruise.base_native_export import export_base_native_outputs
+
+        paths = export_base_native_outputs(
+            reference_path=args.reference, working_reference_path=args.working_reference,
+            segmentation_path=args.segmentation, inner_path=args.inner_levelset,
+            central_path=args.central_levelset, outer_path=args.outer_levelset,
+            surface_dir=args.surface_dir, output_dir=args.output_dir,
+            orientation_only=args.orientation_only,
+        )
+        for path in paths.values():
+            print(f"Wrote original-grid BASE product: {path}")
     elif args.command == "base-resume-from-toads":
         from pymacruise.base_resume_workflow import run_base_resume_from_toads
 
@@ -1142,6 +1223,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{verb} plus LesionTOADS loop workflow: {result.manifest_path}")
         if result.classification_path is not None:
             print(f"Terminal classification: {result.classification_path}")
+        refined_path = getattr(result, "refined_segmentation_path", None)
+        if refined_path is not None:
+            print(f"MaCRUISEplus SEG_refine: {refined_path}")
         if result.lesion_subtype_path is not None:
             print(f"Lesion subtype: {result.lesion_subtype_path}")
     elif args.command == "plus-full-run":
@@ -1183,7 +1267,12 @@ def main(argv: list[str] | None = None) -> int:
             regrid_inputs=args.regrid_inputs,
             dura_transfer_mode=args.dura_transfer_mode,
             resume=args.resume,
+            stop_after_stage=args.stop_after_stage,
         )
+        from pymacruise.plus_full_workflow import PlusWorkflowCheckpoint
+        if isinstance(result, PlusWorkflowCheckpoint):
+            print(f"Checkpointed after {result.completed_stage}: {result.manifest_path}")
+            return 0
         verb = "Verified and resumed" if result.resumed else "Completed"
         print(f"{verb} raw-input plus LesionTOADS workflow: {result.manifest_path}")
         if result.classification_path is not None:
@@ -1196,6 +1285,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Native-T1 LesionTOADS {channel}: {path}")
         for product, path in result.surface_output_paths.items():
             print(f"MaCRUISEplus {product}: {path}")
+        if result.refined_segmentation_path is not None:
+            print(f"Refined MaSeg: {result.refined_segmentation_path}")
     elif args.command == "plus-run":
         from pymacruise.plus_file_workflow import run_plus_file_workflow
         from pymacruise.plus_pipeline import PlusPipelineOptions
@@ -1242,6 +1333,16 @@ def main(argv: list[str] | None = None) -> int:
         atlas = load_toads_atlas(descriptor)
         t1_n4 = _load_nifti_gz(args.t1_n4)
         brain_mask = _load_nifti_gz(args.brain_mask)
+        preserve_axis_order = args.preserve_input_axis_order or args.source_axis_order is not None
+        if args.source_axis_order is not None:
+            # The source SPECTRE handoff is axial LPS even when the acquisition
+            # is stored RAS. Reorder only the internal arrays, preserving world
+            # locations and the public RAS image-output contract.
+            target = nib.orientations.axcodes2ornt(tuple(args.source_axis_order))
+            ras = nib.orientations.axcodes2ornt(("R", "A", "S"))
+            transform = nib.orientations.ornt_transform(ras, target)
+            t1_n4 = normalize_image_to_ras(t1_n4, source_name="TOADS source T1").as_reoriented(transform)
+            brain_mask = normalize_image_to_ras(brain_mask, source_name="TOADS source mask").as_reoriented(transform)
         report_toads_progress("starting atlas alignment")
         alignment = register_toads_from_atlas_assets(
             t1_n4,
@@ -1257,7 +1358,7 @@ def main(argv: list[str] | None = None) -> int:
             energy_tolerance=1e-6,
             minimum_lambda=1e-3,
             progress_callback=report_toads_progress,
-            preserve_input_axis_order=args.preserve_input_axis_order,
+            preserve_input_axis_order=preserve_axis_order,
         )
         class_indices = {"optimized_csf": 0, "optimized_gm": 1, "optimized_wm": 2}
         if args.category_exponents is None:
@@ -1307,7 +1408,7 @@ def main(argv: list[str] | None = None) -> int:
         ras_t1 = normalize_image_to_ras(t1_n4, source_name="N4-corrected T1 output reference")
         output_classification = result.native_classification
         output_buffers = result.wrapper_output_buffers
-        if args.preserve_input_axis_order:
+        if preserve_axis_order:
             output_classification = reorient_array_to_ras(
                 output_classification,
                 t1_n4.affine,
@@ -1355,7 +1456,8 @@ def main(argv: list[str] | None = None) -> int:
                 "registration_iterations": args.registration_iterations,
                 "maximum_iterations": args.maximum_iterations,
                 "maximum_distance": args.maximum_distance,
-                "preserve_input_axis_order": args.preserve_input_axis_order,
+                "preserve_input_axis_order": preserve_axis_order,
+                "source_axis_order": args.source_axis_order,
                 "category_exponents": category_exponents[0].tolist(),
             },
             outputs=outputs,
@@ -1389,6 +1491,7 @@ def main(argv: list[str] | None = None) -> int:
             crop_edge_width=args.edge_width,
             gm_confident_level=args.gm_confident_level,
             remove_cerebellum=args.remove_cerebellum,
+            separate_hemispheres=args.separate_hemispheres,
         )
         images = {
             "atlas_gm": result.atlas_gm,
@@ -1626,7 +1729,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "n4":
         _require_nifti_gz_output(args.output)
+        if args.orientation_only_working_grid and args.working_reference is None:
+            parser.error("--orientation-only-working-grid requires --working-reference")
         config = N4Config(
+            estimation_mask=args.estimation_mask,
             shrink_factor=args.shrink_factor,
             iterations=tuple(args.iterations),
             convergence_tolerance=args.convergence_tolerance,
@@ -1637,15 +1743,53 @@ def main(argv: list[str] | None = None) -> int:
             result = n4_bias_correct(_load_nifti_gz(args.input), config=config)
         except N4DependencyError as exc:
             parser.error(str(exc))
+        estimation_details = result.extra.get("n4_estimation_mask")
+        if args.working_reference is not None:
+            working = normalize_image_to_ras(_load_nifti_gz(args.working_reference), source_name="N4 working reference")
+            if args.orientation_only_working_grid:
+                if result.shape != working.shape or not np.allclose(
+                    nib.affines.voxel_sizes(result.affine), nib.affines.voxel_sizes(working.affine),
+                    rtol=0, atol=1e-5,
+                ):
+                    raise ValueError("Orientation-only N4 mapping requires the same voxel dimensions and spacing")
+                result = nifti_ras_on_reference(working, np.asanyarray(result.dataobj), dtype=np.float32)
+            else:
+                result = regrid_to_orthogonal_ras(result, reference=working, interpolation_order=1)
         _save_nifti_gz(result, args.output)
         print(f"Wrote {args.output} (RAS)")
+        n4_inputs = {"intensity_image": args.input}
+        n4_parameters = asdict(config)
+        if estimation_details is not None:
+            n4_parameters["estimation_mask_details"] = estimation_details
+        if args.working_reference is not None:
+            n4_inputs["working_reference"] = args.working_reference
+            n4_parameters["working_grid_mapping"] = "axis-only" if args.orientation_only_working_grid else "physical-affine"
         _write_provenance(
             args.provenance,
             command=args.command,
-            inputs={"intensity_image": args.input},
-            parameters=asdict(config),
+            inputs=n4_inputs,
+            parameters=n4_parameters,
             outputs={"corrected_image": args.output},
         )
+    elif args.command == "base-preprocessing":
+        from pymacruise.base_preprocessing import prepare_base_stripped_t1
+
+        stripped, mask = prepare_base_stripped_t1(
+            _load_nifti_gz(args.t1_n4), _load_nifti_gz(args.brain_mask),
+        )
+        outputs = {"stripped_t1": args.output_dir / "t1-n4.nii.gz",
+                   "toads_mask": args.output_dir / "toads-mask.nii.gz"}
+        _save_nifti_gz(stripped, outputs["stripped_t1"])
+        _save_nifti_gz(mask, outputs["toads_mask"])
+        _write_provenance(
+            args.provenance, command=args.command,
+            inputs={"t1_n4": args.t1_n4, "brain_mask": args.brain_mask},
+            parameters={"operation": "mask-then-axial-windowed-sinc",
+                        "source_clip": False, "output_axis_order": "RAS",
+                        "toads_mask_policy": "all-voxels; do not remask interpolation support"},
+            outputs=outputs,
+        )
+        print(f"Prepared source axial T1: {outputs['stripped_t1']}")
     elif args.command == "tgdm":
         tgdm_parameters = TGDMBaselineParameters()
         result = tgdm_nested_images(
@@ -1686,6 +1830,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "dura":
         dura_parameters = {
+            "source_axis_order": args.source_axis_order,
             "membership_level": args.membership_level,
             "wm_topology_regularization": args.wm_topology_regularization,
             "gm_topology_regularization": args.gm_topology_regularization,
@@ -2218,6 +2363,8 @@ def main(argv: list[str] | None = None) -> int:
             gvf_solver_tolerance=args.gvf_solver_tolerance,
             tgdm_parameters=core_parameters,
             prepared_crop_parameters=prepared_crop_parameters,
+            topology_propagation=args.topology_propagation,
+            topology_source_axis_order=args.topology_source_axis_order,
         )
         args.output_dir.mkdir(parents=True, exist_ok=True)
         images = {
@@ -2244,6 +2391,8 @@ def main(argv: list[str] | None = None) -> int:
             _save_nifti_gz(image, output_paths[name])
             print(f"Wrote {output_paths[name]} (RAS)")
         core_options = {
+            "topology_propagation": args.topology_propagation,
+            "topology_source_axis_order": args.topology_source_axis_order,
             "remove_cerebellum": args.remove_cerebellum,
             "brain_mask": (
                 None if args.brain_mask is None else str(args.brain_mask.resolve())
@@ -2300,10 +2449,10 @@ def main(argv: list[str] | None = None) -> int:
             outputs=output_paths,
         )
     elif args.command == "surface-extract":
-        if args.output.suffix.lower() != ".vtk":
-            raise ValueError("Surface outputs must use .vtk")
+        if args.output.suffix.lower() not in (".vtk", ".gii"):
+            raise ValueError("Surface outputs must use .vtk or .gii")
         mesh = extract_levelset_surface(_load_nifti_gz(args.level_set), level=args.level)
-        write_legacy_vtk(mesh, args.output)
+        write_surface(mesh, args.output)
         print(f"Wrote {args.output} (RAS mm)")
         _write_provenance(
             args.provenance,
@@ -2312,6 +2461,40 @@ def main(argv: list[str] | None = None) -> int:
             parameters={"level": args.level, "coordinate_frame": "RAS", "units": "mm"},
             outputs={"surface": args.output},
         )
+    elif args.command == "surface-convert":
+        if args.output.suffix.lower() not in (".vtk", ".gii"):
+            raise ValueError("Surface outputs must use .vtk or .gii")
+        mesh = read_surface(args.input, input_frame=args.input_frame)
+        for path in args.point_data:
+            mesh = load_gifti_point_data(mesh, path)
+        if args.data_output is not None:
+            write_gifti_point_data(mesh, args.data_output)
+        write_surface(mesh, args.output)
+        print(f"Wrote {args.output} (RAS mm)")
+        _write_provenance(
+            args.provenance, command=args.command,
+            inputs={"surface": args.input, **{f"point_data_{i}": p for i, p in enumerate(args.point_data)}},
+            parameters={"input_frame": args.input_frame},
+            outputs={"surface": args.output, **({"point_data": args.data_output} if args.data_output is not None else {})},
+        )
+    elif args.command == "surface-info":
+        mesh = read_surface(args.input, input_frame=args.input_frame)
+        result = {
+            "vertex_count": len(mesh.vertices), "triangle_count": len(mesh.faces),
+            "coordinate_frame": mesh.coordinate_frame, "units": mesh.units,
+            "bounds_mm": [mesh.vertices.min(axis=0).tolist(), mesh.vertices.max(axis=0).tolist()],
+            "metadata": dict(mesh.metadata), "gifti_dataspace": mesh.gifti_dataspace,
+            "point_data": {name: {"shape": list(data.shape),
+                                   "intent": mesh.point_data_intents.get(name),
+                                   "metadata": dict(mesh.point_data_metadata.get(name, {}))}
+                           for name, data in mesh.point_data.items()},
+            "labels": {} if mesh.label_table is None else mesh.label_table.get_labels_as_dict(),
+        }
+        rendered = json.dumps(result, indent=2) + "\n"
+        if args.output is not None:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(rendered, encoding="utf-8")
+        print(rendered, end="")
     elif args.command == "thickness-levelset":
         _require_nifti_gz_output(args.output)
         result = levelset_subtraction_thickness(
@@ -2331,19 +2514,19 @@ def main(argv: list[str] | None = None) -> int:
             outputs={"thickness_volume": args.output},
         )
     elif args.command == "thickness-surface":
-        if args.inner_output.suffix.lower() != ".vtk":
-            raise ValueError("Surface outputs must use .vtk")
-        if args.central_output is not None and args.central_output.suffix.lower() != ".vtk":
-            raise ValueError("Surface outputs must use .vtk")
-        inner = read_legacy_vtk(args.inner)
-        outer = read_legacy_vtk(args.outer)
-        central = None if args.central is None else read_legacy_vtk(args.central)
+        if args.inner_output.suffix.lower() not in (".vtk", ".gii"):
+            raise ValueError("Surface outputs must use .vtk or .gii")
+        if args.central_output is not None and args.central_output.suffix.lower() not in (".vtk", ".gii"):
+            raise ValueError("Surface outputs must use .vtk or .gii")
+        inner = read_surface(args.inner)
+        outer = read_surface(args.outer)
+        central = None if args.central is None else read_surface(args.central)
         if (central is None) != (args.central_output is None):
             raise ValueError("--central and --central-output must be supplied together")
         result = closest_point_thickness(inner, outer, central=central)
-        write_legacy_vtk(result.inner_surface, args.inner_output)
+        write_surface(result.inner_surface, args.inner_output)
         if result.central_surface is not None and args.central_output is not None:
-            write_legacy_vtk(result.central_surface, args.central_output)
+            write_surface(result.central_surface, args.central_output)
         print(
             f"Mean surface thickness={result.mean_mm:.8g} mm, "
             f"SD={result.standard_deviation_mm:.8g} mm, "
@@ -2379,10 +2562,10 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"{name} level set must share the inner RAS grid")
         args.output_dir.mkdir(parents=True, exist_ok=True)
         outputs = {
-            "inner_surface": args.output_dir / "inner_surface.vtk",
-            "central_surface": args.output_dir / "central_surface.vtk",
-            "outer_surface": args.output_dir / "outer_surface.vtk",
-            "inner_surface_with_thickness": args.output_dir / "inner_surface_thickness.vtk",
+            "inner_surface": args.output_dir / f"inner_surface.{args.surface_format}",
+            "central_surface": args.output_dir / f"central_surface.{args.surface_format}",
+            "outer_surface": args.output_dir / f"outer_surface.{args.surface_format}",
+            "inner_surface_with_thickness": args.output_dir / f"inner_surface_thickness.{args.surface_format}",
             "levelset_thickness": args.output_dir / "thickness_levelset.nii.gz",
             "summary": args.output_dir / "thickness_summary.json",
         }
@@ -2403,8 +2586,8 @@ def main(argv: list[str] | None = None) -> int:
         def finite_or_none(value: float) -> float | None:
             return float(value) if np.isfinite(value) else None
         for name in ("inner", "central", "outer"):
-            write_legacy_vtk(meshes[name], outputs[f"{name}_surface"])
-        write_legacy_vtk(surface_result.inner_surface, outputs["inner_surface_with_thickness"])
+            write_surface(meshes[name], outputs[f"{name}_surface"])
+        write_surface(surface_result.inner_surface, outputs["inner_surface_with_thickness"])
         _save_nifti_gz(volume_result.image, outputs["levelset_thickness"])
         summary = {
             "schema_version": 1,

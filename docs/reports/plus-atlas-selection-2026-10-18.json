@@ -1,0 +1,73 @@
+{
+  "selection": "ibsr11objV3",
+  "basis": "Owner correction, 2026-10-18",
+  "source_descriptor": "/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/src/Atlas/ibsr11objV3/LesionToads-11-obj-atlasV3.txt",
+  "descriptor_sha256": "181169d87caefb4b33b4fe2eb13125e4d418f31f11f88786f97acc3c32ffed67",
+  "payloads": [
+    {
+      "path": "ibsr11objV3/brain-atlas-11obj-topology.raw",
+      "bytes": 6092928,
+      "sha256": "870481b45d1980d02cf149aaacf3bececda606c02b86cd711d7df77d934bc10a"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Background.raw",
+      "bytes": 24371712,
+      "sha256": "6e95f1a8a268c6ee00c36220bdc411ce982526eb365b4fc458086f2f6d919133"
+    },
+    {
+      "path": "ibsr11objV3/atlas_SulcalCSF.raw",
+      "bytes": 24371712,
+      "sha256": "789e0e1d7ff8062a18f19a70f6319fb8873894de2fcfd56a3a5d2bf3c03394e7"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Ventricles.raw",
+      "bytes": 24371712,
+      "sha256": "2f3a3397596fa43a1c0d193fa56542b1db5f45b6b344eb0dd69ada5dddf1595c"
+    },
+    {
+      "path": "ibsr11objV3/atlas_CerebellarGM.raw",
+      "bytes": 24371712,
+      "sha256": "0df0cc57f1e6272986f4f5d8736095e6098182f454768e6b28f4278fe733cfc0"
+    },
+    {
+      "path": "ibsr11objV3/atlas_CerebralGM.raw",
+      "bytes": 24371712,
+      "sha256": "b0c253ce9fec2e54b7259fcb7a0b995f3b252986a74ba69523a8348000dd6648"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Caudate.raw",
+      "bytes": 24371712,
+      "sha256": "3f2b5639323ee14199abe726dcf680ae34372d1e036b7d5e9ccb274054f414e5"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Thalamus.raw",
+      "bytes": 24371712,
+      "sha256": "caa7ccd6d2bbb2b6d13b1abe75090c0afde234b72e397b303a917fede42130d0"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Putamen.raw",
+      "bytes": 24371712,
+      "sha256": "ed0818e931fd1ab8c6428d6b0b64db1715458f3061ae32970a78e436e7779890"
+    },
+    {
+      "path": "ibsr11objV3/atlas_Brainstem.raw",
+      "bytes": 24371712,
+      "sha256": "741b91038add1f98d0a5b57f67fd91d22ee9051abe359d6b8e74bf53391890c2"
+    },
+    {
+      "path": "ibsr11objV3/atlas_CerebellarWM.raw",
+      "bytes": 24371712,
+      "sha256": "2cfa58744ae74de4c9d05464f749ab7e2670b72f6b16207b3fa2501eaf38ae4f"
+    },
+    {
+      "path": "ibsr11objV3/atlas_OuterVentricularWM.raw",
+      "bytes": 24371712,
+      "sha256": "79833d97e1e4793ac4ec4ed04bef4bdcf71858b630b3fc06e08d918c334a3c5f"
+    },
+    {
+      "path": "ibsr11objV3/atlas_InterVentricularWM.raw",
+      "bytes": 24371712,
+      "sha256": "36af6f526f70a723f4c33fa832f4f9c967f17b8eb6e3855d549fb9d8e4e73134"
+    }
+  ]
+}

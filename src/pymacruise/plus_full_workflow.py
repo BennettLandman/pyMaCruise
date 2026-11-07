@@ -32,7 +32,25 @@ from pymacruise.plus_lesion_registered_recrop import run_plus_lesion_registered_
 from pymacruise.plus_lesion_loop_workflow import run_plus_lesion_loop_workflow
 from pymacruise.plus_lesion_native_dura_transfer import run_plus_lesion_native_dura_transfer
 from pymacruise.plus_atlas_em_dura_handoff import run_plus_atlas_em_dura_handoff_checkpoint
+from pymacruise.plus_segmentation_refinement import run_plus_segmentation_refinement_checkpoint
 from pymacruise.registration import RegistrationConfig
+
+
+@dataclass(frozen=True)
+class PlusWorkflowCheckpoint:
+    """A deliberately incomplete workflow stopped at a verified stage boundary."""
+
+    manifest_path: Path
+    completed_stage: str
+    resumed: bool
+
+
+PLUS_STAGES = (
+    "preprocessing", "atlasem_dura", "crop", "initial_alignment",
+    "registered_recrop", "lesion_workflow", "dura_outputs",
+    "native_dura_transfer", "maseg_cortical_separation",
+    "plus_surface_workflow", "maseg_refinement",
+)
 
 
 @dataclass(frozen=True)
@@ -52,6 +70,7 @@ class PlusFullWorkflowResult:
     surface_output_paths: dict[str, Path]
     resumed: bool
     atlasem_dura_manifest: Path | None = None
+    refined_segmentation_path: Path | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -135,12 +154,20 @@ def run_plus_full_workflow(
     regrid_inputs: bool = True,
     dura_transfer_mode: str = "physical-affine",
     resume: bool = False,
-) -> PlusFullWorkflowResult:
+    stop_after_stage: str | None = None,
+) -> PlusFullWorkflowResult | PlusWorkflowCheckpoint:
     """Run raw inputs through LesionTOADS and terminal CRUISE surface outputs.
 
     The required brain mask is always a user input on the T1 grid. BET and
     SPECTRE are not invoked. The supplied MaSeg and brain mask must match T1.
+    ``stop_after_stage`` checkpoints a prefix of the same workflow. Resume
+    with identical scientific settings to continue; this execution control
+    is intentionally excluded from the scientific run signature.
     """
+    if stop_after_stage is not None and stop_after_stage not in PLUS_STAGES:
+        raise ValueError(f"Unknown PLUS stage: {stop_after_stage}")
+    if stop_after_stage == "atlasem_dura" and atlasem_descriptor_path is None:
+        raise ValueError("Stopping after atlasem_dura requires an AtlasEM descriptor")
     if not isinstance(registration_config, RegistrationConfig):
         raise TypeError("registration_config must be RegistrationConfig")
     if not isinstance(n4_config, N4Config):
@@ -233,6 +260,7 @@ def run_plus_full_workflow(
                 "max_em_iterations": 99,
                 "max_membership_change": 0.01,
                 "smoothing": 10.0,
+                "covariance_floor": 1.0e-6,
                 "max_dura_iterations": 5,
             }
         ),
@@ -245,7 +273,7 @@ def run_plus_full_workflow(
             *( ["atlasem_dura"] if atlasem_descriptor is not None else [] ),
             "crop", "initial_alignment", "registered_recrop",
             "lesion_workflow", "dura_outputs", "native_dura_transfer",
-            "maseg_cortical_separation", "plus_surface_workflow",
+            "maseg_cortical_separation", "plus_surface_workflow", "maseg_refinement",
         ],
         "spatial_convention": "RAS",
         "inputs": inputs,
@@ -399,6 +427,7 @@ def run_plus_full_workflow(
         "native_dura_transfer": stage_root / "native-dura" / "native-dura-transfer.json",
         "maseg_cortical_separation": stage_root / "maseg-cortical-separation" / "maseg-cortical-separation.json",
         "plus_surface_workflow": stage_root / "plus-surface" / "run.json",
+        "maseg_refinement": stage_root / "maseg-refinement" / "plus-segmentation-refinement.json",
     }
     if atlasem_descriptor is not None:
         stage_paths["atlasem_dura"] = (
@@ -418,6 +447,7 @@ def run_plus_full_workflow(
         ("native_dura_transfer", "plus-lesion-native-dura-transfer"),
         ("maseg_cortical_separation", "plus-maseg-cortical-separation"),
         ("plus_surface_workflow", None),
+        ("maseg_refinement", "plus-segmentation-refinement"),
     ])
     results: dict[str, Any] = {}
     for name, child_stage in definitions:
@@ -506,10 +536,10 @@ def run_plus_full_workflow(
                 result = run_plus_maseg_cortical_checkpoint(
                     maseg, stage_root / "maseg-cortical-separation", resume=child_resume
                 )
-            else:
+            elif name == "plus_surface_workflow":
                 native = results["native_dura_transfer"]
                 cortical = results["maseg_cortical_separation"]
-                plus = run_plus_file_workflow(
+                result = run_plus_file_workflow(
                     t1_reference_path=t1,
                     segmentation_path=maseg,
                     dura_csf_path=native.outputs["csf"],
@@ -525,7 +555,15 @@ def run_plus_full_workflow(
                     options=pipeline_options,
                     resume=child_resume,
                 )
-                result = plus
+            else:
+                surface = results["plus_surface_workflow"]
+                result = run_plus_segmentation_refinement_checkpoint(
+                    maseg,
+                    surface.outputs["inner_level_set"],
+                    surface.outputs["outer_level_set"],
+                    stage_root / "maseg-refinement",
+                    resume=child_resume,
+                )
         except Exception as exc:
             manifest["status"] = "failed"
             manifest["active_stage"] = name
@@ -550,10 +588,19 @@ def run_plus_full_workflow(
         }
         _write_json(manifest_path, manifest)
 
+        if stop_after_stage == name and name != "maseg_refinement":
+            manifest["status"] = "checkpointed"
+            manifest["active_stage"] = None
+            manifest["terminal"] = False
+            manifest.pop("final_outputs", None)
+            _write_json(manifest_path, manifest)
+            return PlusWorkflowCheckpoint(manifest_path, name, resume)
+
     loop_result = results["lesion_workflow"]
     dura_result = results["dura_outputs"]
     native_dura_result = results["native_dura_transfer"]
     plus_surface_result = results["plus_surface_workflow"]
+    refinement_result = results["maseg_refinement"]
     manifest["status"] = "complete"
     manifest["active_stage"] = None
     manifest["terminal"] = loop_result.classification_path is not None
@@ -571,6 +618,7 @@ def run_plus_full_workflow(
             f"plus_{name}": _file_record(path)
             for name, path in plus_surface_result.outputs.items()
         },
+        "SEG_refine": _file_record(refinement_result.output_path),
     }
     _write_json(manifest_path, manifest)
     return PlusFullWorkflowResult(
@@ -587,4 +635,5 @@ def run_plus_full_workflow(
         plus_surface_result.outputs,
         resume,
         stage_paths.get("atlasem_dura"),
+        refinement_result.output_path,
     )

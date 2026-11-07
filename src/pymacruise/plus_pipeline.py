@@ -331,6 +331,7 @@ def run_plus_tgdm_stage(
     options: PlusPipelineOptions = PlusPipelineOptions(),
     *,
     brain_mask: nib.spatialimages.SpatialImage | None = None,
+    precomputed_initial_level_set: nib.spatialimages.SpatialImage | None = None,
 ) -> TGDMMaCRUISEImageResult:
     """Run the plus nested-surface stage on its selected cropped RAS products.
 
@@ -354,6 +355,7 @@ def run_plus_tgdm_stage(
         ace_skeleton=ace_thin_skeleton,
         gvf=gvf,
         brain_mask=brain_mask,
+        precomputed_initial_level_set=precomputed_initial_level_set,
         parameters=plus_tgdm_parameters(options),
     )
 

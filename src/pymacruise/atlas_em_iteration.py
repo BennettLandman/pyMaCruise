@@ -22,6 +22,7 @@ class AtlasEMIterationResult:
     maximum_change_history: NDArray[np.float32]
     iterations: int
     converged: bool
+    regularized_classes: tuple[int, ...] = ()
 
 
 def run_atlas_em_fixed_prior_iterations(
@@ -35,6 +36,7 @@ def run_atlas_em_fixed_prior_iterations(
     max_iterations: int = 99,
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
+    covariance_floor: float = 1.0e-6,
 ) -> AtlasEMIterationResult:
     """Run the selected no-field, one-channel Atlas-mode outer EM loop.
 
@@ -67,13 +69,21 @@ def run_atlas_em_fixed_prior_iterations(
         raise ValueError("max_iterations must be a nonnegative integer")
     if not np.isfinite(max_membership_change) or max_membership_change < 0:
         raise ValueError("max_membership_change must be finite and nonnegative")
+    if not np.isfinite(covariance_floor) or covariance_floor <= 0:
+        raise ValueError("covariance_floor must be finite and positive")
 
     energies: list[np.float32] = []
     changes: list[np.float32] = []
+    regularized: set[int] = set()
     converged = False
     for _ in range(max_iterations):
         means = compute_atlas_em_centroids(values, mem, active)
         cov = compute_atlas_em_covariances(values, mem, active, means)
+        floor = np.float32(covariance_floor)
+        for class_index in range(classes):
+            if cov[class_index, 0, 0] < floor:
+                cov[class_index, 0, 0] = floor
+                regularized.add(class_index)
         mem, metrics = update_atlas_em_gaussian_memberships(
             values, mem, active, means, cov, priors, smoothing=smoothing
         )
@@ -91,4 +101,5 @@ def run_atlas_em_fixed_prior_iterations(
         maximum_change_history=np.asarray(changes, dtype=np.float32),
         iterations=len(changes),
         converged=converged,
+        regularized_classes=tuple(sorted(regularized)),
     )

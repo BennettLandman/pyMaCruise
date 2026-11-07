@@ -246,11 +246,22 @@ def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
 
     def capture_plus_surface(**kwargs: object) -> SimpleNamespace:
         captured.update(kwargs)
-        return result("plus-surface", outputs={})
+        return result("plus-surface", outputs={
+            "inner_level_set": artifact("inner_level_set.nii.gz"),
+            "outer_level_set": artifact("outer_level_set.nii.gz"),
+        })
+
+    monkeypatch.setattr(
+        plus_full_workflow_module,
+        "run_plus_segmentation_refinement_checkpoint",
+        lambda *_args, **_kwargs: result(
+            "maseg-refinement", output_path=artifact("SEG_refine.nii.gz")
+        ),
+    )
 
     monkeypatch.setattr(plus_full_workflow_module, "run_plus_file_workflow", capture_plus_surface)
 
-    plus_full_workflow_module.run_plus_full_workflow(
+    full_result = plus_full_workflow_module.run_plus_full_workflow(
         t1, flair, mask, maseg, ATLAS, tmp_path / "full-workflow",
         dura_transfer_mode="jist-unchanged",
     )
@@ -259,6 +270,7 @@ def test_plus_full_workflow_routes_brain_tissue_mask_to_surface_stage(
     assert captured["multi_atlas_mask_path"] != cortical_outputs["Atlas_Mask"]
     assert captured_transfer["transfer_mode"] == "jist-unchanged"
     assert captured["dura_transfer_mode"] == "jist-unchanged"
+    assert full_result.refined_segmentation_path == artifact("SEG_refine.nii.gz")
 
 
 def test_plus_full_workflow_inserts_atlasem_dura_before_lesion_crop(
@@ -335,17 +347,27 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
     t1, flair, mask, maseg = _inputs(tmp_path)
     output = tmp_path / "plus-full"
     command = _command(t1, flair, mask, maseg, output)
-    assert main(command) == 0
+    assert main([*command, "--stop-after-stage", "crop"]) == 0
+    partial = json.loads((output / "plus-full-workflow.json").read_text())
+    assert partial["status"] == "checkpointed"
+    assert partial["terminal"] is False
+    assert set(partial["stages"]) == {"preprocessing", "crop"}
+    assert "final_outputs" not in partial
+    prior_hash = partial["stages"]["preprocessing"]["manifest"]["sha256"]
+    assert main([*command, "--resume"]) == 0
 
     manifest_path = output / "plus-full-workflow.json"
     manifest = json.loads(manifest_path.read_text())
     assert manifest["status"] == "complete"
     assert manifest["terminal"] is True
+    assert manifest["stages"]["preprocessing"]["manifest"]["sha256"] == prior_hash
     assert manifest["stage_order"] == [
         "preprocessing", "crop", "initial_alignment", "registered_recrop",
         "lesion_workflow", "dura_outputs", "native_dura_transfer",
-        "maseg_cortical_separation", "plus_surface_workflow",
+        "maseg_cortical_separation", "plus_surface_workflow", "maseg_refinement",
     ]
+    assert manifest["final_outputs"]["SEG_refine"]["sha256"]
+    assert manifest["stages"]["maseg_refinement"]["status"] == "complete"
     for record in manifest["stages"].values():
         child = Path(record["manifest"]["path"])
         assert child.is_file()
@@ -553,7 +575,7 @@ def test_plus_full_run_is_restartable_from_raw_inputs_to_terminal_outputs(tmp_pa
         main(_command(t1, flair, wrong_grid_mask, maseg, tmp_path / "rejected-input"))
 
 
-def test_plus_full_run_with_atlasem_handoff_completes_and_resumes_all_ten_stages(
+def test_plus_full_run_with_atlasem_handoff_completes_and_resumes_all_eleven_stages(
     tmp_path: Path,
 ) -> None:
     t1, flair, mask, maseg = _inputs(tmp_path / "inputs")
@@ -570,7 +592,7 @@ def test_plus_full_run_with_atlasem_handoff_completes_and_resumes_all_ten_stages
         "preprocessing", "atlasem_dura", "crop", "initial_alignment",
         "registered_recrop", "lesion_workflow", "dura_outputs",
         "native_dura_transfer", "maseg_cortical_separation",
-        "plus_surface_workflow",
+        "plus_surface_workflow", "maseg_refinement",
     ]
     assert manifest["status"] == "complete"
     assert manifest["terminal"] is True
@@ -702,7 +724,7 @@ def test_plus_full_run_completes_on_larger_asymmetric_folded_ras_grid(tmp_path: 
     assert loop_summary["stop_reason"] == "convergence"
     assert loop_summary["completed_iteration"] == 5
     assert loop_summary["energy_ratio"] < 1e-4
-    assert manifest["stage_order"][-1] == "plus_surface_workflow"
+    assert manifest["stage_order"][-1] == "maseg_refinement"
     for stage in manifest["stages"].values():
         child = Path(stage["manifest"]["path"])
         assert _sha256(child) == stage["manifest"]["sha256"]
@@ -792,7 +814,7 @@ def test_workflow_run_config_executes_and_resumes_folded_synthetic_plus(
     manifest = json.loads(run_manifest.read_text(encoding="utf-8"))
     assert manifest["status"] == "complete"
     assert manifest["terminal"] is True
-    assert manifest["stage_order"][-1] == "plus_surface_workflow"
+    assert manifest["stage_order"][-1] == "maseg_refinement"
     assert manifest["settings"]["pipeline_options"]["boundary_overlook_labels"] == [120, 121]
     for record in manifest["stages"].values():
         child_manifest_path = Path(record["manifest"]["path"])

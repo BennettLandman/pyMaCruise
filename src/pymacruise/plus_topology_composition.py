@@ -60,8 +60,10 @@ def run_plus_topology_and_tgdm(
     """Run the selected crop-ready MaCRUISEplus stages through nested TGDM.
 
     The eight core inputs are already cropped and registered onto one grid;
-    the optional user brain mask must also be on that grid and is routed to
-    TGDM after RAS normalization.
+    the optional ``brain_mask`` is an explicit bound for callers that request
+    it. The selected ``run_TGDMinvcrop_jist`` wrapper does not supply the
+    optional ``MaTGDMcrop`` Brain Mask Level Set, so the full PLUS workflow
+    leaves this argument unset.
     ``multi_atlas_wm`` is the raw cropped MaSeg-derived WM map: it supplies
     both atlas tissue fusion and the separate topology-refinement argument.
     Stage order follows ``maCRUISEpluspipeline.m`` and

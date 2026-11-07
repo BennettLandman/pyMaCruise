@@ -36,11 +36,18 @@ MASK_LABELS: dict[str, frozenset[int]] = {
 def cortical_separation(
     maseg: nib.spatialimages.SpatialImage,
     output_dir: str | Path | None = None,
+    *,
+    separate_hemispheres: bool = False,
 ) -> dict[str, nib.spatialimages.SpatialImage]:
     """Derive exact MaCRUISE cortical masks from an integer-valued MaSeg map.
 
     Selected label voxels are encoded as uint8 value 255; every other voxel is
     zero. The map is axis-reoriented to RAS with a warning and no interpolation.
+    ``separate_hemispheres`` selects ``seperate_left_right_cortex.m`` from the
+    supplied v3.2/classern route: encode left/right GM as 101/102, build the
+    selected MinFilter3D boundary and remove it from all four masks. BASE
+    selects this v3.2 default; existing direct/PLUS callers retain the earlier
+    label-only route unless they request it explicitly.
     """
     if not isinstance(maseg, (nib.Nifti1Image, nib.Nifti2Image)):
         raise ValueError("MaSeg input must be a NIfTI image")
@@ -52,6 +59,19 @@ def cortical_separation(
         raise ValueError("MaSeg contains NaN or infinite label values")
     if not np.equal(data, np.floor(data)).all():
         raise ValueError("MaSeg labels must have integer-valued voxels")
+    if not isinstance(separate_hemispheres, bool):
+        raise TypeError("separate_hemispheres must be boolean")
+    boundary = None
+    if separate_hemispheres:
+        from pymacruise.boundary import multi_atlas_csf_boundary
+
+        # Source v3.2 lists left cortical labels as odd and their right
+        # counterparts as even; noncortical structures remain zero here.
+        cortical = np.isin(data, tuple(GM_LABELS))
+        hemispheres = np.zeros(data.shape, dtype=np.uint8)
+        hemispheres[cortical & (data % 2 == 1)] = 101
+        hemispheres[cortical & (data % 2 == 0)] = 102
+        boundary = multi_atlas_csf_boundary(hemispheres)
 
     header = normalized.header.copy()
     header.set_data_dtype(np.uint8)
@@ -60,6 +80,8 @@ def cortical_separation(
     destination = Path(output_dir) if output_dir is not None else None
     for name, selected_labels in MASK_LABELS.items():
         mask = np.isin(data, tuple(selected_labels)).astype(np.uint8) * np.uint8(255)
+        if boundary is not None:
+            mask[boundary > 0] = 0
         image = nib.Nifti1Image(mask, normalized.affine, header=header.copy())
         qform, qcode = normalized.get_qform(coded=True)
         _, scode = normalized.get_sform(coded=True)

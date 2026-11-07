@@ -52,6 +52,30 @@ def test_n4_config_and_input_contract_errors() -> None:
         n4_bias_correct(four_d)
 
 
+def test_n4_oblique_nifti_matches_native_ants_file_reader(tmp_path) -> None:
+    ants = pytest.importorskip('ants')
+    shape = (20, 21, 22)
+    x, y, z = np.indices(shape, dtype=np.float32)
+    data = (100 * np.exp(.005*x + .007*y - .003*z)).astype(np.float32)
+    angle = np.deg2rad(11)
+    affine = np.eye(4)
+    affine[:3, :3] = np.array([[np.cos(angle), -np.sin(angle), 0],
+                              [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]) @ np.diag([.89007622, .91, 1.2])
+    affine[:3, 3] = [-113.5, -101, -67.5]
+    source = nib.Nifti1Image(data, affine)
+    path = tmp_path / 'oblique.nii.gz'
+    nib.save(source, path)
+    source = nib.load(path)
+    config = N4Config(shrink_factor=1, iterations=(3,))
+    expected = ants.n4_bias_field_correction(
+        ants.image_read(str(path)), mask=None, rescale_intensities=False,
+        shrink_factor=1, convergence={'iters': [3], 'tol': 0.0}, spline_param=[1,1,1],
+    )
+    corrected = n4_bias_correct(source, config=config)
+    np.testing.assert_array_equal(np.asarray(corrected.dataobj), expected.numpy())
+    np.testing.assert_array_equal(corrected.affine, source.affine)
+
+
 def test_n4_accepts_interpolation_induced_negative_values() -> None:
     pytest.importorskip("ants")
     size = 24

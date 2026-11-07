@@ -77,6 +77,7 @@ def finish_atlas_em_registered_execution(
     max_iterations: int = 99,
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
+    covariance_floor: float = 1.0e-6,
 ) -> AtlasEMRegisteredExecutionResult:
     """Run AtlasEM's initialization membership update, fixed-prior loop, outputs.
 
@@ -134,6 +135,7 @@ def finish_atlas_em_registered_execution(
         max_iterations=max_iterations,
         max_membership_change=max_membership_change,
         smoothing=smoothing,
+        covariance_floor=covariance_floor,
     )
     segmentation = generate_atlas_em_segmentation(iterations.memberships)
     dura_inputs = generate_atlas_em_dura_inputs(
@@ -252,6 +254,7 @@ def run_atlas_em_descriptor_workflow(
     max_membership_change: float = 0.01,
     smoothing: float = 10.0,
     max_dura_iterations: int = 5,
+    covariance_floor: float = 1.0e-6,
     precomputed_atlasem_products: AtlasEMNiftiProducts | None = None,
     on_atlasem_complete: Callable[[AtlasEMNiftiProducts, AtlasEMRegisteredExecutionResult | None], None] | None = None,
 ) -> AtlasEMWorkflowResult:
@@ -306,6 +309,7 @@ def run_atlas_em_descriptor_workflow(
             max_iterations=max_em_iterations,
             max_membership_change=max_membership_change,
             smoothing=smoothing,
+            covariance_floor=covariance_floor,
         )
         products = restore_atlas_em_native_nifti_products(t1, registration, execution)
         output_paths = save_atlas_em_native_nifti_products(products, output_directory)

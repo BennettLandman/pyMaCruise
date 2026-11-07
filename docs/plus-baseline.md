@@ -5,6 +5,8 @@
 **Canonical full-workflow entry point:** `run_maCRUISEplus_v1.m`  
 **Shared workflow implementation:** `pipeline/maCRUISEpluspipeline.m`
 
+**Implementation/testing update (2026-10-27):** The selected LesionTOADS implementation, eleven-stage AtlasEM-enabled workflow, final refinement and native/Python atlas preparation are available for exploratory testing. The source driver now selects the owner-corrected atlas explicitly and runs original thickness helpers. [Both full runs](testing/full-plus-walkthrough.md), [individual tools](testing/individual-tools.md) and [current validation](reports/plus-testing-readiness-2026-10-27.md) are documented. The complete original runtime, Aladin comparison and independent whole-workflow agreement remain unverified.
+
 ## Supported MaCRUISEplus contract
 
 The first supported plus workflow is the full MaSeg-informed MaCRUISEplus run: T1-weighted MRI + MaSeg segmentation + FLAIR image. Use `run_maCRUISEplus_v1.m` as its orchestration/output contract and `pipeline/maCRUISEpluspipeline.m` as the algorithm-stage order. The top-level runner registers FLAIR to T1 with NiftyReg Aladin in rigid-only mode, runs the shared pipeline, refines the input MaSeg from the generated inner/outer surfaces, and assembles the output products.
@@ -46,4 +48,7 @@ Cluster wrappers only submit these same lower-level pipeline functions and do no
 - `pipeline/FlairRegistration.m` and `pipeline/aladin_reg.m`, confirming `reg_aladin -rigOnly`, reference/floating input order, and output image/transform behavior.
 - `pipeline/maCRUISEplusOriginpipeline.m`, `CRUISEplusOriginpipeline.m`, `CRUISEplusN4_pipeline.m`, and `CRUISEpluspipeline.m` and their direct call sites.
 
-This decision records the supported source behavior only. No Python plus implementation or numerical equivalence has been validated.
+This document defines the selected source behavior and is not itself a claim
+of numerical equivalence. Python stage/integration work is summarized in the
+current status update above; complete original-versus-Python equivalence is
+still unverified.

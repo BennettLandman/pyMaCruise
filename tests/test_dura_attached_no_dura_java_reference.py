@@ -111,3 +111,29 @@ def test_attached_and_clean_dura_cases_match_selected_java_wrapper_sequence() ->
             else:
                 np.testing.assert_array_equal(actual.dataobj, expected)
             _assert_ras_output(actual, t1.affine)
+
+
+def test_lps_dura_processing_matches_source_sequence_in_original_ras_frame():
+    case_dir = FIXTURE / 'attached_dura'
+    source_images = [nib.load(case_dir / f'{name}.nii.gz') for name in ('t1', 'wm', 'gm', 'brain_mask')]
+    reference = source_images[0]
+    # Reflect the anatomy in the public RAS lattice. The source's LPS working
+    # arrays then equal the independently saved Java fixture arrays.
+    inputs = [nib.Nifti1Image(np.asarray(image.dataobj)[::-1, ::-1, :], reference.affine)
+              for image in source_images]
+    result = run_dura_removal(*inputs, source_axis_order='LPS', record_passes=True)
+    for field, filename in (
+        ('wm_topology', 'wm_topology.nii.gz'), ('gm_topology', 'gm_topology.nii.gz'),
+        ('brain_mask', 'brain_mask.nii.gz'), ('stripped_t1', 'stripped_t1.nii.gz'),
+        ('corrected_white_matter', 'corrected_wm.nii.gz'),
+        ('corrected_gray_matter', 'corrected_gm.nii.gz'),
+    ):
+        image = getattr(result, field)
+        np.testing.assert_array_equal(image.dataobj, _load_reference(case_dir, filename)[::-1, ::-1, :])
+        np.testing.assert_array_equal(image.affine, reference.affine)
+    np.testing.assert_allclose(result.evolution.level_set,
+                               _load_reference(case_dir, 'level_set.nii.gz')[::-1, ::-1, :],
+                               rtol=0, atol=1e-6)
+    for index, values in enumerate(result.evolution.pass_level_sets, start=1):
+        np.testing.assert_allclose(values,
+            _load_reference(case_dir, f'tgdm_pass_{index:02d}.nii.gz')[::-1, ::-1, :], rtol=0, atol=1e-6)

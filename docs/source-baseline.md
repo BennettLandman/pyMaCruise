@@ -6,6 +6,64 @@
 **Subversion working-copy revision observed:** 9360  
 **Repository URL:** `https://www.nitrc.org/svn/masimatlab/trunk/xnatspiders/matlab/MaCRUISE`
 
+## N4 policy in the 0.1.6 tester release
+
+The wrapper invokes the installed N4 command without an explicit mask. The
+original runtime has not been identified. Version 0.1.5 forced a historical
+ANTs 2.1.0 automatic Otsu policy; improved N4 correlation did not establish
+improved final agreement. Version 0.1.6 defaults to the current installed
+backend's unmasked policy (`all`) and exposes `--n4-estimation-mask legacy-otsu`
+for deliberate historical-policy comparisons. The selected policy is included
+in the run signature and cannot change during resume. Both modes retain the
+full iteration schedule, acquisition-first N4 and native final delivery.
+This supersedes the forced N4 policy described in the 0.1.5 compatibility note
+below; its other source-derived corrections remain enabled.
+
+## Adam v3.2 compatibility correction — October 29, 2026
+
+For Adam's supplied `MaCRUISEv3.2.0` results, BASE now follows the corrected
+`run_maCRUISE_v3_2_classern.m` entry point in the supplied sibling
+`MaCRUISE_v3_1_0/` checkout. That directory contains a v3.2 entry point; its
+name does not make this a request to support a known-buggy pre-V3 contract.
+This adds the default `SepLeftRightBrain = 'SepLeftRight'` dispatch to
+`pipeline/seperate_left_right_cortex.m`. Encode left/right cortical labels as
+101/102, compute the existing MinFilter3D boundary, and exclude its full
+support from all four cortical masks. On Adam's input, all four derived masks
+then exactly match the supplied original outputs. Direct and PLUS mask callers
+retain their existing label-only behavior unless explicitly requested.
+
+Both supplied BASE source trees leave TGDM's optional Brain Mask Level Set
+unset in `pipeline/run_TGDMinvcrop_jist.m`; the selected `MaTGDMcrop` Java
+wrapper therefore passes null. BASE and BASE continuation now follow this
+handoff. The prior Python handoff of Dura's signed field (or the original
+binary skull-strip mask in continuation) added a constraint absent from that
+wrapper. The optional bound remains available to explicitly configured
+standalone calls. A held-bound Java/Python agreement test is evidence about
+that configured component, not evidence that BASE should supply the bound.
+
+The v3.2 topology wrapper additionally selects `background->object`,
+`intensity` initialization, and `-inStop false`. The corrected revision-1.7
+Java implementation ignores the supplied paint mask for that branch and
+propagates from its expanded bounding box without intensity threshold stopping.
+BASE now selects this upward branch, with RAS indexing retained at this
+post-transfer stage. With Adam's original WM input held fixed, Python exactly
+reproduces all 5,002,140 voxels of the original corrected topology crop and its
+single component. Five independent selected-Java synthetic references also
+match exactly. Dura and generic topology callers preserve their paint-mask
+branch; the upstream Dura order and downstream topology indexing are separate
+source boundaries.
+
+BASE also restores mask-before-axial WINDOWED_SINC, source LPS order in Dura,
+and the historical automatic Otsu N4 estimation policy. Full numerical
+settings and native-grid final exports remain the defaults. The exact original
+N4 runtime is unidentified, so these source contracts and isolated matches do
+not establish complete numerical equivalence. See the
+[Adam correction report](reports/adam-preprocessing-parity-2026-10-29.md).
+
+The September decision below records the original source selection. The
+October compatibility correction supersedes its missing hemisphere dispatch
+and the previously implemented optional TGDM-bound handoff for BASE.
+
 ## Canonical base workflow
 
 Use `run_maCRUISE_v3.m` as the top-level behavior and output contract, together with `pipeline/maCRUISEpipeline.m` and the functions it calls, at SVN revision 9360. Use the same checkout revision for all MATLAB reference files. The chosen VandyCRUISE algorithm source is the `VandyCRUISE` directory recorded in the project README; Python library replacements and ANTsPy integrations must reproduce this selected workflow rather than silently changing its behavior.

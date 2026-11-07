@@ -1,257 +1,50 @@
 # Original MaCRUISE reference-run packet
 
-For testing against the complete external product, first read the [end-to-end external comparison protocol](../docs/testing/end-to-end-external.md). The drivers below implement a selected-mask scientific profile; they bypass the original skull-stripping path and are not unchanged invocations of the external application. Full external execution and acceptance remain unverified.
+This is a maintainer/reference-environment packet. Its MATLAB drivers and original-side tooling are deliberately excluded from the Python-only tester bundle and must be obtained separately when testing the original workflow.
 
-This packet is prepared for someone who has access to the original MATLAB,
-MIPAV, and JIST runtime. It contains the exact `.nii.gz` inputs used for the
-current human BASE and PLUS Python runs, with SHA-256 hashes in
-[`SHA256SUMS`](SHA256SUMS). It does not contain source code or runtime images.
+Updated October 27, 2026. PLUS targets `ibsr11objV3` at the AtlasEM stage. The current [full PLUS walkthrough](../docs/testing/full-plus-walkthrough.md) provides setup, native/Python atlas preparation, both independent end-to-end commands, comparison recording, numerical gates and assumptions. The [individual tools guide](../docs/testing/individual-tools.md) covers separate source and Python tool runs. The [BASE walkthrough](../docs/testing/full-base-walkthrough.md) retains the pinned external v3.2.0 BASE container recipe.
 
-## Input sets
+## Input packet
 
-These are two separate input sets. Do not mix files across them.
+| Profile | Directory | Files |
+| --- | --- | --- |
+| BASE | `inputs/base-root/` | T1, MaSeg and brain mask on the 184×256×256 T1 grid. |
+| PLUS | `inputs/100260/` | T1, MaSeg and brain mask on the 176×240×256 T1 grid; separate 192×512×512 FLAIR with oblique physical geometry. |
 
-| Run | Input directory | Files | Grid and orientation |
-| --- | --- | --- | --- |
-| BASE | [`inputs/base-root`](inputs/base-root) | `T1.nii.gz`, `brain_mask.nii.gz`, `MaSeg.nii.gz` | All `(184, 256, 256)`, RAS; mask and MaSeg match the T1 grid. |
-| PLUS | [`inputs/100260`](inputs/100260) | `T1.nii.gz`, `FLAIR.nii.gz`, `brain_mask.nii.gz`, `MaSeg.nii.gz` | T1, mask, and MaSeg `(176, 240, 256)`, RAS; FLAIR `(192, 512, 512)`, RAS, to be rigidly registered to T1. |
+Use [`SHA256SUMS`](SHA256SUMS) to verify files. These are different scans; never mix their inputs or output trees. The PLUS test must preserve the FLAIR affine through registration. The former instruction to use axis-only `--no-regrid-inputs` for this oblique FLAIR is superseded.
 
-The BASE `T1.nii.gz` and the PLUS `100260/T1.nii.gz` are different scans and
-have different dimensions. The file hashes are the definitive identity check.
+## Original scientific drivers
 
-## Source runs requested
+`matlab/run_base_selected_mask_reference.m` and `matlab/run_plus_selected_mask_reference.m` adapt the original scientific stage functions to the supplied-mask boundary. They omit BET/SPECTRE, visualization, MNI and FreeSurfer exports. They are new orchestration around original algorithms, not unchanged top-level product invocations. They have not been parsed or executed by MATLAB on this host; a suitable original runtime is required.
 
-Use MaCRUISE **v3 or newer**; v3.2.0 is preferred when available. Versions
-before v3 had known bugs and are not an acceptable reference. Preserve the
-complete per-stage output tree, logs, and parameters. Use separate output
-directories under [`outputs`](outputs) so the BASE and PLUS products stay
-distinct.
-
-For both runs, use the supplied brain mask directly, retain the input voxel
-grid, and only apply axis permutations/flips needed to report RAS. Do not run
-BET or SPECTRE as a replacement for these supplied masks. Do not resample an
-oblique image in the no-regrid profile. The included NIfTIs are RAS already.
-The reference outputs used in comparison must be saved as `.nii.gz`; keep
-source meshes in their original VTK form as well.
-
-The checked-in legacy MATLAB entry points do not expose this exact contract:
-`run_maCRUISE_v3.m` defaults to BET, and `run_maCRUISEplus.m` calls its legacy
-skull-strip path. Please use a small run-only driver around the original
-algorithm functions to supply the mask and bypass skull stripping. Do not
-modify the original algorithm methods. The entry functions and settings below
-identify the selected source workflow. FreeSurfer/MNI surface export, figures,
-and viewer output are outside this run request; they are not needed for the
-scientific image and mesh comparisons.
-
-The source trees already provided to the project are:
-
-- MaCRUISE MATLAB: `/Users/landmaba/dev/deleteme/masimatlab/trunk/xnatspiders/matlab/MaCRUISE/`
-- MIPAV: `/Users/landmaba/dev/mipav/mipav-src/`
-- JIST: `/Users/landmaba/dev/mipav/jist-scm-2026-09-26/`
-- VandyCRUISE algorithms: `/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/VandyCRUISE/`
-- MaCRUISE-specific JIST adapters and `MaGenericTGDM`: `/Users/landmaba/dev/mipav/toads-cruise-scm-2026-09-26/toads-cruise/`
-
-Record the actual revision or source-tree hashes used by the runner. The
-paths above describe the current machine; the staged inputs and atlas hashes
-make the request portable if the runner uses equivalent source checkouts.
-
-The original JIST drivers also require their selected atlas resources under
-`MIPAV-install/plugins/Atlas/`; both drivers stop with a clear error if the
-primary descriptors are absent. BASE needs
-`cruise-atlas-10obj-toads2008.txt`. PLUS needs the `ibsr8obj` EM descriptor
-`cruise-atlas-8obj-noBG-EM.txt` and the three LesionTOADS descriptors
-`cruise-atlas-12obj-lesiontoads2012.txt`, `cruise-atlas-12obj-toads2012.txt`,
-and `cruise-atlas-10obj-toads2010.txt`. Record hashes for each descriptor and
-all referenced payload files in `RUN_INFO.md`; the installed plugin's files
-must be the same files used by the run. PyMaCRUISE's own runtime atlas assets
-are separately bundled in `data/atlases/`.
-
-For PLUS, `cruise-atlas-8obj-noBG-EM.txt` is specifically the selected AtlasEM
-input. Do not replace it with the 10-object BASE atlas or another available
-descriptor. If it or any referenced payload is missing, stop before the PLUS
-run and report the missing paths; do not silently substitute another atlas.
-Retain and hash the AtlasEM GM, WM-fill, and WM-mask products, the initial
-Dura mask, and the Dura-stripped T1/FLAIR that feed LesionTOADS. The PLUS
-driver records the AtlasEM handoff paths in `driver_outputs.mat` so they can
-be identified in the returned run tree.
-
-## BASE run driver
-
-The packet includes run-only MATLAB drivers for BASE and PLUS and a NiBabel
-mask helper at [`matlab/apply_brain_mask_nifti.py`](matlab/apply_brain_mask_nifti.py).
-They follow the selected V3 stage order but call source stages directly to
-accept the user mask without BET or SPECTRE. BASE applies the mask after
-unmasked source N4, then runs both TOADS passes, Dura removal, the original
-crop/boundary/tissue-fusion/ACE/GVF/TGDM stages, and refinement. PLUS calls the
-original `FlairRegistration`/NiftyReg rigid wrapper, then source N4, applies
-the supplied mask, and runs AtlasEM, Dura, LesionTOADS, tissue fusion,
-ACE/GVF/TGDM, and refinement. This PLUS source reference uses Aladin while the
-Python workflow uses ANTsPy; compare and report the resulting registration
-transform separately, and do not interpret the end-to-end comparison as
-registration-backend equivalence. Both drivers omit MNI export, FreeSurfer
-conversion, figures, viewer files, and cleanup/deletion. Timestamped output
-directories are created under `outputs/`; these are Git-ignored, and each
-driver refuses to reuse an existing run directory.
-
-From the repository root, with MATLAB, the selected MIPAV/JIST install, MASI
-fusion checkout, ANTs N4 executable, and Python with `nibabel` available, run:
+The BASE driver accepts the five paths below. PLUS additionally requires the `source-config.json` generated by `scripts/prepare_plus_testing.py`:
 
 ```matlab
-addpath('source-reference-run/matlab');
-run_base_selected_mask_reference( ...
-  '/path/to/MaCRUISE', ...
-  '/path/to/MIPAV-install', ...
-  '/path/to/full-multi-atlas', ...
-  '/path/to/ANTs/bin/N4BiasFieldCorrection', ...
-  'python3');
-```
-
-The Python mask helper has two committed synthetic tests covering mask values,
-RAS geometry, qform/sform preservation, and mismatched-grid rejection. The MATLAB
-driver has not been executed in this environment because MATLAB and the selected
-MIPAV/JIST application runtime are unavailable. Before using its
-outputs as evidence, confirm the logged effective options, source hashes,
-TOADS stop iterations, generated outputs, and mask/grid identity. Its stages
-are the original MATLAB/JIST functions; the driver itself is new orchestration
-that should be treated as an external-run recipe until someone completes and
-returns this run.
-
-Static checks pin both drivers' selected call order, required source options,
-scope restoration, and omission of BET/SPECTRE/visualization entry points:
-
-```sh
-PYTHONPATH=src .venv/bin/python -m pytest -q \
-  tests/test_source_reference_base_driver.py \
-  tests/test_source_reference_plus_driver.py \
-  tests/test_source_run_manifest.py \
-  tests/test_source_reference_mask_helper.py
-```
-
-These are wiring checks only. They do not parse MATLAB, launch Aladin, or
-validate any source-stage output.
-
-### PLUS run driver
-
-[`matlab/run_plus_selected_mask_reference.m`](matlab/run_plus_selected_mask_reference.m)
-implements the corresponding selected-mask PLUS orchestration. It retains the
-original `run_maCRUISEplus.m` rigid FLAIR registration and the
-`maCRUISEpluspipeline.m` stage order, but replaces SPECTRE-derived masking with
-the supplied T1-grid mask. It additionally applies the Dura mask to registered
-FLAIR before LesionTOADS. From the repository root, call it with the same five
-arguments as the BASE driver:
-
-```matlab
-addpath('source-reference-run/matlab');
+addpath('/path/to/pymacruise/source-reference-run/matlab');
 run_plus_selected_mask_reference( ...
-  '/path/to/MaCRUISE', ...
-  '/path/to/MIPAV-install', ...
-  '/path/to/full-multi-atlas', ...
-  '/path/to/ANTs/bin/N4BiasFieldCorrection', ...
-  'python3');
+  '/path/to/MaCRUISE', '/path/to/MIPAV-install', ...
+  '/path/to/full-multi-atlas', '/path/to/ANTs/bin/N4BiasFieldCorrection', ...
+  '/path/to/pymacruise/.venv/bin/python', ...
+  '/path/to/pymacruise/build/plus-e2e/source-config.json');
 ```
 
-The driver and its stage order have only static source-review checks here; it
-has not been parsed or executed by MATLAB. Original Aladin and the selected
-MIPAV/JIST application must be present. Its selected-mask path is a run-only
-adaptation, not an unchanged invocation of the historical wrapper. Return all
-outputs and logs even if a stage fails so any driver mismatch can be corrected.
+The selected original sequence is FLAIR registration → N4/masking → AtlasEM → initial Dura removal → LesionTOADS → transfer/crop/fusion → topology/ACE/GVF/TGDM/meshes → final MaSeg refinement → original thickness measurements. Record AtlasEM and initial Dura separately; do not combine AtlasEM and Dura into an unexplained initialization result. LesionTOADS returns its Dura-related channels without invoking a second Dura evolution.
 
-### BASE
+The historical source `run_EM_jist.m` hard-codes `ibsr8obj`; the adapted PLUS driver now uses `run_plus_atlasem_reference.m` to replace that command's AtlasEM path with the selected native descriptor. The kit unpacks the original raw atlas with preserved hashes and generates a Java-compatible descriptor that omits redundant per-map grid/center metadata. `run_plus_thickness_reference.m` retains original thickness operations and logs. No upstream source files or installed atlases are overwritten.
 
-- Inputs: `inputs/base-root/{T1.nii.gz,brain_mask.nii.gz,MaSeg.nii.gz}`.
-- Atlas descriptor: `../data/atlases/cruise-atlas-10obj-toads2008.txt` from
-  the repository root; SHA-256 is recorded in `SHA256SUMS`.
-- Selected source entry: the v3 BASE sequence in `maCRUISEpipeline.m`, followed
-  by `run_SegmentationRefine.m`. Retain outputs at every stage, including N4,
-  both TOADS passes, Dura removal, TGDM inputs/level sets, and refinement.
-- Match the current BASE run: no regridding; unmasked ANTs N4 with intensity
-  rescaling off; V3 Dura regularization WM `0.05` / GM `0.02`; selected 10-class
-  TOADS atlas; source-faithful segmentation refinement. The Python run's
-  exact resolved options and command are in
-  [`in-vivo-base-v3-no-mask-n4-source-profile-2026-10-14.md`](../docs/reports/in-vivo-base-v3-no-mask-n4-source-profile-2026-10-14.md).
+A source installation must provide MATLAB plus its source dependencies, MIPAV/JIST and MaCRUISE plugins, full-multi-atlas/MASI fusion helpers, NiftyReg Aladin, ANTs N4 and original native LesionTOADS atlases. Java raw-atlas resources and Python converted NIfTIs are different representations. Neither format compatibility nor byte packaging establishes numerical equivalence. The original source checked locally is SVN r9360 with supplied VandyCRUISE algorithms; record the actual installed source, plugin and runtime hashes.
 
-### PLUS
+## Outputs and run records
 
-- Inputs: `inputs/100260/{T1.nii.gz,FLAIR.nii.gz,brain_mask.nii.gz,MaSeg.nii.gz}`.
-- AtlasEM descriptor: the selected `ibsr8obj` descriptor
-  `cruise-atlas-8obj-noBG-EM.txt` plus every referenced payload installed under
-  `MIPAV-install/plugins/Atlas/`; these are source-run dependencies and are not
-  the PyMaCRUISE-bundled runtime atlas. Return SHA-256 hashes and the effective
-  AtlasEM transform/grid and output mode.
-- LesionTOADS descriptor and topology: `../data/atlases/lesionToads-atlas-2012/`
-  (the 12-object LesionTOADS descriptor and its matching topology NIfTI); hashes
-  are in `SHA256SUMS`.
-- Selected source entry: `FlairRegistration` → AtlasEM → initial Dura removal →
-  LesionTOADS → `maCRUISEpluspipeline.m` → `run_SegmentationRefine.m`. Retain
-  every workflow stage and its intermediates, especially the FLAIR-to-T1
-  transform, N4 products, all three AtlasEM output channels, initial Dura mask,
-  Dura-stripped T1/FLAIR, LesionTOADS handoffs, ACE/GVF/TGDM fields, refined
-  segmentation, and surfaces/thickness. Record separate results for AtlasEM,
-  initial Dura removal, and LesionTOADS; do not combine AtlasEM and Dura into
-  one initialization result. Record the Dura-related channels returned by
-  LesionTOADS as its handoff products, not as a second invocation of
-  `run_RemoveDura`.
-- Use the axis-only `--no-regrid-inputs` geometry profile to match the current
-  historical-environment comparison. Record the rigid FLAIR-to-T1 transform,
-  interpolation, N4 options, lesion convergence settings, and Dura transfer
-  behavior actually used. The Python reference run manifest and command are
-  detailed in
-  [`in-vivo-100260-plus-full-run-2026-10-14.md`](../docs/reports/in-vivo-100260-plus-full-run-2026-10-14.md).
-- Record the exact compiled v3+ runtime version. The supplied VandyCRUISE
-  source passes plugin `firstLimit=3.0` through `AlgorithmLesionToads` to
-  `LesionToadSegmentation`, where it becomes the effective limit. Include
-  iteration-level thinning event counts if available. The earlier zero-limit
-  continuation was a sensitivity experiment, not the source wrapper profile;
-  see [`p41z-source-wrapper-limit0-continuation-2026-10-15.md`](../docs/reports/p41z-source-wrapper-limit0-continuation-2026-10-15.md).
+The PLUS driver refuses to reuse an existing run directory. It writes all intermediate outputs, `matlab-driver.log`, `driver_outputs.mat` and `driver_outputs.json`; missing final products are errors. The original tool helpers may still suppress nested exit failures, so audit results and retained logs before treating a run as successful. The [walkthrough](../docs/testing/full-plus-walkthrough.md) supplies the exact audit and recording commands.
 
-If the source driver cannot accept the supplied mask without invoking BET or
-SPECTRE, return that run as an **unmatched historical-default reference** and
-record the exact mask produced by the wrapper. It can inform diagnosis but
-cannot close the matched-source acceptance row. Please do not silently use a
-different mask, atlas, orientation, or registration transform.
+Copy [`RUN_INFO.template.md`](RUN_INFO.template.md) into each returned run and fill it with actual source/runtime identities, commands, atlas hashes, effective settings, masks, grids, FLAIR transform, iteration counts and stopping reasons. Keep failed attempts. Return every scientific intermediate, refined segmentation, three level sets/meshes, volume/surface thickness, logs and SHA-256 inventory. No GitHub write permission is needed.
 
-## Files and metadata to return
-
-For each run, return the complete output directory (a compressed archive is
-fine), including:
-
-1. Every intermediate scientific NIfTI and final segmentation, surface, and
-   thickness output. Preserve RAS geometry and use `.nii.gz` for volume images.
-2. The full console, MATLAB, MIPAV/JIST, ANTs, and scheduler logs; do not strip
-   error messages or failed-stage logs.
-3. A `RUN_INFO.md` or text file containing the exact source revision/tag,
-   MIPAV/JIST/plugin versions, MATLAB/MCR version, Java version, ANTs version,
-   operating system, launch command, effective options, atlas paths, and
-   whether the run used the supplied mask or a generated mask.
-4. SHA-256 hashes for all four inputs (three for BASE), atlas descriptor and
-   referenced atlas files, and returned outputs. Include image dimensions,
-   voxel sizes, qform/sform, axis codes, and the FLAIR registration transform
-   for PLUS.
-5. The stopping iteration, energy ratio, stop reason, and whether stopping was
-   natural convergence or an iteration limit.
-
-Copy [`RUN_INFO.template.md`](RUN_INFO.template.md) into each run directory as
-`RUN_INFO.md` and complete it. The output auditor's `--require-run-info` flag
-checks that the record is present; a human still needs to check that its values
-are complete and consistent with the logs.
-
-Do not include FreeSurfer surface conversion, MNI export, figures, or viewer
-files in the archive. Retaining them is unnecessary for this port comparison.
-
-After the output archive is available here, I can map its intermediates to the
-Python manifests and run the voxel, Dice, transform, and surface comparisons.
-The original runtime remains the only item this host cannot execute itself.
-
-Before comparison, audit the returned directory with the repository tool:
-
-```sh
-PYTHONPATH=src .venv/bin/python scripts/audit_source_reference_run.py \
-  /path/to/returned/base-run --require-run-info --require-ras
+```bash
+python scripts/audit_source_reference_run.py /path/to/returned/run \
+  --require-run-info --require-ras
 ```
 
-The audit writes `source-run-manifest.json` with SHA-256 for every regular file,
-and NIfTI shape, affine, qform/sform, voxel size, orientation, and finite-value
-checks. `--require-ras` fails on non-RAS image outputs; omit it only when
-deliberately collecting a legacy orientation for later conversion/comparison.
-It rejects uncompressed `.nii` images and symlinks but never modifies source
-outputs. Mesh and log files are hashed without interpretation.
+The auditor writes `source-run-manifest.json` with file hashes and NIfTI geometry/finite checks; it rejects symlinks and uncompressed `.nii`. Deliberate legacy orientation needs a separately documented physical conversion before comparison. The auditor cannot prove numerical agreement or correct source version.
+
+The testing scripts do not supply a complete original runtime. The pinned BASE container is not a verified PLUS runtime. The expected result of testing is an honest comparison or a reproducible failure report, not an assumed pass. Current validation is recorded in [the October 27 readiness report](../docs/reports/plus-testing-readiness-2026-10-27.md).

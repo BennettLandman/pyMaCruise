@@ -41,6 +41,8 @@ def prepare_toads_cruise_inputs(
     segmentation: nib.spatialimages.SpatialImage | None = None,
     remove_cerebellum: bool = False,
     crop_edge_width: int = 5,
+    topology_propagation: str = "object->background",
+    topology_source_axis_order: str = "RAS",
 ) -> ToadsCruisePreparationResult:
     """Compose optional label cleanup, GM crop, and selected topology stage.
 
@@ -83,6 +85,8 @@ def prepare_toads_cruise_inputs(
         lowest_level=0.0,
         highest_level=1.0,
         regularize=1e-4,
+        propagation_direction=topology_propagation,
+        source_axis_order=topology_source_axis_order,
     )
     stages.append("topologyCorrectWhiteMatterFill")
     return ToadsCruisePreparationResult(

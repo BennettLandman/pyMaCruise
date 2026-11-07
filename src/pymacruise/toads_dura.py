@@ -36,7 +36,7 @@ spacing).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import nibabel as nib
 import numpy as np
@@ -106,6 +106,7 @@ def run_dura_removal(
     mask_translation: float = 2.0,
     level_set_translation: float = 0.0,
     record_passes: bool = False,
+    source_axis_order: str = "RAS",
 ) -> DuraRemovalResult:
     """Compose the selected Dura wrapper on a shared native T1 RAS grid.
 
@@ -114,7 +115,10 @@ def run_dura_removal(
     build capped inner/outer signed-distance fields, evolve the pial mask
     level set, then threshold it before zeroing the three returned images.
     Inputs are axis-reoriented to RAS with warnings and must share one physical
-    grid; outputs retain that grid. Topology, distance, and TGDM numerics are
+    grid; outputs retain that grid. ``source_axis_order='LPS'`` selects the
+    original BASE wrapper's internal indexing order for order-sensitive heap
+    and topology operations while still returning RAS products. Topology,
+    distance, and TGDM numerics are
     supplied by the separately validated stage implementations.
     """
     named_inputs = (
@@ -145,6 +149,24 @@ def run_dura_removal(
             image.affine, reference_affine, rtol=0, atol=1e-4
         ):
             raise ValueError(f"{name} must match the original T1 RAS grid")
+
+    if source_axis_order not in ("RAS", "LPS"):
+        raise ValueError("Dura source_axis_order must be RAS or LPS")
+    ras_reference = t1
+    if source_axis_order == "LPS":
+        # These private images describe an indexing lattice, not a world-space
+        # export. Shared scalar operators normalize their inputs to RAS; use a
+        # positive indexing affine so they retain the selected LPS array order.
+        # Dura's topology, distance fields and evolution operate in voxel units.
+        indexing_affine = np.diag([*t1.header.get_zooms()[:3], 1.0])
+        t1, raw_wm, raw_gm, wm_mask = (
+            nib.Nifti1Image(np.asanyarray(image.dataobj)[::-1, ::-1, :], indexing_affine)
+            for image in normalized
+        )
+
+    def to_ras(values: np.ndarray) -> np.ndarray:
+        return (np.ascontiguousarray(values[::-1, ::-1, :])
+                if source_axis_order == "LPS" else values)
 
     if not np.isfinite(wm_topology_regularization) or wm_topology_regularization < 0:
         raise ValueError("WM topology regularization must be finite and nonnegative")
@@ -184,11 +206,11 @@ def run_dura_removal(
         level_set_translation=level_set_translation,
     )
     def output_image(values: np.ndarray, name: str) -> nib.Nifti1Image:
-        header = t1.header.copy()
+        header = ras_reference.header.copy()
         header.set_data_dtype(values.dtype)
-        image = nib.Nifti1Image(values, reference_affine, header=header)
-        _, qcode = t1.get_qform(coded=True)
-        _, scode = t1.get_sform(coded=True)
+        image = nib.Nifti1Image(to_ras(values), reference_affine, header=header)
+        _, qcode = ras_reference.get_qform(coded=True)
+        _, scode = ras_reference.get_sform(coded=True)
         if qcode:
             image.set_qform(reference_affine, code=int(qcode), strip_shears=True)
         else:
@@ -203,9 +225,15 @@ def run_dura_removal(
         corrected_gray_matter=output_image(final.corrected_gray_matter, "gm_fixed"),
         brain_mask_level_set=output_image(final.brain_mask_level_set, "brain_mask_levelset"),
         brain_mask=output_image(final.corrected_brain_mask, "brain_mask"),
-        wm_topology=wm_tc,
-        gm_topology=gm_tc,
-        evolution=evolution,
+        wm_topology=output_image(np.asanyarray(wm_tc.dataobj), "wm_topology"),
+        gm_topology=output_image(np.asanyarray(gm_tc.dataobj), "gm_topology"),
+        evolution=replace(
+            evolution, level_set=to_ras(evolution.level_set),
+            pass_level_sets=tuple(to_ras(values) for values in evolution.pass_level_sets),
+            pre_reinitialization_level_sets=tuple(
+                to_ras(values) for values in evolution.pre_reinitialization_level_sets
+            ),
+        ),
     )
 
 

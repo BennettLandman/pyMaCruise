@@ -18,12 +18,26 @@ reference_root="$repo_root/tests/java_reference"
 javac -d "$reference_dir/classes" \
   -sourcepath "$reference_root/stubs:$reference_root/upstream" \
   "$reference_root/PlusTGDMReferenceHarness.java"
-"$repo_root/.venv/bin/python" "$repo_root/scripts/run_with_rss_watchdog.py" \
-  --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
-  /usr/bin/java -Xms256m -Xmx6g -cp "$reference_dir/classes" \
-  PlusTGDMReferenceHarness "$reference_dir/arrays.bin" "$reference_dir/java" \
-  precomputed_initial_level_set "$reference_dir/brain-mask.bin" \
-  > "$reference_dir/java-watchdog.log" 2>&1
+java_input_mode=$("$repo_root/.venv/bin/python" -c \
+  'import json,sys; print(json.load(open(sys.argv[1]))["tgdm_input_mode"])' \
+  "$reference_dir/input-provenance.json")
+if [ "$java_input_mode" = "precomputed_initial_level_set" ]; then
+  "$repo_root/.venv/bin/python" "$repo_root/scripts/run_with_rss_watchdog.py" \
+    --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
+    /usr/bin/java -Xms256m -Xmx6g -cp "$reference_dir/classes" \
+    PlusTGDMReferenceHarness "$reference_dir/arrays.bin" "$reference_dir/java" \
+    precomputed_initial_level_set \
+    > "$reference_dir/java-watchdog.log" 2>&1
+elif [ "$java_input_mode" = "initial_membership" ]; then
+  "$repo_root/.venv/bin/python" "$repo_root/scripts/run_with_rss_watchdog.py" \
+    --limit-gb 8 --interval-seconds 0.5 --report-interval-seconds 30 -- \
+    /usr/bin/java -Xms256m -Xmx6g -cp "$reference_dir/classes" \
+    PlusTGDMReferenceHarness "$reference_dir/arrays.bin" "$reference_dir/java" \
+    > "$reference_dir/java-watchdog.log" 2>&1
+else
+  echo "Unsupported TGDM Java input mode: $java_input_mode" >&2
+  exit 2
+fi
 cat "$reference_dir/java-watchdog.log"
 PYTHONPATH="$repo_root/src" "$repo_root/.venv/bin/python" "$repo_root/scripts/compare_plus_tgdm_java.py" \
   --workflow-root "$workflow_root" --reference-dir "$reference_dir" --report "$report"

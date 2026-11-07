@@ -2,7 +2,9 @@
 
 PyMaCRUISE project code is licensed under the [Apache License 2.0](LICENSE). Third-party materials retain their applicable terms. See the [license and attribution inventory](license_info.md) for upstream notices and the status of bundled atlas data.
 
-**PLUS atlas correction — 2026-10-18:** The owner selects `ibsr11objV3` to replace the earlier `ibsr8obj` AtlasEM requirement. All referenced native assets are present. Python NIfTI conversion, descriptor/loader compatibility, and matched validation remain open; historical `ibsr8obj` requirements below are superseded. See [atlas selection and compatibility findings](docs/reports/plus-atlas-selection-2026-10-18.md).
+**Distribution scope:** The tester bundle is Python-only, with required data and documentation. Original MaCRUISE, MATLAB reference drivers and Java validation harnesses are supplied separately; the full development-source archive is not the tester distribution.
+
+**PLUS testing update — 2026-10-27:** Exploratory end-to-end testing instructions are ready for both original and Python scientific pipelines. Start with the [PLUS walkthrough](docs/testing/full-plus-walkthrough.md), [individual tools](docs/testing/individual-tools.md), and [complete CLI reference](docs/tools-reference.md). The kit prepares the selected `ibsr11objV3` atlas from bundled files. Full original-runtime execution and numerical equivalence remain unverified.
 
 Python-native implementation of the MaCRUISE cortical segmentation workflow. The project reuses established imaging libraries and ports the source-specific algorithms and orchestration that are not available as suitable Python components.
 
@@ -15,9 +17,10 @@ For human testing against the complete external MaCRUISE workflow, use the [full
 This guide covers installing PyMaCRUISE, running its supported BASE workflow,
 interpreting common messages, finding the results, and reviewing images and
 surfaces. The command line is the user interface; PyMaCRUISE does not include a
-graphical viewer. Start with BASE. PLUS is still under development: selected
-atlas loading and matched end-to-end validation are not complete, so treat its
-results as experimental.
+graphical viewer. BASE and PLUS are available for supervised exploratory testing. PLUS atlas
+loading and conversion are implemented; independent original-versus-Python
+end-to-end agreement remains unverified. Use the PLUS walkthrough for its
+explicit assumptions, complete run commands and stage-by-stage inspection.
 
 ### BASE and PLUS: scope and intent
 
@@ -28,18 +31,20 @@ builds the inner, central, and outer cortical surfaces, computes thickness
 products, and refines the MaSeg labels. Use BASE when evaluating the core
 cortical surface and thickness workflow. The Python runner requires the
 brain mask from the user; it does not perform the historical BET/SPECTRE
-skull-stripping step itself.
+skull-stripping step itself. BASE applies the selected mask-then-windowed-sinc
+axial handoff before TOADS and runs Dura in the same LPS processing order.
+Final outputs return to the original grid.
 
 **MaCRUISE PLUS** is the lesion-aware extension intended for cases with a
 T1-weighted MRI, a corresponding FLAIR image, MaSeg labels, and a T1-grid brain
 mask. Its workflow registers FLAIR to T1, uses both modalities in the
 LesionTOADS pathway, handles Dura, and produces cortical surfaces, thickness,
 and refined labels. The implementation also has an optional AtlasEM/Dura
-handoff. PLUS is included to describe the project's target scope, but it is
-not ready for routine beta evaluation: the owner-selected atlas conversion and
-loader compatibility are still open, and full selected-atlas and
-original-versus-Python workflow validation have not been established. Do not
-interpret a PLUS run as a validated clinical result.
+handoff. PLUS is ready for supervised exploratory evaluation using the prepared
+testing kit, including AtlasEM/Dura and final refinement. The native-to-Python
+atlas conversion and selected loading are implemented. Full original-runtime
+execution, matched selected-atlas validation and complete original-versus-Python
+agreement remain unverified. Results are research outputs.
 
 Both workflows are research software for technical evaluation of the selected
 MaCRUISE behavior. A completed run means the configured stages finished; it
@@ -56,7 +61,7 @@ correction, install the optional ANTs dependency too. A GitHub read-only clone
 is sufficient; you do not need to commit or push changes.
 
 ```bash
-git clone https://github.com/BennettLandman/pymacruise.git
+git clone https://github.com/BennettLandman/pyMaCruise.git pymacruise
 cd pymacruise
 git checkout --detach HEAD
 
@@ -86,8 +91,16 @@ The main command is `pymacruise base-run`. It requires a T1-weighted NIfTI,
 MaSeg label image, T1-grid binary brain mask, atlas descriptor, and a new
 output folder. For the selected source-profile settings and bundled human
 example, follow the [Python BASE checks](docs/testing/python-base-checks.md).
-That guide includes input hash checks and the complete command; do not substitute
-the synthetic smoke-test settings when evaluating the human scan.
+That guide includes input hash checks and the complete command. BASE defaults
+use full numerical settings and legacy working geometry; final volumes return
+to the original T1 grid and meshes use physical RAS+ millimetres. Version 0.1.6
+retains mask-before-axial interpolation, LPS Dura processing, v3.2 hemisphere
+separation and upward topology correction, with the optional TGDM bound unset.
+N4 defaults to the installed backend's current unmasked policy; explicit
+`--n4-estimation-mask legacy-otsu` selects historical automatic Otsu estimation.
+The policy is recorded and checked during resume. The tester bundle adds a
+portable launcher, dependency constraints, original-output comparison and
+feedback collection. See the [0.1.6 tester release report](docs/reports/tester-release-0.1.6-2026-10-29.md).
 
 For a quick installation check, run the small synthetic example from the
 repository root (its deliberately short iteration limits are not suitable for
@@ -109,7 +122,7 @@ pymacruise base-run \
   2>&1 | tee build/tester-smoke.log
 ```
 
-The exit status should be zero and all eight stages should report completion.
+The exit status should be zero and all ten stages, including native export, should report completion.
 To check restart behavior, repeat the command with `--resume` added before
 `2>&1 | tee`, and use a different log filename. Resume verifies completed
 stage outputs and skips valid checkpoints. A fresh run needs a fresh output folder. Use
@@ -120,10 +133,9 @@ stage outputs and skips valid checkpoints. A fresh run needs a fresh output fold
 
 - **RAS/reorientation warning:** The input was not stored in RAS axis order and
   PyMaCRUISE normalized it. This warning is informative, not automatically a
-  failure. Keep it in the log and use the run's working/reference T1 when
-  viewing overlays. With `--no-regrid-inputs`, oblique directions are discarded
-  in an orientation-only compatibility conversion; do not compare those output
-  coordinates to the original oblique header as if they were the same frame.
+  failure. Keep it in the log. Working-stage intermediates use their recorded
+  working T1; the final native exports restore the original input grid and
+  oblique directions, so use the original T1 for their overlays.
 - **`Run already exists` / output folder is not empty:** Use `--resume` only to
   continue the same run with the same inputs, settings, and checkout. Choose a
   new output folder for an independent run. Do not delete or overwrite a run
@@ -135,6 +147,10 @@ stage outputs and skips valid checkpoints. A fresh run needs a fresh output fold
 - **Missing ANTs/`ants` dependency:** Activate the environment and install with
   `python -m pip install '.[ants]'`, then retry. If installation or import
   still fails, return the full installation log and Python/OS versions.
+- **BASE stops at N4 with an empty stage log:** Older packages hide the error
+  when ANTsPy is missing or cannot import. Run N4 directly to expose it, check
+  the active environment, then resume the original command. See the
+  [N4 troubleshooting commands](docs/testing/python-base-checks.md#troubleshoot-a-silent-stop-at-n4).
 - **Grid/geometry mismatch, invalid mask, or missing-file error:** Check that
   T1, MaSeg, and brain mask are the matching case, that the mask is binary, and
   that the images share the required T1 grid. Do not silence the check by
@@ -165,21 +181,22 @@ the manifest records paths, settings, hashes, and stage status.
 | `run.json` | Overall status, inputs and hashes, geometry handling, stage status and stop reasons, output paths, and final-output index. `status: complete` means all workflow stages completed; check `converged` separately. |
 | `resources/` | Shared prepared or reoriented inputs used by stages. For orientation-only runs, `resources/orientation-only-inputs/T1.nii.gz` is the matching T1 for visual overlays. |
 | `stages/*/attempt-NN/` | Intermediate NIfTI images, stage logs, provenance, and stage-specific JSON summaries. These are retained for restart and review. |
-| `maseg-refinement/.../SEG_refine.nii.gz` | Final MaSeg label refinement. |
-| `cruise-core/.../{inner,central,outer}.nii.gz` | Level sets; their zero contours define the inner, central, and outer cortical surfaces. |
-| `surface-thickness/.../*_surface.vtk` | Scientific surface meshes in RAS+ millimetres; load as model/surface data in a viewer that supports legacy VTK. |
-| `surface-thickness/.../thickness_levelset.nii.gz` | Voxelwise thickness product. |
-| `surface-thickness/.../inner_surface_thickness.vtk` and `thickness_summary.json` | Per-vertex thickness on the inner mesh and summary measurements. JSON `null` with `available: false` means no valid measurement was available, not a measured zero. |
+| `native-export/.../SEG_refine.nii.gz` | Final integer MaSeg label refinement on the original T1 grid. |
+| `native-export/.../{inner,central,outer}.nii.gz` | Level sets; their zero contours define the inner, central, and outer cortical surfaces. |
+| `native-export/.../*_surface.vtk` | Scientific surface meshes in RAS+ millimetres; load as model/surface data in a viewer that supports legacy VTK. |
+| `native-export/.../thickness_levelset.nii.gz` | Voxelwise thickness product. |
+| `native-export/.../inner_surface_thickness.vtk` and `thickness_summary.json` | Per-vertex thickness on the inner mesh and summary measurements. JSON `null` with `available: false` means no valid measurement was available, not a measured zero. |
 
-All saved image products are compressed NIfTI (`.nii.gz`) in RAS orientation;
-surface coordinates are RAS+ millimetres. The exact paths for your run are in
+Saved image products use compressed NIfTI (`.nii.gz`). Final native-export
+images preserve the original T1 storage axes and affine; working images use
+RAS axes. Surface coordinates are physical RAS+ millimetres. The exact paths for your run are in
 `run.json` under `final_outputs` and each stage's `outputs`. Do not move files
 individually or rename them before you run a hash/provenance check.
 
 ### Visual review
 
 Use a medical-image viewer that can load NIfTI volumes and legacy VTK surfaces.
-Open the matching working/reference T1 first, then overlay `SEG_refine.nii.gz`
+Open the original input T1 first, then overlay the final native-export `SEG_refine.nii.gz`
 with label coloring and inspect axial, coronal, and sagittal slices. Add the
 inner, central, and outer level sets as contours or load the corresponding VTK
 files as surfaces. Review whether the contours and meshes align to the cortex,
@@ -187,12 +204,17 @@ whether there are missing or disconnected regions, and whether the result is
 clipped. Load `thickness_levelset.nii.gz` as a scalar image to inspect spatial
 variation; the inner mesh's thickness values are in `inner_surface_thickness.vtk`.
 
-For default regridded runs, use the working T1/reference grid recorded in
-`run.json` and `resources/`; for `--no-regrid-inputs`, use
-`resources/orientation-only-inputs/T1.nii.gz` when that file exists. Mixing
-outputs with an unrelated original affine can make a correct overlay appear
-misaligned. VTK surfaces use RAS+ millimetres, so confirm the viewer uses the
-same coordinate convention. PyMaCRUISE writes scientific data products but
+For viewers that use GIFTI, convert a workflow surface with
+`pymacruise surface-convert --input inner_surface_thickness.vtk --output inner.surf.gii`.
+Vertex measurements are included; `--data-output thickness.shape.gii` also
+writes them separately. Extraction and surface thickness commands accept GIFTI,
+and `surface-info` inspects geometry and vertex fields. See the
+[GIFTI guide](docs/gifti.md) for metadata, labels, and coordinate/precision details.
+
+Use the original T1 for products listed in `final_outputs`. Intermediate
+working-stage products require their matching working T1 from `resources/`.
+VTK surfaces use physical RAS+ millimetres; confirm the viewer uses that frame.
+PyMaCRUISE writes scientific data products but
 does not render figures or prescribe a viewer. Save screenshots with the
 three-plane view, identify the file and stage attempt, and record any concern
 with slice or world coordinates. Visual review is diagnostic; it does not by
@@ -208,14 +230,14 @@ The [supplemental BASE check guide](docs/testing/python-base-checks.md) has a
 feedback checklist and archive example. No GitHub write access is required;
 return results through the project owner's agreed channel.
 
-## Current status — 2026-10-18
+## Current status — 2026-10-29
 
-- **BASE:** The restartable eight-stage command completes synthetic and human case-100260 runs. The human run naturally converges at TOADS iterations 20/18. A new held-fixed Java comparison passes all five TGDM surface gates when both implementations receive the saved Dura signed mask level set unchanged; this does not validate original Dura or full-workflow equivalence. See the [human BASE run report](docs/reports/in-vivo-base-v3-no-mask-n4-source-profile-2026-10-14.md) and [mask-level-set TGDM report](docs/reports/in-vivo-base-tgdm-dura-mask-levelset-java-parity-2026-10-17.md).
+- **BASE:** The installed 0.1.6 candidate passes 128 targeted checks; the tester tools pass eight additional checks. Full defaults, ten stages and original-grid final exports remain enabled. N4 backend selection is explicit, with the current unmasked policy as default. Source-held fusion, topology and ACE comparisons match Adam’s original component products; these remain separate from independent reconstruction agreement. See the [tester release report](docs/reports/tester-release-0.1.6-2026-10-29.md) for final-case measurements and limitations.
 - **TOADS performance:** Source-ordered compiled growing, relation, and bias-field kernels reduce the compact full run from 36.5 to 8.3 seconds (4.4×). A fresh human first pass takes 13.5 minutes versus its saved 50.2-minute baseline (3.7×), with all five tissue outputs byte-identical and the same stopping iteration. See [the performance evaluation](docs/reports/toads-compiled-performance-2026-10-17.md).
-- **PLUS:** The restartable runner has ten baseline stages and eleven with the optional AtlasEM→Dura handoff; both finish with selected V3 MaSeg refinement. The selected `MaTGDMcrop` wrapper leaves the optional brain-mask level set unset. A fresh held-fixed human Java/Python replay using the null-bound route passes all five TGDM surface gates; this is stage evidence, not complete workflow equivalence. The owner-selected `ibsr11objV3` source package is now bundled with its native descriptor and payloads, but its descriptor/loader adaptation and checked NIfTI conversion remain open. See [atlas selection findings](docs/reports/plus-atlas-selection-2026-10-18.md), [null-bound TGDM comparison](docs/reports/in-vivo-plus-tgdm-null-bound-java-parity-2026-10-18.md), [PLUS comparison handoff](docs/testing/full-plus-walkthrough.md), and [continuation report](docs/reports/plus-continuation-2026-10-18.md).
+- **PLUS:** The selected LesionTOADS path is implemented and the eleven-stage AtlasEM-enabled Python workflow has human execution evidence. The testing kit preserves oblique FLAIR geometry, uses the owner-selected atlas, and supports explicit stage checkpoints. Original-run helpers include native-atlas selection, all final products and original thickness calls. Use the [end-to-end walkthrough](docs/testing/full-plus-walkthrough.md) and [readiness receipt](docs/reports/plus-testing-readiness-2026-10-27.md); independent source agreement remains unverified.
 - **Synthetic PLUS checkpoint:** The labeled folded-cortex case exercises source-selected surface evolution and explicit ribbon checks. Its current long TOADS profile reaches the selected iteration cap without convergence; held-fixed Java transitions and terminal TGDM comparisons pass their stated gates. This is a nonconvergent synthetic input profile, not evidence that the workflow cannot run. See the [iteration 90–99 report](docs/reports/p41z-iterations90-99-selected-java-2026-10-15.md).
-- **Current validation:** The focused workflow set and full suite have been run during this continuation; see the [dated continuation report](docs/reports/plus-continuation-2026-10-18.md) for final counts and scope. Full PLUS source equivalence remains open.
-- **External references:** The complete MATLAB/MIPAV/JIST/CRUISE runtime and `reg_aladin` are unavailable on this host. Native `ibsr11objV3` assets are packaged, but descriptor adaptation and geometry-validated conversion are not implemented. The [source-reference run packet](source-reference-run/README.md) documents the required provenance and current runtime gaps.
+- **Current validation:** See the [October 27 receipt](docs/reports/plus-testing-readiness-2026-10-27.md) for current tests and human-run evidence. Older reports retain their historical results and scope.
+- **External references:** The complete original MATLAB/MIPAV/JIST runtime and `reg_aladin` remain unavailable here. Native `ibsr11objV3` assets, Java descriptor preparation, Python conversion, source-run recording and comparison commands are now supplied. Atlas format differences are reported explicitly; they do not establish atlas or whole-workflow equivalence.
 
 ## Scope and target
 
@@ -233,7 +255,7 @@ return results through the project owner's agreed channel.
 4. Build and validate on deterministic synthetic data before using the supplied human scan. Keep synthetic fixtures and generators in `tests/data/synthetic/`.
 5. Report source-equivalence evidence, Python integration regressions, and real-data validation as distinct evidence categories. Do not infer whole-workflow equivalence from component matches.
 
-The runtime stack is NiBabel, NumPy, Numba, and SciPy; pytest, build, and scikit-image are development dependencies, and `antspyx` is optional for ANTs-backed operations. The license/attribution inventory and follow-up TTO work are in [license_info.md](license_info.md). Atlas assets are regular Git files. The owner-selected PLUS `ibsr11objV3` files are preserved in native form; runtime compatibility and matched validation remain open.
+The runtime stack is NiBabel, NumPy, Numba, and SciPy; pytest, build, and scikit-image are development dependencies, and `antspyx` is optional for ANTs-backed operations. The license/attribution inventory and follow-up TTO work are in [license_info.md](license_info.md). Atlas assets are regular Git files. The owner-selected PLUS `ibsr11objV3` files are preserved in native form; runtime descriptor preparation and Python conversion are implemented; original-runtime execution and matched validation remain open.
 
 ## Inputs and outputs
 

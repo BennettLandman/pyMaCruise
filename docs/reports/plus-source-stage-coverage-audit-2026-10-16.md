@@ -1,5 +1,15 @@
 # MaCRUISEplus source-stage coverage audit — 2026-10-16
 
+> Historical dated record. Current testing readiness, native/Python atlas preparation and run instructions supersede stale open-work statements below; see [the October 27 readiness report](plus-testing-readiness-2026-10-27.md).
+
+> Historical snapshot. The finding below that AtlasEM and pre-LesionTOADS
+> Dura were absent from the Python runner was superseded on 2026-10-17 by the
+> optional AtlasEM/Dura integration reported in
+> [the integration report](plus-atlasem-dura-integration-2026-10-17.md).
+> The current workflow has ten baseline stages and eleven with that optional
+> stage; selected-atlas behavior and a complete independent source run remain
+> unverified. See the [2026-10-18 continuation report](plus-continuation-2026-10-18.md).
+
 ## Finding
 
 The current restartable Python PLUS workflow is a runnable nine-stage

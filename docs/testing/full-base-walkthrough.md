@@ -51,7 +51,7 @@ set -euo pipefail
 
 mkdir -p "$HOME/pymacruise-testing"
 cd "$HOME/pymacruise-testing"
-git clone https://github.com/BennettLandman/pymacruise.git
+git clone https://github.com/BennettLandman/pyMaCruise.git pymacruise
 cd pymacruise
 git checkout --detach HEAD
 
@@ -166,7 +166,7 @@ Do not rely on a completion message alone. The final native output tree must inc
 
 ## 5. Run the complete Python BASE workflow
 
-These explicit options use the selected V3 scientific settings. Do not omit them: several command defaults are intentionally small synthetic-test values.
+These explicit options record the selected V3 scientific settings, which are the default numerical profile from version 0.1.1. Synthetic smoke tests must explicitly lower the iteration limits.
 
 ```bash
 cat > build/e2e/run-python.sh <<'SH'
@@ -192,9 +192,9 @@ bash build/e2e/run-python.sh 2>&1 | tee build/e2e/logs/python-base.log
 bash build/e2e/run-python.sh --resume 2>&1 | tee build/e2e/logs/python-resume.log
 ```
 
-Expected: eight complete stages; then eight `Resume: verified ...; skipping` messages. Both TOADS stages should report whether they naturally converged or reached an iteration limit. Previous executions of this bundled case stopped naturally at iterations 20 and 18; record your actual values. If Python is interrupted, rerun its saved script with `--resume`, preserving the failure log.
+Expected: ten complete stages including preprocessing and native export; then ten `Resume: verified ...; skipping` messages. Both TOADS stages should report whether they naturally converged or reached an iteration limit. Previous executions of this bundled case stopped naturally at iterations 20 and 18; record your actual values. If Python is interrupted, rerun its saved script with `--resume`, preserving the failure log.
 
-`--no-regrid-inputs` is intentional here. Oblique directions are discarded while values and voxel ordering remain unchanged. Retain warnings and use the run's working T1 for visual overlays. The comparison restores the Python meshes to the original input's physical frame through the recorded voxel mapping.
+`--no-regrid-inputs` is intentional here. Oblique directions are discarded while values and voxel ordering remain unchanged. Retain warnings. The final native-export stage restores the original input grid and physical mesh frame. Use the original T1 for final-output overlays; the comparator selects native exports for new runs and retains explicit mapping support for older runs.
 
 ## 6. Compare final scientific outputs
 
@@ -229,7 +229,7 @@ The report includes every final nonbackground label's Dice, level-set difference
 
 ## 7. Visual review and return package
 
-Open the native outputs in your existing NIfTI/VTK-capable viewer. Review refined segmentation and inner/central/outer boundaries in axial, coronal, and sagittal planes. Capture discrepant regions with coordinates and screenshots. Use the Python working T1 under `python-base/resources/orientation-only-inputs/` when present; use the source Raw/T1 for external outputs. Do not overlay the axis-only Python outputs directly on an oblique source grid without the documented mapping.
+Open the native outputs in your existing NIfTI/VTK-capable viewer. Review refined segmentation and inner/central/outer boundaries in axial, coronal, and sagittal planes. Capture discrepant regions with coordinates and screenshots. Use the original T1 with final native-export products; use the working T1 only with working-stage intermediates. Use source Raw/T1 for external outputs.
 
 Create `build/e2e/TESTER_NOTES.md` recording hardware/RAM, elapsed times, external/Python/resume completion, actual stop reasons, comparison exit code, viewer/frame choices, and observed problems. Put screenshots under `build/e2e/screenshots/`. Keep both complete output trees, logs, launch scripts, and the JSON report, including failures.
 

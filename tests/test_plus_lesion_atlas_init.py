@@ -6,6 +6,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from pymacruise.image_io import save_nifti_ras
 from pymacruise.lesion_initial_atlas_alignment import initialize_lesion_atlas_alignment_from_descriptor
@@ -53,6 +54,9 @@ def test_plus_lesion_file_crop_flows_into_13_class_initial_atlas_alignment(
     manifest = json.loads(result.manifest_path.read_text())
     summary = json.loads(result.summary_path.read_text())
     assert manifest["status"] == "complete"
+    shape_assets = manifest["inputs"]["shape_atlases"]
+    assert len(shape_assets) == 13
+    assert all(Path(record["path"]).is_file() and record["sha256"] for record in shape_assets.values())
     assert manifest["source_order"] == [
         "preprocess.initialCentroids",
         "preprocess.initialMemberships",
@@ -110,6 +114,27 @@ def test_plus_lesion_file_crop_flows_into_13_class_initial_atlas_alignment(
         resume=True,
     )
     assert resumed.resumed
+
+    original_hash = alignment_stage._sha256
+    shape_paths = {
+        path.resolve()
+        for path in alignment_stage.lesion_atlas_shape_asset_paths(ATLAS).values()
+    }
+    monkeypatch.setattr(
+        alignment_stage,
+        "_sha256",
+        lambda path: "f" * 64 if Path(path).resolve() in shape_paths else original_hash(path),
+    )
+    with pytest.raises(ValueError, match="inputs or settings differ"):
+        alignment_stage.run_plus_lesion_initial_atlas_alignment_checkpoint(
+            crop.cropped_path,
+            crop.manifest_path,
+            ATLAS,
+            tmp_path / "initial-alignment",
+            init_align_iterations=0,
+            pyramid_levels=2,
+            resume=True,
+        )
 
 
 def test_plus_lesion_initial_align_cli_routes_registration_settings(tmp_path: Path, monkeypatch) -> None:

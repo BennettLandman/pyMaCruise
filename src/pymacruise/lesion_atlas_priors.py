@@ -257,26 +257,12 @@ def load_lesion_atlas_shape_priors(
     lines = _read_descriptor(descriptor)
     structures = _parse_structures(lines)
     dimensions = _parse_shape_dimensions(lines)
-    mapping = _parse_shape_files(lines, structures)
+    asset_paths = lesion_atlas_shape_asset_paths(descriptor)
     arrays: dict[str, np.ndarray] = {}
     paths: dict[str, Path] = {}
     loaded: dict[Path, np.ndarray] = {}
     for structure in structures:
-        reference = mapping[structure.name]
-        relative = Path(reference)
-        if relative.is_absolute() or ".." in relative.parts:
-            raise LesionAtlasDescriptorError(
-                f"Unsafe shape atlas path for {structure.name}: {reference}"
-            )
-        if relative.suffixes[-2:] != [".nii", ".gz"]:
-            raise LesionAtlasDescriptorError(
-                f"Shape atlas must use compressed .nii.gz for {structure.name}: {reference}"
-            )
-        atlas_path = (descriptor.parent / relative).resolve()
-        if not atlas_path.is_relative_to(descriptor.parent):
-            raise LesionAtlasDescriptorError(
-                f"Shape atlas path escapes descriptor directory for {structure.name}: {reference}"
-            )
+        atlas_path = asset_paths[structure.name]
         if atlas_path in loaded:
             array = loaded[atlas_path]
         else:
@@ -307,6 +293,38 @@ def load_lesion_atlas_shape_priors(
         arrays[structure.name] = array
         paths[structure.name] = atlas_path
     return LesionAtlasShapePriors(structures, arrays, paths)
+
+
+def lesion_atlas_shape_asset_paths(descriptor_path: str | Path) -> dict[str, Path]:
+    """Resolve descriptor-owned shape images without loading their voxel data."""
+    descriptor = Path(descriptor_path).resolve()
+    lines = _read_descriptor(descriptor)
+    structures = _parse_structures(lines)
+    mapping = _parse_shape_files(lines, structures)
+    paths: dict[str, Path] = {}
+    for structure in structures:
+        reference = mapping[structure.name]
+        relative = Path(reference)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise LesionAtlasDescriptorError(
+                f"Unsafe shape atlas path for {structure.name}: {reference}"
+            )
+        if relative.suffixes[-2:] != [".nii", ".gz"]:
+            raise LesionAtlasDescriptorError(
+                f"Shape atlas must use compressed .nii.gz for {structure.name}: {reference}"
+            )
+        atlas_path = (descriptor.parent / relative).resolve()
+        if not atlas_path.is_relative_to(descriptor.parent):
+            raise LesionAtlasDescriptorError(
+                f"Shape atlas path escapes descriptor directory for {structure.name}: {reference}"
+            )
+        if not atlas_path.is_file() or atlas_path.is_symlink():
+            raise LesionAtlasDescriptorError(
+                f"Cannot load LesionTOADS shape atlas for {structure.name}: "
+                f"missing regular file {atlas_path}"
+            )
+        paths[structure.name] = atlas_path
+    return paths
 
 
 def _canonical_modality(name: str) -> str:

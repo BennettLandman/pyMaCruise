@@ -1,4 +1,4 @@
-"""Restartable synthetic/native base MaCRUISE workflow orchestration.
+"""Restartable base MaCRUISE workflow orchestration.
 
 This module composes existing stage CLIs. It adds checkpointing, provenance,
 and stage contracts; it does not replace any image-processing algorithm.
@@ -51,36 +51,42 @@ class _TeeTextIO:
 
 @dataclass(frozen=True)
 class BaseRunOptions:
-    regrid_inputs: bool = True
-    registration_levels: int = 1
-    registration_iterations: int = 1
-    post_refresh_registration_iterations: int = 1
-    registration_max_iterations: int = 1
-    toads_iterations: int = 2
-    dura_iterations: int = 1
+    """Full selected-source BASE profile, with explicit caller overrides."""
+
+    regrid_inputs: bool = False
+    n4_estimation_mask: str = "all"
+    registration_levels: int = 4
+    registration_iterations: int = 50
+    post_refresh_registration_iterations: int = 5
+    registration_max_iterations: int = 5
+    toads_iterations: int = 50
+    toads_axis_order: str = "LPS"
+    dura_iterations: int = 5
     dura_membership_level: float = 0.3
     crop_edge_width: int = 5
-    ace_diffusion_iterations: int = 1
+    ace_diffusion_iterations: int = 25
     gvf_iterations: int = 200
     # ``tgdm_iterations`` remains the compatibility value for existing JSON
-    # configurations. An explicitly supplied source-wrapper count takes
-    # precedence for that surface.
-    tgdm_iterations: int = 1
+    # configurations. An explicitly supplied per-surface count takes precedence;
+    # without either override, use the source's independent 6/4/7 schedule.
+    tgdm_iterations: int | None = None
     tgdm_initial_iterations: int | None = None
     tgdm_inner_iterations: int | None = None
     tgdm_central_iterations: int | None = None
-    wm_iso_level: float = 0.6
-    ace_use_updated_csf_in_ace: int = 0
+    wm_iso_level: float = 0.5
+    ace_use_updated_csf_in_ace: int = 2
     source_faithful_refinement: bool = True
 
     def effective_tgdm_iterations(self) -> tuple[int, int, int]:
-        """Return independent surface counts, falling back to the legacy count."""
+        """Resolve per-surface overrides, common override, then source defaults."""
         return tuple(
-            int(value if value is not None else self.tgdm_iterations)
-            for value in (
-                self.tgdm_initial_iterations,
-                self.tgdm_inner_iterations,
-                self.tgdm_central_iterations,
+            int(value if value is not None else
+                self.tgdm_iterations if self.tgdm_iterations is not None else default)
+            for value, default in zip(
+                (self.tgdm_initial_iterations, self.tgdm_inner_iterations,
+                 self.tgdm_central_iterations),
+                (6, 4, 7),
+                strict=True,
             )
         )
 
@@ -139,6 +145,7 @@ def _output_records(
     reference: nib.spatialimages.SpatialImage,
     *,
     require_reference_grid: bool = True,
+    require_ras: bool = True,
 ) -> list[dict[str, Any]]:
     records = []
     for path in paths:
@@ -155,7 +162,7 @@ def _output_records(
                 or not np.allclose(image.affine, reference.affine, rtol=0, atol=1e-4)
             ):
                 raise RuntimeError(f"Stage output is not on the native grid: {path}")
-            if nib.aff2axcodes(image.affine) != ("R", "A", "S"):
+            if require_ras and nib.aff2axcodes(image.affine) != ("R", "A", "S"):
                 raise RuntimeError(f"Stage output is not RAS: {path}")
             values = np.asanyarray(image.dataobj)
             if not np.issubdtype(values.dtype, np.number) or not np.isfinite(values).all():
@@ -350,6 +357,8 @@ def run_base_workflow(
         if key not in {
             "wm_iso_level", "ace_use_updated_csf_in_ace", "source_faithful_refinement",
             "regrid_inputs",
+            "toads_axis_order",
+            "n4_estimation_mask",
         }
         and value is not None
     ]
@@ -357,7 +366,7 @@ def run_base_workflow(
         isinstance(value, bool) or not isinstance(value, int) or value < 1
         for value in count_values
     ):
-        raise ValueError("All synthetic base workflow iteration/count options must be positive integers")
+        raise ValueError("All base workflow iteration/count options must be positive integers")
     if not np.isfinite(membership_level) or not 0.0 <= membership_level <= 1.0:
         raise ValueError("Dura membership level must be finite and in [0, 1]")
     if not np.isfinite(options.wm_iso_level) or not 0.0 < options.wm_iso_level < 1.0:
@@ -372,6 +381,15 @@ def run_base_workflow(
         raise ValueError("source_faithful_refinement must be boolean")
     if not isinstance(options.regrid_inputs, bool):
         raise ValueError("regrid_inputs must be boolean")
+    if options.toads_axis_order not in {"RAS", "LPS"}:
+        raise ValueError("toads_axis_order must be RAS or LPS")
+    if options.n4_estimation_mask not in {"all", "legacy-otsu"}:
+        raise ValueError("n4_estimation_mask must be all or legacy-otsu")
+    # Persist resolved phase counts only after validating the caller's values.
+    settings.update(zip(
+        ("tgdm_initial_iterations", "tgdm_inner_iterations", "tgdm_central_iterations"),
+        options.effective_tgdm_iterations(), strict=True,
+    ))
     signature_payload = {
         "schema_version": 1,
         "spatial_convention": "RAS",
@@ -564,6 +582,9 @@ def run_base_workflow(
         outputs: list[Path],
         command: list[str],
         dependencies: list[Path],
+        *,
+        output_reference: nib.spatialimages.SpatialImage | None = None,
+        require_ras: bool = True,
     ) -> None:
         dependency_signature = _json_hash({
             "implementation_signature": implementation_signature,
@@ -598,15 +619,29 @@ def run_base_workflow(
         try:
             with log_path.open("w", encoding="utf-8") as log_stream:
                 with redirect_stdout(_TeeTextIO(stdout_buffer, log_stream)), redirect_stderr(stderr_buffer):
-                    cli_main(command_for_dir(command, stage_dir))
+                    try:
+                        exit_code = cli_main(command_for_dir(command, stage_dir))
+                    except SystemExit as exc:
+                        # argparse errors (including missing ANTsPy) raise
+                        # SystemExit, which bypasses the stage's Exception
+                        # handler. Surface the captured error and record the
+                        # failed attempt instead of silently leaving it running.
+                        detail = stderr_buffer.getvalue().strip()
+                        raise RuntimeError(
+                            f"Stage {name} exited with code {exc.code}"
+                            + (f":\n{detail}" if detail else "")
+                        ) from exc
+                    if exit_code not in (None, 0):
+                        raise RuntimeError(f"Stage {name} returned exit code {exit_code}")
                 if stderr_buffer.getvalue():
                     log_stream.write("\n[stderr]\n")
                     log_stream.write(stderr_buffer.getvalue())
                     log_stream.flush()
             print(stdout_buffer.getvalue(), end="")
             records = _output_records(
-                [*attempt_outputs, log_path], reference,
+                [*attempt_outputs, log_path], reference if output_reference is None else output_reference,
                 require_reference_grid=name not in {"cruise-core", "base-tissue-preparation"},
+                require_ras=require_ras,
             )
             if name == "base-tissue-preparation":
                 cropped_names = (
@@ -666,6 +701,7 @@ def run_base_workflow(
                     log_stream.write(stderr_buffer.getvalue())
                 log_stream.write(f"\n[exception] {type(exc).__name__}: {exc}\n")
             print(stdout_buffer.getvalue(), end="")
+            manifest["status"] = "failed"
             manifest["stages"][name] = {"status": "failed", "attempt": attempts, "error": f"{type(exc).__name__}: {exc}"}
             manifest["history"].append({"stage": name, "attempt": attempts, "status": "failed"})
             _write_manifest(manifest_path, manifest)
@@ -697,12 +733,35 @@ def run_base_workflow(
         count = 1 + sum(item.get("stage") == stage_name for item in manifest["history"])
         return output_dir / "stages" / stage_name / f"attempt-{count:02d}" / relative
 
-    n4 = active_output("n4", "t1-n4.nii.gz", [t1_path])
-    run_stage("n4", [n4], ["n4", "--input", str(t1_path), "--output", "{STAGE}/t1-n4.nii.gz"], [t1_path])
-    n4 = active_output("n4", "t1-n4.nii.gz", [t1_path])
+    # Source order is N4 on the acquisition, then conversion for TOADS. N4's
+    # spline estimation must not use a previously deobliqued/resampled image.
+    n4_dependencies = [inputs["t1"], t1_path]
+    n4_command = ["n4", "--input", str(inputs["t1"]),
+                  "--estimation-mask", options.n4_estimation_mask,
+                  "--working-reference", str(t1_path), "--output", "{STAGE}/t1-n4.nii.gz"]
+    if not options.regrid_inputs:
+        n4_command.append("--orientation-only-working-grid")
+    n4 = active_output("n4", "t1-n4.nii.gz", n4_dependencies)
+    run_stage("n4", [n4], n4_command, n4_dependencies)
+    n4 = active_output("n4", "t1-n4.nii.gz", n4_dependencies)
+
+    preprocessing_dependencies = [n4, brain_mask_path]
+    preprocessing_outputs = [
+        active_output("base-preprocessing", name, preprocessing_dependencies)
+        for name in ("t1-n4.nii.gz", "toads-mask.nii.gz", "provenance.json")
+    ]
+    run_stage("base-preprocessing", preprocessing_outputs, [
+        "base-preprocessing", "--t1-n4", str(n4), "--brain-mask", str(brain_mask_path),
+        "--output-dir", "{STAGE}", "--provenance", "{STAGE}/provenance.json",
+    ], preprocessing_dependencies)
+    # Source MultiAtlasStripping masks before axial interpolation. Keep its
+    # ringing for TOADS and pass the same prepared intensity image to Dura.
+    prepared_t1 = active_output("base-preprocessing", "t1-n4.nii.gz", preprocessing_dependencies)
+    toads_mask = active_output("base-preprocessing", "toads-mask.nii.gz", preprocessing_dependencies)
 
     toads_common = [
         "--atlas-descriptor", str(run_atlas),
+        "--source-axis-order", options.toads_axis_order,
         "--modality", "T1_MPRAGE",
         "--registration-levels", str(options.registration_levels),
         "--registration-iterations", str(options.registration_iterations),
@@ -718,7 +777,7 @@ def run_base_workflow(
     atlas_dependencies = [run_atlas, *materialized_assets]
     if materialized_audit.is_file():
         atlas_dependencies.append(materialized_audit)
-    first_dependencies = [n4, brain_mask_path, *atlas_dependencies]
+    first_dependencies = [prepared_t1, toads_mask, *atlas_dependencies]
     first_dura_files = [
         active_output("toads-first", "classification.nii.gz", first_dependencies),
         active_output("toads-first", "dura-inputs/t1-n4_wmfill.nii.gz", first_dependencies),
@@ -727,28 +786,29 @@ def run_base_workflow(
         active_output("toads-first", "dura-inputs/t1-n4_csf.nii.gz", first_dependencies),
     ]
     run_stage("toads-first", first_dura_files, [
-        "toads-loop", "--t1-n4", str(n4), "--brain-mask", str(brain_mask_path),
+        "toads-loop", "--t1-n4", str(prepared_t1), "--brain-mask", str(toads_mask),
         "--output", "{STAGE}/classification.nii.gz", "--dura-output-dir", "{STAGE}/dura-inputs",
         *toads_common,
-    ], [n4, brain_mask_path, *atlas_dependencies])
+    ], first_dependencies)
     first_label = active_output("toads-first", "classification.nii.gz")
     first_outputs = manifest["stages"]["toads-first"]["outputs"]
     first_files = {Path(item["path"]).name: Path(item["path"]) for item in first_outputs}
     first_wm = next(path for name, path in first_files.items() if name.endswith("_wmfill.nii.gz"))
     first_gm = next(path for name, path in first_files.items() if name.endswith("_gm.nii.gz"))
     first_wmmask = next(path for name, path in first_files.items() if name.endswith("_wmmask.nii.gz"))
-    dura_dependencies = [n4, first_wm, first_gm, first_wmmask]
+    dura_dependencies = [prepared_t1, first_wm, first_gm, first_wmmask]
     dura_products = [active_output("dura", f"{name}.nii.gz", dura_dependencies) for name in (
         "stripped_t1", "corrected_white_matter", "corrected_gray_matter", "brain_mask_level_set", "brain_mask", "wm_topology", "gm_topology"
     )]
     run_stage("dura", dura_products, [
-        "dura", "--t1", str(n4), "--white", str(first_wm), "--gray", str(first_gm),
+        "dura", "--t1", str(prepared_t1), "--white", str(first_wm), "--gray", str(first_gm),
+        "--source-axis-order", options.toads_axis_order,
         "--white-mask", str(first_wmmask), "--output-dir", "{STAGE}",
         "--max-iterations", str(options.dura_iterations),
         "--membership-level", str(options.dura_membership_level),
         "--wm-topology-regularization", "0.05",
         "--gm-topology-regularization", "0.02",
-    ], [n4, first_wm, first_gm, first_wmmask])
+    ], dura_dependencies)
     stripped = active_output("dura", "stripped_t1.nii.gz", dura_dependencies)
     brain = active_output("dura", "brain_mask.nii.gz", dura_dependencies)
     second_dependencies = [stripped, brain, *atlas_dependencies]
@@ -792,6 +852,7 @@ def run_base_workflow(
         # The selected V3 run_Toads_pipeline path does not enable the optional
         # brainstem/cerebellum removal used by a separate TOADS-Cruise route.
         "--wm-mask", str(second_wmmask),
+        "--separate-hemispheres",
         "--edge-width", str(options.crop_edge_width),
         "--gm-confident-level", "0.001", "--output-dir", "{STAGE}",
         "--provenance", "{STAGE}/provenance.json",
@@ -805,12 +866,12 @@ def run_base_workflow(
     preparation_provenance = active_output(
         "base-tissue-preparation", "provenance.json", prep_dependencies
     )
-    dura_brain_mask_level_set = active_output(
-        "dura", "brain_mask_level_set.nii.gz", dura_dependencies
-    )
+    # run_TGDMinvcrop_jist.m supplies no optional Brain Mask Level Set.
+    # Dura controls second-pass TOADS; forwarding its level set here changes
+    # the reconstruction bounds and is not the selected BASE source route.
     core_dependencies = [
         prepared_gm, prepared_wm, prepared_mask, prepared_boundary,
-        preparation_provenance, dura_brain_mask_level_set,
+        preparation_provenance,
     ]
     core_outputs = [active_output("cruise-core", f"{name}.nii.gz", core_dependencies) for name in (
         "gm_cropped", "wmfill_cropped", "wmmask_cropped", "wmfill_topology_corrected",
@@ -820,9 +881,9 @@ def run_base_workflow(
     run_stage("cruise-core", core_outputs, [
         "toads-cruise-core", "--gm", str(prepared_gm), "--wm-fill", str(prepared_wm),
         "--boundary-csf", str(prepared_boundary),
-        "--brain-mask-level-set", str(dura_brain_mask_level_set),
         "--wm-mask", str(prepared_mask), "--base-preparation-provenance",
         str(preparation_provenance), "--edge-width", str(options.crop_edge_width),
+        "--topology-propagation", "background->object", "--topology-source-axis-order", "RAS",
         "--ace-diffusion-iterations", str(options.ace_diffusion_iterations),
         "--use-updated-csf-in-ace", str(options.ace_use_updated_csf_in_ace),
         "--gvf-iterations", str(options.gvf_iterations),
@@ -873,6 +934,35 @@ def run_base_workflow(
         "--output-dir", "{STAGE}",
         "--provenance", "{STAGE}/provenance.json",
     ], surface_dependencies)
+    from pymacruise.base_native_export import NATIVE_OUTPUT_NAMES
+
+    # Always deliver the original input lattice, regardless of the internal
+    # orthogonal working grid or orientation-only compatibility processing.
+    surface_files = {
+        Path(item["path"]).name: Path(item["path"])
+        for item in manifest["stages"]["surface-thickness"]["outputs"]
+    }
+    refined_output = next(
+        Path(item["path"]) for item in manifest["stages"]["maseg-refinement"]["outputs"]
+        if Path(item["path"]).name == "SEG_refine.nii.gz"
+    )
+    original_t1_path = Path(inputs["t1"])
+    native_dependencies = [original_t1_path, t1_path, refined_output,
+                           *surface_dependencies, *surface_files.values()]
+    native_outputs = [active_output("native-export", name, native_dependencies) for name in NATIVE_OUTPUT_NAMES]
+    native_command = [
+        "base-native-export", "--reference", str(original_t1_path),
+        "--working-reference", str(t1_path), "--segmentation", str(refined_output),
+        "--inner-levelset", str(core_files["inner.nii.gz"]),
+        "--central-levelset", str(core_files["central.nii.gz"]),
+        "--outer-levelset", str(core_files["outer.nii.gz"]),
+        "--surface-dir", str(surface_files["thickness_levelset.nii.gz"].parent),
+        "--output-dir", "{STAGE}",
+    ]
+    if not options.regrid_inputs:
+        native_command.append("--orientation-only")
+    run_stage("native-export", native_outputs, native_command, native_dependencies,
+              output_reference=raw_reference, require_ras=False)
     manifest["status"] = "complete"
     manifest["converged"] = all(
         manifest["stages"][stage]["toads_stop"]["energy_threshold_reached"]
@@ -884,10 +974,12 @@ def run_base_workflow(
         else "stage-run-complete-but-toads-did-not-meet-energy-threshold"
     )
     manifest["source_equivalence_claim"] = False
-    manifest["final_outputs"] = (
-        manifest["stages"]["cruise-core"]["outputs"]
-        + manifest["stages"]["maseg-refinement"]["outputs"]
-        + manifest["stages"]["surface-thickness"]["outputs"]
-    )
+    manifest["final_outputs"] = manifest["stages"]["native-export"]["outputs"]
+    manifest["final_output_grid"] = {
+        "reference": str(original_t1_path), "shape": list(raw_reference.shape),
+        "affine": raw_reference.affine.tolist(),
+        "axis_codes": list(nib.aff2axcodes(raw_reference.affine)),
+        "surface_coordinate_frame": "RAS", "surface_units": "mm",
+    }
     _write_manifest(manifest_path, manifest)
     return manifest_path

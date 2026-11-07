@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 
 from pymacruise.toads_registration import (
@@ -36,6 +37,45 @@ class LesionShapeSample:
     value: np.float32
     template_xyz: tuple[np.float32, np.float32, np.float32] | None
     template_gradient_xyz: tuple[np.float32, np.float32, np.float32] | None = None
+
+
+@njit(cache=True, fastmath=False, error_model="numpy")
+def _accumulate_lesion_registration_coefficients_kernel(mem, prior, prior_grad, jacobian, registered, offset, subsample):
+    cost = np.float32(0.0)
+    norm = np.float32(0.0)
+    gradient = np.zeros(6, dtype=np.float32)
+    hessian = np.zeros(6, dtype=np.float32)
+    visited = 0
+    terms = 0
+    for x in range(offset, mem.shape[0], subsample):
+        for y in range(offset, mem.shape[1], subsample):
+            for z in range(offset, mem.shape[2], subsample):
+                visited += 1
+                for class_index in range(1, mem.shape[-1]):
+                    if not registered[class_index] or prior[x, y, z, class_index] <= np.float32(0.0):
+                        continue
+                    p = prior[x, y, z, class_index]
+                    m = mem[x, y, z, class_index]
+                    m2 = np.float32(m * m)
+                    p2 = np.float32(p * p)
+                    cost = np.float32(cost + np.float32(np.float32(m2 * p) * p))
+                    norm = np.float32(norm + p2)
+                    for parameter in range(6):
+                        value = np.float32(prior_grad[x, y, z, class_index, 0] * jacobian[x, y, z, 0, parameter])
+                        value = np.float32(value + np.float32(prior_grad[x, y, z, class_index, 1] * jacobian[x, y, z, 1, parameter]))
+                        dp = np.float32(value + np.float32(prior_grad[x, y, z, class_index, 2] * jacobian[x, y, z, 2, parameter]))
+                        gradient_term = np.float32(np.float32(np.float32(np.float32(2.0) * m) * m) * p)
+                        gradient_term = np.float32(gradient_term * dp)
+                        gradient[parameter] = np.float32(gradient[parameter] + gradient_term)
+                        hessian_term = np.float32(np.float32(np.float32(2.0) * m) * m)
+                        hessian_term = np.float32(hessian_term * dp)
+                        hessian_term = np.float32(hessian_term * dp)
+                        hessian[parameter] = np.float32(hessian[parameter] + hessian_term)
+                    terms += 1
+    energy = np.float32(cost / norm)
+    normalized_gradient = gradient / norm
+    normalized_hessian = hessian / norm
+    return cost, norm, gradient, hessian, energy, normalized_gradient, normalized_hessian, visited, terms
 
 
 @dataclass(frozen=True)
@@ -356,64 +396,13 @@ def accumulate_lesion_registration_coefficients(
     ):
         raise ValueError("subsample must be a positive integer")
 
-    cost = np.float32(0.0)
-    norm = np.float32(0.0)
-    gradient = np.zeros(6, dtype=np.float32)
-    hessian = np.zeros(6, dtype=np.float32)
-    visited = 0
-    terms = 0
-    for x in range(int(offset), mem.shape[0], int(subsample)):
-        for y in range(int(offset), mem.shape[1], int(subsample)):
-            for z in range(int(offset), mem.shape[2], int(subsample)):
-                visited += 1
-                for class_index in range(1, mem.shape[-1]):
-                    if not registered[class_index] or prior[x, y, z, class_index] <= np.float32(0.0):
-                        continue
-                    # The selected Java traversal adds one class contribution
-                    # at a time. Keep its float32 rounding order directly here
-                    # instead of allocating full class-sized temporary arrays
-                    # and routing this single active class through the generic
-                    # vector adapter on every contributing voxel.
-                    p = prior[x, y, z, class_index]
-                    m = mem[x, y, z, class_index]
-                    m2 = np.float32(m * m)
-                    p2 = np.float32(p * p)
-                    cost = np.float32(
-                        cost + np.float32(np.float32(m2 * p) * p)
-                    )
-                    norm = np.float32(norm + p2)
-                    for parameter in range(6):
-                        value = np.float32(
-                            prior_grad[x, y, z, class_index, 0]
-                            * jacobian[x, y, z, 0, parameter]
-                        )
-                        value = np.float32(value + np.float32(
-                            prior_grad[x, y, z, class_index, 1]
-                            * jacobian[x, y, z, 1, parameter]
-                        ))
-                        dp = np.float32(value + np.float32(
-                            prior_grad[x, y, z, class_index, 2]
-                            * jacobian[x, y, z, 2, parameter]
-                        ))
-                        gradient_term = np.float32(np.float32(2.0) * m)
-                        gradient_term = np.float32(gradient_term * m)
-                        gradient_term = np.float32(gradient_term * p)
-                        gradient_term = np.float32(gradient_term * dp)
-                        gradient[parameter] = np.float32(
-                            gradient[parameter] + gradient_term
-                        )
-                        hessian_term = np.float32(np.float32(2.0) * m)
-                        hessian_term = np.float32(hessian_term * m)
-                        hessian_term = np.float32(hessian_term * dp)
-                        hessian_term = np.float32(hessian_term * dp)
-                        hessian[parameter] = np.float32(
-                            hessian[parameter] + hessian_term
-                        )
-                    terms += 1
-    with np.errstate(divide="ignore", invalid="ignore"):
-        energy = np.divide(cost, norm, dtype=np.float32)
-        normalized_gradient = np.divide(gradient, norm, dtype=np.float32)
-        normalized_hessian = np.divide(hessian, norm, dtype=np.float32)
+    # The selected Java traversal adds one class contribution at a time. The
+    # compiled kernel preserves that float32 accumulation order while avoiding
+    # millions of Python-to-NumPy scalar conversions on full human volumes.
+    (cost, norm, gradient, hessian, energy, normalized_gradient,
+     normalized_hessian, visited, terms) = _accumulate_lesion_registration_coefficients_kernel(
+        mem, prior, prior_grad, jacobian, registered, int(offset), int(subsample)
+    )
     return LesionRegistrationVolumeCoefficients(
         cost,
         norm,

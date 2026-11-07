@@ -554,6 +554,7 @@ def tgdm_nested_arrays(
     brain_mask_level_set: np.ndarray | None = None,
     ace_skeleton: np.ndarray | None = None,
     gvf: np.ndarray | None = None,
+    precomputed_initial_level_set: np.ndarray | None = None,
     parameters: TGDMBaselineParameters = TGDMBaselineParameters(),
 ) -> NestedTGDMResult:
     """Run the selected nested inner/central/outer CRUISE level-set stages.
@@ -609,8 +610,12 @@ def tgdm_nested_arrays(
     skeleton = _optional_field(ace_skeleton, shape, "ace_skeleton")
     velocity = _optional_vector(gvf, shape)
 
-    initial = tgdm_initial_membership_level_set(
-        membership, iso_level=parameters.initial_iso_level, max_distance=8.0
+    initial = (
+        _optional_field(precomputed_initial_level_set, shape, "precomputed_initial_level_set")
+        if precomputed_initial_level_set is not None
+        else tgdm_initial_membership_level_set(
+            membership, iso_level=parameters.initial_iso_level, max_distance=8.0
+        )
     )
     # MaGenericTGDM.solveSmoothSurface runs DistanceField once more before
     # entering its profile loop, even though this wrapper seed is already a
@@ -725,6 +730,7 @@ def tgdm_nested_images(
     brain_mask_level_set: nib.spatialimages.SpatialImage | None = None,
     ace_skeleton: nib.spatialimages.SpatialImage | None = None,
     gvf: nib.spatialimages.SpatialImage | None = None,
+    precomputed_initial_level_set: nib.spatialimages.SpatialImage | None = None,
     parameters: TGDMBaselineParameters = TGDMBaselineParameters(),
 ) -> TGDMMaCRUISEImageResult:
     """Run nested TGDM after RAS reorientation and strict grid validation.
@@ -746,6 +752,7 @@ def tgdm_nested_images(
         ("brain mask", brain_mask),
         ("brain mask level set", brain_mask_level_set),
         ("ACE skeleton", ace_skeleton),
+        ("precomputed initial level set", precomputed_initial_level_set),
     ):
         if image is None:
             continue
@@ -776,6 +783,7 @@ def tgdm_nested_images(
         brain_mask_level_set=aligned.get("brain mask level set"),
         ace_skeleton=aligned.get("ACE skeleton"),
         gvf=vector,
+        precomputed_initial_level_set=aligned.get("precomputed initial level set"),
         parameters=parameters,
     )
     return TGDMMaCRUISEImageResult(

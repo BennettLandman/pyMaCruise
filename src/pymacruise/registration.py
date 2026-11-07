@@ -17,7 +17,7 @@ software substitution; they are not claimed to reproduce NiftyReg.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 from typing import Literal, Sequence
@@ -449,4 +449,4 @@ def apply_transforms_to_surface_ras(
     after_volume = _signed_mesh_volume(vertices, faces)
     if before_volume != 0 and after_volume != 0 and np.sign(before_volume) != np.sign(after_volume):
         faces = faces[:, ::-1]
-    return SurfaceMesh(vertices, faces, point_data=mesh.point_data)
+    return replace(mesh, vertices=vertices, faces=faces, gifti_dataspace=0)

@@ -62,6 +62,8 @@ def run_toads_cruise_core(
     gvf_solver_tolerance: float = 1e-6,
     tgdm_parameters: TGDMBaselineParameters | None = None,
     prepared_crop_parameters: CropParameters | None = None,
+    topology_propagation: str = "object->background",
+    topology_source_axis_order: str = "RAS",
 ) -> ToadsCruiseCoreResult:
     """Run preparation, base ACE/GVF, nested TGDM and selected inverse crop.
 
@@ -84,6 +86,8 @@ def run_toads_cruise_core(
             segmentation=segmentation,
             remove_cerebellum=remove_cerebellum,
             crop_edge_width=crop_edge_width,
+            topology_propagation=topology_propagation,
+            topology_source_axis_order=topology_source_axis_order,
         )
     else:
         if remove_cerebellum or segmentation is not None:
@@ -118,6 +122,8 @@ def run_toads_cruise_core(
             lowest_level=0.0,
             highest_level=1.0,
             regularize=1e-4,
+            propagation_direction=topology_propagation,
+            source_axis_order=topology_source_axis_order,
         )
         prepared = ToadsCruisePreparationResult(
             crop_reference_gray_matter=gm_ras,

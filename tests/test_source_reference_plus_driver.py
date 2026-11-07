@@ -17,7 +17,7 @@ def test_plus_reference_driver_preserves_selected_stage_order_and_mask_contract(
         "run_N4Correct(Flair_file",
         "apply_mask(python_executable, mask_helper, t1_n4",
         "apply_mask(python_executable, mask_helper, flair_n4",
-        "run_EM(",
+        "run_plus_atlasem_reference(",
         "run_RemoveDura(",
         "apply_mask(python_executable, mask_helper, flair_masked, dura_mask",
         "moveFile(t1_dura, opts, 'removeDura_final'",
@@ -30,12 +30,14 @@ def test_plus_reference_driver_preserves_selected_stage_order_and_mask_contract(
         "run_CleanBoundaryByUpdateWM(",
         "run_CruisePlusSurf_pipeline(",
         "run_SegmentationRefine(",
+        "run_plus_thickness_reference(",
     )
     positions = [text.index(call) for call in selected_calls]
     assert positions == sorted(positions)
     assert "opts.rigOnly = 1;" in text
     assert "opts.LesionToadsOutput = 'dura removal inputs';" in text
-    assert "'cruise-atlas-8obj-noBG-EM.txt'" in text
+    assert "opts.atlasem_descriptor = config.atlasem_descriptor;" in text
+    assert "'ibsr8obj'" not in text
     assert "'cruise-atlas-12obj-lesiontoads2012.txt'" in text
     assert "Missing selected PLUS atlas" in text
     assert "'atlasem_gm', EM_gm" in text
@@ -58,7 +60,8 @@ def test_plus_source_run_packet_records_atlasem_as_a_distinct_handoff():
         assert f"'{output}'" in driver
     assert "initial Dura removal" in packet
     assert "do not combine AtlasEM and Dura" in packet
-    assert "selected `ibsr8obj` descriptor" in packet
+    assert "PLUS targets `ibsr11objV3`" in packet
+    assert "source-config.json" in packet
     assert "PLUS AtlasEM descriptor" in run_info
     assert "PLUS AtlasEM GM, WM-fill, and WM-mask" in run_info
 

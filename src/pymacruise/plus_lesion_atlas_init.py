@@ -12,7 +12,10 @@ import nibabel as nib
 import numpy as np
 
 from pymacruise.image_io import load_nifti_ras, nifti_ras_on_reference, save_nifti_ras
-from pymacruise.lesion_atlas_priors import load_lesion_atlas_topology
+from pymacruise.lesion_atlas_priors import (
+    lesion_atlas_shape_asset_paths,
+    load_lesion_atlas_topology,
+)
 from pymacruise.lesion_initial_atlas_alignment import initialize_lesion_atlas_alignment_from_descriptor
 
 
@@ -166,6 +169,11 @@ def run_plus_lesion_initial_atlas_alignment_checkpoint(
         raise ValueError("cropped modality dimensions do not match the crop manifest")
 
     atlas_topology = load_lesion_atlas_topology(descriptor)
+    atlas_shape_assets = lesion_atlas_shape_asset_paths(descriptor)
+    atlas_shape_records = {
+        name: {"path": str(path), "sha256": _sha256(path)}
+        for name, path in atlas_shape_assets.items()
+    }
     root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "lesion-initial-atlas-alignment.json"
     signature = _signature(
@@ -175,6 +183,8 @@ def run_plus_lesion_initial_atlas_alignment_checkpoint(
                 "cropped_modalities": {"path": str(cropped_path), "sha256": _sha256(cropped_path)},
                 "crop_manifest": {"path": str(crop_manifest), "sha256": _sha256(crop_manifest)},
                 "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
+                "topology_atlas": {"path": str(atlas_topology.path), "sha256": _sha256(atlas_topology.path)},
+                "atlas_shape_assets": atlas_shape_records,
             },
             "settings": {
                 "init_align_iterations": init_align_iterations,
@@ -215,6 +225,7 @@ def run_plus_lesion_initial_atlas_alignment_checkpoint(
             "crop_manifest": {"path": str(crop_manifest), "sha256": _sha256(crop_manifest)},
             "atlas_descriptor": {"path": str(descriptor), "sha256": _sha256(descriptor)},
             "topology_atlas": {"path": str(atlas_topology.path), "sha256": _sha256(atlas_topology.path)},
+            "shape_atlases": atlas_shape_records,
         },
         "settings": {
             "init_align_iterations": init_align_iterations,

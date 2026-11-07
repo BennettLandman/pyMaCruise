@@ -1,0 +1,201 @@
+{
+  "acceptance": {
+    "dice_minimum": 0.97,
+    "symmetric_hausdorff_mm_maximum": 1.0,
+    "symmetric_mean_surface_distance_mm_maximum": 0.01
+  },
+  "affine_ras": [
+    [
+      1.0000015497207642,
+      0.0,
+      0.0,
+      -63.32928466796875
+    ],
+    [
+      0.0,
+      1.0,
+      0.0,
+      -112.69482421875
+    ],
+    [
+      0.0,
+      0.0,
+      1.0,
+      -50.49781799316406
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "brain_mask_role": "retained for input/crop provenance; not passed to selected MaTGDMcrop TGDM calls",
+  "comparison": "selected MaGenericTGDM Java null-bound wrapper sequence vs Python null-bound replay from the same held-fixed initial membership",
+  "coordinate_system": "RAS",
+  "evidence_category": "real-data held-fixed source comparison",
+  "full_workflow_run_signature": "5061e1a6784f91c9e5b8341943e67c72d9cc54f9b36bb8c34b64902b6afe4876",
+  "held_fixed_input_binary_sha256": "58c716b7193efa386d18e238bb26a19fc3a870e91c39b214bf4300c4b2ce8e7d",
+  "implementation_signature": "0e651c0cc41e5a32658314bbb8478d09c4d7dd67c832936512e7e1ba93bf17f4",
+  "java_harness_class_sha256": "95b0cb9b7380f17db180356ec709cc527912372d4e84a538001e2d1ef920dfd7",
+  "java_harness_source_sha256": "758b51c5de170b86379bb8e69484d9dfebb96ddb3f41e4e8df25d640b8fc491f",
+  "java_invocation_mode": "initial_membership (default selected Java initialization; no precomputed-levelset option; brain-mask argument omitted)",
+  "java_peak_sampled_rss_gb": 1.259,
+  "java_rss_limit_gb": 8,
+  "java_runtime": "OpenJDK 21.0.11+10-1163.116",
+  "outputs": {
+    "central": {
+      "candidate_to_reference_mean_mm": 1.254953833633194e-07,
+      "changed_voxels": 77225,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.004321606662295075,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 4.122721311995264e-07,
+        "hausdorff_mm": 0.01101627152226409,
+        "mean_absolute_distance_mm": 4.499756499700958e-07,
+        "n_candidate_vertices": 214114,
+        "n_reference_vertices": 214114,
+        "reference_to_candidate_mean_mm": 4.876791687406652e-07
+      },
+      "maximum_absolute_voxel_error": 0.011353909969329834,
+      "mean_absolute_distance_mm": 1.51414210573764e-07,
+      "mean_absolute_voxel_error": 1.6152843398097567e-07,
+      "n_candidate_vertices": 214064,
+      "n_reference_vertices": 214064,
+      "reference_to_candidate_mean_mm": 1.7733303778420859e-07,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3339280
+    },
+    "initial_inner": {
+      "candidate_to_reference_mean_mm": 1.7016542715137294e-07,
+      "changed_voxels": 96862,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.005065377483815143,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 3.382435697695505e-07,
+        "hausdorff_mm": 0.0071944389843350285,
+        "mean_absolute_distance_mm": 4.1243059099064947e-07,
+        "n_candidate_vertices": 202552,
+        "n_reference_vertices": 202552,
+        "reference_to_candidate_mean_mm": 4.866176122117484e-07
+      },
+      "maximum_absolute_voxel_error": 0.0102386474609375,
+      "mean_absolute_distance_mm": 2.1819368558716355e-07,
+      "mean_absolute_voxel_error": 1.4186639562506617e-07,
+      "n_candidate_vertices": 202500,
+      "n_reference_vertices": 202500,
+      "reference_to_candidate_mean_mm": 2.6622194402295414e-07,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3339280
+    },
+    "initial_level_set": {
+      "changed_voxels": 983,
+      "exact": false,
+      "maximum_absolute_voxel_error": 4.76837158203125e-07,
+      "mean_absolute_voxel_error": 1.3983337341295433e-10,
+      "sign_changed_voxels": 0,
+      "voxel_count": 3339280
+    },
+    "inner": {
+      "candidate_to_reference_mean_mm": 6.927498528109494e-08,
+      "changed_voxels": 88052,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.0007660600116109676,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 2.1537375706348912e-07,
+        "hausdorff_mm": 0.007476635506530233,
+        "mean_absolute_distance_mm": 2.1043749734988056e-07,
+        "n_candidate_vertices": 206559,
+        "n_reference_vertices": 206559,
+        "reference_to_candidate_mean_mm": 2.05501237636272e-07
+      },
+      "maximum_absolute_voxel_error": 0.003387749195098877,
+      "mean_absolute_distance_mm": 7.68345091624528e-08,
+      "mean_absolute_voxel_error": 3.345402093160998e-08,
+      "n_candidate_vertices": 206512,
+      "n_reference_vertices": 206512,
+      "reference_to_candidate_mean_mm": 8.439403304381066e-08,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3339280
+    },
+    "outer": {
+      "candidate_to_reference_mean_mm": 0.00011039617420734994,
+      "changed_voxels": 1972234,
+      "dice_at_zero": 0.99999359338222,
+      "exact": false,
+      "hausdorff_mm": 0.22549692640127297,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 0.00014285845685067631,
+        "hausdorff_mm": 0.34593041811648795,
+        "mean_absolute_distance_mm": 0.00014202862105844633,
+        "n_candidate_vertices": 225425,
+        "n_reference_vertices": 225426,
+        "reference_to_candidate_mean_mm": 0.00014119878526621635
+      },
+      "maximum_absolute_voxel_error": 0.3007853031158447,
+      "mean_absolute_distance_mm": 0.00011010047026985272,
+      "mean_absolute_voxel_error": 7.403450801324934e-05,
+      "n_candidate_vertices": 225316,
+      "n_reference_vertices": 225316,
+      "reference_to_candidate_mean_mm": 0.00010980476633235549,
+      "sign_changed_voxels": 10,
+      "thresholds_pass": true,
+      "voxel_count": 3339280
+    },
+    "smoothed_initial": {
+      "candidate_to_reference_mean_mm": 3.5400502622753035e-07,
+      "changed_voxels": 322962,
+      "dice_at_zero": 1.0,
+      "exact": false,
+      "hausdorff_mm": 0.0064238766965636004,
+      "marching_cubes_diagnostic": {
+        "candidate_to_reference_mean_mm": 2.481803362894946e-06,
+        "hausdorff_mm": 0.04998649893833726,
+        "mean_absolute_distance_mm": 2.5801818768441947e-06,
+        "n_candidate_vertices": 144839,
+        "n_reference_vertices": 144839,
+        "reference_to_candidate_mean_mm": 2.678560390793443e-06
+      },
+      "maximum_absolute_voxel_error": 0.06922149658203125,
+      "mean_absolute_distance_mm": 3.649600513754312e-07,
+      "mean_absolute_voxel_error": 1.1532201052301444e-06,
+      "n_candidate_vertices": 144820,
+      "n_reference_vertices": 144820,
+      "reference_to_candidate_mean_mm": 3.7591507652333203e-07,
+      "sign_changed_voxels": 0,
+      "thresholds_pass": true,
+      "voxel_count": 3339280
+    }
+  },
+  "python_input_provenance": "/Users/landmaba/dev/mipav/pymacruise/build/in-vivo-100260-plus-null-bound-tgdm-2026-10-18/input-provenance.json",
+  "python_input_provenance_sha256": "654d38c9128d7b0a0f5b151ee65f29c0f95f37170980b0211bd1bee0b53bd597",
+  "python_tgdm_replay": null,
+  "replayed_saved_outputs_exactly": [
+    "initial_level_set",
+    "tissue_sign",
+    "initial_inner",
+    "inner",
+    "central",
+    "outer"
+  ],
+  "saved_stage_difference_voxels": {},
+  "scope": "TGDM only; the same initial membership, tissue, ACE, skeleton, and GVF arrays are supplied to both implementations; each computes its selected initial signed-distance field; no optional brain-mask level set is passed",
+  "shape_xyz": [
+    140,
+    178,
+    134
+  ],
+  "surface_extractor": "source-matched JIST IsoSurfaceOnGrid connectivity-18 port",
+  "surface_gate_note": "Primary distance metrics use production JIST-compatible surfaces; marching_cubes_diagnostic is informational only.",
+  "surface_thresholds_pass": true,
+  "synthetic_only": false,
+  "tgdm_input_mode": "initial_membership",
+  "tgdm_optional_brain_mask_level_set": "omitted_per_selected_MaTGDMcrop_wrapper",
+  "workflow_run_signature": "963cb2987f78d375c1e714763d735a6b3a1632a3f74b4e36a93bf02a9adda542"
+}

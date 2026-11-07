@@ -16,4 +16,4 @@ Synthetic analytic checks cover spheres and ellipsoids, including closed two-man
 
 ## Scope
 
-Only ASCII legacy VTK triangular `POLYDATA` is read and written here. This module handles scientific mesh data, not visualization or rendering. The repository uses NumPy/SciPy for mesh geometry and closest-point thickness; it has no VTK/PyVista rendering requirement. Whole-workflow Java equivalence and real-human PLUS acceptance remain separate validation targets.
+ASCII legacy VTK triangular `POLYDATA` and GIFTI geometry with vertex measurements are read and written here. See [GIFTI surfaces and measurements](gifti.md) for conversion, metadata, label tables, coordinate transforms, and precision limits. This module handles scientific mesh data, not visualization or rendering. The repository uses NumPy/SciPy for mesh geometry and closest-point thickness; it has no VTK/PyVista rendering requirement. Whole-workflow Java equivalence and real-human PLUS acceptance remain separate validation targets.
